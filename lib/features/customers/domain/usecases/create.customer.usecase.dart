@@ -1,4 +1,4 @@
-import 'package:app/features/core/utils/resource.dart';
+import 'package:app/core/utils/resource.dart';
 import 'package:app/features/customers/domain/models/customer.dart';
 import 'package:app/features/customers/data/repositories/customer.repository.dart';
 

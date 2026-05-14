@@ -1,7 +1,7 @@
-import 'package:app/features/core/utils/resource.dart';
+import 'package:app/core/utils/resource.dart';
 import 'package:app/features/customers/data/repositories/customer.repository.dart';
 import 'package:app/features/customers/domain/models/customer.dart';
-import 'package:app/features/core/services/database.helper.dart';
+import 'package:app/core/services/database.helper.dart';
 import 'package:drift/drift.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
@@ -56,6 +56,34 @@ class DriftCustomerRepository implements CustomerRepository {
     } catch (e) {
       return Resource.error(e is Exception ? e : Exception(e.toString()));
     }
+  }
+
+  @override
+  Stream<int> watchCustomerCount() {
+    final countExpr = db.customerTable.customerId.count();
+    return (db.selectOnly(db.customerTable)..addColumns([countExpr]))
+        .map((row) => row.read(countExpr) ?? 0)
+        .watchSingle();
+  }
+
+  @override
+  Stream<List<Customer>> watchAllCustomers() {
+    return db
+        .select(db.customerTable)
+        .watch()
+        .map(
+          (rows) => rows
+              .map(
+                (row) => Customer(
+                  id: row.customerId,
+                  name: row.name,
+                  phone: row.phone,
+                  addresses: const [],
+                  preferences: const [],
+                ),
+              )
+              .toList(),
+        );
   }
 }
 
