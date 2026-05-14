@@ -1,5 +1,5 @@
 import 'package:drift/drift.dart';
-import 'package:app/features/core/services/database_mixins.dart';
+import 'package:app/core/services/database_mixins.dart';
 
 class CustomerTable extends Table with Timestamps {
   @override
