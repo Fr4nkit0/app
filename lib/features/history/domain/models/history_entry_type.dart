@@ -1,0 +1,1 @@
+enum HistoryEntryType { sale, visit }

@@ -22,11 +22,8 @@ class StepPreferenceView extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final theme = Theme.of(context);
-    final colorScheme = theme.colorScheme;
-
     return SingleChildScrollView(
-      padding: const EdgeInsets.all(24.0),
+      padding: const EdgeInsets.all(20),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
@@ -38,53 +35,74 @@ class StepPreferenceView extends StatelessWidget {
                 children: [
                   Text(
                     'Preferencias',
-                    style: theme.textTheme.headlineSmall?.copyWith(
-                      fontWeight: FontWeight.bold,
-                      color: colorScheme.onSurface,
-                    ),
+                    style: Theme.of(context).textTheme.titleLarge?.copyWith(
+                          fontWeight: FontWeight.w800,
+                        ),
                   ),
-                  const SizedBox(height: 4),
+                  const SizedBox(height: 2),
                   Text(
                     '¿Cuándo entregamos?',
-                    style: theme.textTheme.bodyMedium?.copyWith(
-                      color: colorScheme.onSurfaceVariant,
-                    ),
+                    style: Theme.of(context).textTheme.bodyMedium?.copyWith(
+                          color: const Color(0xFF9CA3AF),
+                        ),
                   ),
                 ],
               ),
-              IconButton.filledTonal(
-                onPressed: onAddPreference,
-                icon: const Icon(Icons.add_rounded),
-                tooltip: 'Agregar horario',
+              GestureDetector(
+                onTap: onAddPreference,
+                child: Container(
+                  width: 40,
+                  height: 40,
+                  decoration: BoxDecoration(
+                    color: const Color(0xFF1565C0).withValues(alpha: 0.1),
+                    borderRadius: BorderRadius.circular(10),
+                  ),
+                  child: const Icon(
+                    Icons.add_rounded,
+                    color: Color(0xFF1565C0),
+                    size: 22,
+                  ),
+                ),
               ),
             ],
           ),
-          const SizedBox(height: 24),
-          ...preferences.map((preference) => Padding(
-                padding: const EdgeInsets.only(bottom: 16.0),
-                child: _PreferenceCard(
-                  preference: preference,
-                  onRemove: () => onRemovePreference(preference.id),
-                  onChanged: (day, start, end) => onPreferenceChanged(
-                    preference.id,
-                    dayOfWeek: day,
-                    timeWindowStart: start,
-                    timeWindowEnd: end,
-                  ),
-                ),
-              )),
+          const SizedBox(height: 20),
           if (preferences.isEmpty)
-            Center(
-              child: Padding(
-                padding: const EdgeInsets.symmetric(vertical: 32.0),
-                child: Text(
-                  'Agregá al menos un horario de entrega',
-                  style: theme.textTheme.bodyMedium?.copyWith(
-                    color: colorScheme.error,
-                  ),
-                ),
+            Container(
+              padding: const EdgeInsets.all(20),
+              decoration: BoxDecoration(
+                color: const Color(0xFFFFF7F7),
+                borderRadius: BorderRadius.circular(12),
+                border: Border.all(color: const Color(0xFFFFE0E0)),
               ),
-            ),
+              child: Row(
+                children: [
+                  const Icon(Icons.info_outline, color: Color(0xFFBF1B1B), size: 18),
+                  const SizedBox(width: 10),
+                  Text(
+                    'Agregá al menos un horario',
+                    style: Theme.of(context).textTheme.bodyMedium?.copyWith(
+                          color: const Color(0xFFBF1B1B),
+                          fontWeight: FontWeight.w600,
+                        ),
+                  ),
+                ],
+              ),
+            )
+          else
+            ...preferences.map((p) => Padding(
+                  padding: const EdgeInsets.only(bottom: 12),
+                  child: _PreferenceCard(
+                    preference: p,
+                    onRemove: () => onRemovePreference(p.id),
+                    onChanged: (day, start, end) => onPreferenceChanged(
+                      p.id,
+                      dayOfWeek: day,
+                      timeWindowStart: start,
+                      timeWindowEnd: end,
+                    ),
+                  ),
+                )),
         ],
       ),
     );
@@ -94,7 +112,7 @@ class StepPreferenceView extends StatelessWidget {
 class _PreferenceCard extends StatelessWidget {
   final CustomerPreference preference;
   final VoidCallback onRemove;
-  final Function(int? day, String? timeWindowStart, String? timeWindowEnd) onChanged;
+  final Function(int? day, String? start, String? end) onChanged;
 
   const _PreferenceCard({
     required this.preference,
@@ -102,78 +120,95 @@ class _PreferenceCard extends StatelessWidget {
     required this.onChanged,
   });
 
+  static const _inputBorder = OutlineInputBorder(
+    borderRadius: BorderRadius.all(Radius.circular(10)),
+    borderSide: BorderSide(color: Color(0xFFE5E7EB)),
+  );
+
+  static const _focusedBorder = OutlineInputBorder(
+    borderRadius: BorderRadius.all(Radius.circular(10)),
+    borderSide: BorderSide(color: Color(0xFF1565C0), width: 2),
+  );
+
   @override
   Widget build(BuildContext context) {
-    final theme = Theme.of(context);
-    final colorScheme = theme.colorScheme;
-
-    return Card(
-      elevation: 0,
-      color: colorScheme.surfaceContainerHigh,
-      shape: RoundedRectangleBorder(
-        borderRadius: BorderRadius.circular(28),
+    return Container(
+      padding: const EdgeInsets.all(16),
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(12),
+        border: Border.all(color: const Color(0xFFE5E7EB)),
       ),
-      child: Padding(
-        padding: const EdgeInsets.all(20.0),
-        child: Column(
-          children: [
-            Row(
-              children: [
-                Expanded(
-                  child: DropdownButtonFormField<int>(
-                    value: preference.dayOfWeek,
-                    onChanged: (val) => onChanged(val, null, null),
-                    decoration: InputDecoration(
-                      labelText: 'Día',
-                      prefixIcon: const Icon(Icons.calendar_today_rounded),
-                      filled: true,
-                      fillColor: colorScheme.surface,
-                      border: OutlineInputBorder(
-                        borderRadius: BorderRadius.circular(24),
-                        borderSide: BorderSide.none,
-                      ),
-                    ),
-                    items: const [
-                      DropdownMenuItem(value: 1, child: Text('Lunes')),
-                      DropdownMenuItem(value: 2, child: Text('Martes')),
-                      DropdownMenuItem(value: 3, child: Text('Miércoles')),
-                      DropdownMenuItem(value: 4, child: Text('Jueves')),
-                      DropdownMenuItem(value: 5, child: Text('Viernes')),
-                      DropdownMenuItem(value: 6, child: Text('Sábado')),
-                      DropdownMenuItem(value: 7, child: Text('Domingo')),
-                    ],
+      child: Column(
+        children: [
+          Row(
+            children: [
+              Expanded(
+                child: DropdownButtonFormField<int>(
+                  value: preference.dayOfWeek,
+                  onChanged: (val) => onChanged(val, null, null),
+                  decoration: const InputDecoration(
+                    labelText: 'Día',
+                    prefixIcon: Icon(Icons.calendar_today_rounded, size: 18),
+                    filled: true,
+                    fillColor: Colors.white,
+                    contentPadding:
+                        EdgeInsets.symmetric(horizontal: 12, vertical: 12),
+                    border: _inputBorder,
+                    enabledBorder: _inputBorder,
+                    focusedBorder: _focusedBorder,
+                  ),
+                  items: const [
+                    DropdownMenuItem(value: 1, child: Text('Lunes')),
+                    DropdownMenuItem(value: 2, child: Text('Martes')),
+                    DropdownMenuItem(value: 3, child: Text('Miércoles')),
+                    DropdownMenuItem(value: 4, child: Text('Jueves')),
+                    DropdownMenuItem(value: 5, child: Text('Viernes')),
+                    DropdownMenuItem(value: 6, child: Text('Sábado')),
+                    DropdownMenuItem(value: 7, child: Text('Domingo')),
+                  ],
+                ),
+              ),
+              const SizedBox(width: 8),
+              GestureDetector(
+                onTap: onRemove,
+                child: Container(
+                  width: 36,
+                  height: 36,
+                  decoration: BoxDecoration(
+                    color: const Color(0xFFFFF0F0),
+                    borderRadius: BorderRadius.circular(8),
+                  ),
+                  child: const Icon(
+                    Icons.delete_outline_rounded,
+                    color: Color(0xFFBF1B1B),
+                    size: 18,
                   ),
                 ),
-                const SizedBox(width: 8),
-                IconButton(
-                  onPressed: onRemove,
-                  icon: const Icon(Icons.delete_outline_rounded),
-                  color: colorScheme.error,
+              ),
+            ],
+          ),
+          const SizedBox(height: 12),
+          Row(
+            children: [
+              Expanded(
+                child: _TimeField(
+                  label: 'Desde',
+                  initialValue: preference.timeWindowStart,
+                  onChanged: (val) => onChanged(null, val, null),
                 ),
-              ],
-            ),
-            const SizedBox(height: 16),
-            Row(
-              children: [
-                Expanded(
-                  child: _TimeField(
-                    label: 'Desde',
-                    initialValue: preference.timeWindowStart,
-                    onChanged: (val) => onChanged(null, val, null),
-                  ),
+              ),
+              const SizedBox(width: 10),
+              Expanded(
+                child: _TimeField(
+                  label: 'Hasta',
+                  initialValue: preference.timeWindowEnd ?? '',
+                  onChanged: (val) => onChanged(null, null, val),
                 ),
-                const SizedBox(width: 12),
-                Expanded(
-                  child: _TimeField(
-                    label: 'Hasta',
-                    initialValue: preference.timeWindowEnd ?? '',
-                    onChanged: (val) => onChanged(null, null, val),
-                  ),
-                ),
-              ],
-            ),
-          ],
-        ),
+              ),
+            ],
+          ),
+        ],
       ),
     );
   }
@@ -190,23 +225,36 @@ class _TimeField extends StatelessWidget {
     required this.onChanged,
   });
 
+  static const _border = OutlineInputBorder(
+    borderRadius: BorderRadius.all(Radius.circular(10)),
+    borderSide: BorderSide(color: Color(0xFFE5E7EB)),
+  );
+
+  static const _focusedBorder = OutlineInputBorder(
+    borderRadius: BorderRadius.all(Radius.circular(10)),
+    borderSide: BorderSide(color: Color(0xFF1565C0), width: 2),
+  );
+
   @override
   Widget build(BuildContext context) {
-    final theme = Theme.of(context);
-    final colorScheme = theme.colorScheme;
-
     return TextFormField(
       initialValue: initialValue,
       onChanged: onChanged,
       keyboardType: TextInputType.datetime,
       decoration: InputDecoration(
         labelText: label,
-        prefixIcon: const Icon(Icons.access_time_rounded),
+        prefixIcon: const Icon(Icons.access_time_rounded, size: 18),
         filled: true,
-        fillColor: colorScheme.surface,
-        border: OutlineInputBorder(
-          borderRadius: BorderRadius.circular(24),
-          borderSide: BorderSide.none,
+        fillColor: Colors.white,
+        contentPadding:
+            const EdgeInsets.symmetric(horizontal: 12, vertical: 12),
+        border: _border,
+        enabledBorder: _border,
+        focusedBorder: _focusedBorder,
+        labelStyle: const TextStyle(color: Color(0xFF9CA3AF), fontSize: 13),
+        floatingLabelStyle: const TextStyle(
+          color: Color(0xFF1565C0),
+          fontWeight: FontWeight.w600,
         ),
       ),
     );

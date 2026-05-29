@@ -78,8 +78,12 @@ class _CreateCustomerScreenState extends ConsumerState<CreateCustomerScreen> {
     });
 
     return Scaffold(
-      backgroundColor: Theme.of(context).colorScheme.surface,
-      appBar: AppBar(title: const Text('Nuevo Cliente'), centerTitle: true),
+      backgroundColor: Colors.white,
+      appBar: AppBar(
+        title: const Text('Nuevo Cliente'),
+        backgroundColor: Colors.white,
+        foregroundColor: const Color(0xFF0D1B3E),
+      ),
       body: SafeArea(
         child: Column(
           children: [
@@ -88,83 +92,79 @@ class _CreateCustomerScreenState extends ConsumerState<CreateCustomerScreen> {
               isSubmitting: formState.isSubmitting,
             ),
             Expanded(
-              child: Container(
-                margin: const EdgeInsets.fromLTRB(16, 0, 16, 16),
-                decoration: BoxDecoration(
-                  color: Theme.of(context).colorScheme.surfaceContainerHigh,
-                  borderRadius: BorderRadius.circular(
-                    32,
-                  ), // XL corners for M3 Expressive
-                ),
-                clipBehavior: Clip.antiAlias,
-                child: PageView(
-                  controller: _pageController,
-                  physics:
-                      const NeverScrollableScrollPhysics(), // Managed by buttons
-                  children: [
-                    StepIdentityView(
-                      name: formState.name,
-                      phone: formState.phone,
-                      onNameChanged: formNotifier.updateName,
-                      onPhoneChanged: formNotifier.updatePhone,
-                    ),
-                    StepAddressView(
-                      street: formState.street,
-                      apartment: formState.apartment,
-                      floor: formState.floor,
-                      visualReference: formState.visualReference,
-                      onStreetChanged: formNotifier.updateStreet,
-                      onApartmentChanged: formNotifier.updateApartment,
-                      onFloorChanged: formNotifier.updateFloor,
-                      onVisualReferenceChanged:
-                          formNotifier.updateVisualReference,
-                    ),
-                    StepPreferenceView(
-                      preferences: formState.preferences,
-                      onAddPreference: formNotifier.addPreference,
-                      onRemovePreference: formNotifier.removePreference,
-                      onPreferenceChanged: formNotifier.updatePreference,
-                    ),
-                  ],
-                ),
+              child: PageView(
+                controller: _pageController,
+                physics: const NeverScrollableScrollPhysics(),
+                children: [
+                  StepIdentityView(
+                    name: formState.name,
+                    phone: formState.phone,
+                    onNameChanged: formNotifier.updateName,
+                    onPhoneChanged: formNotifier.updatePhone,
+                  ),
+                  StepAddressView(
+                    street: formState.street,
+                    apartment: formState.apartment,
+                    floor: formState.floor,
+                    visualReference: formState.visualReference,
+                    onStreetChanged: formNotifier.updateStreet,
+                    onApartmentChanged: formNotifier.updateApartment,
+                    onFloorChanged: formNotifier.updateFloor,
+                    onVisualReferenceChanged:
+                        formNotifier.updateVisualReference,
+                  ),
+                  StepPreferenceView(
+                    preferences: formState.preferences,
+                    onAddPreference: formNotifier.addPreference,
+                    onRemovePreference: formNotifier.removePreference,
+                    onPreferenceChanged: formNotifier.updatePreference,
+                  ),
+                ],
               ),
             ),
-            Padding(
-              padding: const EdgeInsets.all(24.0),
+            // Footer fijo con sombra
+            Container(
+              decoration: BoxDecoration(
+                color: Colors.white,
+                boxShadow: [
+                  BoxShadow(
+                    color: Colors.black.withValues(alpha: 0.06),
+                    blurRadius: 12,
+                    offset: const Offset(0, -4),
+                  ),
+                ],
+              ),
+              padding: const EdgeInsets.fromLTRB(20, 12, 20, 24),
               child: Row(
                 mainAxisAlignment: MainAxisAlignment.spaceBetween,
                 children: [
                   if (formState.currentStep > 0)
-                    TextButton(
+                    OutlinedButton(
                       onPressed: formState.isSubmitting
                           ? null
                           : formNotifier.previousStep,
+                      style: OutlinedButton.styleFrom(
+                        minimumSize: const Size(100, 52),
+                      ),
                       child: const Text('Atrás'),
                     )
                   else
                     const SizedBox.shrink(),
                   FilledButton(
-                    onPressed:
-                        formState.isCurrentStepValid && !formState.isSubmitting
+                    onPressed: formState.isCurrentStepValid &&
+                            !formState.isSubmitting
                         ? (formState.currentStep == 2
-                              ? formNotifier.submit
-                              : formNotifier.nextStep)
+                            ? formNotifier.submit
+                            : formNotifier.nextStep)
                         : null,
                     style: FilledButton.styleFrom(
-                      shape: RoundedRectangleBorder(
-                        borderRadius: BorderRadius.circular(
-                          100,
-                        ), // Full rounded
-                      ),
-                      padding: const EdgeInsets.symmetric(
-                        horizontal: 32,
-                        vertical: 16,
-                      ),
+                      backgroundColor: const Color(0xFF1565C0),
+                      minimumSize: const Size(160, 52),
                     ),
                     child: formState.isSubmitting
                         ? const SizedBox(
-                            width: 24,
-                            height: 24,
+                            width: 22,
+                            height: 22,
                             child: CircularProgressIndicator(
                               strokeWidth: 2,
                               color: Colors.white,
@@ -174,6 +174,7 @@ class _CreateCustomerScreenState extends ConsumerState<CreateCustomerScreen> {
                             formState.currentStep == 2
                                 ? 'Guardar Cliente'
                                 : 'Siguiente',
+                            style: const TextStyle(fontWeight: FontWeight.w700),
                           ),
                   ),
                 ],
