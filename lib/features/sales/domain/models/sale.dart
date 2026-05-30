@@ -9,6 +9,8 @@ class Sale {
   final double total;
   final PaymentMethod paymentMethod;
   final DateTime date;
+  final double? cashAmount;
+  final double? transferAmount;
 
   const Sale({
     required this.id,
@@ -17,5 +19,7 @@ class Sale {
     required this.total,
     required this.paymentMethod,
     required this.date,
+    this.cashAmount,
+    this.transferAmount,
   });
 }

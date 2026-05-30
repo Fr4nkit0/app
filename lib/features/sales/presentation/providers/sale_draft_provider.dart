@@ -18,6 +18,10 @@ class SaleDraft extends Notifier<SaleDraftState> {
     state = state.copyWith(customer: customer);
   }
 
+  void clearCustomer() {
+    state = state.copyWith(clearCustomer: true);
+  }
+
   void setQuantity(SaleItem item, int quantity) {
     if (quantity <= 0) {
       state = state.copyWith(
@@ -42,12 +46,27 @@ class SaleDraft extends Notifier<SaleDraftState> {
   }
 
   void setPaymentMethod(PaymentMethod method) {
-    state = state.copyWith(paymentMethod: method);
+    // Always clear split amounts when changing method.
+    // If the new method is mixed, the user will fill them in; if not, they are stale.
+    state = state.copyWith(
+      paymentMethod: method,
+      clearCashAmount: true,
+      clearTransferAmount: true,
+    );
+  }
+
+  void setMixedAmounts({double? cash, double? transfer}) {
+    state = state.copyWith(
+      cashAmount: cash,
+      transferAmount: transfer,
+    );
   }
 
   Future<void> commit() async {
     final draft = state;
     if (!draft.canConfirm) return;
+
+    final isMixed = draft.paymentMethod == PaymentMethod.mixed;
 
     final sale = Sale(
       id: const Uuid().v4(),
@@ -56,9 +75,16 @@ class SaleDraft extends Notifier<SaleDraftState> {
       total: draft.total,
       paymentMethod: draft.paymentMethod!,
       date: DateTime.now(),
+      cashAmount: isMixed ? draft.cashAmount : null,
+      transferAmount: isMixed ? draft.transferAmount : null,
     );
 
     await ref.read(saleRepositoryProvider).saveSale(sale);
+
+    // TODO: when paymentMethod == credit, update customer.debtAmount by draft.total.
+    // Deferred: Customer is immutable without copyWith and CustomerRepository
+    // has no addDebt method in this iteration (decision #302). Do NOT touch
+    // lib/features/customers/ until the debt-sync feature is scoped.
 
     final description = draft.items
         .map((i) => '${i.quantity} ${i.product.unitLabel}')
@@ -83,6 +109,6 @@ class SaleDraft extends Notifier<SaleDraftState> {
   }
 }
 
-// NOT autoDispose — debe sobrevivir entre los 3 steps pusheados
+// NOT autoDispose — draft must survive navigation between steps
 final saleDraftProvider =
     NotifierProvider<SaleDraft, SaleDraftState>(SaleDraft.new);
