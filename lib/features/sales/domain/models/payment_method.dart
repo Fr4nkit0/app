@@ -1,4 +1,17 @@
-enum PaymentMethod { cash, transfer, route }
+enum PaymentMethod {
+  cash,
+  transfer,
+  mixed,
+  credit,
+  route;
+
+  static const List<PaymentMethod> gridMethods = [
+    PaymentMethod.cash,
+    PaymentMethod.transfer,
+    PaymentMethod.mixed,
+    PaymentMethod.credit,
+  ];
+}
 
 extension PaymentMethodLabel on PaymentMethod {
   String get label {
@@ -7,6 +20,10 @@ extension PaymentMethodLabel on PaymentMethod {
         return 'Efectivo';
       case PaymentMethod.transfer:
         return 'Transferencia';
+      case PaymentMethod.mixed:
+        return 'Mixto';
+      case PaymentMethod.credit:
+        return 'A crédito';
       case PaymentMethod.route:
         return 'Rinde Ruta';
     }
@@ -18,6 +35,10 @@ extension PaymentMethodLabel on PaymentMethod {
         return '💵';
       case PaymentMethod.transfer:
         return '📱';
+      case PaymentMethod.mixed:
+        return '🔀';
+      case PaymentMethod.credit:
+        return '🗓️';
       case PaymentMethod.route:
         return '🚛';
     }

@@ -1,5 +1,7 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:app/core/theme/sales_tokens.dart';
 import 'package:app/features/sales/domain/models/payment_method.dart';
 import 'package:app/features/sales/domain/models/sale_draft_state.dart';
 import 'package:app/features/sales/presentation/providers/sale_draft_provider.dart';
@@ -19,26 +21,37 @@ class SaleStep3Screen extends ConsumerWidget {
           children: [
             // Header: back + title
             _Header(customerName: draft.customer?.name ?? ''),
-            // Contenido con fijo arriba + scroll abajo
+            // Scrollable content
             Expanded(
               child: SingleChildScrollView(
                 padding: const EdgeInsets.only(bottom: 24),
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    const SaleStepperHeader(currentStep: 2),
-                    // Cliente + resumen (fijo debajo del stepper)
+                    const SaleStepperHeader(currentStep: 1),
+                    // Previous debt chip (display-only, never mutates debtAmount)
+                    if ((draft.customer?.debtAmount ?? 0) > 0)
+                      _DebtChip(
+                        debtAmount: draft.customer!.debtAmount,
+                      ),
+                    // Client + order summary card
                     _ClientCard(draft: draft),
                     const SizedBox(height: 20),
-                    // Selector de pago en grid
+                    // Payment method grid + mixed fields
                     Padding(
                       padding: const EdgeInsets.symmetric(horizontal: 16),
                       child: Column(
                         crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
-                          const _SectionLabel('FORMA DE PAGO'),
+                          _SectionLabel('FORMA DE PAGO'),
                           const SizedBox(height: 10),
                           _PaymentGrid(draft: draft),
+                          const SizedBox(height: 12),
+                          // Progressive-disclosure mixed amounts
+                          _MixedAmountsSection(draft: draft),
+                          // Live remaining indicator
+                          if (draft.paymentMethod == PaymentMethod.mixed)
+                            _RemainingIndicator(draft: draft),
                         ],
                       ),
                     ),
@@ -54,6 +67,48 @@ class SaleStep3Screen extends ConsumerWidget {
   }
 }
 
+// ─── Previous-debt chip ───────────────────────────────────────────────────────
+
+class _DebtChip extends StatelessWidget {
+  const _DebtChip({required this.debtAmount});
+
+  final double debtAmount;
+
+  @override
+  Widget build(BuildContext context) {
+    final destructive =
+        Theme.of(context).extension<SalesTokens>()!.destructive;
+    return Container(
+      margin: const EdgeInsets.fromLTRB(16, 8, 16, 0),
+      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+      decoration: BoxDecoration(
+        color: destructive.withValues(alpha: 0.08),
+        borderRadius: BorderRadius.circular(10),
+        border: Border.all(color: destructive.withValues(alpha: 0.3)),
+      ),
+      child: Row(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Icon(
+            Icons.warning_amber_rounded,
+            size: 16,
+            color: destructive,
+          ),
+          const SizedBox(width: 6),
+          Text(
+            'Deuda previa: \$${debtAmount.toStringAsFixed(2)}',
+            style: TextStyle(
+              color: destructive,
+              fontWeight: FontWeight.w700,
+              fontSize: 13,
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
 // ─── Header ───────────────────────────────────────────────────────────────────
 
 class _Header extends StatelessWidget {
@@ -63,6 +118,7 @@ class _Header extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final brandColor = Theme.of(context).colorScheme.primary;
     return Container(
       color: Colors.white,
       padding: const EdgeInsets.fromLTRB(8, 12, 16, 8),
@@ -70,14 +126,14 @@ class _Header extends StatelessWidget {
         children: [
           IconButton(
             icon: const Icon(Icons.arrow_back),
-            color: const Color(0xFF0D1B3E),
+            color: brandColor,
             onPressed: () => Navigator.of(context).pop(),
           ),
           Expanded(
             child: Text(
               'Cobro · $customerName',
-              style: const TextStyle(
-                color: Color(0xFF0D1B3E),
+              style: TextStyle(
+                color: brandColor,
                 fontSize: 17,
                 fontWeight: FontWeight.w700,
               ),
@@ -90,7 +146,7 @@ class _Header extends StatelessWidget {
   }
 }
 
-// ─── Card resumen del cliente + pedido ────────────────────────────────────────
+// ─── Client + order summary card ──────────────────────────────────────────────
 
 class _ClientCard extends StatelessWidget {
   const _ClientCard({required this.draft});
@@ -99,6 +155,7 @@ class _ClientCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final tokens = Theme.of(context).extension<SalesTokens>()!;
     return Container(
       margin: const EdgeInsets.symmetric(horizontal: 16),
       padding: const EdgeInsets.all(14),
@@ -112,14 +169,14 @@ class _ClientCard extends StatelessWidget {
         children: [
           Row(
             children: [
-              const Icon(Icons.person_outline,
-                  size: 15, color: Color(0xFF1565C0)),
+              Icon(Icons.person_outline,
+                  size: 15, color: tokens.primary),
               const SizedBox(width: 6),
               Text(
                 draft.customer?.name ?? '',
                 style: Theme.of(context).textTheme.titleSmall?.copyWith(
                       fontWeight: FontWeight.w700,
-                      color: const Color(0xFF0D1B3E),
+                      color: Theme.of(context).colorScheme.primary,
                     ),
               ),
             ],
@@ -142,6 +199,7 @@ class _ClientCard extends StatelessWidget {
                       '\$${item.subtotal.toStringAsFixed(0)}',
                       style: Theme.of(context).textTheme.bodySmall?.copyWith(
                             fontWeight: FontWeight.w700,
+                            fontFeatures: tokens.tabularStyle.fontFeatures,
                           ),
                     ),
                   ],
@@ -151,16 +209,17 @@ class _ClientCard extends StatelessWidget {
           Row(
             mainAxisAlignment: MainAxisAlignment.spaceBetween,
             children: [
-              const Text('Total',
+              Text('Total',
                   style: TextStyle(
                       fontWeight: FontWeight.w700,
-                      color: Color(0xFF0D1B3E))),
+                      color: Theme.of(context).colorScheme.primary)),
               Text(
                 '\$${draft.total.toStringAsFixed(0)}',
-                style: const TextStyle(
+                style: TextStyle(
                   fontWeight: FontWeight.w900,
-                  color: Color(0xFF1565C0),
+                  color: tokens.primary,
                   fontSize: 17,
+                  fontFeatures: tokens.tabularStyle.fontFeatures,
                 ),
               ),
             ],
@@ -171,7 +230,7 @@ class _ClientCard extends StatelessWidget {
   }
 }
 
-// ─── Grid de métodos de pago ──────────────────────────────────────────────────
+// ─── 2×2 Payment grid ─────────────────────────────────────────────────────────
 
 class _PaymentGrid extends ConsumerWidget {
   const _PaymentGrid({required this.draft});
@@ -187,11 +246,12 @@ class _PaymentGrid extends ConsumerWidget {
       childAspectRatio: 1.6,
       shrinkWrap: true,
       physics: const NeverScrollableScrollPhysics(),
-      children: PaymentMethod.values.map((method) {
-        final selected = draft.paymentMethod == method;
+      // Iterate gridMethods (cash, transfer, mixed, credit) — route excluded
+      children: PaymentMethod.gridMethods.map((method) {
+        final isSelected = draft.paymentMethod == method;
         return _PaymentCard(
           method: method,
-          selected: selected,
+          selected: isSelected,
           onTap: () =>
               ref.read(saleDraftProvider.notifier).setPaymentMethod(method),
         );
@@ -213,17 +273,18 @@ class _PaymentCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    const blue = Color(0xFF1565C0);
+    final primary = Theme.of(context).extension<SalesTokens>()!.primary;
+    final brandColor = Theme.of(context).colorScheme.primary;
     return GestureDetector(
       onTap: onTap,
       child: AnimatedContainer(
         duration: const Duration(milliseconds: 150),
         padding: const EdgeInsets.all(14),
         decoration: BoxDecoration(
-          color: selected ? blue : Colors.grey.shade50,
+          color: selected ? primary : Colors.grey.shade50,
           borderRadius: BorderRadius.circular(12),
           border: Border.all(
-            color: selected ? blue : Colors.grey.shade200,
+            color: selected ? primary : Colors.grey.shade200,
             width: selected ? 2 : 1,
           ),
         ),
@@ -237,7 +298,7 @@ class _PaymentCard extends StatelessWidget {
               style: TextStyle(
                 fontSize: 13,
                 fontWeight: FontWeight.w700,
-                color: selected ? Colors.white : const Color(0xFF0D1B3E),
+                color: selected ? Colors.white : brandColor,
               ),
             ),
           ],
@@ -247,7 +308,199 @@ class _PaymentCard extends StatelessWidget {
   }
 }
 
-// ─── Footer con 2 botones ─────────────────────────────────────────────────────
+// ─── Progressive-disclosure mixed amounts (AnimatedSize ~200ms easeOut) ───────
+
+class _MixedAmountsSection extends ConsumerStatefulWidget {
+  const _MixedAmountsSection({required this.draft});
+
+  final SaleDraftState draft;
+
+  @override
+  ConsumerState<_MixedAmountsSection> createState() =>
+      _MixedAmountsSectionState();
+}
+
+class _MixedAmountsSectionState
+    extends ConsumerState<_MixedAmountsSection> {
+  final _cashController = TextEditingController();
+  final _transferController = TextEditingController();
+
+  @override
+  void dispose() {
+    _cashController.dispose();
+    _transferController.dispose();
+    super.dispose();
+  }
+
+  @override
+  void didUpdateWidget(_MixedAmountsSection oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    // When method changes away from mixed, clear the text fields
+    if (oldWidget.draft.paymentMethod == PaymentMethod.mixed &&
+        widget.draft.paymentMethod != PaymentMethod.mixed) {
+      _cashController.clear();
+      _transferController.clear();
+    }
+  }
+
+  void _onCashChanged(String value) {
+    final cash = double.tryParse(value);
+    final transfer = double.tryParse(_transferController.text);
+    ref
+        .read(saleDraftProvider.notifier)
+        .setMixedAmounts(cash: cash, transfer: transfer);
+  }
+
+  void _onTransferChanged(String value) {
+    final cash = double.tryParse(_cashController.text);
+    final transfer = double.tryParse(value);
+    ref
+        .read(saleDraftProvider.notifier)
+        .setMixedAmounts(cash: cash, transfer: transfer);
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final isMixed = widget.draft.paymentMethod == PaymentMethod.mixed;
+
+    return AnimatedSize(
+      duration: const Duration(milliseconds: 200),
+      curve: Curves.easeOut,
+      child: isMixed
+          ? Padding(
+              padding: const EdgeInsets.only(top: 4),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  _SectionLabel('MONTOS MIXTOS'),
+                  const SizedBox(height: 10),
+                  _AmountField(
+                    label: 'Efectivo',
+                    controller: _cashController,
+                    onChanged: _onCashChanged,
+                  ),
+                  const SizedBox(height: 10),
+                  _AmountField(
+                    label: 'Transferencia',
+                    controller: _transferController,
+                    onChanged: _onTransferChanged,
+                  ),
+                  const SizedBox(height: 12),
+                ],
+              ),
+            )
+          : const SizedBox.shrink(),
+    );
+  }
+}
+
+class _AmountField extends StatelessWidget {
+  const _AmountField({
+    required this.label,
+    required this.controller,
+    required this.onChanged,
+  });
+
+  final String label;
+  final TextEditingController controller;
+  final ValueChanged<String> onChanged;
+
+  @override
+  Widget build(BuildContext context) {
+    final primary = Theme.of(context).extension<SalesTokens>()!.primary;
+    return TextField(
+      controller: controller,
+      onChanged: onChanged,
+      keyboardType: const TextInputType.numberWithOptions(decimal: true),
+      inputFormatters: [
+        FilteringTextInputFormatter.allow(RegExp(r'^\d*\.?\d*')),
+      ],
+      decoration: InputDecoration(
+        labelText: label,
+        prefixText: '\$ ',
+        filled: true,
+        fillColor: Colors.grey.shade50,
+        contentPadding:
+            const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
+        border: OutlineInputBorder(
+          borderRadius: BorderRadius.circular(10),
+          borderSide: BorderSide(color: Colors.grey.shade200),
+        ),
+        enabledBorder: OutlineInputBorder(
+          borderRadius: BorderRadius.circular(10),
+          borderSide: BorderSide(color: Colors.grey.shade200),
+        ),
+        focusedBorder: OutlineInputBorder(
+          borderRadius: BorderRadius.circular(10),
+          borderSide: BorderSide(color: primary, width: 1.5),
+        ),
+      ),
+    );
+  }
+}
+
+// ─── Live "Falta: $X" indicator ───────────────────────────────────────────────
+
+class _RemainingIndicator extends StatelessWidget {
+  const _RemainingIndicator({required this.draft});
+
+  final SaleDraftState draft;
+
+  @override
+  Widget build(BuildContext context) {
+    final tokens = Theme.of(context).extension<SalesTokens>()!;
+    final remaining = draft.remaining;
+    final isCovered = remaining.abs() <= 0.01;
+
+    return Padding(
+      padding: const EdgeInsets.only(top: 4, bottom: 8),
+      child: Row(
+        children: [
+          Icon(
+            isCovered ? Icons.check_circle_outline : Icons.error_outline,
+            size: 16,
+            color: isCovered ? tokens.primary : tokens.destructive,
+          ),
+          const SizedBox(width: 6),
+          Text(
+            isCovered
+                ? '✓ Cubierto'
+                : 'Falta: \$${remaining.toStringAsFixed(2)}',
+            style: TextStyle(
+              fontWeight: FontWeight.w700,
+              fontSize: 13,
+              color: isCovered ? tokens.primary : tokens.destructive,
+              fontFeatures: tokens.tabularStyle.fontFeatures,
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+// ─── Section label ────────────────────────────────────────────────────────────
+
+class _SectionLabel extends StatelessWidget {
+  const _SectionLabel(this.text);
+
+  final String text;
+
+  @override
+  Widget build(BuildContext context) {
+    return Text(
+      text,
+      style: TextStyle(
+        fontSize: 11,
+        fontWeight: FontWeight.w700,
+        color: Colors.grey.shade500,
+        letterSpacing: 0.8,
+      ),
+    );
+  }
+}
+
+// ─── Footer with "Confirmar" button ──────────────────────────────────────────
 
 class _Footer extends ConsumerWidget {
   const _Footer({required this.draft});
@@ -256,6 +509,7 @@ class _Footer extends ConsumerWidget {
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
+    final tokens = Theme.of(context).extension<SalesTokens>()!;
     return Container(
       decoration: BoxDecoration(
         color: Colors.white,
@@ -276,8 +530,9 @@ class _Footer extends ConsumerWidget {
             child: OutlinedButton(
               onPressed: () => Navigator.of(context).pop(),
               style: OutlinedButton.styleFrom(
-                foregroundColor: const Color(0xFF0D1B3E),
-                side: const BorderSide(color: Color(0xFF0D1B3E), width: 1.5),
+                foregroundColor: Theme.of(context).colorScheme.primary,
+                side: BorderSide(
+                    color: Theme.of(context).colorScheme.primary, width: 1.5),
                 minimumSize: const Size(0, 56),
                 shape: RoundedRectangleBorder(
                   borderRadius: BorderRadius.circular(12),
@@ -288,7 +543,7 @@ class _Footer extends ConsumerWidget {
             ),
           ),
           const SizedBox(width: 10),
-          // Botón Confirmar
+          // Botón Confirmar — gated by canConfirm (REQ-COB-06)
           Expanded(
             flex: 6,
             child: FilledButton(
@@ -299,16 +554,28 @@ class _Footer extends ConsumerWidget {
                         Navigator.of(context)
                             .popUntil((route) => route.isFirst);
                         ScaffoldMessenger.of(context).showSnackBar(
-                          const SnackBar(
-                            content: Text('✓ Venta registrada'),
+                          SnackBar(
+                            content: const Row(
+                              children: [
+                                Icon(Icons.check_circle,
+                                    color: Colors.white, size: 18),
+                                SizedBox(width: 8),
+                                Text('Venta registrada'),
+                              ],
+                            ),
+                            backgroundColor: tokens.primary,
                             behavior: SnackBarBehavior.floating,
+                            shape: RoundedRectangleBorder(
+                              borderRadius: BorderRadius.circular(10),
+                            ),
                           ),
                         );
                       }
                     }
                   : null,
               style: FilledButton.styleFrom(
-                backgroundColor: const Color(0xFFBF1B1B),
+                backgroundColor: tokens.primary,
+                disabledBackgroundColor: Colors.grey.shade200,
                 minimumSize: const Size(0, 56),
                 shape: RoundedRectangleBorder(
                   borderRadius: BorderRadius.circular(12),
@@ -321,25 +588,6 @@ class _Footer extends ConsumerWidget {
             ),
           ),
         ],
-      ),
-    );
-  }
-}
-
-class _SectionLabel extends StatelessWidget {
-  const _SectionLabel(this.text);
-
-  final String text;
-
-  @override
-  Widget build(BuildContext context) {
-    return Text(
-      text,
-      style: TextStyle(
-        fontSize: 11,
-        fontWeight: FontWeight.w700,
-        color: Colors.grey.shade500,
-        letterSpacing: 0.8,
       ),
     );
   }

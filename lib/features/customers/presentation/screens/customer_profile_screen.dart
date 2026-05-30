@@ -9,7 +9,7 @@ import 'package:app/features/history/domain/models/history_entry.dart';
 import 'package:app/features/history/domain/models/history_entry_type.dart';
 import 'package:app/features/history/presentation/providers/history_list_provider.dart';
 import 'package:app/features/sales/presentation/providers/sale_draft_provider.dart';
-import 'package:app/features/sales/presentation/screens/sale_step2_screen.dart';
+import 'package:app/features/sales/presentation/screens/sale_step1_screen.dart';
 
 class CustomerProfileScreen extends ConsumerStatefulWidget {
   const CustomerProfileScreen({super.key, required this.customer});
@@ -100,7 +100,7 @@ class _CustomerProfileScreenState
         onPressed: () {
           ref.read(saleDraftProvider.notifier).selectCustomer(customer);
           Navigator.of(context).push(
-            MaterialPageRoute(builder: (_) => const SaleStep2Screen()),
+            MaterialPageRoute(builder: (_) => const SaleStep1Screen()),
           );
         },
         backgroundColor: const Color(0xFFBF1B1B),

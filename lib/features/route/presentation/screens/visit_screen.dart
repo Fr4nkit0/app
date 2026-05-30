@@ -7,7 +7,7 @@ import 'package:app/features/route/domain/models/stop_status.dart';
 import 'package:app/features/route/domain/models/visit_type.dart';
 import 'package:app/features/route/presentation/providers/route_repository_provider.dart';
 import 'package:app/features/sales/presentation/providers/sale_draft_provider.dart';
-import 'package:app/features/sales/presentation/screens/sale_step2_screen.dart';
+import 'package:app/features/sales/presentation/screens/sale_step1_screen.dart';
 
 class VisitScreen extends ConsumerWidget {
   const VisitScreen({super.key, required this.stopId});
@@ -316,7 +316,7 @@ class _ActionFooter extends StatelessWidget {
                                 .selectCustomer(stop.customer);
                             Navigator.of(context).push(
                               MaterialPageRoute(
-                                builder: (_) => const SaleStep2Screen(),
+                                builder: (_) => const SaleStep1Screen(),
                               ),
                             );
                           }

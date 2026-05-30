@@ -3,12 +3,14 @@ class Product {
   final String name;
   final String unitLabel;
   final double price;
+  final int? available;
 
   const Product({
     required this.id,
     required this.name,
     required this.unitLabel,
     required this.price,
+    this.available,
   });
 
   @override

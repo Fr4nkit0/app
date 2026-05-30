@@ -1,5 +1,7 @@
 import 'package:flutter/material.dart';
+import 'package:app/core/theme/sales_tokens.dart';
 
+/// Shows 2-step progress indicator: "Pedido" (step 0) → "Cobro" (step 1).
 class SaleStepperHeader extends StatelessWidget {
   const SaleStepperHeader({super.key, required this.currentStep});
 
@@ -11,11 +13,9 @@ class SaleStepperHeader extends StatelessWidget {
       padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 12),
       child: Row(
         children: [
-          _Step(index: 0, label: 'Cliente', current: currentStep),
+          _Step(index: 0, label: 'Pedido', current: currentStep),
           _Divider(active: currentStep >= 1),
-          _Step(index: 1, label: 'Pedido', current: currentStep),
-          _Divider(active: currentStep >= 2),
-          _Step(index: 2, label: 'Cobro', current: currentStep),
+          _Step(index: 1, label: 'Cobro', current: currentStep),
         ],
       ),
     );
@@ -31,7 +31,7 @@ class _Step extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    const blue = Color(0xFF1565C0);
+    final primary = Theme.of(context).extension<SalesTokens>()!.primary;
     final isActive = current == index;
     final isDone = current > index;
 
@@ -42,7 +42,7 @@ class _Step extends StatelessWidget {
           height: 28,
           decoration: BoxDecoration(
             shape: BoxShape.circle,
-            color: (isActive || isDone) ? blue : Colors.grey.shade200,
+            color: (isActive || isDone) ? primary : Colors.grey.shade200,
           ),
           child: Center(
             child: isDone
@@ -63,7 +63,7 @@ class _Step extends StatelessWidget {
           style: TextStyle(
             fontSize: 10,
             fontWeight: isActive ? FontWeight.w700 : FontWeight.w400,
-            color: isActive ? blue : Colors.grey.shade500,
+            color: isActive ? primary : Colors.grey.shade500,
           ),
         ),
       ],
@@ -78,11 +78,12 @@ class _Divider extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final primary = Theme.of(context).extension<SalesTokens>()!.primary;
     return Expanded(
       child: Container(
         height: 2,
         margin: const EdgeInsets.only(bottom: 18),
-        color: active ? const Color(0xFF1565C0) : Colors.grey.shade200,
+        color: active ? primary : Colors.grey.shade200,
       ),
     );
   }

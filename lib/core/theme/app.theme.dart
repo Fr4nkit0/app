@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:app/core/theme/sales_tokens.dart';
 
 abstract final class AppTheme {
   // ─── Brand colors ──────────────────────────────────────────────────────────
@@ -55,6 +56,7 @@ abstract final class AppTheme {
       useMaterial3: true,
       colorScheme: _colorScheme,
       scaffoldBackgroundColor: Colors.white,
+      extensions: const [SalesTokens.light],
 
       // ── PageTransitions: evitar flash con color de fondo ──────────────────
       pageTransitionsTheme: const PageTransitionsTheme(
