@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:app/core/theme/sales_tokens.dart';
+import 'package:app/core/widgets/screen_header.dart';
 import 'package:app/features/customers/domain/models/customer.dart';
 import 'package:app/features/customers/presentation/providers/customer_count_provider.dart';
 import 'package:app/features/customers/presentation/screens/create_customer_screens.dart';
@@ -102,25 +103,18 @@ class _SaleStep1ScreenState extends ConsumerState<SaleStep1Screen> {
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            // ── Sticky header ──────────────────────────────────────────
-            Padding(
-              padding: const EdgeInsets.fromLTRB(20, 16, 20, 0),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Text(
-                    'Nueva Venta',
-                    style:
-                        Theme.of(context).textTheme.headlineLarge?.copyWith(
-                              fontWeight: FontWeight.w900,
-                            ),
-                  ),
-                  const SizedBox(height: 12),
-                  const SaleStepperHeader(currentStep: 0),
-                  const SizedBox(height: 12),
-                ],
-              ),
+            ScreenHeader(
+              title: 'Nueva Venta',
+              subtitle: 'Elegí el cliente para registrar la venta',
+              onBackPressed: Navigator.canPop(context)
+                  ? () => Navigator.of(context).pop()
+                  : null,
             ),
+            const Padding(
+              padding: EdgeInsets.symmetric(horizontal: 16),
+              child: SaleStepperHeader(currentStep: 0),
+            ),
+            const SizedBox(height: 12),
             // ── Mode-based content ─────────────────────────────────────
             Expanded(
               child: inSelectedMode
@@ -267,6 +261,9 @@ class _SelectedMode extends ConsumerWidget {
     final tokens = Theme.of(context).extension<SalesTokens>()!;
     final productsAsync = ref.watch(productListProvider);
 
+    final draft = ref.watch(saleDraftProvider);
+    final isFromRouteStop = draft.routeStopId != null;
+
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
@@ -297,16 +294,17 @@ class _SelectedMode extends ConsumerWidget {
                   overflow: TextOverflow.ellipsis,
                 ),
               ),
-              TextButton(
-                onPressed: onChangeCustomer,
-                style: TextButton.styleFrom(
-                  foregroundColor: tokens.primary,
-                  padding: const EdgeInsets.symmetric(horizontal: 8),
+              if (!isFromRouteStop)
+                TextButton(
+                  onPressed: onChangeCustomer,
+                  style: TextButton.styleFrom(
+                    foregroundColor: tokens.primary,
+                    padding: const EdgeInsets.symmetric(horizontal: 8),
+                  ),
+                  child: const Text('Cambiar',
+                      style:
+                          TextStyle(fontWeight: FontWeight.w700, fontSize: 13)),
                 ),
-                child: const Text('Cambiar',
-                    style:
-                        TextStyle(fontWeight: FontWeight.w700, fontSize: 13)),
-              ),
             ],
           ),
         ),
@@ -460,38 +458,70 @@ class _EmptyState extends StatelessWidget {
 
 // ─── Search bar ───────────────────────────────────────────────────────────────
 
-class _SearchBar extends StatelessWidget {
+class _SearchBar extends StatefulWidget {
   const _SearchBar({required this.controller, required this.onChanged});
 
   final TextEditingController controller;
   final ValueChanged<String> onChanged;
 
   @override
+  State<_SearchBar> createState() => _SearchBarState();
+}
+
+class _SearchBarState extends State<_SearchBar> {
+  @override
+  void initState() {
+    super.initState();
+    widget.controller.addListener(_onTextChanged);
+  }
+
+  @override
+  void dispose() {
+    widget.controller.removeListener(_onTextChanged);
+    super.dispose();
+  }
+
+  void _onTextChanged() {
+    if (mounted) setState(() {});
+  }
+
+  @override
   Widget build(BuildContext context) {
     final primary = Theme.of(context).extension<SalesTokens>()!.primary;
+    final hasText = widget.controller.text.isNotEmpty;
+
     return TextField(
-      controller: controller,
-      onChanged: onChanged,
+      controller: widget.controller,
+      onChanged: widget.onChanged,
       decoration: InputDecoration(
-        hintText: 'Buscar por nombre, teléfono o dirección...',
-        hintStyle: TextStyle(color: Colors.grey.shade400, fontSize: 14),
+        hintText: 'Buscar por nombre, dirección...',
+        hintStyle: TextStyle(color: Colors.grey.shade400, fontSize: 14, fontWeight: FontWeight.w500),
         prefixIcon:
-            Icon(Icons.search, color: Colors.grey.shade400, size: 20),
+            Icon(Icons.search_rounded, color: Colors.grey.shade400, size: 22),
+        suffixIcon: hasText
+            ? IconButton(
+                icon: Icon(Icons.cancel_rounded, color: Colors.grey.shade400, size: 20),
+                onPressed: () {
+                  widget.controller.clear();
+                  widget.onChanged('');
+                },
+              )
+            : null,
         filled: true,
-        fillColor: Colors.grey.shade100,
+        fillColor: Colors.grey.shade50,
         contentPadding:
-            const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+            const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
         border: OutlineInputBorder(
-          borderRadius: BorderRadius.circular(12),
-          borderSide: BorderSide.none,
+          borderRadius: BorderRadius.circular(14),
+          borderSide: BorderSide(color: Colors.grey.shade200),
         ),
         enabledBorder: OutlineInputBorder(
-          borderRadius: BorderRadius.circular(12),
-          borderSide: BorderSide.none,
+          borderRadius: BorderRadius.circular(14),
+          borderSide: BorderSide(color: Colors.grey.shade200),
         ),
         focusedBorder: OutlineInputBorder(
-          borderRadius: BorderRadius.circular(12),
-          borderSide: BorderSide(color: primary, width: 1.5),
+          borderRadius: BorderRadius.circular(14),
+          borderSide: BorderSide(color: primary, width: 1.8),
         ),
       ),
     );
@@ -507,17 +537,34 @@ class _NewCustomerButton extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return GestureDetector(
-      onTap: onTap,
-      child: Container(
-        width: 48,
-        height: 48,
-        decoration: BoxDecoration(
-          color: Theme.of(context).colorScheme.secondary,
-          borderRadius: BorderRadius.circular(12),
+    final secondary = Theme.of(context).colorScheme.secondary;
+    return Material(
+      color: Colors.transparent,
+      child: InkWell(
+        onTap: onTap,
+        borderRadius: BorderRadius.circular(14),
+        child: Ink(
+          width: 52,
+          height: 52,
+          decoration: BoxDecoration(
+            color: secondary,
+            borderRadius: BorderRadius.circular(14),
+            boxShadow: [
+              BoxShadow(
+                color: secondary.withValues(alpha: 0.25),
+                blurRadius: 8,
+                offset: const Offset(0, 3),
+              ),
+            ],
+          ),
+          child: const Center(
+            child: Icon(
+              Icons.person_add_alt_1_rounded,
+              color: Colors.white,
+              size: 22,
+            ),
+          ),
         ),
-        child: const Icon(Icons.person_add_outlined,
-            color: Colors.white, size: 22),
       ),
     );
   }
@@ -567,15 +614,18 @@ class _StickyFooter extends StatelessWidget {
     return Container(
       decoration: BoxDecoration(
         color: Colors.white,
+        border: Border(
+          top: BorderSide(color: Colors.grey.shade200, width: 1),
+        ),
         boxShadow: [
           BoxShadow(
-            color: Colors.black.withValues(alpha: 0.06),
-            blurRadius: 12,
+            color: Colors.black.withValues(alpha: 0.05),
+            blurRadius: 16,
             offset: const Offset(0, -4),
           ),
         ],
       ),
-      padding: const EdgeInsets.fromLTRB(20, 12, 20, 24),
+      padding: const EdgeInsets.fromLTRB(20, 16, 20, 28),
       child: Column(
         mainAxisSize: MainAxisSize.min,
         children: [
@@ -588,37 +638,49 @@ class _StickyFooter extends StatelessWidget {
                   '${draft.items.length} producto${draft.items.length != 1 ? 's' : ''}',
                   style: TextStyle(
                     color: Colors.grey.shade500,
-                    fontSize: 13,
+                    fontSize: 14,
+                    fontWeight: FontWeight.w600,
                   ),
                 ),
                 Text(
                   'Total: \$${draft.total.toStringAsFixed(0)}',
                   style: TextStyle(
-                    fontWeight: FontWeight.w800,
+                    fontWeight: FontWeight.w900,
                     color: tokens.primary,
-                    fontSize: 15,
+                    fontSize: 18,
                     fontFeatures: tokens.tabularStyle.fontFeatures,
                   ),
                 ),
               ],
             ),
-            const SizedBox(height: 10),
+            const SizedBox(height: 14),
           ],
-          FilledButton(
-            onPressed: onTap,
-            style: FilledButton.styleFrom(
-              backgroundColor:
-                  enabled ? tokens.primary : Colors.grey.shade200,
-              foregroundColor:
-                  enabled ? Colors.white : Colors.grey.shade400,
-              minimumSize: const Size(double.infinity, 56),
-              shape: RoundedRectangleBorder(
-                borderRadius: BorderRadius.circular(14),
+          AnimatedContainer(
+            duration: const Duration(milliseconds: 200),
+            width: double.infinity,
+            height: 56,
+            child: FilledButton(
+              onPressed: onTap,
+              style: FilledButton.styleFrom(
+                backgroundColor:
+                    enabled ? tokens.primary : Colors.grey.shade200,
+                foregroundColor:
+                    enabled ? Colors.white : Colors.grey.shade400,
+                minimumSize: const Size(double.infinity, 56),
+                elevation: enabled ? 4 : 0,
+                shadowColor: tokens.primary.withValues(alpha: 0.4),
+                shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(16),
+                ),
               ),
-            ),
-            child: Text(
-              label,
-              style: const TextStyle(fontWeight: FontWeight.w700, fontSize: 15),
+              child: AnimatedSwitcher(
+                duration: const Duration(milliseconds: 200),
+                child: Text(
+                  label,
+                  key: ValueKey(label),
+                  style: const TextStyle(fontWeight: FontWeight.w800, fontSize: 16),
+                ),
+              ),
             ),
           ),
         ],

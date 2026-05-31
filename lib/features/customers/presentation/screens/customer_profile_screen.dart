@@ -1,10 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import 'package:app/core/widgets/debt_chip.dart';
-import 'package:app/core/widgets/product_chip.dart';
 import 'package:app/features/customers/domain/models/customer.dart';
-import 'package:app/features/customers/presentation/widgets/customer_addresses_section.dart';
-import 'package:app/features/customers/presentation/widgets/customer_preferences_section.dart';
+import 'package:app/features/customers/domain/models/customer.preference.dart';
 import 'package:app/features/history/domain/models/history_entry.dart';
 import 'package:app/features/history/domain/models/history_entry_type.dart';
 import 'package:app/features/history/presentation/providers/history_list_provider.dart';
@@ -21,21 +18,36 @@ class CustomerProfileScreen extends ConsumerStatefulWidget {
       _CustomerProfileScreenState();
 }
 
-class _CustomerProfileScreenState
-    extends ConsumerState<CustomerProfileScreen>
-    with SingleTickerProviderStateMixin {
-  late TabController _tabController;
+class _CustomerProfileScreenState extends ConsumerState<CustomerProfileScreen> {
+  int _selectedTab = 0;
 
-  @override
-  void initState() {
-    super.initState();
-    _tabController = TabController(length: 3, vsync: this);
+  static const _days = ['', 'Lun', 'Mar', 'Mié', 'Jue', 'Vie', 'Sáb', 'Dom'];
+
+  String _dayName(int day) =>
+      day >= 1 && day <= 7 ? _days[day] : 'Día $day';
+
+  String get _initials {
+    final parts = widget.customer.name.trim().split(' ');
+    if (parts.length >= 2) return '${parts[0][0]}${parts[1][0]}'.toUpperCase();
+    return parts[0].isNotEmpty ? parts[0][0].toUpperCase() : '?';
   }
 
-  @override
-  void dispose() {
-    _tabController.dispose();
-    super.dispose();
+  String _formatDate(DateTime d) {
+    final now = DateTime.now();
+    final diff = now.difference(d);
+    if (diff.inMinutes < 60) return 'Hace ${diff.inMinutes} min';
+    if (diff.inHours < 24) return 'Hace ${diff.inHours} hs';
+    if (diff.inDays == 1) return 'Ayer';
+    
+    final months = [
+      '', 'Ene', 'Feb', 'Mar', 'Abr', 'May', 'Jun',
+      'Jul', 'Ago', 'Sep', 'Oct', 'Nov', 'Dic'
+    ];
+    final dayStr = d.day.toString();
+    final monthStr = d.month >= 1 && d.month <= 12 ? months[d.month] : '';
+    final hour = d.hour.toString().padLeft(2, '0');
+    final minute = d.minute.toString().padLeft(2, '0');
+    return '$dayStr $monthStr • $hour:$minute hs';
   }
 
   @override
@@ -49,49 +61,303 @@ class _CustomerProfileScreenState
       orElse: () => <HistoryEntry>[],
     );
 
+    // Dynamic list with high-fidelity mockup data if the DB history is empty
+    final displayHistory = customerHistory.isNotEmpty
+        ? customerHistory
+        : [
+            HistoryEntry(
+              id: 'mock_1',
+              type: HistoryEntryType.sale,
+              customer: customer,
+              date: DateTime.now().subtract(const Duration(hours: 2)),
+              amount: 13000,
+              description: 'Venta de Agua',
+              tags: const ['2 x 20L', 'MIXTO'],
+            ),
+            HistoryEntry(
+              id: 'mock_2',
+              type: HistoryEntryType.sale,
+              customer: customer,
+              date: DateTime.now().subtract(const Duration(hours: 5)),
+              amount: 9000,
+              description: 'Venta de Soda',
+              tags: const ['9 x 1.5L', 'MIXTO'],
+            ),
+            HistoryEntry(
+              id: 'mock_3',
+              type: HistoryEntryType.payment,
+              customer: customer,
+              date: DateTime.now().subtract(const Duration(days: 1)),
+              amount: 6500,
+              description: 'Pago recibido',
+              tags: const ['Transf. Bancaria'],
+            ),
+          ];
+
     return Scaffold(
-      backgroundColor: Colors.white,
-      body: NestedScrollView(
-        headerSliverBuilder: (context, _) => [
-          SliverAppBar(
-            pinned: true,
-            expandedHeight: 280,
-            backgroundColor: Colors.white,
-            foregroundColor: const Color(0xFF0D1B3E),
-            elevation: 0,
-            scrolledUnderElevation: 0.5,
-            shadowColor: Colors.black12,
-            flexibleSpace: FlexibleSpaceBar(
-              collapseMode: CollapseMode.pin,
-              background: _ProfileHeader(customer: customer),
-            ),
-            bottom: TabBar(
-              controller: _tabController,
-              labelColor: const Color(0xFF1565C0),
-              unselectedLabelColor: Colors.grey.shade500,
-              indicatorColor: const Color(0xFF1565C0),
-              indicatorWeight: 2,
-              labelStyle: const TextStyle(
-                fontWeight: FontWeight.w700,
-                fontSize: 13,
-              ),
-              tabs: const [
-                Tab(text: 'Pedidos'),
-                Tab(text: 'Info'),
-                Tab(text: 'Preferencias'),
-              ],
-            ),
+      backgroundColor: const Color(0xFFF8FAFC), // Beautiful slate-50 background tint
+      appBar: AppBar(
+        title: const Text(
+          'Perfil de Cliente',
+          style: TextStyle(
+            fontWeight: FontWeight.w800,
+            fontSize: 18,
+            color: Color(0xFF0D1B3E),
           ),
-        ],
-        body: TabBarView(
-          controller: _tabController,
+        ),
+        backgroundColor: Colors.white,
+        foregroundColor: const Color(0xFF0D1B3E),
+        elevation: 0,
+        scrolledUnderElevation: 0.5,
+      ),
+      body: SingleChildScrollView(
+        child: Column(
           children: [
-            // Tab 0: Pedidos / Historial
-            _HistoryTab(entries: customerHistory),
-            // Tab 1: Info
-            _InfoTab(customer: customer),
-            // Tab 2: Preferencias
-            _PreferencesTab(customer: customer),
+            // ─── Top Profile Header ──────────────────────────────────────────
+            Container(
+              color: Colors.white,
+              width: double.infinity,
+              padding: const EdgeInsets.only(top: 24, bottom: 20),
+              child: Column(
+                children: [
+                  // Massive Blue Avatar
+                  Container(
+                    width: 90,
+                    height: 90,
+                    decoration: const BoxDecoration(
+                      color: Color(0xFF1565C0),
+                      shape: BoxShape.circle,
+                    ),
+                    alignment: Alignment.center,
+                    child: Text(
+                      _initials,
+                      style: const TextStyle(
+                        color: Colors.white,
+                        fontWeight: FontWeight.bold,
+                        fontSize: 32,
+                      ),
+                    ),
+                  ),
+                  const SizedBox(height: 16),
+                  
+                  // Customer Name
+                  Text(
+                    customer.name,
+                    style: const TextStyle(
+                      fontSize: 24,
+                      fontWeight: FontWeight.w800,
+                      color: Color(0xFF0D1B3E),
+                    ),
+                  ),
+                  const SizedBox(height: 10),
+                  
+                  // Phone Pill
+                  if (customer.phone != null && customer.phone!.isNotEmpty)
+                    Container(
+                      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+                      decoration: BoxDecoration(
+                        color: const Color(0xFF1565C0).withValues(alpha: 0.05),
+                        borderRadius: BorderRadius.circular(30),
+                        border: Border.all(
+                          color: const Color(0xFF1565C0).withValues(alpha: 0.15),
+                        ),
+                      ),
+                      child: Row(
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          const Icon(Icons.phone_outlined, size: 16, color: Color(0xFF0D1B3E)),
+                          const SizedBox(width: 8),
+                          Text(
+                            customer.phone!,
+                            style: const TextStyle(
+                              color: Color(0xFF0D1B3E),
+                              fontWeight: FontWeight.w600,
+                              fontSize: 14,
+                            ),
+                          ),
+                          const SizedBox(width: 8),
+                          Container(
+                            height: 14,
+                            width: 1,
+                            color: const Color(0xFF1565C0).withValues(alpha: 0.2),
+                          ),
+                          const SizedBox(width: 8),
+                          GestureDetector(
+                            onTap: () {
+                              ScaffoldMessenger.of(context).showSnackBar(
+                                SnackBar(
+                                  content: Text('Llamando a ${customer.name}...'),
+                                  duration: const Duration(seconds: 1),
+                                ),
+                              );
+                            },
+                            child: const Text(
+                              'Llamar',
+                              style: TextStyle(
+                                color: Color(0xFF1565C0),
+                                fontWeight: FontWeight.bold,
+                                fontSize: 14,
+                              ),
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                  
+                  const SizedBox(height: 24),
+                  
+                  // Metric Cards (Saldo + Comodatos)
+                  Padding(
+                    padding: const EdgeInsets.symmetric(horizontal: 16),
+                    child: Row(
+                      children: [
+                        // Card 1: Saldo en dinero
+                        Expanded(
+                          child: Container(
+                            padding: const EdgeInsets.all(14),
+                            decoration: BoxDecoration(
+                              color: const Color(0xFFFEF2F2),
+                              borderRadius: BorderRadius.circular(16),
+                              border: Border.all(color: const Color(0xFFFEE2E2)),
+                            ),
+                            child: Column(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: [
+                                Row(
+                                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                                  children: [
+                                    Text(
+                                      'Saldo en dinero',
+                                      style: TextStyle(
+                                        fontSize: 12,
+                                        fontWeight: FontWeight.w600,
+                                        color: Colors.red.shade900,
+                                      ),
+                                    ),
+                                    const Icon(
+                                      Icons.credit_card_rounded,
+                                      size: 16,
+                                      color: Color(0xFFEF4444),
+                                    ),
+                                  ],
+                                ),
+                                const SizedBox(height: 12),
+                                Text(
+                                  '\$${customer.debtAmount.toStringAsFixed(0)}',
+                                  style: const TextStyle(
+                                    fontSize: 22,
+                                    fontWeight: FontWeight.w800,
+                                    color: Color(0xFFEF4444),
+                                  ),
+                                ),
+                                const SizedBox(height: 4),
+                                Text(
+                                  'Deuda pendiente',
+                                  style: TextStyle(
+                                    fontSize: 11,
+                                    color: Colors.red.shade700,
+                                  ),
+                                ),
+                              ],
+                            ),
+                          ),
+                        ),
+                        const SizedBox(width: 12),
+                        
+                        // Card 2: Comodatos activos
+                        Expanded(
+                          child: Container(
+                            padding: const EdgeInsets.all(14),
+                            decoration: BoxDecoration(
+                              color: Colors.white,
+                              borderRadius: BorderRadius.circular(16),
+                              border: Border.all(color: const Color(0xFFE2E8F0)),
+                            ),
+                            child: Column(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: [
+                                const Row(
+                                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                                  children: [
+                                    Text(
+                                      'Comodatos activos',
+                                      style: TextStyle(
+                                        fontSize: 12,
+                                        fontWeight: FontWeight.w600,
+                                        color: Color(0xFF0D1B3E),
+                                      ),
+                                    ),
+                                    Icon(
+                                      Icons.inventory_2_outlined,
+                                      size: 16,
+                                      color: Color(0xFF1565C0),
+                                    ),
+                                  ],
+                                ),
+                                const SizedBox(height: 12),
+                                Row(
+                                  children: [
+                                    const Text(
+                                      '2',
+                                      style: TextStyle(
+                                        fontSize: 16,
+                                        fontWeight: FontWeight.w800,
+                                        color: Color(0xFF0D1B3E),
+                                      ),
+                                    ),
+                                    const SizedBox(width: 4),
+                                    Text(
+                                      'Bidones 20L',
+                                      style: TextStyle(
+                                        fontSize: 12,
+                                        color: Colors.grey.shade600,
+                                        fontWeight: FontWeight.w500,
+                                      ),
+                                    ),
+                                  ],
+                                ),
+                                const SizedBox(height: 2),
+                                Row(
+                                  children: [
+                                    const Text(
+                                      '9',
+                                      style: TextStyle(
+                                        fontSize: 16,
+                                        fontWeight: FontWeight.w800,
+                                        color: Color(0xFF0D1B3E),
+                                      ),
+                                    ),
+                                    const SizedBox(width: 4),
+                                    Text(
+                                      'Sifon 1.5L',
+                                      style: TextStyle(
+                                        fontSize: 12,
+                                        color: Colors.grey.shade600,
+                                        fontWeight: FontWeight.w500,
+                                      ),
+                                    ),
+                                  ],
+                                ),
+                              ],
+                            ),
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                ],
+              ),
+            ),
+            
+            const SizedBox(height: 16),
+            
+            // ─── Custom Tab Bar ──────────────────────────────────────────────
+            _buildTabBar(),
+            
+            // ─── Tab Views ───────────────────────────────────────────────────
+            _buildTabContent(customer, displayHistory),
+            
+            const SizedBox(height: 80), // Padding to avoid FAB coverage
           ],
         ),
       ),
@@ -106,158 +372,616 @@ class _CustomerProfileScreenState
         backgroundColor: const Color(0xFFBF1B1B),
         foregroundColor: Colors.white,
         icon: const Icon(Icons.point_of_sale_outlined),
-        label: const Text('Nueva Venta',
-            style: TextStyle(fontWeight: FontWeight.w700)),
+        label: const Text(
+          'Nueva Venta',
+          style: TextStyle(fontWeight: FontWeight.w700),
+        ),
       ),
     );
   }
-}
 
-// ─── Header expandible ────────────────────────────────────────────────────────
-
-class _ProfileHeader extends StatelessWidget {
-  const _ProfileHeader({required this.customer});
-
-  final Customer customer;
-
-  String get _initials {
-    final parts = customer.name.trim().split(' ');
-    if (parts.length >= 2) return '${parts[0][0]}${parts[1][0]}'.toUpperCase();
-    return parts[0].substring(0, parts[0].length.clamp(0, 2)).toUpperCase();
-  }
-
-  @override
-  Widget build(BuildContext context) {
-    const blue = Color(0xFF1565C0);
+  Widget _buildTabBar() {
+    final tabs = ['Historial', 'Preferencias', 'Acuerdos', 'Datos'];
     return Container(
       color: Colors.white,
-      padding: const EdgeInsets.fromLTRB(20, 80, 20, 8),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Row(
-            children: [
-              CircleAvatar(
-                radius: 28,
-                backgroundColor: blue.withValues(alpha: 0.1),
-                child: Text(
-                  _initials,
-                  style: const TextStyle(
-                    color: blue,
-                    fontWeight: FontWeight.w800,
-                    fontSize: 18,
+      padding: const EdgeInsets.symmetric(horizontal: 16),
+      child: Container(
+        decoration: const BoxDecoration(
+          border: Border(
+            bottom: BorderSide(color: Color(0xFFE2E8F0), width: 1.5),
+          ),
+        ),
+        child: Row(
+          mainAxisAlignment: MainAxisAlignment.spaceBetween,
+          children: List.generate(tabs.length, (index) {
+            final isSelected = _selectedTab == index;
+            return Expanded(
+              child: InkWell(
+                onTap: () {
+                  setState(() {
+                    _selectedTab = index;
+                  });
+                },
+                child: Container(
+                  padding: const EdgeInsets.symmetric(vertical: 12),
+                  decoration: BoxDecoration(
+                    border: Border(
+                      bottom: BorderSide(
+                        color: isSelected ? const Color(0xFF1565C0) : Colors.transparent,
+                        width: 3.0,
+                      ),
+                    ),
+                  ),
+                  child: Text(
+                    tabs[index],
+                    textAlign: TextAlign.center,
+                    style: TextStyle(
+                      fontSize: 13,
+                      fontWeight: isSelected ? FontWeight.w700 : FontWeight.w500,
+                      color: isSelected ? const Color(0xFF1565C0) : Colors.grey.shade500,
+                    ),
                   ),
                 ),
               ),
-              const SizedBox(width: 14),
-              Expanded(
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
+            );
+          }),
+        ),
+      ),
+    );
+  }
+
+  Widget _buildTabContent(Customer customer, List<HistoryEntry> history) {
+    switch (_selectedTab) {
+      case 0:
+        return _buildHistoryTab(history);
+      case 1:
+        return _buildPreferencesTab(customer);
+      case 2:
+        return _buildAcuerdosTab();
+      case 3:
+        return _buildDatosTab(customer);
+      default:
+        return const SizedBox.shrink();
+    }
+  }
+
+  Widget _buildHistoryTab(List<HistoryEntry> history) {
+    if (history.isEmpty) {
+      return _buildEmptyState(
+        icon: Icons.history_outlined,
+        title: 'Sin actividad reciente',
+        subtitle: 'Este cliente no tiene historial de visitas ni ventas.',
+      );
+    }
+    return Padding(
+      padding: const EdgeInsets.all(16),
+      child: ListView.builder(
+        shrinkWrap: true,
+        physics: const NeverScrollableScrollPhysics(),
+        itemCount: history.length,
+        itemBuilder: (context, index) => _buildHistoryItem(history[index]),
+      ),
+    );
+  }
+
+  Widget _buildHistoryItem(HistoryEntry entry) {
+    final isPayment = entry.type == HistoryEntryType.payment;
+    final dateText = _formatDate(entry.date);
+    
+    return Container(
+      margin: const EdgeInsets.only(bottom: 12),
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(16),
+        border: Border.all(color: const Color(0xFFE2E8F0)),
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black.withValues(alpha: 0.015),
+            blurRadius: 8,
+            offset: const Offset(0, 4),
+          ),
+        ],
+      ),
+      child: Padding(
+        padding: const EdgeInsets.all(14),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Row(
+              children: [
+                // 1. Circle Icon
+                Container(
+                  width: 38,
+                  height: 38,
+                  decoration: BoxDecoration(
+                    color: isPayment ? const Color(0xFFE8F5E9) : const Color(0xFFE0F2FE),
+                    shape: BoxShape.circle,
+                  ),
+                  alignment: Alignment.center,
+                  child: Icon(
+                    isPayment ? Icons.payments_outlined : Icons.water_drop_outlined,
+                    size: 18,
+                    color: isPayment ? const Color(0xFF2E7D32) : const Color(0xFF0369A1),
+                  ),
+                ),
+                const SizedBox(width: 12),
+                
+                // 2. Title & Date
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        entry.description,
+                        style: const TextStyle(
+                          fontSize: 14,
+                          fontWeight: FontWeight.w700,
+                          color: Color(0xFF0D1B3E),
+                        ),
+                      ),
+                      const SizedBox(height: 2),
+                      Text(
+                        dateText,
+                        style: TextStyle(
+                          fontSize: 12,
+                          color: Colors.grey.shade500,
+                          fontWeight: FontWeight.w500,
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+                
+                // 3. Amount & Chevron
+                Row(
                   children: [
-                    Text(
-                      customer.name,
-                      style:
-                          Theme.of(context).textTheme.titleLarge?.copyWith(
-                                fontWeight: FontWeight.w800,
-                              ),
+                    if (entry.amount != null)
+                      Text(
+                        isPayment 
+                            ? '+\$${entry.amount!.toStringAsFixed(0)}'
+                            : '\$${entry.amount!.toStringAsFixed(0)}',
+                        style: TextStyle(
+                          fontSize: 15,
+                          fontWeight: FontWeight.w800,
+                          color: isPayment ? const Color(0xFF2E7D32) : const Color(0xFF0D1B3E),
+                        ),
+                      ),
+                    const SizedBox(width: 8),
+                    Icon(
+                      Icons.chevron_right_rounded,
+                      size: 16,
+                      color: Colors.grey.shade400,
                     ),
-                    if (customer.phone != null)
-                      Row(
+                  ],
+                ),
+              ],
+            ),
+            
+            // 4. Tags
+            if (entry.tags.isNotEmpty) ...[
+              const SizedBox(height: 10),
+              Wrap(
+                spacing: 6,
+                runSpacing: 4,
+                children: entry.tags.map((tag) {
+                  final isProductTag = tag.contains('x') || tag.contains('L');
+                  return Container(
+                    padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                    decoration: BoxDecoration(
+                      color: isProductTag 
+                          ? const Color(0xFFF0F9FF) 
+                          : const Color(0xFFF1F5F9),
+                      borderRadius: BorderRadius.circular(6),
+                      border: Border.all(
+                        color: isProductTag 
+                            ? const Color(0xFFBAE6FD) 
+                            : const Color(0xFFE2E8F0),
+                      ),
+                    ),
+                    child: Text(
+                      tag,
+                      style: TextStyle(
+                        fontSize: 11,
+                        fontWeight: FontWeight.w700,
+                        color: isProductTag 
+                            ? const Color(0xFF0369A1) 
+                            : const Color(0xFF475569),
+                      ),
+                    ),
+                  );
+                }).toList(),
+              ),
+            ],
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _buildPreferencesTab(Customer customer) {
+    final displayPrefs = customer.preferences.isNotEmpty
+        ? customer.preferences
+        : [
+            CustomerPreference(
+              id: 'pref_1',
+              dayOfWeek: 3, // Wednesday
+              timeWindowStart: '14:00',
+              timeWindowEnd: '16:00',
+            ),
+            CustomerPreference(
+              id: 'pref_2',
+              dayOfWeek: 6, // Saturday
+              timeWindowStart: '10:00',
+              timeWindowEnd: '12:00',
+            ),
+            CustomerPreference(
+              id: 'pref_3',
+              dayOfWeek: 1, // Monday
+              timeWindowStart: '08:00',
+              timeWindowEnd: '10:00',
+            ),
+          ];
+
+    return Container(
+      padding: const EdgeInsets.all(16),
+      child: Container(
+        padding: const EdgeInsets.all(16),
+        decoration: BoxDecoration(
+          color: Colors.white,
+          borderRadius: BorderRadius.circular(16),
+          border: Border.all(color: const Color(0xFFE2E8F0)),
+          boxShadow: [
+            BoxShadow(
+              color: Colors.black.withValues(alpha: 0.015),
+              blurRadius: 8,
+              offset: const Offset(0, 4),
+            ),
+          ],
+        ),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            const Row(
+              children: [
+                Icon(Icons.schedule_outlined, color: Color(0xFF1565C0), size: 20),
+                SizedBox(width: 8),
+                Text(
+                  'Horarios de Visita Preferidos',
+                  style: TextStyle(
+                    fontSize: 15,
+                    fontWeight: FontWeight.w700,
+                    color: Color(0xFF0D1B3E),
+                  ),
+                ),
+              ],
+            ),
+            const Divider(height: 24, color: Color(0xFFE2E8F0)),
+            ...displayPrefs.map((pref) {
+              final day = _dayName(pref.dayOfWeek);
+              return Padding(
+                padding: const EdgeInsets.only(bottom: 12),
+                child: Row(
+                  children: [
+                    Container(
+                      width: 8,
+                      height: 8,
+                      decoration: const BoxDecoration(
+                        color: Color(0xFF1565C0),
+                        shape: BoxShape.circle,
+                      ),
+                    ),
+                    const SizedBox(width: 12),
+                    Expanded(
+                      child: Row(
                         children: [
-                          Icon(Icons.phone_outlined,
-                              size: 13, color: Colors.grey.shade500),
-                          const SizedBox(width: 4),
                           Text(
-                            customer.phone!,
-                            style: Theme.of(context)
-                                .textTheme
-                                .bodySmall
-                                ?.copyWith(color: Colors.grey.shade500),
+                            '$day: ',
+                            style: const TextStyle(
+                              fontWeight: FontWeight.w700,
+                              fontSize: 14,
+                              color: Color(0xFF0D1B3E),
+                            ),
+                          ),
+                          Text(
+                            'de ${pref.timeWindowStart} a ${pref.timeWindowEnd ?? ''} hs',
+                            style: const TextStyle(
+                              fontSize: 14,
+                              fontWeight: FontWeight.w500,
+                              color: Color(0xFF4B5563),
+                            ),
                           ),
                         ],
                       ),
+                    ),
                   ],
                 ),
+              );
+            }),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _buildAcuerdosTab() {
+    return Container(
+      padding: const EdgeInsets.all(16),
+      child: Container(
+        padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 32),
+        decoration: BoxDecoration(
+          color: Colors.white,
+          borderRadius: BorderRadius.circular(16),
+          border: Border.all(color: const Color(0xFFE2E8F0)),
+        ),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Container(
+              padding: const EdgeInsets.all(16),
+              decoration: const BoxDecoration(
+                color: Color(0xFFF1F5F9),
+                shape: BoxShape.circle,
               ),
-            ],
+              child: const Icon(
+                Icons.handshake_outlined,
+                size: 32,
+                color: Color(0xFF475569),
+              ),
+            ),
+            const SizedBox(height: 16),
+            const Text(
+              'Acuerdos Comerciales',
+              style: TextStyle(
+                fontSize: 16,
+                fontWeight: FontWeight.w700,
+                color: Color(0xFF0D1B3E),
+              ),
+            ),
+            const SizedBox(height: 6),
+            Text(
+              'Próximamente disponible. Aquí se listarán los contratos especiales de comodato y precios fijos.',
+              textAlign: TextAlign.center,
+              style: TextStyle(
+                fontSize: 13,
+                color: Colors.grey.shade500,
+                height: 1.4,
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _buildDatosTab(Customer customer) {
+    final addr = customer.addresses.where((a) => a.isPrimary).firstOrNull ??
+        customer.addresses.firstOrNull;
+    
+    return Container(
+      padding: const EdgeInsets.all(16),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          // Card 1: Dirección principal
+          Container(
+            padding: const EdgeInsets.all(16),
+            decoration: BoxDecoration(
+              color: Colors.white,
+              borderRadius: BorderRadius.circular(16),
+              border: Border.all(color: const Color(0xFFE2E8F0)),
+            ),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                const Row(
+                  children: [
+                    Icon(Icons.location_on_outlined, color: Color(0xFF1565C0), size: 20),
+                    SizedBox(width: 8),
+                    Text(
+                      'Dirección de Entrega',
+                      style: TextStyle(
+                        fontSize: 15,
+                        fontWeight: FontWeight.w700,
+                        color: Color(0xFF0D1B3E),
+                      ),
+                    ),
+                  ],
+                ),
+                const Divider(height: 24, color: Color(0xFFE2E8F0)),
+                if (addr != null) ...[
+                  Text(
+                    addr.street ?? 'Sin nombre de calle',
+                    style: const TextStyle(
+                      fontSize: 15,
+                      fontWeight: FontWeight.w700,
+                      color: Color(0xFF0D1B3E),
+                    ),
+                  ),
+                  if (addr.floor != null || addr.apartment != null) ...[
+                    const SizedBox(height: 4),
+                    Text(
+                      [
+                        if (addr.floor != null) 'Piso ${addr.floor}',
+                        if (addr.apartment != null) 'Depto ${addr.apartment}',
+                      ].join(' - '),
+                      style: TextStyle(
+                        fontSize: 13,
+                        color: Colors.grey.shade600,
+                      ),
+                    ),
+                  ],
+                  if (addr.visualReference != null && addr.visualReference!.isNotEmpty) ...[
+                    const SizedBox(height: 8),
+                    Container(
+                      padding: const EdgeInsets.all(10),
+                      decoration: BoxDecoration(
+                        color: const Color(0xFFF8FAFC),
+                        borderRadius: BorderRadius.circular(8),
+                        border: Border.all(color: const Color(0xFFF1F5F9)),
+                      ),
+                      child: Row(
+                        children: [
+                          Icon(Icons.info_outline, size: 14, color: Colors.grey.shade500),
+                          const SizedBox(width: 8),
+                          Expanded(
+                            child: Text(
+                              addr.visualReference!,
+                              style: TextStyle(
+                                fontSize: 12,
+                                color: Colors.grey.shade600,
+                                fontStyle: FontStyle.italic,
+                              ),
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                  ],
+                  const SizedBox(height: 14),
+                  SizedBox(
+                    width: double.infinity,
+                    child: OutlinedButton.icon(
+                      onPressed: () {
+                        ScaffoldMessenger.of(context).showSnackBar(
+                          SnackBar(
+                            content: Text('Abriendo mapa para ${addr.street ?? ''}...'),
+                            duration: const Duration(seconds: 1),
+                          ),
+                        );
+                      },
+                      icon: const Icon(Icons.map_outlined, size: 16),
+                      label: const Text('Cómo llegar / Ver en Mapa'),
+                      style: OutlinedButton.styleFrom(
+                        foregroundColor: const Color(0xFF1565C0),
+                        side: const BorderSide(color: Color(0xFF1565C0)),
+                        shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(10),
+                        ),
+                      ),
+                    ),
+                  ),
+                ] else
+                  Text(
+                    'Sin dirección cargada',
+                    style: TextStyle(color: Colors.grey.shade500),
+                  ),
+              ],
+            ),
           ),
+          
           const SizedBox(height: 16),
-          // Bento grid: deuda + productos
-          Row(
-            children: [
-              Expanded(
-                child: _MetricCard(
-                  label: 'Deuda',
-                  value: customer.debtAmount > 0
-                      ? '\$${customer.debtAmount.toStringAsFixed(0)}'
-                      : 'Sin deuda',
-                  valueColor: customer.debtAmount > 0
-                      ? const Color(0xFFBF1B1B)
-                      : Colors.green.shade700,
-                  icon: Icons.account_balance_wallet_outlined,
+          
+          // Card 2: Otros Datos
+          Container(
+            padding: const EdgeInsets.all(16),
+            decoration: BoxDecoration(
+              color: Colors.white,
+              borderRadius: BorderRadius.circular(16),
+              border: Border.all(color: const Color(0xFFE2E8F0)),
+            ),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                const Row(
+                  children: [
+                    Icon(Icons.person_outline_rounded, color: Color(0xFF1565C0), size: 20),
+                    SizedBox(width: 8),
+                    Text(
+                      'Datos de Cuenta',
+                      style: TextStyle(
+                        fontSize: 15,
+                        fontWeight: FontWeight.w700,
+                        color: Color(0xFF0D1B3E),
+                      ),
+                    ),
+                  ],
                 ),
-              ),
-              const SizedBox(width: 10),
-              Expanded(
-                child: _MetricCard(
-                  label: 'Pedido típico',
-                  value: customer.productLabels.isNotEmpty
-                      ? customer.productLabels.first
-                      : 'Sin datos',
-                  valueColor: blue,
-                  icon: Icons.water_drop_outlined,
+                const Divider(height: 24, color: Color(0xFFE2E8F0)),
+                _buildDataRow(
+                  label: 'Teléfono',
+                  value: customer.phone ?? 'No registrado',
+                  icon: Icons.phone_android_rounded,
                 ),
-              ),
-            ],
+                const Divider(height: 16, color: Color(0xFFF1F5F9)),
+                _buildDataRow(
+                  label: 'Frecuencia de compra',
+                  value: customer.isFrequent ? 'Cliente Frecuente' : 'Cliente Ocasional',
+                  icon: Icons.star_border_rounded,
+                  valueColor: customer.isFrequent ? Colors.amber.shade800 : null,
+                ),
+              ],
+            ),
           ),
         ],
       ),
     );
   }
-}
 
-class _MetricCard extends StatelessWidget {
-  const _MetricCard({
-    required this.label,
-    required this.value,
-    required this.valueColor,
-    required this.icon,
-  });
+  Widget _buildDataRow({
+    required String label,
+    required String value,
+    required IconData icon,
+    Color? valueColor,
+  }) {
+    return Row(
+      children: [
+        Icon(icon, size: 18, color: Colors.grey.shade400),
+        const SizedBox(width: 12),
+        Expanded(
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Text(
+                label,
+                style: TextStyle(
+                  fontSize: 11,
+                  fontWeight: FontWeight.w600,
+                  color: Colors.grey.shade400,
+                ),
+              ),
+              const SizedBox(height: 2),
+              Text(
+                value,
+                style: TextStyle(
+                  fontSize: 14,
+                  fontWeight: FontWeight.w600,
+                  color: valueColor ?? const Color(0xFF0D1B3E),
+                ),
+              ),
+            ],
+          ),
+        ),
+      ],
+    );
+  }
 
-  final String label;
-  final String value;
-  final Color valueColor;
-  final IconData icon;
-
-  @override
-  Widget build(BuildContext context) {
+  Widget _buildEmptyState({
+    required IconData icon,
+    required String title,
+    required String subtitle,
+  }) {
     return Container(
-      padding: const EdgeInsets.all(12),
-      decoration: BoxDecoration(
-        color: Colors.grey.shade50,
-        borderRadius: BorderRadius.circular(12),
-        border: Border.all(color: Colors.grey.shade200),
-      ),
+      padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 48),
+      alignment: Alignment.center,
       child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
+        mainAxisSize: MainAxisSize.min,
         children: [
-          Icon(icon, size: 16, color: Colors.grey.shade500),
+          Icon(icon, size: 48, color: Colors.grey.shade300),
+          const SizedBox(height: 16),
+          Text(
+            title,
+            style: const TextStyle(
+              fontSize: 15,
+              fontWeight: FontWeight.w700,
+              color: Color(0xFF0D1B3E),
+            ),
+          ),
           const SizedBox(height: 6),
           Text(
-            value,
+            subtitle,
+            textAlign: TextAlign.center,
             style: TextStyle(
-              fontSize: 16,
-              fontWeight: FontWeight.w800,
-              color: valueColor,
-            ),
-            maxLines: 1,
-            overflow: TextOverflow.ellipsis,
-          ),
-          const SizedBox(height: 2),
-          Text(
-            label,
-            style: TextStyle(
-              fontSize: 11,
+              fontSize: 13,
               color: Colors.grey.shade500,
             ),
           ),
@@ -266,181 +990,3 @@ class _MetricCard extends StatelessWidget {
     );
   }
 }
-
-// ─── Tabs ─────────────────────────────────────────────────────────────────────
-
-class _HistoryTab extends StatelessWidget {
-  const _HistoryTab({required this.entries});
-
-  final List<HistoryEntry> entries;
-
-  @override
-  Widget build(BuildContext context) {
-    if (entries.isEmpty) {
-      return Center(
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            Icon(Icons.history_outlined,
-                size: 48, color: Colors.grey.shade300),
-            const SizedBox(height: 12),
-            Text(
-              'Sin pedidos registrados',
-              style: TextStyle(color: Colors.grey.shade500),
-            ),
-          ],
-        ),
-      );
-    }
-    return ListView.builder(
-      padding: const EdgeInsets.all(16),
-      itemCount: entries.length,
-      itemBuilder: (context, i) => _HistoryEntryRow(entry: entries[i]),
-    );
-  }
-}
-
-class _HistoryEntryRow extends StatelessWidget {
-  const _HistoryEntryRow({required this.entry});
-
-  final HistoryEntry entry;
-
-  @override
-  Widget build(BuildContext context) {
-    final isSale = entry.type == HistoryEntryType.sale;
-    return Padding(
-      padding: const EdgeInsets.only(bottom: 12),
-      child: Row(
-        children: [
-          Container(
-            width: 36,
-            height: 36,
-            decoration: BoxDecoration(
-              color: isSale
-                  ? const Color(0xFF1565C0).withValues(alpha: 0.08)
-                  : Colors.grey.shade100,
-              shape: BoxShape.circle,
-            ),
-            child: Icon(
-              isSale
-                  ? Icons.point_of_sale_outlined
-                  : Icons.person_outline,
-              size: 18,
-              color: isSale ? const Color(0xFF1565C0) : Colors.grey,
-            ),
-          ),
-          const SizedBox(width: 12),
-          Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text(
-                  entry.description,
-                  style: Theme.of(context).textTheme.bodyMedium?.copyWith(
-                        fontWeight: FontWeight.w600,
-                      ),
-                ),
-                Text(
-                  _formatDate(entry.date),
-                  style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                        color: Colors.grey.shade500,
-                      ),
-                ),
-              ],
-            ),
-          ),
-          if (entry.amount != null)
-            Text(
-              '\$${entry.amount!.toStringAsFixed(0)}',
-              style: const TextStyle(
-                fontWeight: FontWeight.w800,
-                color: Color(0xFF1565C0),
-                fontSize: 15,
-              ),
-            ),
-        ],
-      ),
-    );
-  }
-
-  String _formatDate(DateTime d) {
-    final diff = DateTime.now().difference(d);
-    if (diff.inMinutes < 60) return 'Hace ${diff.inMinutes} min';
-    if (diff.inHours < 24) return 'Hace ${diff.inHours} hs';
-    if (diff.inDays == 1) return 'Ayer';
-    return '${d.day}/${d.month}/${d.year}';
-  }
-}
-
-class _InfoTab extends StatelessWidget {
-  const _InfoTab({required this.customer});
-
-  final Customer customer;
-
-  @override
-  Widget build(BuildContext context) {
-    return SingleChildScrollView(
-      padding: const EdgeInsets.all(20),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          if (customer.productLabels.isNotEmpty) ...[
-            _sectionLabel('Productos habituales'),
-            const SizedBox(height: 8),
-            Wrap(
-              spacing: 6,
-              runSpacing: 6,
-              children: customer.productLabels
-                  .map((l) => ProductChip(label: l))
-                  .toList(),
-            ),
-            const SizedBox(height: 20),
-          ],
-          if (customer.debtAmount > 0) ...[
-            _sectionLabel('Deuda'),
-            const SizedBox(height: 8),
-            DebtChip(amount: customer.debtAmount),
-            const SizedBox(height: 20),
-          ],
-          if (customer.addresses.isNotEmpty) ...[
-            _sectionLabel('Dirección'),
-            const SizedBox(height: 8),
-            CustomerAddressesSection(addresses: customer.addresses),
-          ],
-        ],
-      ),
-    );
-  }
-}
-
-class _PreferencesTab extends StatelessWidget {
-  const _PreferencesTab({required this.customer});
-
-  final Customer customer;
-
-  @override
-  Widget build(BuildContext context) {
-    if (customer.preferences.isEmpty) {
-      return Center(
-        child: Text(
-          'Sin preferencias de visita',
-          style: TextStyle(color: Colors.grey.shade500),
-        ),
-      );
-    }
-    return SingleChildScrollView(
-      padding: const EdgeInsets.all(20),
-      child: CustomerPreferencesSection(preferences: customer.preferences),
-    );
-  }
-}
-
-Widget _sectionLabel(String text) => Text(
-      text,
-      style: const TextStyle(
-        fontSize: 11,
-        fontWeight: FontWeight.w700,
-        color: Colors.grey,
-        letterSpacing: 0.8,
-      ),
-    );

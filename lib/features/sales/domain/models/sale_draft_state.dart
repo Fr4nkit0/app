@@ -4,6 +4,7 @@ import 'package:app/features/sales/domain/models/sale_item.dart';
 
 class SaleDraftState {
   final Customer? customer;
+  final String? routeStopId;
   final List<SaleItem> items;
   final PaymentMethod? paymentMethod;
   final double? cashAmount;
@@ -11,6 +12,7 @@ class SaleDraftState {
 
   const SaleDraftState({
     this.customer,
+    this.routeStopId,
     this.items = const [],
     this.paymentMethod,
     this.cashAmount,
@@ -19,17 +21,20 @@ class SaleDraftState {
 
   SaleDraftState copyWith({
     Customer? customer,
+    String? routeStopId,
     List<SaleItem>? items,
     PaymentMethod? paymentMethod,
     double? cashAmount,
     double? transferAmount,
     bool clearCustomer = false,
+    bool clearRouteStopId = false,
     bool clearPaymentMethod = false,
     bool clearCashAmount = false,
     bool clearTransferAmount = false,
   }) {
     return SaleDraftState(
       customer: clearCustomer ? null : (customer ?? this.customer),
+      routeStopId: clearRouteStopId ? null : (routeStopId ?? this.routeStopId),
       items: items ?? this.items,
       paymentMethod:
           clearPaymentMethod ? null : (paymentMethod ?? this.paymentMethod),

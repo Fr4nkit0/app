@@ -34,7 +34,10 @@ class _CustomerListScreenState extends ConsumerState<CustomerListScreen> {
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            const ScreenHeader(title: 'Clientes'),
+            const ScreenHeader(
+              title: 'Clientes',
+              subtitle: 'Gestioná tus clientes y ventas',
+            ),
             Padding(
               padding: const EdgeInsets.fromLTRB(16, 4, 16, 12),
               child: customersAsync.maybeWhen(

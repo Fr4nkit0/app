@@ -9,17 +9,19 @@ import 'package:app/features/sales/domain/models/sale.dart';
 import 'package:app/features/sales/domain/models/sale_draft_state.dart';
 import 'package:app/features/sales/domain/models/sale_item.dart';
 import 'package:app/features/sales/presentation/providers/sale_repository_provider.dart';
+import 'package:app/features/route/domain/models/stop_status.dart';
+import 'package:app/features/route/presentation/providers/route_repository_provider.dart';
 
 class SaleDraft extends Notifier<SaleDraftState> {
   @override
   SaleDraftState build() => const SaleDraftState();
 
-  void selectCustomer(Customer customer) {
-    state = state.copyWith(customer: customer);
+  void selectCustomer(Customer customer, {String? routeStopId}) {
+    state = state.copyWith(customer: customer, routeStopId: routeStopId);
   }
 
   void clearCustomer() {
-    state = state.copyWith(clearCustomer: true);
+    state = state.copyWith(clearCustomer: true, clearRouteStopId: true);
   }
 
   void setQuantity(SaleItem item, int quantity) {
@@ -77,6 +79,7 @@ class SaleDraft extends Notifier<SaleDraftState> {
       date: DateTime.now(),
       cashAmount: isMixed ? draft.cashAmount : null,
       transferAmount: isMixed ? draft.transferAmount : null,
+      routeStopId: draft.routeStopId,
     );
 
     await ref.read(saleRepositoryProvider).saveSale(sale);
