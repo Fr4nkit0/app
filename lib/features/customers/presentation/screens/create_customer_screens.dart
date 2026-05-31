@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:app/core/widgets/top_toast.dart';
 
 import '../providers/customer_form_provider.dart';
 import '../widgets/step_identity_view.dart';
@@ -55,9 +56,7 @@ class _CreateCustomerScreenState extends ConsumerState<CreateCustomerScreen> {
       next,
     ) {
       if (next == true) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('Cliente guardado exitosamente')),
-        );
+        TopToast.showSuccess(context, 'Cliente guardado exitosamente');
         Navigator.of(context).pop();
       }
     });
@@ -68,12 +67,7 @@ class _CreateCustomerScreenState extends ConsumerState<CreateCustomerScreen> {
       next,
     ) {
       if (next != null) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text(next),
-            backgroundColor: Theme.of(context).colorScheme.error,
-          ),
-        );
+        TopToast.showError(context, next);
       }
     });
 

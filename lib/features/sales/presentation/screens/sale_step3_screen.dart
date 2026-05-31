@@ -2,6 +2,8 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:app/core/theme/sales_tokens.dart';
+import 'package:app/core/widgets/top_toast.dart';
+import 'package:app/core/widgets/screen_header.dart';
 import 'package:app/features/sales/domain/models/payment_method.dart';
 import 'package:app/features/sales/domain/models/sale_draft_state.dart';
 import 'package:app/features/sales/presentation/providers/sale_draft_provider.dart';
@@ -118,30 +120,10 @@ class _Header extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final brandColor = Theme.of(context).colorScheme.primary;
-    return Container(
-      color: Colors.white,
-      padding: const EdgeInsets.fromLTRB(8, 12, 16, 8),
-      child: Row(
-        children: [
-          IconButton(
-            icon: const Icon(Icons.arrow_back),
-            color: brandColor,
-            onPressed: () => Navigator.of(context).pop(),
-          ),
-          Expanded(
-            child: Text(
-              'Cobro · $customerName',
-              style: TextStyle(
-                color: brandColor,
-                fontSize: 17,
-                fontWeight: FontWeight.w700,
-              ),
-              overflow: TextOverflow.ellipsis,
-            ),
-          ),
-        ],
-      ),
+    return ScreenHeader(
+      title: 'Registrar Cobro',
+      subtitle: customerName,
+      onBackPressed: () => Navigator.of(context).pop(),
     );
   }
 }
@@ -549,27 +531,19 @@ class _Footer extends ConsumerWidget {
             child: FilledButton(
               onPressed: draft.canConfirm
                   ? () async {
+                      final routeStopId = draft.routeStopId;
                       await ref.read(saleDraftProvider.notifier).commit();
                       if (context.mounted) {
-                        Navigator.of(context)
-                            .popUntil((route) => route.isFirst);
-                        ScaffoldMessenger.of(context).showSnackBar(
-                          SnackBar(
-                            content: const Row(
-                              children: [
-                                Icon(Icons.check_circle,
-                                    color: Colors.white, size: 18),
-                                SizedBox(width: 8),
-                                Text('Venta registrada'),
-                              ],
-                            ),
-                            backgroundColor: tokens.primary,
-                            behavior: SnackBarBehavior.floating,
-                            shape: RoundedRectangleBorder(
-                              borderRadius: BorderRadius.circular(10),
-                            ),
-                          ),
-                        );
+                        if (routeStopId != null) {
+                          Navigator.of(context).pop();
+                          Navigator.of(context).pop();
+                        } else {
+                          Navigator.of(context)
+                              .popUntil((route) => route.isFirst);
+                          
+                          // Show gorgeous premium top toast ONLY for general sales outside routes!
+                          TopToast.showSuccess(context, 'Venta registrada con éxito');
+                        }
                       }
                     }
                   : null,

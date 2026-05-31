@@ -8,6 +8,8 @@ class HistoryEntry {
   final DateTime date;
   final double? amount;
   final String description;
+  final bool isSynced;
+  final List<String> tags;
 
   const HistoryEntry({
     required this.id,
@@ -16,5 +18,7 @@ class HistoryEntry {
     required this.date,
     this.amount,
     required this.description,
+    this.isSynced = true,
+    this.tags = const [],
   });
 }

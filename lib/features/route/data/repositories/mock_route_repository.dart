@@ -26,6 +26,7 @@ class MockRouteRepository implements RouteRepository {
     final idx = _stops.indexWhere((s) => s.id == id);
     if (idx >= 0) {
       _stops[idx] = _stops[idx].copyWith(status: status);
+      _sortStops(_stops);
       _controller.add(List.of(_stops));
     }
   }
@@ -37,7 +38,8 @@ class MockRouteRepository implements RouteRepository {
       CustomerAddress(id: 'addr-1', street: 'Av. San Martín 1234', isPrimary: true),
     ],
     preferences: const [],
-    productLabels: const ['2 Bidones', '9 Sifones'],
+    debtAmount: 1200,
+    productLabels: const ['3 Bidones', '2 Sifones'],
   );
 
   static final _customer2 = Customer(
@@ -68,12 +70,16 @@ class MockRouteRepository implements RouteRepository {
       CustomerAddress(id: 'addr-4', street: 'Zuviría 101', isPrimary: true),
     ],
     preferences: const [],
+    debtAmount: 0.0,
     productLabels: const ['5 Bidones'],
   );
 
   static List<RouteStop> _buildInitialStops() {
     final now = DateTime.now();
-    return [
+    final List<RouteStop> stops = [];
+
+    // Add initial static stops
+    stops.addAll([
       RouteStop(
         id: 'stop-1',
         customer: _customer1,
@@ -102,6 +108,53 @@ class MockRouteRepository implements RouteRepository {
         status: StopStatus.done,
         scheduledAt: DateTime(now.year, now.month, now.day, 14, 0),
       ),
-    ];
+    ]);
+
+    // Programmatically generate 46 more stops to reach exactly 50
+    for (int i = 5; i <= 50; i++) {
+      final hour = 8 + (i ~/ 3);
+      final minute = (i % 3) * 20;
+      final isDone = i % 7 == 0;
+      final isAbsent = i % 13 == 0;
+
+      final customer = Customer(
+        id: 'mock-$i',
+        name: 'Cliente N° $i',
+        addresses: [
+          CustomerAddress(id: 'addr-$i', street: 'Calle Falsa ${100 + i}', isPrimary: true),
+        ],
+        preferences: const [],
+        debtAmount: i % 5 == 0 ? (i * 150).toDouble() : 0.0,
+        productLabels: ['${1 + (i % 3)} Bidones'],
+      );
+
+      stops.add(
+        RouteStop(
+          id: 'stop-$i',
+          customer: customer,
+          visitType: i % 2 == 0 ? VisitType.sale : VisitType.visit,
+          status: isDone
+              ? StopStatus.done
+              : isAbsent
+                  ? StopStatus.absent
+                  : StopStatus.pending,
+          scheduledAt: DateTime(now.year, now.month, now.day, hour, minute),
+        ),
+      );
+    }
+
+    _sortStops(stops);
+    return stops;
+  }
+
+  static void _sortStops(List<RouteStop> list) {
+    list.sort((a, b) {
+      final aPending = a.status == StopStatus.pending;
+      final bPending = b.status == StopStatus.pending;
+      if (aPending != bPending) {
+        return aPending ? -1 : 1;
+      }
+      return a.scheduledAt.compareTo(b.scheduledAt);
+    });
   }
 }

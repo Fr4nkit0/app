@@ -673,6 +673,37 @@ Future<UserProfile> userProfile(Ref ref) async {
 }
 ```
 
+## Riverpod 3.x Deprecations & Removals (CRITICAL 2026)
+
+### Complete Removal of StateProvider & StateNotifierProvider
+In Riverpod 3.x, `StateProvider` and `StateNotifierProvider` have been completely removed from the framework. Any legacy usage will trigger a compiler snapshot failure: `Error: Method not found: 'StateProvider'`.
+
+#### ❌ BAD (Legacy Pattern):
+```dart
+final counterProvider = StateProvider<int>((ref) => 0);
+
+// UI Usage:
+ref.read(counterProvider.notifier).state++;
+```
+
+#### ✅ GOOD (Modern Notifier Pattern):
+Always extend the pure `Notifier<T>` class and expose explicit modifier actions to mutate encapsulate state securely:
+```dart
+class Counter extends Notifier<int> {
+  @override
+  int build() => 0;
+
+  void increment() {
+    state++;
+  }
+}
+
+final counterProvider = NotifierProvider<Counter, int>(Counter.new);
+
+// UI Usage:
+ref.read(counterProvider.notifier).increment();
+```
+
 ## Instructions for Use
 
 When the user is working with Riverpod:

@@ -1,1 +1,1 @@
-enum HistoryEntryType { sale, visit }
+enum HistoryEntryType { sale, visit, payment, delivery }
