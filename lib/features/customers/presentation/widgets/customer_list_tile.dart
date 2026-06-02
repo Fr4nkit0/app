@@ -1,6 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:app/core/widgets/debt_chip.dart';
 import 'package:app/core/widgets/product_chip.dart';
+import 'package:app/core/utils/avatar_utils.dart';
+import 'package:app/core/widgets/circular_action_button.dart';
 import 'package:app/features/customers/domain/models/customer.dart';
 
 class CustomerListTile extends StatelessWidget {
@@ -17,41 +19,6 @@ class CustomerListTile extends StatelessWidget {
   final bool selectable;
   final bool selected;
 
-  Color _getPastelColor(String name) {
-    final hash = name.hashCode;
-    final colors = [
-      const Color(0xFFE0F2FE), // Blue
-      const Color(0xFFFCE7F3), // Pink
-      const Color(0xFFFEF3C7), // Amber
-      const Color(0xFFE8F5E9), // Green
-      const Color(0xFFF3E8FF), // Purple
-      const Color(0xFFFFEDD5), // Orange
-    ];
-    return colors[hash.abs() % colors.length];
-  }
-
-  Color _getTextColor(String name) {
-    final hash = name.hashCode;
-    final colors = [
-      const Color(0xFF0369A1),
-      const Color(0xFFBE185D),
-      const Color(0xFFB45309),
-      const Color(0xFF2E7D32),
-      const Color(0xFF6B21A8),
-      const Color(0xFFC2410C),
-    ];
-    return colors[hash.abs() % colors.length];
-  }
-
-  String _getInitials(String name) {
-    final cleanName = name.replaceAll(RegExp(r"[^\w\s]"), '').trim();
-    final parts = cleanName.split(' ');
-    if (parts.length >= 2) {
-      return '${parts[0][0]}${parts[1][0]}'.toUpperCase();
-    }
-    return parts[0].isNotEmpty ? parts[0][0].toUpperCase() : '?';
-  }
-
   String get _address {
     final addr = customer.addresses.where((a) => a.isPrimary).firstOrNull ??
         customer.addresses.firstOrNull;
@@ -61,9 +28,12 @@ class CustomerListTile extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     const blue = Color(0xFF1565C0);
-    final initials = _getInitials(customer.name);
-    final avatarBg = _getPastelColor(customer.name);
-    final avatarText = _getTextColor(customer.name);
+    final initials = AvatarUtils.getInitials(customer.name);
+    final avatarColors = AvatarUtils.getColors(
+      customer.name,
+      selected: selected,
+      baseColor: AvatarUtils.getPastelColor(customer.name),
+    );
 
     return AnimatedContainer(
       duration: const Duration(milliseconds: 200),
@@ -105,14 +75,14 @@ class CustomerListTile extends StatelessWidget {
                         width: 38,
                         height: 38,
                         decoration: BoxDecoration(
-                          color: selected ? blue : avatarBg,
+                          color: avatarColors.background,
                           shape: BoxShape.circle,
                         ),
                         alignment: Alignment.center,
                         child: Text(
                           initials,
                           style: TextStyle(
-                            color: selected ? Colors.white : avatarText,
+                            color: avatarColors.foreground,
                             fontWeight: FontWeight.bold,
                             fontSize: 14,
                           ),
@@ -138,7 +108,7 @@ class CustomerListTile extends StatelessWidget {
                                 fontSize: 13,
                                 color: Colors.grey.shade500,
                               ),
-                              maxLines: 1,
+                               maxLines: 1,
                               overflow: TextOverflow.ellipsis,
                             ),
                           ],
@@ -199,9 +169,10 @@ class CustomerListTile extends StatelessWidget {
                         Row(
                           children: [
                             if (customer.phone != null && customer.phone!.isNotEmpty) ...[
-                              _buildQuickActionButton(
+                              CircularActionButton(
                                 icon: Icons.phone_in_talk_outlined,
-                                onTap: () {
+                                color: const Color(0xFF4B5563),
+                                onPressed: () {
                                   ScaffoldMessenger.of(context).showSnackBar(
                                     SnackBar(
                                       content: Text('Llamando a ${customer.name}...'),
@@ -213,9 +184,10 @@ class CustomerListTile extends StatelessWidget {
                               const SizedBox(width: 8),
                             ],
                             if (_address.isNotEmpty)
-                              _buildQuickActionButton(
+                              CircularActionButton(
                                 icon: Icons.map_outlined,
-                                onTap: () {
+                                color: const Color(0xFF4B5563),
+                                onPressed: () {
                                   ScaffoldMessenger.of(context).showSnackBar(
                                     SnackBar(
                                       content: Text('Abriendo mapa para $_address...'),
@@ -232,32 +204,6 @@ class CustomerListTile extends StatelessWidget {
                 ],
               ),
             ),
-          ),
-        ),
-      ),
-    );
-  }
-
-  Widget _buildQuickActionButton({
-    required IconData icon,
-    required VoidCallback onTap,
-  }) {
-    return Container(
-      width: 32,
-      height: 32,
-      decoration: const BoxDecoration(
-        color: Color(0xFFF3F4F6),
-        shape: BoxShape.circle,
-      ),
-      child: Material(
-        color: Colors.transparent,
-        child: InkWell(
-          onTap: onTap,
-          customBorder: const CircleBorder(),
-          child: Icon(
-            icon,
-            size: 16,
-            color: const Color(0xFF4B5563),
           ),
         ),
       ),

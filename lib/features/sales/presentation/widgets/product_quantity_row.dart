@@ -1,23 +1,27 @@
 import 'package:flutter/material.dart';
-import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:app/core/theme/sales_tokens.dart';
 import 'package:app/features/sales/domain/models/product.dart';
-import 'package:app/features/sales/domain/models/sale_item.dart';
-import 'package:app/features/sales/presentation/providers/sale_draft_provider.dart';
 
-class ProductQuantityRow extends ConsumerWidget {
-  const ProductQuantityRow({super.key, required this.product});
+/// Pure presentational widget for a product row with quantity stepper.
+/// Has zero Riverpod dependency — all state and actions come from the parent.
+class ProductQuantityRow extends StatelessWidget {
+  const ProductQuantityRow({
+    super.key,
+    required this.product,
+    required this.quantity,
+    required this.onIncrement,
+    required this.onDecrement,
+  });
 
   final Product product;
+  final int quantity;
+  final VoidCallback onIncrement;
+  final VoidCallback onDecrement;
 
   @override
-  Widget build(BuildContext context, WidgetRef ref) {
+  Widget build(BuildContext context) {
     final tokens = Theme.of(context).extension<SalesTokens>()!;
     final cs = Theme.of(context).colorScheme;
-    final items = ref.watch(saleDraftProvider.select((s) => s.items));
-    final existing =
-        items.where((i) => i.product.id == product.id).firstOrNull;
-    final quantity = existing?.quantity ?? 0;
     final hasQuantity = quantity > 0;
     final primary = tokens.primary;
 
@@ -111,14 +115,8 @@ class ProductQuantityRow extends ConsumerWidget {
                 quantity: quantity,
                 primary: primary,
                 cs: cs,
-                onDecrement: () => ref.read(saleDraftProvider.notifier).setQuantity(
-                      SaleItem(product: product, quantity: 0),
-                      (quantity - 1).clamp(0, 99),
-                    ),
-                onIncrement: () => ref.read(saleDraftProvider.notifier).setQuantity(
-                      SaleItem(product: product, quantity: 0),
-                      quantity + 1,
-                    ),
+                onDecrement: quantity > 0 ? onDecrement : null,
+                onIncrement: onIncrement,
               ),
             ],
           ),
@@ -140,7 +138,7 @@ class _QuantityStepper extends StatelessWidget {
   final int quantity;
   final Color primary;
   final ColorScheme cs;
-  final VoidCallback onDecrement;
+  final VoidCallback? onDecrement;
   final VoidCallback onIncrement;
 
   @override
@@ -150,7 +148,7 @@ class _QuantityStepper extends StatelessWidget {
       children: [
         _Btn(
           icon: Icons.remove_rounded,
-          onTap: quantity > 0 ? onDecrement : null,
+          onTap: onDecrement,
           active: quantity > 0,
           primary: primary,
           cs: cs,

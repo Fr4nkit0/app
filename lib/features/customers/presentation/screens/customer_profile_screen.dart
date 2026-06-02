@@ -1,10 +1,12 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:app/core/utils/avatar_utils.dart';
 import 'package:app/features/customers/domain/models/customer.dart';
 import 'package:app/features/customers/domain/models/customer.preference.dart';
 import 'package:app/features/history/domain/models/history_entry.dart';
 import 'package:app/features/history/domain/models/history_entry_type.dart';
 import 'package:app/features/history/presentation/providers/history_list_provider.dart';
+import 'package:app/features/history/presentation/widgets/history_entry_tile.dart';
 import 'package:app/features/sales/presentation/providers/sale_draft_provider.dart';
 import 'package:app/features/sales/presentation/screens/sale_step1_screen.dart';
 
@@ -25,30 +27,6 @@ class _CustomerProfileScreenState extends ConsumerState<CustomerProfileScreen> {
 
   String _dayName(int day) =>
       day >= 1 && day <= 7 ? _days[day] : 'Día $day';
-
-  String get _initials {
-    final parts = widget.customer.name.trim().split(' ');
-    if (parts.length >= 2) return '${parts[0][0]}${parts[1][0]}'.toUpperCase();
-    return parts[0].isNotEmpty ? parts[0][0].toUpperCase() : '?';
-  }
-
-  String _formatDate(DateTime d) {
-    final now = DateTime.now();
-    final diff = now.difference(d);
-    if (diff.inMinutes < 60) return 'Hace ${diff.inMinutes} min';
-    if (diff.inHours < 24) return 'Hace ${diff.inHours} hs';
-    if (diff.inDays == 1) return 'Ayer';
-    
-    final months = [
-      '', 'Ene', 'Feb', 'Mar', 'Abr', 'May', 'Jun',
-      'Jul', 'Ago', 'Sep', 'Oct', 'Nov', 'Dic'
-    ];
-    final dayStr = d.day.toString();
-    final monthStr = d.month >= 1 && d.month <= 12 ? months[d.month] : '';
-    final hour = d.hour.toString().padLeft(2, '0');
-    final minute = d.minute.toString().padLeft(2, '0');
-    return '$dayStr $monthStr • $hour:$minute hs';
-  }
 
   @override
   Widget build(BuildContext context) {
@@ -130,7 +108,7 @@ class _CustomerProfileScreenState extends ConsumerState<CustomerProfileScreen> {
                     ),
                     alignment: Alignment.center,
                     child: Text(
-                      _initials,
+                      AvatarUtils.getInitials(customer.name),
                       style: const TextStyle(
                         color: Colors.white,
                         fontWeight: FontWeight.bold,
@@ -459,140 +437,9 @@ class _CustomerProfileScreenState extends ConsumerState<CustomerProfileScreen> {
         shrinkWrap: true,
         physics: const NeverScrollableScrollPhysics(),
         itemCount: history.length,
-        itemBuilder: (context, index) => _buildHistoryItem(history[index]),
-      ),
-    );
-  }
-
-  Widget _buildHistoryItem(HistoryEntry entry) {
-    final isPayment = entry.type == HistoryEntryType.payment;
-    final dateText = _formatDate(entry.date);
-    
-    return Container(
-      margin: const EdgeInsets.only(bottom: 12),
-      decoration: BoxDecoration(
-        color: Colors.white,
-        borderRadius: BorderRadius.circular(16),
-        border: Border.all(color: const Color(0xFFE2E8F0)),
-        boxShadow: [
-          BoxShadow(
-            color: Colors.black.withValues(alpha: 0.015),
-            blurRadius: 8,
-            offset: const Offset(0, 4),
-          ),
-        ],
-      ),
-      child: Padding(
-        padding: const EdgeInsets.all(14),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Row(
-              children: [
-                // 1. Circle Icon
-                Container(
-                  width: 38,
-                  height: 38,
-                  decoration: BoxDecoration(
-                    color: isPayment ? const Color(0xFFE8F5E9) : const Color(0xFFE0F2FE),
-                    shape: BoxShape.circle,
-                  ),
-                  alignment: Alignment.center,
-                  child: Icon(
-                    isPayment ? Icons.payments_outlined : Icons.water_drop_outlined,
-                    size: 18,
-                    color: isPayment ? const Color(0xFF2E7D32) : const Color(0xFF0369A1),
-                  ),
-                ),
-                const SizedBox(width: 12),
-                
-                // 2. Title & Date
-                Expanded(
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Text(
-                        entry.description,
-                        style: const TextStyle(
-                          fontSize: 14,
-                          fontWeight: FontWeight.w700,
-                          color: Color(0xFF0D1B3E),
-                        ),
-                      ),
-                      const SizedBox(height: 2),
-                      Text(
-                        dateText,
-                        style: TextStyle(
-                          fontSize: 12,
-                          color: Colors.grey.shade500,
-                          fontWeight: FontWeight.w500,
-                        ),
-                      ),
-                    ],
-                  ),
-                ),
-                
-                // 3. Amount & Chevron
-                Row(
-                  children: [
-                    if (entry.amount != null)
-                      Text(
-                        isPayment 
-                            ? '+\$${entry.amount!.toStringAsFixed(0)}'
-                            : '\$${entry.amount!.toStringAsFixed(0)}',
-                        style: TextStyle(
-                          fontSize: 15,
-                          fontWeight: FontWeight.w800,
-                          color: isPayment ? const Color(0xFF2E7D32) : const Color(0xFF0D1B3E),
-                        ),
-                      ),
-                    const SizedBox(width: 8),
-                    Icon(
-                      Icons.chevron_right_rounded,
-                      size: 16,
-                      color: Colors.grey.shade400,
-                    ),
-                  ],
-                ),
-              ],
-            ),
-            
-            // 4. Tags
-            if (entry.tags.isNotEmpty) ...[
-              const SizedBox(height: 10),
-              Wrap(
-                spacing: 6,
-                runSpacing: 4,
-                children: entry.tags.map((tag) {
-                  final isProductTag = tag.contains('x') || tag.contains('L');
-                  return Container(
-                    padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
-                    decoration: BoxDecoration(
-                      color: isProductTag 
-                          ? const Color(0xFFF0F9FF) 
-                          : const Color(0xFFF1F5F9),
-                      borderRadius: BorderRadius.circular(6),
-                      border: Border.all(
-                        color: isProductTag 
-                            ? const Color(0xFFBAE6FD) 
-                            : const Color(0xFFE2E8F0),
-                      ),
-                    ),
-                    child: Text(
-                      tag,
-                      style: TextStyle(
-                        fontSize: 11,
-                        fontWeight: FontWeight.w700,
-                        color: isProductTag 
-                            ? const Color(0xFF0369A1) 
-                            : const Color(0xFF475569),
-                      ),
-                    ),
-                  );
-                }).toList(),
-              ),
-            ],
-          ],
+        itemBuilder: (context, index) => Padding(
+          padding: const EdgeInsets.only(bottom: 12),
+          child: HistoryEntryTile(entry: history[index]),
         ),
       ),
     );

@@ -4,10 +4,11 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:app/core/theme/sales_tokens.dart';
 import 'package:app/core/widgets/top_toast.dart';
 import 'package:app/core/widgets/screen_header.dart';
+import 'package:app/core/widgets/debt_chip.dart';
 import 'package:app/features/sales/domain/models/payment_method.dart';
 import 'package:app/features/sales/domain/models/sale_draft_state.dart';
 import 'package:app/features/sales/presentation/providers/sale_draft_provider.dart';
-import 'package:app/features/sales/presentation/widgets/sale_stepper_header.dart';
+import 'package:app/core/widgets/core_horizontal_stepper.dart';
 
 class SaleStep3Screen extends ConsumerWidget {
   const SaleStep3Screen({super.key});
@@ -30,11 +31,32 @@ class SaleStep3Screen extends ConsumerWidget {
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    const SaleStepperHeader(currentStep: 1),
+                    const Padding(
+                      padding: EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+                      child: CoreHorizontalStepper(
+                        steps: ['Pedido', 'Cobro'],
+                        stepDescriptions: ['Elegir productos', 'Registrar pago'],
+                        layoutRow: true,
+                        currentStep: 1,
+                      ),
+                    ),
                     // Previous debt chip (display-only, never mutates debtAmount)
                     if ((draft.customer?.debtAmount ?? 0) > 0)
-                      _DebtChip(
-                        debtAmount: draft.customer!.debtAmount,
+                      DebtChip(
+                        amount: draft.customer!.debtAmount,
+                        margin: const EdgeInsets.fromLTRB(16, 8, 16, 0),
+                        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+                        borderRadius: BorderRadius.circular(10),
+                        backgroundColor: Theme.of(context).extension<SalesTokens>()!.destructive.withValues(alpha: 0.08),
+                        borderColor: Theme.of(context).extension<SalesTokens>()!.destructive.withValues(alpha: 0.3),
+                        borderWidth: 1.0,
+                        textColor: Theme.of(context).extension<SalesTokens>()!.destructive,
+                        fontSize: 13,
+                        fontWeight: FontWeight.w700,
+                        icon: Icons.warning_amber_rounded,
+                        iconSize: 16,
+                        iconColor: Theme.of(context).extension<SalesTokens>()!.destructive,
+                        prefixText: 'Deuda previa: \$',
                       ),
                     // Client + order summary card
                     _ClientCard(draft: draft),
@@ -65,48 +87,6 @@ class SaleStep3Screen extends ConsumerWidget {
         ),
       ),
       bottomNavigationBar: _Footer(draft: draft),
-    );
-  }
-}
-
-// ─── Previous-debt chip ───────────────────────────────────────────────────────
-
-class _DebtChip extends StatelessWidget {
-  const _DebtChip({required this.debtAmount});
-
-  final double debtAmount;
-
-  @override
-  Widget build(BuildContext context) {
-    final destructive =
-        Theme.of(context).extension<SalesTokens>()!.destructive;
-    return Container(
-      margin: const EdgeInsets.fromLTRB(16, 8, 16, 0),
-      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
-      decoration: BoxDecoration(
-        color: destructive.withValues(alpha: 0.08),
-        borderRadius: BorderRadius.circular(10),
-        border: Border.all(color: destructive.withValues(alpha: 0.3)),
-      ),
-      child: Row(
-        mainAxisSize: MainAxisSize.min,
-        children: [
-          Icon(
-            Icons.warning_amber_rounded,
-            size: 16,
-            color: destructive,
-          ),
-          const SizedBox(width: 6),
-          Text(
-            'Deuda previa: \$${debtAmount.toStringAsFixed(2)}',
-            style: TextStyle(
-              color: destructive,
-              fontWeight: FontWeight.w700,
-              fontSize: 13,
-            ),
-          ),
-        ],
-      ),
     );
   }
 }

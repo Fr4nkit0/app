@@ -6,7 +6,7 @@ import '../providers/customer_form_provider.dart';
 import '../widgets/step_identity_view.dart';
 import '../widgets/step_address_view.dart';
 import '../widgets/step_preference_view.dart';
-import '../widgets/step_progress_indicator.dart';
+import 'package:app/core/widgets/core_horizontal_stepper.dart';
 
 class CreateCustomerScreen extends ConsumerStatefulWidget {
   const CreateCustomerScreen({super.key});
@@ -81,9 +81,13 @@ class _CreateCustomerScreenState extends ConsumerState<CreateCustomerScreen> {
       body: SafeArea(
         child: Column(
           children: [
-            CustomerStepIndicator(
-              currentStep: formState.currentStep,
-              isSubmitting: formState.isSubmitting,
+            Padding(
+              padding: const EdgeInsets.fromLTRB(20, 16, 20, 8),
+              child: CoreHorizontalStepper(
+                steps: const ['Datos', 'Dirección', 'Preferencias'],
+                currentStep: formState.currentStep,
+                isSubmitting: formState.isSubmitting,
+              ),
             ),
             Expanded(
               child: PageView(

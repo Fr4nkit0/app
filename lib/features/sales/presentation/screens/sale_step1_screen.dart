@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:app/core/theme/sales_tokens.dart';
 import 'package:app/core/widgets/screen_header.dart';
+import 'package:app/core/widgets/core_search_bar.dart';
 import 'package:app/features/customers/domain/models/customer.dart';
 import 'package:app/features/customers/presentation/providers/customer_count_provider.dart';
 import 'package:app/features/customers/presentation/screens/create_customer_screens.dart';
@@ -13,7 +14,7 @@ import 'package:app/features/sales/presentation/providers/product_repository_pro
 import 'package:app/features/sales/presentation/providers/sale_draft_provider.dart';
 import 'package:app/features/sales/presentation/screens/sale_step3_screen.dart';
 import 'package:app/features/sales/presentation/widgets/product_quantity_row.dart';
-import 'package:app/features/sales/presentation/widgets/sale_stepper_header.dart';
+import 'package:app/core/widgets/core_horizontal_stepper.dart';
 
 class SaleStep1Screen extends ConsumerStatefulWidget {
   const SaleStep1Screen({super.key});
@@ -111,8 +112,13 @@ class _SaleStep1ScreenState extends ConsumerState<SaleStep1Screen> {
                   : null,
             ),
             const Padding(
-              padding: EdgeInsets.symmetric(horizontal: 16),
-              child: SaleStepperHeader(currentStep: 0),
+              padding: EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+              child: CoreHorizontalStepper(
+                steps: ['Pedido', 'Cobro'],
+                stepDescriptions: ['Elegir productos', 'Registrar pago'],
+                layoutRow: true,
+                currentStep: 0,
+              ),
             ),
             const SizedBox(height: 12),
             // ── Mode-based content ─────────────────────────────────────
@@ -188,9 +194,17 @@ class _SearchMode extends ConsumerWidget {
           child: Row(
             children: [
               Expanded(
-                child: _SearchBar(
+                child: CoreSearchBar(
                   controller: controller,
                   onChanged: onQueryChanged,
+                  hintText: 'Buscar por nombre, dirección...',
+                  focusedBorderColor: Theme.of(context).extension<SalesTokens>()!.primary,
+                  onClear: query.isNotEmpty
+                      ? () {
+                          controller.clear();
+                          onQueryChanged('');
+                        }
+                      : null,
                 ),
               ),
               const SizedBox(width: 10),
@@ -332,7 +346,23 @@ class _SelectedMode extends ConsumerWidget {
                     ),
                   ),
                 ),
-                ...products.map((p) => ProductQuantityRow(product: p)),
+                ...products.map((p) {
+                  final qty = draft.items
+                      .where((i) => i.product.id == p.id)
+                      .map((i) => i.quantity)
+                      .firstOrNull ??
+                      0;
+                  return ProductQuantityRow(
+                    product: p,
+                    quantity: qty,
+                    onIncrement: () => ref
+                        .read(saleDraftProvider.notifier)
+                        .setQuantity(SaleItem(product: p, quantity: 0), qty + 1),
+                    onDecrement: () => ref
+                        .read(saleDraftProvider.notifier)
+                        .setQuantity(SaleItem(product: p, quantity: 0), qty - 1),
+                  );
+                }),
               ],
             ),
             loading: () =>
@@ -451,78 +481,6 @@ class _EmptyState extends StatelessWidget {
             textAlign: TextAlign.center,
           ),
         ],
-      ),
-    );
-  }
-}
-
-// ─── Search bar ───────────────────────────────────────────────────────────────
-
-class _SearchBar extends StatefulWidget {
-  const _SearchBar({required this.controller, required this.onChanged});
-
-  final TextEditingController controller;
-  final ValueChanged<String> onChanged;
-
-  @override
-  State<_SearchBar> createState() => _SearchBarState();
-}
-
-class _SearchBarState extends State<_SearchBar> {
-  @override
-  void initState() {
-    super.initState();
-    widget.controller.addListener(_onTextChanged);
-  }
-
-  @override
-  void dispose() {
-    widget.controller.removeListener(_onTextChanged);
-    super.dispose();
-  }
-
-  void _onTextChanged() {
-    if (mounted) setState(() {});
-  }
-
-  @override
-  Widget build(BuildContext context) {
-    final primary = Theme.of(context).extension<SalesTokens>()!.primary;
-    final hasText = widget.controller.text.isNotEmpty;
-
-    return TextField(
-      controller: widget.controller,
-      onChanged: widget.onChanged,
-      decoration: InputDecoration(
-        hintText: 'Buscar por nombre, dirección...',
-        hintStyle: TextStyle(color: Colors.grey.shade400, fontSize: 14, fontWeight: FontWeight.w500),
-        prefixIcon:
-            Icon(Icons.search_rounded, color: Colors.grey.shade400, size: 22),
-        suffixIcon: hasText
-            ? IconButton(
-                icon: Icon(Icons.cancel_rounded, color: Colors.grey.shade400, size: 20),
-                onPressed: () {
-                  widget.controller.clear();
-                  widget.onChanged('');
-                },
-              )
-            : null,
-        filled: true,
-        fillColor: Colors.grey.shade50,
-        contentPadding:
-            const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
-        border: OutlineInputBorder(
-          borderRadius: BorderRadius.circular(14),
-          borderSide: BorderSide(color: Colors.grey.shade200),
-        ),
-        enabledBorder: OutlineInputBorder(
-          borderRadius: BorderRadius.circular(14),
-          borderSide: BorderSide(color: Colors.grey.shade200),
-        ),
-        focusedBorder: OutlineInputBorder(
-          borderRadius: BorderRadius.circular(14),
-          borderSide: BorderSide(color: primary, width: 1.8),
-        ),
       ),
     );
   }
