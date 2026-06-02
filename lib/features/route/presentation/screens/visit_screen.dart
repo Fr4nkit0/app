@@ -10,7 +10,10 @@ import 'package:app/features/sales/domain/models/sale.dart';
 import 'package:app/features/sales/domain/models/payment_method.dart';
 import 'package:app/features/sales/presentation/providers/sale_repository_provider.dart';
 
-final stopSalesProvider = StreamProvider.family<List<Sale>, String>((ref, stopId) {
+final stopSalesProvider = StreamProvider.family<List<Sale>, String>((
+  ref,
+  stopId,
+) {
   final repo = ref.watch(saleRepositoryProvider);
   return repo.watchAllSales().map(
     (sales) => sales.where((s) => s.routeStopId == stopId).toList(),
@@ -111,7 +114,10 @@ class _VisitScreenState extends ConsumerState<VisitScreen> {
               children: [
                 Expanded(
                   child: SingleChildScrollView(
-                    padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 12),
+                    padding: const EdgeInsets.symmetric(
+                      horizontal: 20,
+                      vertical: 12,
+                    ),
                     child: Column(
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
@@ -138,7 +144,9 @@ class _VisitScreenState extends ConsumerState<VisitScreen> {
                               ),
                             ),
                             const SizedBox(height: 12),
-                            ...sales.map((sale) => _buildRegisteredSaleCard(sale)),
+                            ...sales.map(
+                              (sale) => _buildRegisteredSaleCard(sale),
+                            ),
                             const SizedBox(height: 16),
                             _buildAddAnotherSaleButton(stop),
                             const SizedBox(height: 20),
@@ -187,7 +195,9 @@ class _VisitScreenState extends ConsumerState<VisitScreen> {
       ),
       error: (e, _) => const Scaffold(
         backgroundColor: Colors.white,
-        body: Center(child: Text('Error al cargar la información de la visita')),
+        body: Center(
+          child: Text('Error al cargar la información de la visita'),
+        ),
       ),
     );
   }
@@ -251,7 +261,9 @@ class _VisitScreenState extends ConsumerState<VisitScreen> {
                 child: InkWell(
                   onTap: () {
                     ScaffoldMessenger.of(context).showSnackBar(
-                      SnackBar(content: Text('Abriendo mapa para: $address...')),
+                      SnackBar(
+                        content: Text('Abriendo mapa para: $address...'),
+                      ),
                     );
                   },
                   borderRadius: BorderRadius.circular(16),
@@ -340,11 +352,18 @@ class _VisitScreenState extends ConsumerState<VisitScreen> {
       decoration: BoxDecoration(
         color: const Color(0xFFFEF2F2),
         borderRadius: BorderRadius.circular(16),
-        border: Border.all(color: const Color(0xFFFCA5A5).withValues(alpha: 0.5), width: 1),
+        border: Border.all(
+          color: const Color(0xFFFCA5A5).withValues(alpha: 0.5),
+          width: 1,
+        ),
       ),
       child: Row(
         children: [
-          const Icon(Icons.warning_amber_rounded, color: Color(0xFFDC2626), size: 20),
+          const Icon(
+            Icons.warning_amber_rounded,
+            color: Color(0xFFDC2626),
+            size: 20,
+          ),
           const SizedBox(width: 10),
           const Expanded(
             child: Text(
@@ -375,11 +394,18 @@ class _VisitScreenState extends ConsumerState<VisitScreen> {
       decoration: BoxDecoration(
         color: const Color(0xFFEFF6FF),
         borderRadius: BorderRadius.circular(16),
-        border: Border.all(color: const Color(0xFF93C5FD).withValues(alpha: 0.5), width: 1),
+        border: Border.all(
+          color: const Color(0xFF93C5FD).withValues(alpha: 0.5),
+          width: 1,
+        ),
       ),
       child: Row(
         children: [
-          const Icon(Icons.inventory_2_outlined, color: Color(0xFF1D4ED8), size: 20),
+          const Icon(
+            Icons.inventory_2_outlined,
+            color: Color(0xFF1D4ED8),
+            size: 20,
+          ),
           const SizedBox(width: 10),
           const Expanded(
             child: Text(
@@ -487,10 +513,7 @@ class _VisitScreenState extends ConsumerState<VisitScreen> {
               const SizedBox(height: 2),
               Text(
                 subtitle,
-                style: TextStyle(
-                  fontSize: 11,
-                  color: Colors.grey.shade500,
-                ),
+                style: TextStyle(fontSize: 11, color: Colors.grey.shade500),
               ),
             ],
           ),
@@ -520,7 +543,11 @@ class _VisitScreenState extends ConsumerState<VisitScreen> {
             const SizedBox(width: 8),
             _buildResultButton('No quiso', 'refused', Icons.block_flipped),
             const SizedBox(width: 8),
-            _buildResultButton('Reprogramar', 'reschedule', Icons.calendar_today_outlined),
+            _buildResultButton(
+              'Reprogramar',
+              'reschedule',
+              Icons.calendar_today_outlined,
+            ),
           ],
         ),
         const SizedBox(height: 20),
@@ -565,7 +592,11 @@ class _VisitScreenState extends ConsumerState<VisitScreen> {
             ),
             child: Row(
               children: [
-                const Icon(Icons.info_outline, color: Color(0xFF1565C0), size: 16),
+                const Icon(
+                  Icons.info_outline,
+                  color: Color(0xFF1565C0),
+                  size: 16,
+                ),
                 const SizedBox(width: 8),
                 Expanded(
                   child: Text(
@@ -592,14 +623,18 @@ class _VisitScreenState extends ConsumerState<VisitScreen> {
     return Expanded(
       child: OutlinedButton(
         style: OutlinedButton.styleFrom(
-          backgroundColor: isSelected ? activeColor.withValues(alpha: 0.06) : Colors.white,
+          backgroundColor: isSelected
+              ? activeColor.withValues(alpha: 0.06)
+              : Colors.white,
           foregroundColor: isSelected ? activeColor : const Color(0xFF4B5563),
           side: BorderSide(
             color: isSelected ? activeColor : const Color(0xFFD1D5DB),
             width: isSelected ? 1.5 : 1,
           ),
           padding: const EdgeInsets.symmetric(vertical: 12),
-          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(12),
+          ),
         ),
         onPressed: () => setState(() => _soloVisitResult = value),
         child: Column(
@@ -622,7 +657,16 @@ class _VisitScreenState extends ConsumerState<VisitScreen> {
     final inTwoDays = today.add(const Duration(days: 2));
 
     String formatDayName(DateTime date) {
-      const days = ['', 'Lunes', 'Martes', 'Miércoles', 'Jueves', 'Viernes', 'Sábado', 'Domingo'];
+      const days = [
+        '',
+        'Lunes',
+        'Martes',
+        'Miércoles',
+        'Jueves',
+        'Viernes',
+        'Sábado',
+        'Domingo',
+      ];
       return days[date.weekday];
     }
 
@@ -710,7 +754,9 @@ class _VisitScreenState extends ConsumerState<VisitScreen> {
           ),
           const SizedBox(width: 10),
           Text(
-            isDone ? 'Parada completada con éxito' : 'Cliente ausente en esta visita',
+            isDone
+                ? 'Parada completada con éxito'
+                : 'Cliente ausente en esta visita',
             style: TextStyle(
               fontWeight: FontWeight.bold,
               fontSize: 14,
@@ -746,7 +792,9 @@ class _VisitScreenState extends ConsumerState<VisitScreen> {
           : Column(
               mainAxisSize: MainAxisSize.min,
               children: [
-                if (!hasSales && !_isSaleSelected && _soloVisitResult == null) ...[
+                if (!hasSales &&
+                    !_isSaleSelected &&
+                    _soloVisitResult == null) ...[
                   Container(
                     width: double.infinity,
                     padding: const EdgeInsets.symmetric(vertical: 8),
@@ -765,14 +813,23 @@ class _VisitScreenState extends ConsumerState<VisitScreen> {
                 SizedBox(
                   width: double.infinity,
                   child: FilledButton(
-                    onPressed: (!hasSales && !_isSaleSelected && _soloVisitResult == null)
+                    style: FilledButton.styleFrom(
+                      backgroundColor: const Color(0xFF1565C0),
+                    ),
+                    onPressed:
+                        (!hasSales &&
+                            !_isSaleSelected &&
+                            _soloVisitResult == null)
                         ? null
                         : () async {
                             if (!hasSales && _isSaleSelected) {
                               // Pre-fill customer AND routeStopId, then launch sales flow!
                               ref
                                   .read(saleDraftProvider.notifier)
-                                  .selectCustomer(stop.customer, routeStopId: stop.id);
+                                  .selectCustomer(
+                                    stop.customer,
+                                    routeStopId: stop.id,
+                                  );
 
                               Navigator.of(context).push(
                                 MaterialPageRoute(
@@ -795,15 +852,18 @@ class _VisitScreenState extends ConsumerState<VisitScreen> {
                               Color toastColor;
 
                               if (hasSales) {
-                                toastMessage = 'Visita finalizada - Venta registrada';
+                                toastMessage =
+                                    'Visita finalizada - Venta registrada';
                                 toastIcon = Icons.check_circle_rounded;
                                 toastColor = const Color(0xFF10B981);
                               } else if (_soloVisitResult == 'absent') {
-                                toastMessage = 'Visita finalizada - Cliente Ausente';
+                                toastMessage =
+                                    'Visita finalizada - Cliente Ausente';
                                 toastIcon = Icons.person_off_outlined;
                                 toastColor = const Color(0xFFEF4444);
                               } else if (_soloVisitResult == 'refused') {
-                                toastMessage = 'Visita finalizada - Compra rechazada';
+                                toastMessage =
+                                    'Visita finalizada - Compra rechazada';
                                 toastIcon = Icons.block_flipped;
                                 toastColor = const Color(0xFFF59E0B);
                               } else {
@@ -838,7 +898,9 @@ class _VisitScreenState extends ConsumerState<VisitScreen> {
                         Text(
                           hasSales
                               ? 'Cerrar Visita'
-                              : (_isSaleSelected ? 'Iniciar Registro de Venta' : 'Cerrar Visita'),
+                              : (_isSaleSelected
+                                    ? 'Iniciar Registro de Venta'
+                                    : 'Cerrar Visita'),
                           style: const TextStyle(fontWeight: FontWeight.w800),
                         ),
                         const SizedBox(width: 8),
@@ -862,7 +924,7 @@ class _VisitScreenState extends ConsumerState<VisitScreen> {
     String methodText = '';
     Color badgeColor = Colors.grey;
     Color badgeBg = Colors.grey.shade100;
-    
+
     switch (sale.paymentMethod) {
       case PaymentMethod.cash:
         methodText = 'EFECTIVO';
@@ -956,7 +1018,10 @@ class _VisitScreenState extends ConsumerState<VisitScreen> {
                     ),
                     const SizedBox(height: 8),
                     Container(
-                      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                      padding: const EdgeInsets.symmetric(
+                        horizontal: 8,
+                        vertical: 4,
+                      ),
                       decoration: BoxDecoration(
                         color: badgeBg,
                         borderRadius: BorderRadius.circular(6),
@@ -1003,11 +1068,9 @@ class _VisitScreenState extends ConsumerState<VisitScreen> {
               .read(saleDraftProvider.notifier)
               .selectCustomer(stop.customer, routeStopId: stop.id);
 
-          Navigator.of(context).push(
-            MaterialPageRoute(
-              builder: (_) => const SaleStep1Screen(),
-            ),
-          );
+          Navigator.of(
+            context,
+          ).push(MaterialPageRoute(builder: (_) => const SaleStep1Screen()));
         },
         style: OutlinedButton.styleFrom(
           foregroundColor: const Color(0xFF1565C0),
@@ -1048,4 +1111,3 @@ class _VisitScreenState extends ConsumerState<VisitScreen> {
     );
   }
 }
-

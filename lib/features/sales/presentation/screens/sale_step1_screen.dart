@@ -7,6 +7,7 @@ import 'package:app/features/customers/domain/models/customer.dart';
 import 'package:app/features/customers/presentation/providers/customer_count_provider.dart';
 import 'package:app/features/customers/presentation/screens/create_customer_screens.dart';
 import 'package:app/features/customers/presentation/widgets/customer_list_tile.dart';
+import 'package:app/features/customers/presentation/widgets/new_customer_button.dart';
 import 'package:app/features/sales/domain/models/product.dart';
 import 'package:app/features/sales/domain/models/sale_draft_state.dart';
 import 'package:app/features/sales/domain/models/sale_item.dart';
@@ -54,17 +55,18 @@ class _SaleStep1ScreenState extends ConsumerState<SaleStep1Screen> {
       // Exact match first, then substring fallback (bidirectional)
       final match =
           products.where((p) => norm(p.name) == norm(label)).firstOrNull ??
-              products
-                  .where((p) =>
-                      norm(p.name).contains(norm(label)) ||
-                      norm(label).contains(norm(p.name)))
-                  .firstOrNull;
+          products
+              .where(
+                (p) =>
+                    norm(p.name).contains(norm(label)) ||
+                    norm(label).contains(norm(p.name)),
+              )
+              .firstOrNull;
 
       if (match != null) {
-        ref.read(saleDraftProvider.notifier).setQuantity(
-              SaleItem(product: match, quantity: 0),
-              1,
-            );
+        ref
+            .read(saleDraftProvider.notifier)
+            .setQuantity(SaleItem(product: match, quantity: 0), 1);
       }
       // unmatched labels are silently ignored (REQ-S1-04b)
     }
@@ -73,9 +75,9 @@ class _SaleStep1ScreenState extends ConsumerState<SaleStep1Screen> {
   // ─── Navigation ───────────────────────────────────────────────────────────
 
   void _goToCobro() {
-    Navigator.of(context).push(
-      MaterialPageRoute(builder: (_) => const SaleStep3Screen()),
-    );
+    Navigator.of(
+      context,
+    ).push(MaterialPageRoute(builder: (_) => const SaleStep3Screen()));
   }
 
   @override
@@ -140,8 +142,9 @@ class _SaleStep1ScreenState extends ConsumerState<SaleStep1Screen> {
                       query: _query,
                       matchesFn: _matches,
                       onQueryChanged: (q) => setState(() => _query = q),
-                      onSelectCustomer: (c) =>
-                          ref.read(saleDraftProvider.notifier).selectCustomer(c),
+                      onSelectCustomer: (c) => ref
+                          .read(saleDraftProvider.notifier)
+                          .selectCustomer(c),
                       onNewCustomer: () => Navigator.of(context).push(
                         MaterialPageRoute(
                           builder: (_) => const CreateCustomerScreen(),
@@ -198,7 +201,9 @@ class _SearchMode extends ConsumerWidget {
                   controller: controller,
                   onChanged: onQueryChanged,
                   hintText: 'Buscar por nombre, dirección...',
-                  focusedBorderColor: Theme.of(context).extension<SalesTokens>()!.primary,
+                  focusedBorderColor: Theme.of(
+                    context,
+                  ).extension<SalesTokens>()!.primary,
                   onClear: query.isNotEmpty
                       ? () {
                           controller.clear();
@@ -208,15 +213,16 @@ class _SearchMode extends ConsumerWidget {
                 ),
               ),
               const SizedBox(width: 10),
-              _NewCustomerButton(onTap: onNewCustomer),
+              NewCustomerButton(onTap: onNewCustomer),
             ],
           ),
         ),
         Expanded(
           child: customersAsync.when(
             data: (customers) {
-              final filtered =
-                  customers.where((c) => matchesFn(c, query)).toList();
+              final filtered = customers
+                  .where((c) => matchesFn(c, query))
+                  .toList();
               final frequent = filtered.where((c) => c.isFrequent).toList();
               final all = filtered;
 
@@ -229,21 +235,25 @@ class _SearchMode extends ConsumerWidget {
                 children: [
                   if (frequent.isNotEmpty) ...[
                     _SectionHeader('Frecuentes'),
-                    ...frequent.map((c) => CustomerListTile(
-                          customer: c,
-                          selectable: true,
-                          selected: selected?.id == c.id,
-                          onTap: () => onSelectCustomer(c),
-                        )),
-                    const SizedBox(height: 8),
-                  ],
-                  _SectionHeader('Todos los clientes'),
-                  ...all.map((c) => CustomerListTile(
+                    ...frequent.map(
+                      (c) => CustomerListTile(
                         customer: c,
                         selectable: true,
                         selected: selected?.id == c.id,
                         onTap: () => onSelectCustomer(c),
-                      )),
+                      ),
+                    ),
+                    const SizedBox(height: 8),
+                  ],
+                  _SectionHeader('Todos los clientes'),
+                  ...all.map(
+                    (c) => CustomerListTile(
+                      customer: c,
+                      selectable: true,
+                      selected: selected?.id == c.id,
+                      onTap: () => onSelectCustomer(c),
+                    ),
+                  ),
                 ],
               );
             },
@@ -288,14 +298,11 @@ class _SelectedMode extends ConsumerWidget {
           decoration: BoxDecoration(
             color: tokens.primary.withValues(alpha: 0.06),
             borderRadius: BorderRadius.circular(12),
-            border: Border.all(
-              color: tokens.primary.withValues(alpha: 0.25),
-            ),
+            border: Border.all(color: tokens.primary.withValues(alpha: 0.25)),
           ),
           child: Row(
             children: [
-              Icon(Icons.person_outline,
-                  size: 16, color: tokens.primary),
+              Icon(Icons.person_outline, size: 16, color: tokens.primary),
               const SizedBox(width: 8),
               Expanded(
                 child: Text(
@@ -315,9 +322,10 @@ class _SelectedMode extends ConsumerWidget {
                     foregroundColor: tokens.primary,
                     padding: const EdgeInsets.symmetric(horizontal: 8),
                   ),
-                  child: const Text('Cambiar',
-                      style:
-                          TextStyle(fontWeight: FontWeight.w700, fontSize: 13)),
+                  child: const Text(
+                    'Cambiar',
+                    style: TextStyle(fontWeight: FontWeight.w700, fontSize: 13),
+                  ),
                 ),
             ],
           ),
@@ -347,26 +355,32 @@ class _SelectedMode extends ConsumerWidget {
                   ),
                 ),
                 ...products.map((p) {
-                  final qty = draft.items
-                      .where((i) => i.product.id == p.id)
-                      .map((i) => i.quantity)
-                      .firstOrNull ??
+                  final qty =
+                      draft.items
+                          .where((i) => i.product.id == p.id)
+                          .map((i) => i.quantity)
+                          .firstOrNull ??
                       0;
                   return ProductQuantityRow(
                     product: p,
                     quantity: qty,
                     onIncrement: () => ref
                         .read(saleDraftProvider.notifier)
-                        .setQuantity(SaleItem(product: p, quantity: 0), qty + 1),
+                        .setQuantity(
+                          SaleItem(product: p, quantity: 0),
+                          qty + 1,
+                        ),
                     onDecrement: () => ref
                         .read(saleDraftProvider.notifier)
-                        .setQuantity(SaleItem(product: p, quantity: 0), qty - 1),
+                        .setQuantity(
+                          SaleItem(product: p, quantity: 0),
+                          qty - 1,
+                        ),
                   );
                 }),
               ],
             ),
-            loading: () =>
-                const Center(child: CircularProgressIndicator()),
+            loading: () => const Center(child: CircularProgressIndicator()),
             error: (e, _) =>
                 const Center(child: Text('Error al cargar productos')),
           ),
@@ -393,8 +407,7 @@ class _HabitualOrderCard extends StatelessWidget {
       decoration: BoxDecoration(
         color: primary.withValues(alpha: 0.05),
         borderRadius: BorderRadius.circular(12),
-        border: Border.all(
-            color: primary.withValues(alpha: 0.2)),
+        border: Border.all(color: primary.withValues(alpha: 0.2)),
       ),
       child: Row(
         children: [
@@ -405,8 +418,7 @@ class _HabitualOrderCard extends StatelessWidget {
               color: primary.withValues(alpha: 0.1),
               shape: BoxShape.circle,
             ),
-            child: Icon(Icons.history,
-                size: 18, color: primary),
+            child: Icon(Icons.history, size: 18, color: primary),
           ),
           const SizedBox(width: 12),
           Expanded(
@@ -423,10 +435,7 @@ class _HabitualOrderCard extends StatelessWidget {
                 ),
                 Text(
                   labels.join(' · '),
-                  style: TextStyle(
-                    fontSize: 12,
-                    color: Colors.grey.shade600,
-                  ),
+                  style: TextStyle(fontSize: 12, color: Colors.grey.shade600),
                 ),
               ],
             ),
@@ -437,8 +446,10 @@ class _HabitualOrderCard extends StatelessWidget {
               foregroundColor: primary,
               padding: const EdgeInsets.symmetric(horizontal: 8),
             ),
-            child: const Text('Usar',
-                style: TextStyle(fontWeight: FontWeight.w700, fontSize: 13)),
+            child: const Text(
+              'Usar',
+              style: TextStyle(fontWeight: FontWeight.w700, fontSize: 13),
+            ),
           ),
         ],
       ),
@@ -474,10 +485,7 @@ class _EmptyState extends StatelessWidget {
           const SizedBox(height: 8),
           Text(
             '¿Buscás por teléfono o dirección?',
-            style: TextStyle(
-              color: Colors.grey.shade400,
-              fontSize: 13,
-            ),
+            style: TextStyle(color: Colors.grey.shade400, fontSize: 13),
             textAlign: TextAlign.center,
           ),
         ],
@@ -485,49 +493,6 @@ class _EmptyState extends StatelessWidget {
     );
   }
 }
-
-// ─── New customer button ──────────────────────────────────────────────────────
-
-class _NewCustomerButton extends StatelessWidget {
-  const _NewCustomerButton({required this.onTap});
-
-  final VoidCallback onTap;
-
-  @override
-  Widget build(BuildContext context) {
-    final secondary = Theme.of(context).colorScheme.secondary;
-    return Material(
-      color: Colors.transparent,
-      child: InkWell(
-        onTap: onTap,
-        borderRadius: BorderRadius.circular(14),
-        child: Ink(
-          width: 52,
-          height: 52,
-          decoration: BoxDecoration(
-            color: secondary,
-            borderRadius: BorderRadius.circular(14),
-            boxShadow: [
-              BoxShadow(
-                color: secondary.withValues(alpha: 0.25),
-                blurRadius: 8,
-                offset: const Offset(0, 3),
-              ),
-            ],
-          ),
-          child: const Center(
-            child: Icon(
-              Icons.person_add_alt_1_rounded,
-              color: Colors.white,
-              size: 22,
-            ),
-          ),
-        ),
-      ),
-    );
-  }
-}
-
 // ─── Section header ───────────────────────────────────────────────────────────
 
 class _SectionHeader extends StatelessWidget {
@@ -572,9 +537,7 @@ class _StickyFooter extends StatelessWidget {
     return Container(
       decoration: BoxDecoration(
         color: Colors.white,
-        border: Border(
-          top: BorderSide(color: Colors.grey.shade200, width: 1),
-        ),
+        border: Border(top: BorderSide(color: Colors.grey.shade200, width: 1)),
         boxShadow: [
           BoxShadow(
             color: Colors.black.withValues(alpha: 0.05),
@@ -620,10 +583,10 @@ class _StickyFooter extends StatelessWidget {
             child: FilledButton(
               onPressed: onTap,
               style: FilledButton.styleFrom(
-                backgroundColor:
-                    enabled ? tokens.primary : Colors.grey.shade200,
-                foregroundColor:
-                    enabled ? Colors.white : Colors.grey.shade400,
+                backgroundColor: enabled
+                    ? tokens.primary
+                    : Colors.grey.shade200,
+                foregroundColor: enabled ? Colors.white : Colors.grey.shade400,
                 minimumSize: const Size(double.infinity, 56),
                 elevation: enabled ? 4 : 0,
                 shadowColor: tokens.primary.withValues(alpha: 0.4),
@@ -636,7 +599,10 @@ class _StickyFooter extends StatelessWidget {
                 child: Text(
                   label,
                   key: ValueKey(label),
-                  style: const TextStyle(fontWeight: FontWeight.w800, fontSize: 16),
+                  style: const TextStyle(
+                    fontWeight: FontWeight.w800,
+                    fontSize: 16,
+                  ),
                 ),
               ),
             ),

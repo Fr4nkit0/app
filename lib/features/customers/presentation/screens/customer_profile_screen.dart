@@ -25,8 +25,7 @@ class _CustomerProfileScreenState extends ConsumerState<CustomerProfileScreen> {
 
   static const _days = ['', 'Lun', 'Mar', 'Mié', 'Jue', 'Vie', 'Sáb', 'Dom'];
 
-  String _dayName(int day) =>
-      day >= 1 && day <= 7 ? _days[day] : 'Día $day';
+  String _dayName(int day) => day >= 1 && day <= 7 ? _days[day] : 'Día $day';
 
   @override
   Widget build(BuildContext context) {
@@ -73,7 +72,9 @@ class _CustomerProfileScreenState extends ConsumerState<CustomerProfileScreen> {
           ];
 
     return Scaffold(
-      backgroundColor: const Color(0xFFF8FAFC), // Beautiful slate-50 background tint
+      backgroundColor: const Color(
+        0xFFF8FAFC,
+      ), // Beautiful slate-50 background tint
       appBar: AppBar(
         title: const Text(
           'Perfil de Cliente',
@@ -117,7 +118,7 @@ class _CustomerProfileScreenState extends ConsumerState<CustomerProfileScreen> {
                     ),
                   ),
                   const SizedBox(height: 16),
-                  
+
                   // Customer Name
                   Text(
                     customer.name,
@@ -128,22 +129,31 @@ class _CustomerProfileScreenState extends ConsumerState<CustomerProfileScreen> {
                     ),
                   ),
                   const SizedBox(height: 10),
-                  
+
                   // Phone Pill
                   if (customer.phone != null && customer.phone!.isNotEmpty)
                     Container(
-                      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+                      padding: const EdgeInsets.symmetric(
+                        horizontal: 16,
+                        vertical: 8,
+                      ),
                       decoration: BoxDecoration(
                         color: const Color(0xFF1565C0).withValues(alpha: 0.05),
                         borderRadius: BorderRadius.circular(30),
                         border: Border.all(
-                          color: const Color(0xFF1565C0).withValues(alpha: 0.15),
+                          color: const Color(
+                            0xFF1565C0,
+                          ).withValues(alpha: 0.15),
                         ),
                       ),
                       child: Row(
                         mainAxisSize: MainAxisSize.min,
                         children: [
-                          const Icon(Icons.phone_outlined, size: 16, color: Color(0xFF0D1B3E)),
+                          const Icon(
+                            Icons.phone_outlined,
+                            size: 16,
+                            color: Color(0xFF0D1B3E),
+                          ),
                           const SizedBox(width: 8),
                           Text(
                             customer.phone!,
@@ -157,14 +167,18 @@ class _CustomerProfileScreenState extends ConsumerState<CustomerProfileScreen> {
                           Container(
                             height: 14,
                             width: 1,
-                            color: const Color(0xFF1565C0).withValues(alpha: 0.2),
+                            color: const Color(
+                              0xFF1565C0,
+                            ).withValues(alpha: 0.2),
                           ),
                           const SizedBox(width: 8),
                           GestureDetector(
                             onTap: () {
                               ScaffoldMessenger.of(context).showSnackBar(
                                 SnackBar(
-                                  content: Text('Llamando a ${customer.name}...'),
+                                  content: Text(
+                                    'Llamando a ${customer.name}...',
+                                  ),
                                   duration: const Duration(seconds: 1),
                                 ),
                               );
@@ -181,9 +195,9 @@ class _CustomerProfileScreenState extends ConsumerState<CustomerProfileScreen> {
                         ],
                       ),
                     ),
-                  
+
                   const SizedBox(height: 24),
-                  
+
                   // Metric Cards (Saldo + Comodatos)
                   Padding(
                     padding: const EdgeInsets.symmetric(horizontal: 16),
@@ -196,13 +210,16 @@ class _CustomerProfileScreenState extends ConsumerState<CustomerProfileScreen> {
                             decoration: BoxDecoration(
                               color: const Color(0xFFFEF2F2),
                               borderRadius: BorderRadius.circular(16),
-                              border: Border.all(color: const Color(0xFFFEE2E2)),
+                              border: Border.all(
+                                color: const Color(0xFFFEE2E2),
+                              ),
                             ),
                             child: Column(
                               crossAxisAlignment: CrossAxisAlignment.start,
                               children: [
                                 Row(
-                                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                                  mainAxisAlignment:
+                                      MainAxisAlignment.spaceBetween,
                                   children: [
                                     Text(
                                       'Saldo en dinero',
@@ -241,7 +258,7 @@ class _CustomerProfileScreenState extends ConsumerState<CustomerProfileScreen> {
                           ),
                         ),
                         const SizedBox(width: 12),
-                        
+
                         // Card 2: Comodatos activos
                         Expanded(
                           child: Container(
@@ -249,13 +266,16 @@ class _CustomerProfileScreenState extends ConsumerState<CustomerProfileScreen> {
                             decoration: BoxDecoration(
                               color: Colors.white,
                               borderRadius: BorderRadius.circular(16),
-                              border: Border.all(color: const Color(0xFFE2E8F0)),
+                              border: Border.all(
+                                color: const Color(0xFFE2E8F0),
+                              ),
                             ),
                             child: Column(
                               crossAxisAlignment: CrossAxisAlignment.start,
                               children: [
                                 const Row(
-                                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                                  mainAxisAlignment:
+                                      MainAxisAlignment.spaceBetween,
                                   children: [
                                     Text(
                                       'Comodatos activos',
@@ -326,15 +346,15 @@ class _CustomerProfileScreenState extends ConsumerState<CustomerProfileScreen> {
                 ],
               ),
             ),
-            
+
             const SizedBox(height: 16),
-            
+
             // ─── Custom Tab Bar ──────────────────────────────────────────────
             _buildTabBar(),
-            
+
             // ─── Tab Views ───────────────────────────────────────────────────
             _buildTabContent(customer, displayHistory),
-            
+
             const SizedBox(height: 80), // Padding to avoid FAB coverage
           ],
         ),
@@ -343,11 +363,11 @@ class _CustomerProfileScreenState extends ConsumerState<CustomerProfileScreen> {
         heroTag: 'fab_new_sale',
         onPressed: () {
           ref.read(saleDraftProvider.notifier).selectCustomer(customer);
-          Navigator.of(context).push(
-            MaterialPageRoute(builder: (_) => const SaleStep1Screen()),
-          );
+          Navigator.of(
+            context,
+          ).push(MaterialPageRoute(builder: (_) => const SaleStep1Screen()));
         },
-        backgroundColor: const Color(0xFFBF1B1B),
+        backgroundColor: const Color(0xFF1565C0),
         foregroundColor: Colors.white,
         icon: const Icon(Icons.point_of_sale_outlined),
         label: const Text(
@@ -385,7 +405,9 @@ class _CustomerProfileScreenState extends ConsumerState<CustomerProfileScreen> {
                   decoration: BoxDecoration(
                     border: Border(
                       bottom: BorderSide(
-                        color: isSelected ? const Color(0xFF1565C0) : Colors.transparent,
+                        color: isSelected
+                            ? const Color(0xFF1565C0)
+                            : Colors.transparent,
                         width: 3.0,
                       ),
                     ),
@@ -395,8 +417,12 @@ class _CustomerProfileScreenState extends ConsumerState<CustomerProfileScreen> {
                     textAlign: TextAlign.center,
                     style: TextStyle(
                       fontSize: 13,
-                      fontWeight: isSelected ? FontWeight.w700 : FontWeight.w500,
-                      color: isSelected ? const Color(0xFF1565C0) : Colors.grey.shade500,
+                      fontWeight: isSelected
+                          ? FontWeight.w700
+                          : FontWeight.w500,
+                      color: isSelected
+                          ? const Color(0xFF1565C0)
+                          : Colors.grey.shade500,
                     ),
                   ),
                 ),
@@ -490,7 +516,11 @@ class _CustomerProfileScreenState extends ConsumerState<CustomerProfileScreen> {
           children: [
             const Row(
               children: [
-                Icon(Icons.schedule_outlined, color: Color(0xFF1565C0), size: 20),
+                Icon(
+                  Icons.schedule_outlined,
+                  color: Color(0xFF1565C0),
+                  size: 20,
+                ),
                 SizedBox(width: 8),
                 Text(
                   'Horarios de Visita Preferidos',
@@ -601,9 +631,10 @@ class _CustomerProfileScreenState extends ConsumerState<CustomerProfileScreen> {
   }
 
   Widget _buildDatosTab(Customer customer) {
-    final addr = customer.addresses.where((a) => a.isPrimary).firstOrNull ??
+    final addr =
+        customer.addresses.where((a) => a.isPrimary).firstOrNull ??
         customer.addresses.firstOrNull;
-    
+
     return Container(
       padding: const EdgeInsets.all(16),
       child: Column(
@@ -622,7 +653,11 @@ class _CustomerProfileScreenState extends ConsumerState<CustomerProfileScreen> {
               children: [
                 const Row(
                   children: [
-                    Icon(Icons.location_on_outlined, color: Color(0xFF1565C0), size: 20),
+                    Icon(
+                      Icons.location_on_outlined,
+                      color: Color(0xFF1565C0),
+                      size: 20,
+                    ),
                     SizedBox(width: 8),
                     Text(
                       'Dirección de Entrega',
@@ -657,7 +692,8 @@ class _CustomerProfileScreenState extends ConsumerState<CustomerProfileScreen> {
                       ),
                     ),
                   ],
-                  if (addr.visualReference != null && addr.visualReference!.isNotEmpty) ...[
+                  if (addr.visualReference != null &&
+                      addr.visualReference!.isNotEmpty) ...[
                     const SizedBox(height: 8),
                     Container(
                       padding: const EdgeInsets.all(10),
@@ -668,7 +704,11 @@ class _CustomerProfileScreenState extends ConsumerState<CustomerProfileScreen> {
                       ),
                       child: Row(
                         children: [
-                          Icon(Icons.info_outline, size: 14, color: Colors.grey.shade500),
+                          Icon(
+                            Icons.info_outline,
+                            size: 14,
+                            color: Colors.grey.shade500,
+                          ),
                           const SizedBox(width: 8),
                           Expanded(
                             child: Text(
@@ -691,7 +731,9 @@ class _CustomerProfileScreenState extends ConsumerState<CustomerProfileScreen> {
                       onPressed: () {
                         ScaffoldMessenger.of(context).showSnackBar(
                           SnackBar(
-                            content: Text('Abriendo mapa para ${addr.street ?? ''}...'),
+                            content: Text(
+                              'Abriendo mapa para ${addr.street ?? ''}...',
+                            ),
                             duration: const Duration(seconds: 1),
                           ),
                         );
@@ -715,9 +757,9 @@ class _CustomerProfileScreenState extends ConsumerState<CustomerProfileScreen> {
               ],
             ),
           ),
-          
+
           const SizedBox(height: 16),
-          
+
           // Card 2: Otros Datos
           Container(
             padding: const EdgeInsets.all(16),
@@ -731,7 +773,11 @@ class _CustomerProfileScreenState extends ConsumerState<CustomerProfileScreen> {
               children: [
                 const Row(
                   children: [
-                    Icon(Icons.person_outline_rounded, color: Color(0xFF1565C0), size: 20),
+                    Icon(
+                      Icons.person_outline_rounded,
+                      color: Color(0xFF1565C0),
+                      size: 20,
+                    ),
                     SizedBox(width: 8),
                     Text(
                       'Datos de Cuenta',
@@ -752,9 +798,13 @@ class _CustomerProfileScreenState extends ConsumerState<CustomerProfileScreen> {
                 const Divider(height: 16, color: Color(0xFFF1F5F9)),
                 _buildDataRow(
                   label: 'Frecuencia de compra',
-                  value: customer.isFrequent ? 'Cliente Frecuente' : 'Cliente Ocasional',
+                  value: customer.isFrequent
+                      ? 'Cliente Frecuente'
+                      : 'Cliente Ocasional',
                   icon: Icons.star_border_rounded,
-                  valueColor: customer.isFrequent ? Colors.amber.shade800 : null,
+                  valueColor: customer.isFrequent
+                      ? Colors.amber.shade800
+                      : null,
                 ),
               ],
             ),
@@ -827,10 +877,7 @@ class _CustomerProfileScreenState extends ConsumerState<CustomerProfileScreen> {
           Text(
             subtitle,
             textAlign: TextAlign.center,
-            style: TextStyle(
-              fontSize: 13,
-              color: Colors.grey.shade500,
-            ),
+            style: TextStyle(fontSize: 13, color: Colors.grey.shade500),
           ),
         ],
       ),

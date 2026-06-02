@@ -20,7 +20,8 @@ class CustomerListTile extends StatelessWidget {
   final bool selected;
 
   String get _address {
-    final addr = customer.addresses.where((a) => a.isPrimary).firstOrNull ??
+    final addr =
+        customer.addresses.where((a) => a.isPrimary).firstOrNull ??
         customer.addresses.firstOrNull;
     return addr?.street ?? '';
   }
@@ -43,15 +44,17 @@ class CustomerListTile extends StatelessWidget {
         borderRadius: BorderRadius.circular(16),
         boxShadow: [
           BoxShadow(
-            color: selected 
-                ? blue.withValues(alpha: 0.06) 
+            color: selected
+                ? blue.withValues(alpha: 0.06)
                 : Colors.black.withValues(alpha: 0.02),
             blurRadius: selected ? 12 : 10,
             offset: const Offset(0, 4),
           ),
         ],
         border: Border.all(
-          color: selected ? blue.withValues(alpha: 0.8) : const Color(0xFFE2E8F0),
+          color: selected
+              ? blue.withValues(alpha: 0.8)
+              : const Color(0xFFE2E8F0),
           width: selected ? 2.0 : 1.5,
         ),
       ),
@@ -98,7 +101,9 @@ class CustomerListTile extends StatelessWidget {
                               style: TextStyle(
                                 fontSize: 15,
                                 fontWeight: FontWeight.w700,
-                                color: selected ? blue : const Color(0xFF0D1B3E),
+                                color: selected
+                                    ? blue
+                                    : const Color(0xFF0D1B3E),
                               ),
                             ),
                             const SizedBox(height: 2),
@@ -108,7 +113,7 @@ class CustomerListTile extends StatelessWidget {
                                 fontSize: 13,
                                 color: Colors.grey.shade500,
                               ),
-                               maxLines: 1,
+                              maxLines: 1,
                               overflow: TextOverflow.ellipsis,
                             ),
                           ],
@@ -156,7 +161,26 @@ class CustomerListTile extends StatelessWidget {
                           runSpacing: 4,
                           children: [
                             if (customer.debtAmount > 0)
-                              DebtChip(amount: customer.debtAmount),
+                              DebtChip(
+                                amount: customer.debtAmount,
+                                padding: const EdgeInsets.symmetric(
+                                  horizontal: 8,
+                                  vertical: 4,
+                                ),
+                                borderRadius: BorderRadius.circular(8),
+                                backgroundColor: const Color(
+                                  0xFFEF4444,
+                                ).withValues(alpha: 0.08),
+                                borderColor: const Color(0xFFFFCDD2),
+                                borderWidth: 1.0,
+                                textColor: const Color(0xFFEF4444),
+                                fontSize: 11,
+                                fontWeight: FontWeight.w700,
+                                icon: Icons.warning_amber_rounded,
+                                iconSize: 11,
+                                iconColor: const Color(0xFFEF4444),
+                                prefixText: 'Deuda: \$',
+                              ),
                             ...customer.productLabels
                                 .take(2) // Max 2 tags to avoid overflow
                                 .map((label) => ProductChip(label: label)),
@@ -168,14 +192,17 @@ class CustomerListTile extends StatelessWidget {
                       if (!selectable) ...[
                         Row(
                           children: [
-                            if (customer.phone != null && customer.phone!.isNotEmpty) ...[
+                            if (customer.phone != null &&
+                                customer.phone!.isNotEmpty) ...[
                               CircularActionButton(
                                 icon: Icons.phone_in_talk_outlined,
                                 color: const Color(0xFF4B5563),
                                 onPressed: () {
                                   ScaffoldMessenger.of(context).showSnackBar(
                                     SnackBar(
-                                      content: Text('Llamando a ${customer.name}...'),
+                                      content: Text(
+                                        'Llamando a ${customer.name}...',
+                                      ),
                                       duration: const Duration(seconds: 1),
                                     ),
                                   );
@@ -190,7 +217,9 @@ class CustomerListTile extends StatelessWidget {
                                 onPressed: () {
                                   ScaffoldMessenger.of(context).showSnackBar(
                                     SnackBar(
-                                      content: Text('Abriendo mapa para $_address...'),
+                                      content: Text(
+                                        'Abriendo mapa para $_address...',
+                                      ),
                                       duration: const Duration(seconds: 1),
                                     ),
                                   );

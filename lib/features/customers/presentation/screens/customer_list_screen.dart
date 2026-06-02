@@ -8,6 +8,7 @@ import 'package:app/features/customers/presentation/providers/customer_count_pro
 import 'package:app/features/customers/presentation/screens/create_customer_screens.dart';
 import 'package:app/features/customers/presentation/screens/customer_profile_screen.dart';
 import 'package:app/features/customers/presentation/widgets/customer_list_tile.dart';
+import 'package:app/features/customers/presentation/widgets/new_customer_button.dart';
 
 class CustomerListScreen extends ConsumerStatefulWidget {
   const CustomerListScreen({super.key});
@@ -60,10 +61,12 @@ class _CustomerListScreenState extends ConsumerState<CustomerListScreen> {
                   final filtered = _query.isEmpty
                       ? customers
                       : customers
-                          .where((c) => c.name
-                              .toLowerCase()
-                              .contains(_query.toLowerCase()))
-                          .toList();
+                            .where(
+                              (c) => c.name.toLowerCase().contains(
+                                _query.toLowerCase(),
+                              ),
+                            )
+                            .toList();
                   if (filtered.isEmpty) {
                     return const EmptyState(
                       icon: Icons.people_outline,
@@ -81,13 +84,13 @@ class _CustomerListScreenState extends ConsumerState<CustomerListScreen> {
                     ),
                   );
                 },
-                loading: () =>
-                    const Center(child: CircularProgressIndicator()),
+                loading: () => const Center(child: CircularProgressIndicator()),
                 error: (e, _) => Center(
                   child: Text(
                     'Error al cargar clientes',
                     style: TextStyle(
-                        color: Theme.of(context).colorScheme.error),
+                      color: Theme.of(context).colorScheme.error,
+                    ),
                   ),
                 ),
               ),
@@ -95,20 +98,15 @@ class _CustomerListScreenState extends ConsumerState<CustomerListScreen> {
           ],
         ),
       ),
-      floatingActionButton: FloatingActionButton(
-        heroTag: 'fab_customers',
-        onPressed: () => Navigator.of(context).push(
+      floatingActionButton: NewCustomerButton(
+        onTap: () => Navigator.of(context).push(
           MaterialPageRoute(builder: (_) => const CreateCustomerScreen()),
         ),
-        backgroundColor: const Color(0xFFBF1B1B),
-        foregroundColor: Colors.white,
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
-        child: const Icon(Icons.add),
+        backgroundColor: const Color(0xFF1565C0),
       ),
     );
   }
 }
-
 
 class _CustomerList extends StatelessWidget {
   const _CustomerList({required this.customers, required this.onTap});
