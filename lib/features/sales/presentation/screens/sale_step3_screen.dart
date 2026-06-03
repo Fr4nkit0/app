@@ -251,10 +251,10 @@ class _PaymentCard extends StatelessWidget {
           ),
         ),
         child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          mainAxisAlignment: MainAxisAlignment.spaceBetween,
+          mainAxisAlignment: MainAxisAlignment.center,
           children: [
             Text(method.icon, style: const TextStyle(fontSize: 22)),
+            const SizedBox(height: 4),
             Text(
               method.label,
               style: TextStyle(

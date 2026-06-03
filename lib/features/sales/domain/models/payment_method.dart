@@ -34,7 +34,7 @@ extension PaymentMethodLabel on PaymentMethod {
       case PaymentMethod.cash:
         return '💵';
       case PaymentMethod.transfer:
-        return '📱';
+        return '🏦';
       case PaymentMethod.mixed:
         return '🔀';
       case PaymentMethod.credit:

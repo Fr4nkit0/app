@@ -150,7 +150,7 @@ class _QuantityStepper extends StatelessWidget {
           icon: Icons.remove_rounded,
           onTap: onDecrement,
           active: quantity > 0,
-          primary: primary,
+          primary: const Color(0xFFBF1B1B),
           cs: cs,
         ),
         SizedBox(
@@ -206,14 +206,14 @@ class _Btn extends StatelessWidget {
           decoration: BoxDecoration(
             color: isEnabled
                 ? primary.withValues(alpha: 0.1)
-                : cs.surfaceContainerHighest,
+                : primary.withValues(alpha: 0.04),
             borderRadius: BorderRadius.circular(10),
           ),
           child: Center(
             child: Icon(
               icon,
               size: 18,
-              color: isEnabled ? primary : SalesTokens.muted,
+              color: isEnabled ? primary : primary.withValues(alpha: 0.3),
             ),
           ),
         ),
