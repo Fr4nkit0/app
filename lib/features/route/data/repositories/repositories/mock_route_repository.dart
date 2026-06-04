@@ -1,7 +1,7 @@
 import 'dart:async';
 import 'package:app/features/customers/domain/models/customer.dart';
 import 'package:app/features/customers/domain/models/customer.address.dart';
-import 'package:app/features/route/data/repositories/route.repository.dart';
+import 'package:app/features/route/data/repositories/repositories/route.repository.dart';
 import 'package:app/features/route/domain/models/route_stop.dart';
 import 'package:app/features/route/domain/models/stop_status.dart';
 import 'package:app/features/route/domain/models/visit_type.dart';

@@ -1,6 +1,6 @@
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import 'package:app/features/route/data/repositories/mock_route_repository.dart';
-import 'package:app/features/route/data/repositories/route.repository.dart';
+import 'package:app/features/route/data/repositories/repositories/mock_route_repository.dart';
+import 'package:app/features/route/data/repositories/repositories/route.repository.dart';
 import 'package:app/features/route/domain/models/route_stop.dart';
 
 final mockRouteRepositoryProvider =

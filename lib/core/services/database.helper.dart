@@ -6,16 +6,21 @@ import 'package:path_provider/path_provider.dart';
 import '../../features/customers/data/database/customer.table.dart';
 import '../../features/customers/data/database/customer.address.table.dart';
 import '../../features/customers/data/database/customer.preference.table.dart';
-import 'package:app/features/route/database/route.stop.table.dart';
-import 'package:app/features/route/database/route.table.dart';
-
+import 'package:app/features/route/data/repositories/database/route.stop.table.dart';
+import 'package:app/features/route/data/repositories/database/route.inventory.table.dart';
+import 'package:app/features/route/data/repositories/database/route.table.dart';
 
 import 'database_mixins.dart';
 
 part 'database.helper.g.dart';
 
 @DriftDatabase(
-  tables: [CustomerTable, CustomerAddressTable, CustomerPreferenceTable,RouteTable,RouteStopTable],
+  tables: [CustomerTable, 
+  CustomerAddressTable, 
+  CustomerPreferenceTable,
+  RouteTable,
+  RouteStopTable,
+  RouteInventoryTable],
 )
 class AppDatabase extends _$AppDatabase {
   AppDatabase([QueryExecutor? executor]) : super(executor ?? _openConnection());
