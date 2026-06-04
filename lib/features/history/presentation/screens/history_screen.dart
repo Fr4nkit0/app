@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:app/core/widgets/core_search_bar.dart';
 import 'package:app/core/widgets/empty_state.dart';
 import 'package:app/features/history/presentation/providers/history_sync_provider.dart';
 import 'package:app/features/history/presentation/providers/paginated_history_provider.dart';
@@ -14,21 +15,25 @@ class HistoryScreen extends ConsumerStatefulWidget {
 
 class _HistoryScreenState extends ConsumerState<HistoryScreen> {
   late ScrollController _scrollController;
+  late TextEditingController _searchController;
 
   @override
   void initState() {
     super.initState();
     _scrollController = ScrollController()..addListener(_onScroll);
+    _searchController = TextEditingController();
   }
 
   @override
   void dispose() {
     _scrollController.dispose();
+    _searchController.dispose();
     super.dispose();
   }
 
   void _onScroll() {
-    if (_scrollController.position.pixels >= _scrollController.position.maxScrollExtent - 200) {
+    if (_scrollController.position.pixels >=
+        _scrollController.position.maxScrollExtent - 200) {
       ref.read(paginatedHistoryProvider.notifier).loadMore();
     }
   }
@@ -55,8 +60,14 @@ class _HistoryScreenState extends ConsumerState<HistoryScreen> {
                 child: ListView.builder(
                   controller: _scrollController,
                   physics: const AlwaysScrollableScrollPhysics(),
-                  padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
-                  itemCount: 4 + paginatedState.entries.length + 1, // Explicitly safe int compilation
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 16,
+                    vertical: 8,
+                  ),
+                  itemCount:
+                      5 +
+                      paginatedState.entries.length +
+                      1, // Explicitly safe int compilation
                   itemBuilder: (context, index) {
                     if (index == 0) {
                       return const Column(
@@ -87,10 +98,7 @@ class _HistoryScreenState extends ConsumerState<HistoryScreen> {
                     }
                     if (index == 2) {
                       return const Column(
-                        children: [
-                          _SyncStatusCard(),
-                          SizedBox(height: 24),
-                        ],
+                        children: [_SyncStatusCard(), SizedBox(height: 24)],
                       );
                     }
                     if (index == 3) {
@@ -109,8 +117,20 @@ class _HistoryScreenState extends ConsumerState<HistoryScreen> {
                         ],
                       );
                     }
+                    if (index == 4) {
+                      return Padding(
+                        padding: const EdgeInsets.only(bottom: 16),
+                        child: CoreSearchBar(
+                          controller: _searchController,
+                          onChanged: (query) {
+                            // TODO: Implement search filtering
+                          },
+                          hintText: 'Buscar en historial...',
+                        ),
+                      );
+                    }
 
-                    final entryIndex = index - 4;
+                    final entryIndex = index - 5;
                     if (entryIndex < paginatedState.entries.length) {
                       final entry = paginatedState.entries[entryIndex];
                       return Padding(
@@ -207,10 +227,16 @@ class _SyncStatusCard extends ConsumerWidget {
     final isCompleted = syncState.isCompleted;
     final isSyncing = syncState.isSyncing;
 
-    final topBorderColor = isCompleted ? const Color(0xFF0F975C) : const Color(0xFF0F4C81);
-    final iconBgColor = isCompleted ? const Color(0xFF0F975C) : const Color(0xFF0F975C);
+    final topBorderColor = isCompleted
+        ? const Color(0xFF0F975C)
+        : const Color(0xFF0F4C81);
+    final iconBgColor = isCompleted
+        ? const Color(0xFF0F975C)
+        : const Color(0xFF0F975C);
     final iconColor = Colors.white;
-    final iconData = isCompleted ? Icons.cloud_done_rounded : Icons.sync_rounded;
+    final iconData = isCompleted
+        ? Icons.cloud_done_rounded
+        : Icons.sync_rounded;
 
     return Container(
       decoration: BoxDecoration(
@@ -236,17 +262,16 @@ class _SyncStatusCard extends ConsumerWidget {
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                Container(
-                  height: 4,
-                  color: topBorderColor,
-                ),
+                Container(height: 4, color: topBorderColor),
                 Padding(
                   padding: const EdgeInsets.all(18),
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
                       Text(
-                        isCompleted ? 'Datos Sincronizados' : 'Sincronizando Datos',
+                        isCompleted
+                            ? 'Datos Sincronizados'
+                            : 'Sincronizando Datos',
                         style: const TextStyle(
                           fontSize: 18,
                           fontWeight: FontWeight.w900,
@@ -269,7 +294,9 @@ class _SyncStatusCard extends ConsumerWidget {
                               crossAxisAlignment: CrossAxisAlignment.start,
                               children: [
                                 Text(
-                                  isCompleted ? 'Todo al día' : 'Datos pendientes de envío',
+                                  isCompleted
+                                      ? 'Todo al día'
+                                      : 'Datos pendientes de envío',
                                   style: const TextStyle(
                                     fontSize: 15,
                                     fontWeight: FontWeight.w900,
@@ -321,7 +348,9 @@ class _SyncStatusCard extends ConsumerWidget {
                           value: syncState.progress,
                           minHeight: 8,
                           backgroundColor: const Color(0xFFE2E8F0),
-                          valueColor: AlwaysStoppedAnimation<Color>(topBorderColor),
+                          valueColor: AlwaysStoppedAnimation<Color>(
+                            topBorderColor,
+                          ),
                         ),
                       ),
                     ],
@@ -353,7 +382,8 @@ class _AnimatedSyncIcon extends StatefulWidget {
   State<_AnimatedSyncIcon> createState() => _AnimatedSyncIconState();
 }
 
-class _AnimatedSyncIconState extends State<_AnimatedSyncIcon> with SingleTickerProviderStateMixin {
+class _AnimatedSyncIconState extends State<_AnimatedSyncIcon>
+    with SingleTickerProviderStateMixin {
   late AnimationController _rotationController;
 
   @override
@@ -389,24 +419,13 @@ class _AnimatedSyncIconState extends State<_AnimatedSyncIcon> with SingleTickerP
     return Container(
       width: 44,
       height: 44,
-      decoration: BoxDecoration(
-        color: widget.bgColor,
-        shape: BoxShape.circle,
-      ),
+      decoration: BoxDecoration(color: widget.bgColor, shape: BoxShape.circle),
       child: widget.isSyncing
           ? RotationTransition(
               turns: _rotationController,
-              child: Icon(
-                widget.iconData,
-                color: widget.iconColor,
-                size: 22,
-              ),
+              child: Icon(widget.iconData, color: widget.iconColor, size: 22),
             )
-          : Icon(
-              widget.iconData,
-              color: widget.iconColor,
-              size: 22,
-            ),
+          : Icon(widget.iconData, color: widget.iconColor, size: 22),
     );
   }
 }
