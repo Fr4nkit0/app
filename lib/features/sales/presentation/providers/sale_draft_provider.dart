@@ -8,7 +8,7 @@ import 'package:app/features/sales/domain/models/payment_method.dart';
 import 'package:app/features/sales/domain/models/sale.dart';
 import 'package:app/features/sales/domain/models/sale_draft_state.dart';
 import 'package:app/features/sales/domain/models/sale_item.dart';
-import 'package:app/features/sales/presentation/providers/sale_repository_provider.dart';
+import 'package:app/features/sales/presentation/providers/register_sale_usecase_provider.dart';
 
 class SaleDraft extends Notifier<SaleDraftState> {
   @override
@@ -80,7 +80,7 @@ class SaleDraft extends Notifier<SaleDraftState> {
       visitId: draft.visitId,
     );
 
-    await ref.read(saleRepositoryProvider).saveSale(sale);
+    await ref.read(registerSaleUseCaseProvider).execute(sale);
 
     // TODO: when paymentMethod == credit, update customer.debtAmount by draft.total.
     // Deferred: Customer is immutable without copyWith and CustomerRepository
