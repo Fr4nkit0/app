@@ -4,7 +4,6 @@ import 'package:app/features/customers/domain/models/customer.address.dart';
 import 'package:app/features/route/data/repositories/repositories/route.repository.dart';
 import 'package:app/features/route/domain/models/route_stop.dart';
 import 'package:app/features/route/domain/models/stop_status.dart';
-import 'package:app/features/visits/domain/models/visit_type.dart';
 
 class MockRouteRepository implements RouteRepository {
   MockRouteRepository() {
@@ -83,28 +82,24 @@ class MockRouteRepository implements RouteRepository {
       RouteStop(
         id: 'stop-1',
         customer: _customer1,
-        visitType: VisitType.sale,
         status: StopStatus.pending,
         scheduledAt: DateTime(now.year, now.month, now.day, 9, 0),
       ),
       RouteStop(
         id: 'stop-2',
         customer: _customer2,
-        visitType: VisitType.visit,
         status: StopStatus.pending,
         scheduledAt: DateTime(now.year, now.month, now.day, 10, 30),
       ),
       RouteStop(
         id: 'stop-3',
         customer: _customer3,
-        visitType: VisitType.sale,
         status: StopStatus.pending,
         scheduledAt: DateTime(now.year, now.month, now.day, 12, 0),
       ),
       RouteStop(
         id: 'stop-4',
         customer: _customer4,
-        visitType: VisitType.sale,
         status: StopStatus.done,
         scheduledAt: DateTime(now.year, now.month, now.day, 14, 0),
       ),
@@ -132,7 +127,6 @@ class MockRouteRepository implements RouteRepository {
         RouteStop(
           id: 'stop-$i',
           customer: customer,
-          visitType: i % 2 == 0 ? VisitType.sale : VisitType.visit,
           status: isDone
               ? StopStatus.done
               : isAbsent
