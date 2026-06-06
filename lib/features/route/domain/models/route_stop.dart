@@ -1,6 +1,6 @@
 import 'package:app/features/customers/domain/models/customer.dart';
 import 'stop_status.dart';
-import 'visit_type.dart';
+import 'package:app/features/visits/domain/models/visit_type.dart';
 
 class RouteStop {
   final String id;

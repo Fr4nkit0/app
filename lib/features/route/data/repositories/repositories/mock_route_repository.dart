@@ -4,7 +4,7 @@ import 'package:app/features/customers/domain/models/customer.address.dart';
 import 'package:app/features/route/data/repositories/repositories/route.repository.dart';
 import 'package:app/features/route/domain/models/route_stop.dart';
 import 'package:app/features/route/domain/models/stop_status.dart';
-import 'package:app/features/route/domain/models/visit_type.dart';
+import 'package:app/features/visits/domain/models/visit_type.dart';
 
 class MockRouteRepository implements RouteRepository {
   MockRouteRepository() {

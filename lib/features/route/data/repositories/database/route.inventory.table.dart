@@ -1,6 +1,6 @@
 import 'package:drift/drift.dart';
 import 'package:app/core/services/database_mixins.dart';
-import 'package:app/lib/features/sales/data/database/product.table.dart';
+import 'package:app/features/products/data/database/product.table.dart';
 
 class RouteInventoryTable extends Table with Timestamps {
   @override
