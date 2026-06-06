@@ -9,6 +9,8 @@ import 'package:app/features/sales/presentation/screens/sale_step1_screen.dart';
 import 'package:app/features/sales/domain/models/sale.dart';
 import 'package:app/features/sales/domain/models/payment_method.dart';
 import 'package:app/features/sales/presentation/providers/sale_repository_provider.dart';
+import 'package:app/features/visits/domain/models/visit_type.dart';
+import 'package:app/features/visits/presentation/providers/complete_visit_usecase_provider.dart';
 
 final stopSalesProvider = StreamProvider.family<List<Sale>, String>((
   ref,
@@ -886,10 +888,27 @@ class _VisitScreenState extends ConsumerState<VisitScreen> {
                                 );
                               });
 
-                              // 4. Update state asynchronously
+                              // 4. Update state asynchronously — record visit
+                              //    first, then mark stop (spec F2 order).
+                              final visitType =
+                                  _isSaleSelected ? VisitType.sale : VisitType.visit;
+                              final outcome = _soloVisitResult == 'absent'
+                                  ? 'absent'
+                                  : _soloVisitResult == 'refused'
+                                      ? 'refused'
+                                      : 'successful';
                               await ref
-                                  .read(routeRepositoryProvider)
-                                  .markStop(stop.id, nextStatus);
+                                  .read(completeVisitUseCaseProvider)
+                                  .execute(
+                                    stopId: stop.id,
+                                    customerId: stop.customer.id,
+                                    visitType: visitType,
+                                    nextStatus: nextStatus,
+                                    outcome: outcome,
+                                    observations: _noteController.text.isNotEmpty
+                                        ? _noteController.text
+                                        : null,
+                                  );
                             }
                           },
                     child: Row(
