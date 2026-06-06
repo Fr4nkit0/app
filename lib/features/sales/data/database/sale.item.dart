@@ -1,7 +1,7 @@
 import 'package:drift/drift.dart';
 import 'package:app/core/services/database_mixins.dart';
 import 'sales.table.dart';
-import 'sales.product.table.dart';
+import 'package:app/features/products/data/database/product.table.dart';
 
 class SaleItemTable extends Table with Timestamps {
   @override
