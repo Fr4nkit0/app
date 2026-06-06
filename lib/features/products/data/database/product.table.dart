@@ -10,7 +10,7 @@ class ProductTable extends Table with Timestamps {
   late final description = text().nullable()();
   late final price = real()();
   late final stock = integer().withDefault(const Constant(0))();
-  late final created_at = dateTime().withDefault(currentDateAndTime)();
+  // late final created_at = dateTime().withDefault(currentDateAndTime)();
 
   @override
   Set<Column<Object>> get primaryKey => {productId};
