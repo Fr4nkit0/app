@@ -1,4 +1,5 @@
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:app/core/utils/resource.dart';
 import 'package:app/features/customers/domain/models/customer.dart';
 import 'package:app/features/customers/domain/models/customer.address.dart';
 import 'package:app/features/customers/domain/models/customer.preference.dart';
@@ -147,9 +148,14 @@ class CustomerForm extends Notifier<CustomerFormState> {
         preferences: state.preferences.map<CustomerPreference>((p) => p.copyWith()).toList(),
       );
 
-      await useCase.execute(customer);
+      final result = await useCase.execute(customer);
 
-      state = state.copyWith(isSubmitting: false, isSuccess: true);
+      switch (result) {
+        case Success():
+          state = state.copyWith(isSubmitting: false, isSuccess: true);
+        case Error(:final error):
+          state = state.copyWith(isSubmitting: false, errorMessage: error.toString());
+      }
     } catch (e) {
       state = state.copyWith(isSubmitting: false, errorMessage: e.toString());
     }
