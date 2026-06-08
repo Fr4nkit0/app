@@ -9,6 +9,8 @@ import 'package:app/features/sales/presentation/screens/sale_step1_screen.dart';
 import 'package:app/features/sales/domain/models/sale.dart';
 import 'package:app/features/sales/domain/models/payment_method.dart';
 import 'package:app/features/sales/presentation/providers/sale_repository_provider.dart';
+import 'package:app/features/visits/domain/models/visit_type.dart';
+import 'package:app/features/visits/presentation/providers/complete_visit_usecase_provider.dart';
 
 final stopSalesProvider = StreamProvider.family<List<Sale>, String>((
   ref,
@@ -16,7 +18,7 @@ final stopSalesProvider = StreamProvider.family<List<Sale>, String>((
 ) {
   final repo = ref.watch(saleRepositoryProvider);
   return repo.watchAllSales().map(
-    (sales) => sales.where((s) => s.routeStopId == stopId).toList(),
+    (sales) => sales.where((s) => s.visitId == stopId).toList(),
   );
 });
 
@@ -823,12 +825,12 @@ class _VisitScreenState extends ConsumerState<VisitScreen> {
                         ? null
                         : () async {
                             if (!hasSales && _isSaleSelected) {
-                              // Pre-fill customer AND routeStopId, then launch sales flow!
+                              // Pre-fill customer AND visitId, then launch sales flow!
                               ref
                                   .read(saleDraftProvider.notifier)
                                   .selectCustomer(
                                     stop.customer,
-                                    routeStopId: stop.id,
+                                    visitId: stop.id,
                                   );
 
                               Navigator.of(context).push(
@@ -886,10 +888,27 @@ class _VisitScreenState extends ConsumerState<VisitScreen> {
                                 );
                               });
 
-                              // 4. Update state asynchronously
+                              // 4. Update state asynchronously — record visit
+                              //    first, then mark stop (spec F2 order).
+                              final visitType =
+                                  _isSaleSelected ? VisitType.sale : VisitType.visit;
+                              final outcome = _soloVisitResult == 'absent'
+                                  ? 'absent'
+                                  : _soloVisitResult == 'refused'
+                                      ? 'refused'
+                                      : 'successful';
                               await ref
-                                  .read(routeRepositoryProvider)
-                                  .markStop(stop.id, nextStatus);
+                                  .read(completeVisitUseCaseProvider)
+                                  .execute(
+                                    stopId: stop.id,
+                                    customerId: stop.customer.id,
+                                    visitType: visitType,
+                                    nextStatus: nextStatus,
+                                    outcome: outcome,
+                                    observations: _noteController.text.isNotEmpty
+                                        ? _noteController.text
+                                        : null,
+                                  );
                             }
                           },
                     child: Row(
@@ -1066,7 +1085,7 @@ class _VisitScreenState extends ConsumerState<VisitScreen> {
         onPressed: () {
           ref
               .read(saleDraftProvider.notifier)
-              .selectCustomer(stop.customer, routeStopId: stop.id);
+              .selectCustomer(stop.customer, visitId: stop.id);
 
           Navigator.of(
             context,
