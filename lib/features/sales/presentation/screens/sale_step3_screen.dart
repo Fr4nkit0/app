@@ -511,10 +511,10 @@ class _Footer extends ConsumerWidget {
             child: FilledButton(
               onPressed: draft.canConfirm
                   ? () async {
-                      final routeStopId = draft.routeStopId;
+                      final visitId = draft.visitId;
                       await ref.read(saleDraftProvider.notifier).commit();
                       if (context.mounted) {
-                        if (routeStopId != null) {
+                        if (visitId != null) {
                           Navigator.of(context).pop();
                           Navigator.of(context).pop();
                         } else {

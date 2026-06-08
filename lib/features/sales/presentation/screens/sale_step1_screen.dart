@@ -8,10 +8,10 @@ import 'package:app/features/customers/presentation/providers/customer_count_pro
 import 'package:app/features/customers/presentation/screens/create_customer_screens.dart';
 import 'package:app/features/customers/presentation/widgets/customer_list_tile.dart';
 import 'package:app/features/customers/presentation/widgets/new_customer_button.dart';
-import 'package:app/features/sales/domain/models/product.dart';
+import 'package:app/features/products/domain/models/product.dart';
 import 'package:app/features/sales/domain/models/sale_draft_state.dart';
 import 'package:app/features/sales/domain/models/sale_item.dart';
-import 'package:app/features/sales/presentation/providers/product_repository_provider.dart';
+import 'package:app/features/products/presentation/providers/product_list_provider.dart';
 import 'package:app/features/sales/presentation/providers/sale_draft_provider.dart';
 import 'package:app/features/sales/presentation/screens/sale_step3_screen.dart';
 import 'package:app/features/sales/presentation/widgets/product_quantity_row.dart';
@@ -286,7 +286,7 @@ class _SelectedMode extends ConsumerWidget {
     final productsAsync = ref.watch(productListProvider);
 
     final draft = ref.watch(saleDraftProvider);
-    final isFromRouteStop = draft.routeStopId != null;
+    final isFromRouteStop = draft.visitId != null;
 
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,

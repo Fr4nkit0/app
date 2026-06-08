@@ -2,7 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:app/features/sales/domain/models/sale_draft_state.dart';
 import 'package:app/features/sales/domain/models/sale_item.dart';
-import 'package:app/features/sales/domain/models/product.dart';
+import 'package:app/features/products/domain/models/product.dart';
 import 'package:app/features/customers/domain/models/customer.dart';
 import 'package:app/features/sales/presentation/widgets/product_quantity_row.dart';
 import 'package:app/core/theme/sales_tokens.dart';

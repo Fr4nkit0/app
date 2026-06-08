@@ -1,6 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:app/core/theme/sales_tokens.dart';
-import 'package:app/features/sales/domain/models/product.dart';
+import 'package:app/features/products/domain/models/product.dart';
 
 /// Pure presentational widget for a product row with quantity stepper.
 /// Has zero Riverpod dependency — all state and actions come from the parent.

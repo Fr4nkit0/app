@@ -11,7 +11,7 @@ class Sale {
   final DateTime date;
   final double? cashAmount;
   final double? transferAmount;
-  final String? routeStopId;
+  final String? visitId;
 
   const Sale({
     required this.id,
@@ -22,6 +22,6 @@ class Sale {
     required this.date,
     this.cashAmount,
     this.transferAmount,
-    this.routeStopId,
+    this.visitId,
   });
 }
