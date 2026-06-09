@@ -116,6 +116,16 @@ class _CreateCustomerScreenState extends ConsumerState<CreateCustomerScreen> {
                     onAddPreference: formNotifier.addPreference,
                     onRemovePreference: formNotifier.removePreference,
                     onPreferenceChanged: formNotifier.updatePreference,
+                    onNewPreferenceSaved: (day, start, end) {
+                      formNotifier.addPreference();
+                      final newId = ref.read(customerFormProvider).preferences.last.id;
+                      formNotifier.updatePreference(
+                        newId,
+                        dayOfWeek: day,
+                        timeWindowStart: start,
+                        timeWindowEnd: end,
+                      );
+                    },
                   ),
                 ],
               ),
