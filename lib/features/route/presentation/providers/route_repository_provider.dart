@@ -1,14 +1,12 @@
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import 'package:app/features/route/data/repositories/mock_route_repository.dart';
-import 'package:app/features/route/data/repositories/route.repository.dart';
+import 'package:app/core/services/database.helper.dart';
+import 'package:app/features/route/data/repositories/repositories/drift_route_repository.dart';
+import 'package:app/features/route/data/repositories/repositories/route.repository.dart';
 import 'package:app/features/route/domain/models/route_stop.dart';
 
-final mockRouteRepositoryProvider =
-    Provider<MockRouteRepository>((ref) => MockRouteRepository());
-
-final routeRepositoryProvider = Provider<RouteRepository>((ref) {
-  return ref.watch(mockRouteRepositoryProvider);
-});
+final routeRepositoryProvider = Provider<RouteRepository>(
+  (ref) => DriftRouteRepository(ref.watch(databaseProvider)),
+);
 
 /// A modern Notifier to manage the visible items page limit (Riverpod 3.x compatible)
 class RoutePaginationLimit extends Notifier<int> {

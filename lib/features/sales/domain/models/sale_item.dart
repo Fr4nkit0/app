@@ -1,4 +1,4 @@
-import 'product.dart';
+import 'package:app/features/products/domain/models/product.dart';
 
 class SaleItem {
   final Product product;

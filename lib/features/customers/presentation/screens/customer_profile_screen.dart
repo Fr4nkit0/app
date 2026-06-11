@@ -1,10 +1,12 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:app/core/utils/avatar_utils.dart';
 import 'package:app/features/customers/domain/models/customer.dart';
 import 'package:app/features/customers/domain/models/customer.preference.dart';
 import 'package:app/features/history/domain/models/history_entry.dart';
 import 'package:app/features/history/domain/models/history_entry_type.dart';
 import 'package:app/features/history/presentation/providers/history_list_provider.dart';
+import 'package:app/features/history/presentation/widgets/history_entry_tile.dart';
 import 'package:app/features/sales/presentation/providers/sale_draft_provider.dart';
 import 'package:app/features/sales/presentation/screens/sale_step1_screen.dart';
 
@@ -23,32 +25,7 @@ class _CustomerProfileScreenState extends ConsumerState<CustomerProfileScreen> {
 
   static const _days = ['', 'Lun', 'Mar', 'Mié', 'Jue', 'Vie', 'Sáb', 'Dom'];
 
-  String _dayName(int day) =>
-      day >= 1 && day <= 7 ? _days[day] : 'Día $day';
-
-  String get _initials {
-    final parts = widget.customer.name.trim().split(' ');
-    if (parts.length >= 2) return '${parts[0][0]}${parts[1][0]}'.toUpperCase();
-    return parts[0].isNotEmpty ? parts[0][0].toUpperCase() : '?';
-  }
-
-  String _formatDate(DateTime d) {
-    final now = DateTime.now();
-    final diff = now.difference(d);
-    if (diff.inMinutes < 60) return 'Hace ${diff.inMinutes} min';
-    if (diff.inHours < 24) return 'Hace ${diff.inHours} hs';
-    if (diff.inDays == 1) return 'Ayer';
-    
-    final months = [
-      '', 'Ene', 'Feb', 'Mar', 'Abr', 'May', 'Jun',
-      'Jul', 'Ago', 'Sep', 'Oct', 'Nov', 'Dic'
-    ];
-    final dayStr = d.day.toString();
-    final monthStr = d.month >= 1 && d.month <= 12 ? months[d.month] : '';
-    final hour = d.hour.toString().padLeft(2, '0');
-    final minute = d.minute.toString().padLeft(2, '0');
-    return '$dayStr $monthStr • $hour:$minute hs';
-  }
+  String _dayName(int day) => day >= 1 && day <= 7 ? _days[day] : 'Día $day';
 
   @override
   Widget build(BuildContext context) {
@@ -95,7 +72,9 @@ class _CustomerProfileScreenState extends ConsumerState<CustomerProfileScreen> {
           ];
 
     return Scaffold(
-      backgroundColor: const Color(0xFFF8FAFC), // Beautiful slate-50 background tint
+      backgroundColor: const Color(
+        0xFFF8FAFC,
+      ), // Beautiful slate-50 background tint
       appBar: AppBar(
         title: const Text(
           'Perfil de Cliente',
@@ -130,7 +109,7 @@ class _CustomerProfileScreenState extends ConsumerState<CustomerProfileScreen> {
                     ),
                     alignment: Alignment.center,
                     child: Text(
-                      _initials,
+                      AvatarUtils.getInitials(customer.name),
                       style: const TextStyle(
                         color: Colors.white,
                         fontWeight: FontWeight.bold,
@@ -139,7 +118,7 @@ class _CustomerProfileScreenState extends ConsumerState<CustomerProfileScreen> {
                     ),
                   ),
                   const SizedBox(height: 16),
-                  
+
                   // Customer Name
                   Text(
                     customer.name,
@@ -150,22 +129,31 @@ class _CustomerProfileScreenState extends ConsumerState<CustomerProfileScreen> {
                     ),
                   ),
                   const SizedBox(height: 10),
-                  
+
                   // Phone Pill
                   if (customer.phone != null && customer.phone!.isNotEmpty)
                     Container(
-                      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+                      padding: const EdgeInsets.symmetric(
+                        horizontal: 16,
+                        vertical: 8,
+                      ),
                       decoration: BoxDecoration(
                         color: const Color(0xFF1565C0).withValues(alpha: 0.05),
                         borderRadius: BorderRadius.circular(30),
                         border: Border.all(
-                          color: const Color(0xFF1565C0).withValues(alpha: 0.15),
+                          color: const Color(
+                            0xFF1565C0,
+                          ).withValues(alpha: 0.15),
                         ),
                       ),
                       child: Row(
                         mainAxisSize: MainAxisSize.min,
                         children: [
-                          const Icon(Icons.phone_outlined, size: 16, color: Color(0xFF0D1B3E)),
+                          const Icon(
+                            Icons.phone_outlined,
+                            size: 16,
+                            color: Color(0xFF0D1B3E),
+                          ),
                           const SizedBox(width: 8),
                           Text(
                             customer.phone!,
@@ -179,14 +167,18 @@ class _CustomerProfileScreenState extends ConsumerState<CustomerProfileScreen> {
                           Container(
                             height: 14,
                             width: 1,
-                            color: const Color(0xFF1565C0).withValues(alpha: 0.2),
+                            color: const Color(
+                              0xFF1565C0,
+                            ).withValues(alpha: 0.2),
                           ),
                           const SizedBox(width: 8),
                           GestureDetector(
                             onTap: () {
                               ScaffoldMessenger.of(context).showSnackBar(
                                 SnackBar(
-                                  content: Text('Llamando a ${customer.name}...'),
+                                  content: Text(
+                                    'Llamando a ${customer.name}...',
+                                  ),
                                   duration: const Duration(seconds: 1),
                                 ),
                               );
@@ -203,9 +195,9 @@ class _CustomerProfileScreenState extends ConsumerState<CustomerProfileScreen> {
                         ],
                       ),
                     ),
-                  
+
                   const SizedBox(height: 24),
-                  
+
                   // Metric Cards (Saldo + Comodatos)
                   Padding(
                     padding: const EdgeInsets.symmetric(horizontal: 16),
@@ -218,13 +210,16 @@ class _CustomerProfileScreenState extends ConsumerState<CustomerProfileScreen> {
                             decoration: BoxDecoration(
                               color: const Color(0xFFFEF2F2),
                               borderRadius: BorderRadius.circular(16),
-                              border: Border.all(color: const Color(0xFFFEE2E2)),
+                              border: Border.all(
+                                color: const Color(0xFFFEE2E2),
+                              ),
                             ),
                             child: Column(
                               crossAxisAlignment: CrossAxisAlignment.start,
                               children: [
                                 Row(
-                                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                                  mainAxisAlignment:
+                                      MainAxisAlignment.spaceBetween,
                                   children: [
                                     Text(
                                       'Saldo en dinero',
@@ -263,7 +258,7 @@ class _CustomerProfileScreenState extends ConsumerState<CustomerProfileScreen> {
                           ),
                         ),
                         const SizedBox(width: 12),
-                        
+
                         // Card 2: Comodatos activos
                         Expanded(
                           child: Container(
@@ -271,13 +266,16 @@ class _CustomerProfileScreenState extends ConsumerState<CustomerProfileScreen> {
                             decoration: BoxDecoration(
                               color: Colors.white,
                               borderRadius: BorderRadius.circular(16),
-                              border: Border.all(color: const Color(0xFFE2E8F0)),
+                              border: Border.all(
+                                color: const Color(0xFFE2E8F0),
+                              ),
                             ),
                             child: Column(
                               crossAxisAlignment: CrossAxisAlignment.start,
                               children: [
                                 const Row(
-                                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                                  mainAxisAlignment:
+                                      MainAxisAlignment.spaceBetween,
                                   children: [
                                     Text(
                                       'Comodatos activos',
@@ -348,15 +346,15 @@ class _CustomerProfileScreenState extends ConsumerState<CustomerProfileScreen> {
                 ],
               ),
             ),
-            
+
             const SizedBox(height: 16),
-            
+
             // ─── Custom Tab Bar ──────────────────────────────────────────────
             _buildTabBar(),
-            
+
             // ─── Tab Views ───────────────────────────────────────────────────
             _buildTabContent(customer, displayHistory),
-            
+
             const SizedBox(height: 80), // Padding to avoid FAB coverage
           ],
         ),
@@ -365,11 +363,11 @@ class _CustomerProfileScreenState extends ConsumerState<CustomerProfileScreen> {
         heroTag: 'fab_new_sale',
         onPressed: () {
           ref.read(saleDraftProvider.notifier).selectCustomer(customer);
-          Navigator.of(context).push(
-            MaterialPageRoute(builder: (_) => const SaleStep1Screen()),
-          );
+          Navigator.of(
+            context,
+          ).push(MaterialPageRoute(builder: (_) => const SaleStep1Screen()));
         },
-        backgroundColor: const Color(0xFFBF1B1B),
+        backgroundColor: const Color(0xFF1565C0),
         foregroundColor: Colors.white,
         icon: const Icon(Icons.point_of_sale_outlined),
         label: const Text(
@@ -407,7 +405,9 @@ class _CustomerProfileScreenState extends ConsumerState<CustomerProfileScreen> {
                   decoration: BoxDecoration(
                     border: Border(
                       bottom: BorderSide(
-                        color: isSelected ? const Color(0xFF1565C0) : Colors.transparent,
+                        color: isSelected
+                            ? const Color(0xFF1565C0)
+                            : Colors.transparent,
                         width: 3.0,
                       ),
                     ),
@@ -417,8 +417,12 @@ class _CustomerProfileScreenState extends ConsumerState<CustomerProfileScreen> {
                     textAlign: TextAlign.center,
                     style: TextStyle(
                       fontSize: 13,
-                      fontWeight: isSelected ? FontWeight.w700 : FontWeight.w500,
-                      color: isSelected ? const Color(0xFF1565C0) : Colors.grey.shade500,
+                      fontWeight: isSelected
+                          ? FontWeight.w700
+                          : FontWeight.w500,
+                      color: isSelected
+                          ? const Color(0xFF1565C0)
+                          : Colors.grey.shade500,
                     ),
                   ),
                 ),
@@ -459,140 +463,9 @@ class _CustomerProfileScreenState extends ConsumerState<CustomerProfileScreen> {
         shrinkWrap: true,
         physics: const NeverScrollableScrollPhysics(),
         itemCount: history.length,
-        itemBuilder: (context, index) => _buildHistoryItem(history[index]),
-      ),
-    );
-  }
-
-  Widget _buildHistoryItem(HistoryEntry entry) {
-    final isPayment = entry.type == HistoryEntryType.payment;
-    final dateText = _formatDate(entry.date);
-    
-    return Container(
-      margin: const EdgeInsets.only(bottom: 12),
-      decoration: BoxDecoration(
-        color: Colors.white,
-        borderRadius: BorderRadius.circular(16),
-        border: Border.all(color: const Color(0xFFE2E8F0)),
-        boxShadow: [
-          BoxShadow(
-            color: Colors.black.withValues(alpha: 0.015),
-            blurRadius: 8,
-            offset: const Offset(0, 4),
-          ),
-        ],
-      ),
-      child: Padding(
-        padding: const EdgeInsets.all(14),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Row(
-              children: [
-                // 1. Circle Icon
-                Container(
-                  width: 38,
-                  height: 38,
-                  decoration: BoxDecoration(
-                    color: isPayment ? const Color(0xFFE8F5E9) : const Color(0xFFE0F2FE),
-                    shape: BoxShape.circle,
-                  ),
-                  alignment: Alignment.center,
-                  child: Icon(
-                    isPayment ? Icons.payments_outlined : Icons.water_drop_outlined,
-                    size: 18,
-                    color: isPayment ? const Color(0xFF2E7D32) : const Color(0xFF0369A1),
-                  ),
-                ),
-                const SizedBox(width: 12),
-                
-                // 2. Title & Date
-                Expanded(
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Text(
-                        entry.description,
-                        style: const TextStyle(
-                          fontSize: 14,
-                          fontWeight: FontWeight.w700,
-                          color: Color(0xFF0D1B3E),
-                        ),
-                      ),
-                      const SizedBox(height: 2),
-                      Text(
-                        dateText,
-                        style: TextStyle(
-                          fontSize: 12,
-                          color: Colors.grey.shade500,
-                          fontWeight: FontWeight.w500,
-                        ),
-                      ),
-                    ],
-                  ),
-                ),
-                
-                // 3. Amount & Chevron
-                Row(
-                  children: [
-                    if (entry.amount != null)
-                      Text(
-                        isPayment 
-                            ? '+\$${entry.amount!.toStringAsFixed(0)}'
-                            : '\$${entry.amount!.toStringAsFixed(0)}',
-                        style: TextStyle(
-                          fontSize: 15,
-                          fontWeight: FontWeight.w800,
-                          color: isPayment ? const Color(0xFF2E7D32) : const Color(0xFF0D1B3E),
-                        ),
-                      ),
-                    const SizedBox(width: 8),
-                    Icon(
-                      Icons.chevron_right_rounded,
-                      size: 16,
-                      color: Colors.grey.shade400,
-                    ),
-                  ],
-                ),
-              ],
-            ),
-            
-            // 4. Tags
-            if (entry.tags.isNotEmpty) ...[
-              const SizedBox(height: 10),
-              Wrap(
-                spacing: 6,
-                runSpacing: 4,
-                children: entry.tags.map((tag) {
-                  final isProductTag = tag.contains('x') || tag.contains('L');
-                  return Container(
-                    padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
-                    decoration: BoxDecoration(
-                      color: isProductTag 
-                          ? const Color(0xFFF0F9FF) 
-                          : const Color(0xFFF1F5F9),
-                      borderRadius: BorderRadius.circular(6),
-                      border: Border.all(
-                        color: isProductTag 
-                            ? const Color(0xFFBAE6FD) 
-                            : const Color(0xFFE2E8F0),
-                      ),
-                    ),
-                    child: Text(
-                      tag,
-                      style: TextStyle(
-                        fontSize: 11,
-                        fontWeight: FontWeight.w700,
-                        color: isProductTag 
-                            ? const Color(0xFF0369A1) 
-                            : const Color(0xFF475569),
-                      ),
-                    ),
-                  );
-                }).toList(),
-              ),
-            ],
-          ],
+        itemBuilder: (context, index) => Padding(
+          padding: const EdgeInsets.only(bottom: 12),
+          child: HistoryEntryTile(entry: history[index]),
         ),
       ),
     );
@@ -643,7 +516,11 @@ class _CustomerProfileScreenState extends ConsumerState<CustomerProfileScreen> {
           children: [
             const Row(
               children: [
-                Icon(Icons.schedule_outlined, color: Color(0xFF1565C0), size: 20),
+                Icon(
+                  Icons.schedule_outlined,
+                  color: Color(0xFF1565C0),
+                  size: 20,
+                ),
                 SizedBox(width: 8),
                 Text(
                   'Horarios de Visita Preferidos',
@@ -754,9 +631,10 @@ class _CustomerProfileScreenState extends ConsumerState<CustomerProfileScreen> {
   }
 
   Widget _buildDatosTab(Customer customer) {
-    final addr = customer.addresses.where((a) => a.isPrimary).firstOrNull ??
+    final addr =
+        customer.addresses.where((a) => a.isPrimary).firstOrNull ??
         customer.addresses.firstOrNull;
-    
+
     return Container(
       padding: const EdgeInsets.all(16),
       child: Column(
@@ -775,7 +653,11 @@ class _CustomerProfileScreenState extends ConsumerState<CustomerProfileScreen> {
               children: [
                 const Row(
                   children: [
-                    Icon(Icons.location_on_outlined, color: Color(0xFF1565C0), size: 20),
+                    Icon(
+                      Icons.location_on_outlined,
+                      color: Color(0xFF1565C0),
+                      size: 20,
+                    ),
                     SizedBox(width: 8),
                     Text(
                       'Dirección de Entrega',
@@ -810,7 +692,8 @@ class _CustomerProfileScreenState extends ConsumerState<CustomerProfileScreen> {
                       ),
                     ),
                   ],
-                  if (addr.visualReference != null && addr.visualReference!.isNotEmpty) ...[
+                  if (addr.visualReference != null &&
+                      addr.visualReference!.isNotEmpty) ...[
                     const SizedBox(height: 8),
                     Container(
                       padding: const EdgeInsets.all(10),
@@ -821,7 +704,11 @@ class _CustomerProfileScreenState extends ConsumerState<CustomerProfileScreen> {
                       ),
                       child: Row(
                         children: [
-                          Icon(Icons.info_outline, size: 14, color: Colors.grey.shade500),
+                          Icon(
+                            Icons.info_outline,
+                            size: 14,
+                            color: Colors.grey.shade500,
+                          ),
                           const SizedBox(width: 8),
                           Expanded(
                             child: Text(
@@ -844,7 +731,9 @@ class _CustomerProfileScreenState extends ConsumerState<CustomerProfileScreen> {
                       onPressed: () {
                         ScaffoldMessenger.of(context).showSnackBar(
                           SnackBar(
-                            content: Text('Abriendo mapa para ${addr.street ?? ''}...'),
+                            content: Text(
+                              'Abriendo mapa para ${addr.street ?? ''}...',
+                            ),
                             duration: const Duration(seconds: 1),
                           ),
                         );
@@ -868,9 +757,9 @@ class _CustomerProfileScreenState extends ConsumerState<CustomerProfileScreen> {
               ],
             ),
           ),
-          
+
           const SizedBox(height: 16),
-          
+
           // Card 2: Otros Datos
           Container(
             padding: const EdgeInsets.all(16),
@@ -884,7 +773,11 @@ class _CustomerProfileScreenState extends ConsumerState<CustomerProfileScreen> {
               children: [
                 const Row(
                   children: [
-                    Icon(Icons.person_outline_rounded, color: Color(0xFF1565C0), size: 20),
+                    Icon(
+                      Icons.person_outline_rounded,
+                      color: Color(0xFF1565C0),
+                      size: 20,
+                    ),
                     SizedBox(width: 8),
                     Text(
                       'Datos de Cuenta',
@@ -905,9 +798,13 @@ class _CustomerProfileScreenState extends ConsumerState<CustomerProfileScreen> {
                 const Divider(height: 16, color: Color(0xFFF1F5F9)),
                 _buildDataRow(
                   label: 'Frecuencia de compra',
-                  value: customer.isFrequent ? 'Cliente Frecuente' : 'Cliente Ocasional',
+                  value: customer.isFrequent
+                      ? 'Cliente Frecuente'
+                      : 'Cliente Ocasional',
                   icon: Icons.star_border_rounded,
-                  valueColor: customer.isFrequent ? Colors.amber.shade800 : null,
+                  valueColor: customer.isFrequent
+                      ? Colors.amber.shade800
+                      : null,
                 ),
               ],
             ),
@@ -980,10 +877,7 @@ class _CustomerProfileScreenState extends ConsumerState<CustomerProfileScreen> {
           Text(
             subtitle,
             textAlign: TextAlign.center,
-            style: TextStyle(
-              fontSize: 13,
-              color: Colors.grey.shade500,
-            ),
+            style: TextStyle(fontSize: 13, color: Colors.grey.shade500),
           ),
         ],
       ),

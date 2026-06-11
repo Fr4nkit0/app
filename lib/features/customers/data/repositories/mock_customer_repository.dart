@@ -30,6 +30,34 @@ class MockCustomerRepository implements CustomerRepository {
   }
 
   @override
+  Future<Resource<Customer?>> getCustomerById(String id) async {
+    final customer = _customers.where((c) => c.id == id).firstOrNull;
+    return Resource.success(customer);
+  }
+
+  @override
+  Future<Resource<void>> updateCustomer(Customer customer) async {
+    final idx = _customers.indexWhere((c) => c.id == customer.id);
+    if (idx < 0) {
+      return Resource.error(Exception('Customer not found'));
+    }
+    _customers[idx] = customer;
+    _controller.add(_customers);
+    return const Resource.success(null);
+  }
+
+  @override
+  Future<Resource<void>> deleteCustomer(String customerId) async {
+    final before = _customers.length;
+    _customers.removeWhere((c) => c.id == customerId);
+    if (_customers.length < before) {
+      _controller.add(_customers);
+      _countController.add(_customers.length);
+    }
+    return const Resource.success(null);
+  }
+
+  @override
   Future<Resource<void>> saveCustomer(Customer customer) async {
     final idx = _customers.indexWhere((c) => c.id == customer.id);
     if (idx >= 0) {

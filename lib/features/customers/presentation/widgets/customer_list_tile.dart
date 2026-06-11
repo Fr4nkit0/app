@@ -1,6 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:app/core/widgets/debt_chip.dart';
 import 'package:app/core/widgets/product_chip.dart';
+import 'package:app/core/utils/avatar_utils.dart';
+import 'package:app/core/widgets/circular_action_button.dart';
 import 'package:app/features/customers/domain/models/customer.dart';
 
 class CustomerListTile extends StatelessWidget {
@@ -17,43 +19,9 @@ class CustomerListTile extends StatelessWidget {
   final bool selectable;
   final bool selected;
 
-  Color _getPastelColor(String name) {
-    final hash = name.hashCode;
-    final colors = [
-      const Color(0xFFE0F2FE), // Blue
-      const Color(0xFFFCE7F3), // Pink
-      const Color(0xFFFEF3C7), // Amber
-      const Color(0xFFE8F5E9), // Green
-      const Color(0xFFF3E8FF), // Purple
-      const Color(0xFFFFEDD5), // Orange
-    ];
-    return colors[hash.abs() % colors.length];
-  }
-
-  Color _getTextColor(String name) {
-    final hash = name.hashCode;
-    final colors = [
-      const Color(0xFF0369A1),
-      const Color(0xFFBE185D),
-      const Color(0xFFB45309),
-      const Color(0xFF2E7D32),
-      const Color(0xFF6B21A8),
-      const Color(0xFFC2410C),
-    ];
-    return colors[hash.abs() % colors.length];
-  }
-
-  String _getInitials(String name) {
-    final cleanName = name.replaceAll(RegExp(r"[^\w\s]"), '').trim();
-    final parts = cleanName.split(' ');
-    if (parts.length >= 2) {
-      return '${parts[0][0]}${parts[1][0]}'.toUpperCase();
-    }
-    return parts[0].isNotEmpty ? parts[0][0].toUpperCase() : '?';
-  }
-
   String get _address {
-    final addr = customer.addresses.where((a) => a.isPrimary).firstOrNull ??
+    final addr =
+        customer.addresses.where((a) => a.isPrimary).firstOrNull ??
         customer.addresses.firstOrNull;
     return addr?.street ?? '';
   }
@@ -61,9 +29,12 @@ class CustomerListTile extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     const blue = Color(0xFF1565C0);
-    final initials = _getInitials(customer.name);
-    final avatarBg = _getPastelColor(customer.name);
-    final avatarText = _getTextColor(customer.name);
+    final initials = AvatarUtils.getInitials(customer.name);
+    final avatarColors = AvatarUtils.getColors(
+      customer.name,
+      selected: selected,
+      baseColor: AvatarUtils.getPastelColor(customer.name),
+    );
 
     return AnimatedContainer(
       duration: const Duration(milliseconds: 200),
@@ -73,15 +44,17 @@ class CustomerListTile extends StatelessWidget {
         borderRadius: BorderRadius.circular(16),
         boxShadow: [
           BoxShadow(
-            color: selected 
-                ? blue.withValues(alpha: 0.06) 
+            color: selected
+                ? blue.withValues(alpha: 0.06)
                 : Colors.black.withValues(alpha: 0.02),
             blurRadius: selected ? 12 : 10,
             offset: const Offset(0, 4),
           ),
         ],
         border: Border.all(
-          color: selected ? blue.withValues(alpha: 0.8) : const Color(0xFFE2E8F0),
+          color: selected
+              ? blue.withValues(alpha: 0.8)
+              : const Color(0xFFE2E8F0),
           width: selected ? 2.0 : 1.5,
         ),
       ),
@@ -105,14 +78,14 @@ class CustomerListTile extends StatelessWidget {
                         width: 38,
                         height: 38,
                         decoration: BoxDecoration(
-                          color: selected ? blue : avatarBg,
+                          color: avatarColors.background,
                           shape: BoxShape.circle,
                         ),
                         alignment: Alignment.center,
                         child: Text(
                           initials,
                           style: TextStyle(
-                            color: selected ? Colors.white : avatarText,
+                            color: avatarColors.foreground,
                             fontWeight: FontWeight.bold,
                             fontSize: 14,
                           ),
@@ -128,7 +101,9 @@ class CustomerListTile extends StatelessWidget {
                               style: TextStyle(
                                 fontSize: 15,
                                 fontWeight: FontWeight.w700,
-                                color: selected ? blue : const Color(0xFF0D1B3E),
+                                color: selected
+                                    ? blue
+                                    : const Color(0xFF0D1B3E),
                               ),
                             ),
                             const SizedBox(height: 2),
@@ -186,7 +161,26 @@ class CustomerListTile extends StatelessWidget {
                           runSpacing: 4,
                           children: [
                             if (customer.debtAmount > 0)
-                              DebtChip(amount: customer.debtAmount),
+                              DebtChip(
+                                amount: customer.debtAmount,
+                                padding: const EdgeInsets.symmetric(
+                                  horizontal: 8,
+                                  vertical: 4,
+                                ),
+                                borderRadius: BorderRadius.circular(8),
+                                backgroundColor: const Color(
+                                  0xFFEF4444,
+                                ).withValues(alpha: 0.08),
+                                borderColor: const Color(0xFFFFCDD2),
+                                borderWidth: 1.0,
+                                textColor: const Color(0xFFEF4444),
+                                fontSize: 11,
+                                fontWeight: FontWeight.w700,
+                                icon: Icons.warning_amber_rounded,
+                                iconSize: 11,
+                                iconColor: const Color(0xFFEF4444),
+                                prefixText: 'Deuda: \$',
+                              ),
                             ...customer.productLabels
                                 .take(2) // Max 2 tags to avoid overflow
                                 .map((label) => ProductChip(label: label)),
@@ -198,13 +192,17 @@ class CustomerListTile extends StatelessWidget {
                       if (!selectable) ...[
                         Row(
                           children: [
-                            if (customer.phone != null && customer.phone!.isNotEmpty) ...[
-                              _buildQuickActionButton(
+                            if (customer.phone != null &&
+                                customer.phone!.isNotEmpty) ...[
+                              CircularActionButton(
                                 icon: Icons.phone_in_talk_outlined,
-                                onTap: () {
+                                color: const Color(0xFF4B5563),
+                                onPressed: () {
                                   ScaffoldMessenger.of(context).showSnackBar(
                                     SnackBar(
-                                      content: Text('Llamando a ${customer.name}...'),
+                                      content: Text(
+                                        'Llamando a ${customer.name}...',
+                                      ),
                                       duration: const Duration(seconds: 1),
                                     ),
                                   );
@@ -213,12 +211,15 @@ class CustomerListTile extends StatelessWidget {
                               const SizedBox(width: 8),
                             ],
                             if (_address.isNotEmpty)
-                              _buildQuickActionButton(
+                              CircularActionButton(
                                 icon: Icons.map_outlined,
-                                onTap: () {
+                                color: const Color(0xFF4B5563),
+                                onPressed: () {
                                   ScaffoldMessenger.of(context).showSnackBar(
                                     SnackBar(
-                                      content: Text('Abriendo mapa para $_address...'),
+                                      content: Text(
+                                        'Abriendo mapa para $_address...',
+                                      ),
                                       duration: const Duration(seconds: 1),
                                     ),
                                   );
@@ -232,32 +233,6 @@ class CustomerListTile extends StatelessWidget {
                 ],
               ),
             ),
-          ),
-        ),
-      ),
-    );
-  }
-
-  Widget _buildQuickActionButton({
-    required IconData icon,
-    required VoidCallback onTap,
-  }) {
-    return Container(
-      width: 32,
-      height: 32,
-      decoration: const BoxDecoration(
-        color: Color(0xFFF3F4F6),
-        shape: BoxShape.circle,
-      ),
-      child: Material(
-        color: Colors.transparent,
-        child: InkWell(
-          onTap: onTap,
-          customBorder: const CircleBorder(),
-          child: Icon(
-            icon,
-            size: 16,
-            color: const Color(0xFF4B5563),
           ),
         ),
       ),

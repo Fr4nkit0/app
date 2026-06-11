@@ -4,7 +4,7 @@ import 'package:app/core/widgets/empty_state.dart';
 import 'package:app/features/route/domain/models/route_stop.dart';
 import 'package:app/features/route/domain/models/stop_status.dart';
 import 'package:app/features/route/presentation/providers/route_repository_provider.dart';
-import 'package:app/features/route/presentation/screens/visit_screen.dart';
+import 'package:app/features/visits/presentation/screens/visit_screen.dart';
 import 'package:app/features/route/presentation/widgets/route_stop_card.dart';
 
 class RouteDayScreen extends ConsumerStatefulWidget {

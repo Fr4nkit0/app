@@ -1,7 +1,11 @@
 import 'package:flutter/material.dart';
+import 'package:app/core/utils/avatar_utils.dart';
+import 'package:app/core/widgets/circular_action_button.dart';
+import 'package:app/core/widgets/debt_chip.dart';
+import 'package:app/core/widgets/product_chip.dart';
 import 'package:app/features/route/domain/models/route_stop.dart';
 import 'package:app/features/route/domain/models/stop_status.dart';
-import 'package:app/features/route/domain/models/visit_type.dart';
+// import 'package:app/features/visits/domain/models/visit_type.dart';
 
 class RouteStopCard extends StatelessWidget {
   const RouteStopCard({
@@ -17,41 +21,6 @@ class RouteStopCard extends StatelessWidget {
   final bool isFirst;
   final bool isLast;
 
-  Color _getPastelColor(String name) {
-    final hash = name.hashCode;
-    final colors = [
-      const Color(0xFFE0F2FE), // Blue
-      const Color(0xFFFCE7F3), // Pink
-      const Color(0xFFFEF3C7), // Amber
-      const Color(0xFFE8F5E9), // Green
-      const Color(0xFFF3E8FF), // Purple
-      const Color(0xFFFFEDD5), // Orange
-    ];
-    return colors[hash.abs() % colors.length];
-  }
-
-  Color _getTextColor(String name) {
-    final hash = name.hashCode;
-    final colors = [
-      const Color(0xFF0369A1),
-      const Color(0xFFBE185D),
-      const Color(0xFFB45309),
-      const Color(0xFF2E7D32),
-      const Color(0xFF6B21A8),
-      const Color(0xFFC2410C),
-    ];
-    return colors[hash.abs() % colors.length];
-  }
-
-  String _getInitials(String name) {
-    final cleanName = name.replaceAll(RegExp(r"[^\w\s]"), '').trim();
-    final parts = cleanName.split(' ');
-    if (parts.length >= 2) {
-      return '${parts[0][0]}${parts[1][0]}'.toUpperCase();
-    }
-    return parts[0].isNotEmpty ? parts[0][0].toUpperCase() : '?';
-  }
-
   @override
   Widget build(BuildContext context) {
     final isDone = stop.status == StopStatus.done;
@@ -61,12 +30,15 @@ class RouteStopCard extends StatelessWidget {
     final Color timelineColor = isDone
         ? const Color(0xFF10B981) // Green
         : isAbsent
-            ? const Color(0xFFEF4444) // Red
-            : const Color(0xFFD1D5DB); // Gray
+        ? const Color(0xFFEF4444) // Red
+        : const Color(0xFFD1D5DB); // Gray
 
-    final initials = _getInitials(stop.customer.name);
-    final avatarBg = _getPastelColor(stop.customer.name);
-    final avatarText = _getTextColor(stop.customer.name);
+    final initials = AvatarUtils.getInitials(stop.customer.name);
+    final avatarColors = AvatarUtils.getColors(
+      stop.customer.name,
+      selected: false,
+      baseColor: AvatarUtils.getPastelColor(stop.customer.name),
+    );
 
     return Stack(
       children: [
@@ -106,26 +78,32 @@ class RouteStopCard extends StatelessWidget {
                       color: isDone
                           ? const Color(0xFF10B981)
                           : isAbsent
-                              ? const Color(0xFFEF4444)
-                              : const Color(0xFF1565C0),
+                          ? const Color(0xFFEF4444)
+                          : const Color(0xFF1565C0),
                       width: 2.5,
                     ),
                   ),
                   alignment: Alignment.center,
                   child: isDone
-                      ? const Icon(Icons.check_rounded,
-                          size: 16, color: Color(0xFF10B981))
+                      ? const Icon(
+                          Icons.check_rounded,
+                          size: 16,
+                          color: Color(0xFF10B981),
+                        )
                       : isAbsent
-                          ? const Icon(Icons.close_rounded,
-                              size: 16, color: Color(0xFFEF4444))
-                          : Container(
-                              width: 8,
-                              height: 8,
-                              decoration: const BoxDecoration(
-                                color: Color(0xFF1565C0),
-                                shape: BoxShape.circle,
-                              ),
-                            ),
+                      ? const Icon(
+                          Icons.close_rounded,
+                          size: 16,
+                          color: Color(0xFFEF4444),
+                        )
+                      : Container(
+                          width: 8,
+                          height: 8,
+                          decoration: const BoxDecoration(
+                            color: Color(0xFF1565C0),
+                            shape: BoxShape.circle,
+                          ),
+                        ),
                 ),
               ),
               const SizedBox(width: 12),
@@ -147,8 +125,8 @@ class RouteStopCard extends StatelessWidget {
                       color: isDone
                           ? const Color(0xFFE8F5E9)
                           : isAbsent
-                              ? const Color(0xFFFFEBEE)
-                              : const Color(0xFFF3F4F6),
+                          ? const Color(0xFFFFEBEE)
+                          : const Color(0xFFF3F4F6),
                       width: 1.5,
                     ),
                   ),
@@ -174,7 +152,7 @@ class RouteStopCard extends StatelessWidget {
                                     decoration: BoxDecoration(
                                       color: isDone || isAbsent
                                           ? Colors.grey.shade100
-                                          : avatarBg,
+                                          : avatarColors.background,
                                       shape: BoxShape.circle,
                                     ),
                                     alignment: Alignment.center,
@@ -183,7 +161,7 @@ class RouteStopCard extends StatelessWidget {
                                       style: TextStyle(
                                         color: isDone || isAbsent
                                             ? Colors.grey.shade400
-                                            : avatarText,
+                                            : avatarColors.foreground,
                                         fontWeight: FontWeight.bold,
                                         fontSize: 14,
                                       ),
@@ -211,9 +189,12 @@ class RouteStopCard extends StatelessWidget {
                                         const SizedBox(height: 2),
                                         Text(
                                           stop.customer.addresses.isNotEmpty
-                                              ? stop.customer.addresses.first
-                                                      .street ??
-                                                  ''
+                                              ? stop
+                                                        .customer
+                                                        .addresses
+                                                        .first
+                                                        .street ??
+                                                    ''
                                               : 'Sin dirección',
                                           style: TextStyle(
                                             fontSize: 13,
@@ -226,8 +207,11 @@ class RouteStopCard extends StatelessWidget {
                                     ),
                                   ),
                                   // Time bubble
-                                  _buildTimeBubble(stop.scheduledAt,
-                                      isDone: isDone, isAbsent: isAbsent),
+                                  _buildTimeBubble(
+                                    stop.scheduledAt,
+                                    isDone: isDone,
+                                    isAbsent: isAbsent,
+                                  ),
                                 ],
                               ),
                               const SizedBox(height: 12),
@@ -244,43 +228,100 @@ class RouteStopCard extends StatelessWidget {
                                       runSpacing: 4,
                                       children: [
                                         if (stop.customer.debtAmount > 0)
-                                          _buildDebtChip(
-                                              stop.customer.debtAmount),
-                                        if (stop.customer.productLabels
+                                          DebtChip(
+                                            amount: stop.customer.debtAmount,
+                                            padding: const EdgeInsets.symmetric(
+                                              horizontal: 8,
+                                              vertical: 4,
+                                            ),
+                                            borderRadius: BorderRadius.circular(
+                                              8,
+                                            ),
+                                            backgroundColor: const Color(
+                                              0xFFEF4444,
+                                            ).withValues(alpha: 0.08),
+                                            borderColor: const Color(
+                                              0xFFFFCDD2,
+                                            ),
+                                            borderWidth: 1.0,
+                                            textColor: const Color(0xFFEF4444),
+                                            fontSize: 11,
+                                            fontWeight: FontWeight.w700,
+                                            icon: Icons.warning_amber_rounded,
+                                            iconSize: 11,
+                                            iconColor: const Color(0xFFEF4444),
+                                            prefixText: 'Deuda: \$',
+                                          ),
+                                        if (stop
+                                            .customer
+                                            .productLabels
                                             .isNotEmpty)
-                                          _buildProductChip(stop
-                                              .customer.productLabels.first),
+                                          ProductChip(
+                                            label: stop
+                                                .customer
+                                                .productLabels
+                                                .first,
+                                            padding: const EdgeInsets.symmetric(
+                                              horizontal: 8,
+                                              vertical: 4,
+                                            ),
+                                            borderRadius: BorderRadius.circular(
+                                              8,
+                                            ),
+                                            backgroundColor: const Color(
+                                              0xFF0369A1,
+                                            ).withValues(alpha: 0.05),
+                                            borderColor: const Color(
+                                              0xFFBAE6FD,
+                                            ),
+                                            borderWidth: 1.0,
+                                            textColor: const Color(0xFF0369A1),
+                                            fontSize: 11,
+                                            fontWeight: FontWeight.w700,
+                                            icon: Icons.water_drop_outlined,
+                                            iconSize: 11,
+                                            iconColor: const Color(0xFF0369A1),
+                                            showIcon: true,
+                                          ),
                                       ],
                                     ),
                                   ),
                                   // Mini Quick Actions
                                   Row(
                                     children: [
-                                      _buildQuickActionButton(
+                                      CircularActionButton(
                                         icon: Icons.phone_in_talk_outlined,
-                                        onTap: () {
-                                          ScaffoldMessenger.of(context)
-                                              .showSnackBar(
+                                        color: const Color(0xFF4B5563),
+                                        onPressed: () {
+                                          ScaffoldMessenger.of(
+                                            context,
+                                          ).showSnackBar(
                                             SnackBar(
                                               content: Text(
-                                                  'Llamando a ${stop.customer.name}...'),
-                                              duration:
-                                                  const Duration(seconds: 1),
+                                                'Llamando a ${stop.customer.name}...',
+                                              ),
+                                              duration: const Duration(
+                                                seconds: 1,
+                                              ),
                                             ),
                                           );
                                         },
                                       ),
                                       const SizedBox(width: 8),
-                                      _buildQuickActionButton(
+                                      CircularActionButton(
                                         icon: Icons.map_outlined,
-                                        onTap: () {
-                                          ScaffoldMessenger.of(context)
-                                              .showSnackBar(
+                                        color: const Color(0xFF4B5563),
+                                        onPressed: () {
+                                          ScaffoldMessenger.of(
+                                            context,
+                                          ).showSnackBar(
                                             SnackBar(
                                               content: Text(
-                                                  'Abriendo mapa para ${stop.customer.addresses.first.street ?? ''}...'),
-                                              duration:
-                                                  const Duration(seconds: 1),
+                                                'Abriendo mapa para ${stop.customer.addresses.first.street ?? ''}...',
+                                              ),
+                                              duration: const Duration(
+                                                seconds: 1,
+                                              ),
                                             ),
                                           );
                                         },
@@ -304,21 +345,24 @@ class RouteStopCard extends StatelessWidget {
     );
   }
 
-  Widget _buildTimeBubble(DateTime time,
-      {required bool isDone, required bool isAbsent}) {
+  Widget _buildTimeBubble(
+    DateTime time, {
+    required bool isDone,
+    required bool isAbsent,
+  }) {
     final h = time.hour.toString().padLeft(2, '0');
     final m = time.minute.toString().padLeft(2, '0');
 
     final color = isDone
         ? Colors.grey.shade400
         : isAbsent
-            ? Colors.red.shade300
-            : const Color(0xFF1565C0);
+        ? Colors.red.shade300
+        : const Color(0xFF1565C0);
     final bg = isDone
         ? Colors.grey.shade100
         : isAbsent
-            ? const Color(0xFFFFEBEE)
-            : const Color(0xFF1565C0).withValues(alpha: 0.08);
+        ? const Color(0xFFFFEBEE)
+        : const Color(0xFF1565C0).withValues(alpha: 0.08);
 
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
@@ -337,104 +381,24 @@ class RouteStopCard extends StatelessWidget {
     );
   }
 
-  Widget _buildTypeChip(VisitType type) {
-    final isSale = type == VisitType.sale;
-    return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
-      decoration: BoxDecoration(
-        color: isSale
-            ? const Color(0xFF1565C0).withValues(alpha: 0.08)
-            : const Color(0xFF9E9E9E).withValues(alpha: 0.08),
-        borderRadius: BorderRadius.circular(8),
-      ),
-      child: Text(
-        isSale ? 'Venta' : 'Visita',
-        style: TextStyle(
-          fontSize: 11,
-          fontWeight: FontWeight.w700,
-          color: isSale ? const Color(0xFF1565C0) : const Color(0xFF616161),
-        ),
-      ),
-    );
-  }
-
-  Widget _buildDebtChip(double amount) {
-    return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
-      decoration: BoxDecoration(
-        color: const Color(0xFFEF4444).withValues(alpha: 0.08),
-        borderRadius: BorderRadius.circular(8),
-        border: Border.all(color: const Color(0xFFFFCDD2), width: 1),
-      ),
-      child: Row(
-        mainAxisSize: MainAxisSize.min,
-        children: [
-          const Icon(Icons.warning_amber_rounded,
-              size: 11, color: Color(0xFFEF4444)),
-          const SizedBox(width: 3),
-          Text(
-            'Deuda: \$${amount.toStringAsFixed(0)}',
-            style: const TextStyle(
-              fontSize: 11,
-              fontWeight: FontWeight.w700,
-              color: Color(0xFFEF4444),
-            ),
-          ),
-        ],
-      ),
-    );
-  }
-
-  Widget _buildProductChip(String label) {
-    return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
-      decoration: BoxDecoration(
-        color: const Color(0xFF0369A1).withValues(alpha: 0.05),
-        borderRadius: BorderRadius.circular(8),
-        border: Border.all(color: const Color(0xFFBAE6FD), width: 1),
-      ),
-      child: Row(
-        mainAxisSize: MainAxisSize.min,
-        children: [
-          const Icon(Icons.water_drop_outlined,
-              size: 11, color: Color(0xFF0369A1)),
-          const SizedBox(width: 3),
-          Text(
-            label,
-            style: const TextStyle(
-              fontSize: 11,
-              fontWeight: FontWeight.w700,
-              color: Color(0xFF0369A1),
-            ),
-          ),
-        ],
-      ),
-    );
-  }
-
-  Widget _buildQuickActionButton({
-    required IconData icon,
-    required VoidCallback onTap,
-  }) {
-    return Container(
-      width: 32,
-      height: 32,
-      decoration: BoxDecoration(
-        color: const Color(0xFFF3F4F6),
-        shape: BoxShape.circle,
-      ),
-      child: Material(
-        color: Colors.transparent,
-        child: InkWell(
-          onTap: onTap,
-          customBorder: const CircleBorder(),
-          child: Icon(
-            icon,
-            size: 16,
-            color: const Color(0xFF4B5563),
-          ),
-        ),
-      ),
-    );
-  }
+  // Widget _buildTypeChip(VisitType type) {
+  //   final isSale = type == VisitType.sale;
+  //   return Container(
+  //     padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+  //     decoration: BoxDecoration(
+  //       color: isSale
+  //           ? const Color(0xFF1565C0).withValues(alpha: 0.08)
+  //           : const Color(0xFF9E9E9E).withValues(alpha: 0.08),
+  //       borderRadius: BorderRadius.circular(8),
+  //     ),
+  //     child: Text(
+  //       isSale ? 'Venta' : 'Visita',
+  //       style: TextStyle(
+  //         fontSize: 11,
+  //         fontWeight: FontWeight.w700,
+  //         color: isSale ? const Color(0xFF1565C0) : const Color(0xFF616161),
+  //       ),
+  //     ),
+  //   );
+  // }
 }
