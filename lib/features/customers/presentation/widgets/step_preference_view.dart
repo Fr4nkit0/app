@@ -30,7 +30,6 @@ class StepPreferenceView extends StatelessWidget {
     4: 'Jueves',
     5: 'Viernes',
     6: 'Sábado',
-    7: 'Domingo',
   };
 
   void _openPreferenceModal(
@@ -270,6 +269,7 @@ class _PreferenceDialogState extends State<_PreferenceDialog> {
   late int _selectedDay;
   late String _startTime;
   late String _endTime;
+  String? _errorMessage;
 
   @override
   void initState() {
@@ -318,11 +318,37 @@ class _PreferenceDialogState extends State<_PreferenceDialog> {
         } else {
           _endTime = formatted;
         }
+        _errorMessage = null;
       });
     }
   }
 
+  bool _isValidTime() {
+    final startParts = _startTime.split(':');
+    final startHour = int.tryParse(startParts[0]) ?? 0;
+
+    final endParts = _endTime.split(':');
+    final endHour = int.tryParse(endParts[0]) ?? 0;
+
+    // Lunes (1) a Viernes (5)
+    if (_selectedDay >= 1 && _selectedDay <= 5) {
+      return startHour >= 9 && endHour <= 18;
+    }
+    // Sábado (6)
+    if (_selectedDay == 6) {
+      return startHour >= 9 && endHour <= 15;
+    }
+    // Domingo (7) - No deliveries
+    return false;
+  }
+
   void _save() {
+    if (!_isValidTime()) {
+      setState(() {
+        _errorMessage = 'Horario inválido. L a V: 9-18hs, Sáb: 9-15hs';
+      });
+      return;
+    }
     Navigator.of(context).pop((_selectedDay, _startTime, _endTime));
   }
 
@@ -340,11 +366,6 @@ class _PreferenceDialogState extends State<_PreferenceDialog> {
           children: [
             Row(
               children: [
-                /*Icon(
-                  isEdit ? Icons.edit_calendar_rounded : Icons.schedule_rounded,
-                  color: const Color(0xFF1565C0),
-                  size: 22,
-                ),*/
                 const SizedBox(width: 10),
                 Text(
                   isEdit ? 'Editar horario' : 'Agregar Preferencia Horaria',
@@ -360,7 +381,12 @@ class _PreferenceDialogState extends State<_PreferenceDialog> {
             DropdownButtonFormField<int>(
               initialValue: _selectedDay,
               onChanged: (val) {
-                if (val != null) setState(() => _selectedDay = val);
+                if (val != null) {
+                  setState(() {
+                    _selectedDay = val;
+                    _errorMessage = null;
+                  });
+                }
               },
               decoration: const InputDecoration(
                 labelText: 'Día de entrega',
@@ -409,7 +435,27 @@ class _PreferenceDialogState extends State<_PreferenceDialog> {
                 ),
               ],
             ),
-            const SizedBox(height: 48),
+            const SizedBox(height: 24),
+            if (_errorMessage != null) ...[
+              Container(
+                width: double.infinity,
+                padding: const EdgeInsets.all(10),
+                decoration: BoxDecoration(
+                  color: const Color(0xFFFEF2F2),
+                  borderRadius: BorderRadius.circular(8),
+                  border: Border.all(color: const Color(0xFFFCA5A5)),
+                ),
+                child: Text(
+                  _errorMessage!,
+                  style: const TextStyle(
+                    color: Color(0xFFB91C1C),
+                    fontWeight: FontWeight.w600,
+                    fontSize: 13,
+                  ),
+                ),
+              ),
+              const SizedBox(height: 16),
+            ],
             SizedBox(
               width: double.infinity,
               child: Row(

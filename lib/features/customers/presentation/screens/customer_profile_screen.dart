@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:app/core/utils/avatar_utils.dart';
+import 'package:app/features/customers/domain/models/customer.dart';
 import 'package:app/features/customers/presentation/providers/customer_count_provider.dart';
 import 'package:app/features/history/domain/models/history_entry.dart';
 import 'package:app/features/history/presentation/providers/history_list_provider.dart';
@@ -47,12 +48,10 @@ class _CustomerProfileScreenState extends ConsumerState<CustomerProfileScreen> {
 
         return _buildScaffold(context, customer, customerHistory);
       },
-      loading: () => const Scaffold(
-        body: Center(child: CircularProgressIndicator()),
-      ),
-      error: (e, _) => Scaffold(
-        body: Center(child: Text('Error al cargar: $e')),
-      ),
+      loading: () =>
+          const Scaffold(body: Center(child: CircularProgressIndicator())),
+      error: (e, _) =>
+          Scaffold(body: Center(child: Text('Error al cargar: $e'))),
     );
   }
 
@@ -154,7 +153,11 @@ class _CustomerProfileScreenState extends ConsumerState<CustomerProfileScreen> {
               child: Row(
                 mainAxisSize: MainAxisSize.min,
                 children: [
-                  const Icon(Icons.phone_outlined, size: 16, color: Color(0xFF0D1B3E)),
+                  const Icon(
+                    Icons.phone_outlined,
+                    size: 16,
+                    color: Color(0xFF0D1B3E),
+                  ),
                   const SizedBox(width: 8),
                   Text(
                     customer.phone!,
@@ -219,7 +222,11 @@ class _CustomerProfileScreenState extends ConsumerState<CustomerProfileScreen> {
                                 color: Colors.red.shade900,
                               ),
                             ),
-                            const Icon(Icons.credit_card_rounded, size: 16, color: Color(0xFFEF4444)),
+                            const Icon(
+                              Icons.credit_card_rounded,
+                              size: 16,
+                              color: Color(0xFFEF4444),
+                            ),
                           ],
                         ),
                         const SizedBox(height: 12),
@@ -234,7 +241,10 @@ class _CustomerProfileScreenState extends ConsumerState<CustomerProfileScreen> {
                         const SizedBox(height: 4),
                         Text(
                           'Deuda pendiente',
-                          style: TextStyle(fontSize: 11, color: Colors.red.shade700),
+                          style: TextStyle(
+                            fontSize: 11,
+                            color: Colors.red.shade700,
+                          ),
                         ),
                       ],
                     ),
@@ -263,7 +273,11 @@ class _CustomerProfileScreenState extends ConsumerState<CustomerProfileScreen> {
                                 color: Color(0xFF0D1B3E),
                               ),
                             ),
-                            Icon(Icons.inventory_2_outlined, size: 16, color: Color(0xFF1565C0)),
+                            Icon(
+                              Icons.inventory_2_outlined,
+                              size: 16,
+                              color: Color(0xFF1565C0),
+                            ),
                           ],
                         ),
                         const SizedBox(height: 12),
@@ -343,7 +357,7 @@ class _CustomerProfileScreenState extends ConsumerState<CustomerProfileScreen> {
     );
   }
 
-  Widget _buildTabContent(dynamic customer, List<HistoryEntry> history) {
+  Widget _buildTabContent(Customer customer, List<HistoryEntry> history) {
     switch (_selectedTab) {
       case 0:
         return _buildHistoryTab(history);
@@ -380,7 +394,7 @@ class _CustomerProfileScreenState extends ConsumerState<CustomerProfileScreen> {
     );
   }
 
-  Widget _buildPreferencesTab(dynamic customer) {
+  Widget _buildPreferencesTab(Customer customer) {
     if (customer.preferences.isEmpty) {
       return _buildEmptyState(
         icon: Icons.schedule_outlined,
@@ -410,7 +424,11 @@ class _CustomerProfileScreenState extends ConsumerState<CustomerProfileScreen> {
           children: [
             const Row(
               children: [
-                Icon(Icons.schedule_outlined, color: Color(0xFF1565C0), size: 20),
+                Icon(
+                  Icons.schedule_outlined,
+                  color: Color(0xFF1565C0),
+                  size: 20,
+                ),
                 SizedBox(width: 8),
                 Text(
                   'Horarios de Visita Preferidos',
@@ -520,10 +538,11 @@ class _CustomerProfileScreenState extends ConsumerState<CustomerProfileScreen> {
     );
   }
 
-  Widget _buildDatosTab(dynamic customer) {
+  Widget _buildDatosTab(Customer customer) {
+    final addresses = customer.addresses;
     final addr =
-        customer.addresses.where((a) => a.isPrimary).firstOrNull ??
-        customer.addresses.firstOrNull;
+        addresses.where((a) => a.isPrimary).firstOrNull ??
+        addresses.firstOrNull;
 
     return Container(
       padding: const EdgeInsets.all(16),
