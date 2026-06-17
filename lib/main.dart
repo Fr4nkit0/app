@@ -1,8 +1,12 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:app/core/theme/app.theme.dart';
-import 'package:app/features/customers/presentation/screens/customer_list_screen.dart';
 import 'package:app/features/customers/presentation/providers/customer_count_provider.dart';
+import 'package:app/features/customers/presentation/screens/customer_list_screen.dart';
+import 'package:app/features/history/presentation/screens/history_screen.dart';
+import 'package:app/features/route/presentation/screens/route_day_screen.dart';
+import 'package:app/features/sales/presentation/providers/sale_draft_provider.dart';
+import 'package:app/features/sales/presentation/screens/sale_step1_screen.dart';
 
 void main() {
   runApp(const ProviderScope(child: MarilinApp()));
@@ -22,7 +26,7 @@ class MarilinApp extends StatelessWidget {
   }
 }
 
-// ─── Shell raíz con NavigationBar ────────────────────────────────────────────
+// ─── Shell raíz con NavigationBar (4 tabs, sin AppBar global) ────────────────
 
 class _RootShell extends ConsumerStatefulWidget {
   const _RootShell();
@@ -34,59 +38,37 @@ class _RootShell extends ConsumerStatefulWidget {
 class _RootShellState extends ConsumerState<_RootShell> {
   int _selectedIndex = 0;
 
-  static const List<_NavDestination> _destinations = [
-    _NavDestination(
-      label: 'Clientes',
-      icon: Icons.people_outline,
-      selectedIcon: Icons.people,
-    ),
-    _NavDestination(
-      label: 'Ventas',
-      icon: Icons.receipt_long_outlined,
-      selectedIcon: Icons.receipt_long,
-    ),
-    _NavDestination(
-      label: 'Ruta',
-      icon: Icons.route_outlined,
-      selectedIcon: Icons.route,
-    ),
-  ];
+  void _onTabChanged(int index) {
+    // Resetear el draft de venta al salir del tab Venta (index 2)
+    if (_selectedIndex == 2 && index != 2) {
+      ref.read(saleDraftProvider.notifier).reset();
+    }
+    setState(() => _selectedIndex = index);
+  }
 
   @override
   Widget build(BuildContext context) {
     final customerCount = ref.watch(customerCountProvider);
 
     return Scaffold(
-      appBar: AppBar(
-        title: Text(_destinations[_selectedIndex].label),
-        actions: [
-          IconButton(
-            icon: const Icon(Icons.account_circle_outlined),
-            onPressed: () {},
-            tooltip: 'Perfil',
-          ),
-        ],
-      ),
       body: IndexedStack(
         index: _selectedIndex,
         children: const [
+          RouteDayScreen(),
           CustomerListScreen(),
-          _ComingSoonScreen(
-            icon: Icons.receipt_long_outlined,
-            label: 'Ventas',
-          ),
-          _ComingSoonScreen(
-            icon: Icons.route_outlined,
-            label: 'Ruta',
-          ),
+          SaleStep1Screen(),
+          HistoryScreen(),
         ],
       ),
       bottomNavigationBar: NavigationBar(
         selectedIndex: _selectedIndex,
-        onDestinationSelected: (index) =>
-            setState(() => _selectedIndex = index),
+        onDestinationSelected: _onTabChanged,
         destinations: [
-          // Destino Clientes con badge reactivo
+          const NavigationDestination(
+            icon: Icon(Icons.route_outlined),
+            selectedIcon: Icon(Icons.route),
+            label: 'Ruta',
+          ),
           NavigationDestination(
             icon: _BadgedIcon(
               icon: const Icon(Icons.people_outline),
@@ -99,14 +81,14 @@ class _RootShellState extends ConsumerState<_RootShell> {
             label: 'Clientes',
           ),
           const NavigationDestination(
-            icon: Icon(Icons.receipt_long_outlined),
-            selectedIcon: Icon(Icons.receipt_long),
-            label: 'Ventas',
+            icon: Icon(Icons.point_of_sale_outlined),
+            selectedIcon: Icon(Icons.point_of_sale),
+            label: 'Venta',
           ),
           const NavigationDestination(
-            icon: Icon(Icons.route_outlined),
-            selectedIcon: Icon(Icons.route),
-            label: 'Ruta',
+            icon: Icon(Icons.history_outlined),
+            selectedIcon: Icon(Icons.history),
+            label: 'Historial',
           ),
         ],
       ),
@@ -126,95 +108,5 @@ class _BadgedIcon extends StatelessWidget {
   Widget build(BuildContext context) {
     if (count == 0) return icon;
     return Badge.count(count: count, child: icon);
-  }
-}
-
-// ─── Datos de navegación ──────────────────────────────────────────────────────
-
-class _NavDestination {
-  const _NavDestination({
-    required this.label,
-    required this.icon,
-    required this.selectedIcon,
-  });
-
-  final String label;
-  final IconData icon;
-  final IconData selectedIcon;
-}
-
-// ─── Pantalla "Próximamente" ──────────────────────────────────────────────────
-
-class _ComingSoonScreen extends StatelessWidget {
-  const _ComingSoonScreen({
-    required this.icon,
-    required this.label,
-  });
-
-  final IconData icon;
-  final String label;
-
-  @override
-  Widget build(BuildContext context) {
-    final colorScheme = Theme.of(context).colorScheme;
-
-    return Center(
-      child: Padding(
-        padding: const EdgeInsets.all(32),
-        child: Card(
-          elevation: 0,
-          color: colorScheme.surfaceContainerHighest,
-          shape: RoundedRectangleBorder(
-            borderRadius: BorderRadius.circular(28),
-          ),
-          child: Padding(
-            padding: const EdgeInsets.symmetric(
-              horizontal: 40,
-              vertical: 48,
-            ),
-            child: Column(
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                Container(
-                  padding: const EdgeInsets.all(20),
-                  decoration: BoxDecoration(
-                    color: colorScheme.primaryContainer,
-                    shape: BoxShape.circle,
-                  ),
-                  child: Icon(
-                    icon,
-                    size: 40,
-                    color: colorScheme.onPrimaryContainer,
-                  ),
-                ),
-                const SizedBox(height: 20),
-                Text(
-                  label,
-                  style: Theme.of(context).textTheme.headlineSmall?.copyWith(
-                        fontWeight: FontWeight.bold,
-                      ),
-                ),
-                const SizedBox(height: 8),
-                Text(
-                  'Próximamente',
-                  style: Theme.of(context).textTheme.bodyLarge?.copyWith(
-                        color: colorScheme.primary,
-                        fontWeight: FontWeight.w600,
-                      ),
-                ),
-                const SizedBox(height: 12),
-                Text(
-                  'Esta sección está en desarrollo.\nPresto va a estar disponible.',
-                  textAlign: TextAlign.center,
-                  style: Theme.of(context).textTheme.bodyMedium?.copyWith(
-                        color: colorScheme.outline,
-                      ),
-                ),
-              ],
-            ),
-          ),
-        ),
-      ),
-    );
   }
 }

@@ -1,180 +1,127 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:app/core/widgets/empty_state.dart';
+import 'package:app/core/widgets/screen_header.dart';
+import 'package:app/core/widgets/core_search_bar.dart';
 import 'package:app/features/customers/domain/models/customer.dart';
 import 'package:app/features/customers/presentation/providers/customer_count_provider.dart';
 import 'package:app/features/customers/presentation/screens/create_customer_screens.dart';
+import 'package:app/features/customers/presentation/screens/customer_profile_screen.dart';
+import 'package:app/features/customers/presentation/widgets/customer_list_tile.dart';
+import 'package:app/features/customers/presentation/widgets/new_customer_button.dart';
 
-class CustomerListScreen extends ConsumerWidget {
+class CustomerListScreen extends ConsumerStatefulWidget {
   const CustomerListScreen({super.key});
 
   @override
-  Widget build(BuildContext context, WidgetRef ref) {
+  ConsumerState<CustomerListScreen> createState() => _CustomerListScreenState();
+}
+
+class _CustomerListScreenState extends ConsumerState<CustomerListScreen> {
+  final _searchController = TextEditingController();
+  String _query = '';
+
+  @override
+  void dispose() {
+    _searchController.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
     final customersAsync = ref.watch(customerListProvider);
-    final colorScheme = Theme.of(context).colorScheme;
 
     return Scaffold(
-      body: customersAsync.when(
-        data: (customers) => customers.isEmpty
-            ? _EmptyState(colorScheme: colorScheme)
-            : _CustomerList(customers: customers),
-        loading: () => const Center(child: CircularProgressIndicator()),
-        error: (error, _) => Center(
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              Icon(Icons.error_outline,
-                  color: colorScheme.error, size: 48),
-              const SizedBox(height: 12),
-              Text(
-                'Error al cargar clientes',
-                style: TextStyle(color: colorScheme.error),
+      body: SafeArea(
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            const ScreenHeader(
+              title: 'Clientes',
+              subtitle: 'Gestioná tus clientes y ventas',
+            ),
+            Padding(
+              padding: const EdgeInsets.fromLTRB(16, 4, 16, 12),
+              child: customersAsync.maybeWhen(
+                data: (customers) => CoreSearchBar(
+                  controller: _searchController,
+                  hintText: 'Buscar ${customers.length} clientes...',
+                  onChanged: (q) => setState(() => _query = q),
+                ),
+                orElse: () => CoreSearchBar(
+                  controller: _searchController,
+                  hintText: 'Buscar clientes...',
+                  onChanged: (q) => setState(() => _query = q),
+                ),
               ),
-            ],
-          ),
+            ),
+            Expanded(
+              child: customersAsync.when(
+                data: (customers) {
+                  final filtered = _query.isEmpty
+                      ? customers
+                      : customers
+                            .where(
+                              (c) => c.name.toLowerCase().contains(
+                                _query.toLowerCase(),
+                              ),
+                            )
+                            .toList();
+                  if (filtered.isEmpty) {
+                    return const EmptyState(
+                      icon: Icons.people_outline,
+                      title: 'Sin clientes',
+                      message: 'Tocá el botón para agregar el primero.',
+                    );
+                  }
+                  return _CustomerList(
+                    customers: filtered,
+                    onTap: (customer) => Navigator.of(context).push(
+                      MaterialPageRoute(
+                        builder: (_) =>
+                            CustomerProfileScreen(customer: customer),
+                      ),
+                    ),
+                  );
+                },
+                loading: () => const Center(child: CircularProgressIndicator()),
+                error: (e, _) => Center(
+                  child: Text(
+                    'Error al cargar clientes',
+                    style: TextStyle(
+                      color: Theme.of(context).colorScheme.error,
+                    ),
+                  ),
+                ),
+              ),
+            ),
+          ],
         ),
       ),
-      floatingActionButton: FloatingActionButton.extended(
-        heroTag: 'fab_customers',
-        onPressed: () => Navigator.of(context).push(
-          MaterialPageRoute(
-            builder: (_) => const CreateCustomerScreen(),
-          ),
+      floatingActionButton: NewCustomerButton(
+        onTap: () => Navigator.of(context).push(
+          MaterialPageRoute(builder: (_) => const CreateCustomerScreen()),
         ),
-        icon: const Icon(Icons.person_add_outlined),
-        label: const Text('Nuevo cliente'),
-        shape: const StadiumBorder(),
+        backgroundColor: const Color(0xFF1565C0),
       ),
     );
   }
 }
-
-// ─── Lista de clientes ────────────────────────────────────────────────────────
 
 class _CustomerList extends StatelessWidget {
-  const _CustomerList({required this.customers});
+  const _CustomerList({required this.customers, required this.onTap});
 
   final List<Customer> customers;
+  final ValueChanged<Customer> onTap;
 
   @override
   Widget build(BuildContext context) {
-    return ListView.separated(
-      padding: const EdgeInsets.fromLTRB(16, 16, 16, 96),
+    return ListView.builder(
+      padding: const EdgeInsets.fromLTRB(0, 0, 0, 96),
       itemCount: customers.length,
-      separatorBuilder: (_, __) => const SizedBox(height: 8),
-      itemBuilder: (context, index) => _CustomerTile(customer: customers[index]),
-    );
-  }
-}
-
-// ─── Tile individual ─────────────────────────────────────────────────────────
-
-class _CustomerTile extends StatelessWidget {
-  const _CustomerTile({required this.customer});
-
-  final Customer customer;
-
-  /// Genera iniciales a partir del nombre del cliente.
-  String get _initials {
-    final parts = customer.name.trim().split(' ');
-    if (parts.length >= 2) {
-      return '${parts[0][0]}${parts[1][0]}'.toUpperCase();
-    }
-    return parts[0].substring(0, parts[0].length.clamp(0, 2)).toUpperCase();
-  }
-
-  @override
-  Widget build(BuildContext context) {
-    final colorScheme = Theme.of(context).colorScheme;
-
-    return Card(
-      clipBehavior: Clip.antiAlias,
-      child: ListTile(
-        contentPadding:
-            const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
-        leading: CircleAvatar(
-          radius: 24,
-          backgroundColor: colorScheme.primaryContainer,
-          child: Text(
-            _initials,
-            style: TextStyle(
-              color: colorScheme.onPrimaryContainer,
-              fontWeight: FontWeight.bold,
-            ),
-          ),
-        ),
-        title: Text(
-          customer.name,
-          style: Theme.of(context)
-              .textTheme
-              .titleMedium
-              ?.copyWith(fontWeight: FontWeight.w600),
-        ),
-        subtitle: customer.phone != null
-            ? Row(
-                children: [
-                  Icon(Icons.phone_outlined,
-                      size: 14, color: colorScheme.outline),
-                  const SizedBox(width: 4),
-                  Text(
-                    customer.phone!,
-                    style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                          color: colorScheme.outline,
-                        ),
-                  ),
-                ],
-              )
-            : Text(
-                'Sin teléfono',
-                style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                      color: colorScheme.outlineVariant,
-                      fontStyle: FontStyle.italic,
-                    ),
-              ),
-        trailing: Icon(
-          Icons.chevron_right_rounded,
-          color: colorScheme.outline,
-        ),
-        onTap: () {
-          // TODO: navegar al detalle del cliente
-        },
-      ),
-    );
-  }
-}
-
-// ─── Estado vacío ─────────────────────────────────────────────────────────────
-
-class _EmptyState extends StatelessWidget {
-  const _EmptyState({required this.colorScheme});
-
-  final ColorScheme colorScheme;
-
-  @override
-  Widget build(BuildContext context) {
-    return Center(
-      child: Column(
-        mainAxisSize: MainAxisSize.min,
-        children: [
-          Icon(
-            Icons.people_outline,
-            size: 80,
-            color: colorScheme.outlineVariant,
-          ),
-          const SizedBox(height: 16),
-          Text(
-            'Sin clientes todavía',
-            style: Theme.of(context).textTheme.titleLarge?.copyWith(
-                  color: colorScheme.onSurfaceVariant,
-                ),
-          ),
-          const SizedBox(height: 8),
-          Text(
-            'Tocá el botón para agregar el primero.',
-            style: Theme.of(context).textTheme.bodyMedium?.copyWith(
-                  color: colorScheme.outline,
-                ),
-          ),
-        ],
+      itemBuilder: (context, index) => CustomerListTile(
+        customer: customers[index],
+        onTap: () => onTap(customers[index]),
       ),
     );
   }

@@ -14,57 +14,78 @@ class StepIdentityView extends StatelessWidget {
     required this.onPhoneChanged,
   });
 
+  static const _border = OutlineInputBorder(
+    borderRadius: BorderRadius.all(Radius.circular(12)),
+    borderSide: BorderSide(color: Color(0xFFE5E7EB)),
+  );
+  static const _focusBorder = OutlineInputBorder(
+    borderRadius: BorderRadius.all(Radius.circular(12)),
+    borderSide: BorderSide(color: Color(0xFF1565C0), width: 2),
+  );
+  static const _errorBorder = OutlineInputBorder(
+    borderRadius: BorderRadius.all(Radius.circular(12)),
+    borderSide: BorderSide(color: Color(0xFFBF1B1B)),
+  );
+
   @override
   Widget build(BuildContext context) {
     return SingleChildScrollView(
-      padding: const EdgeInsets.all(24.0),
+      padding: const EdgeInsets.fromLTRB(20, 20, 20, 20),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
           Text(
-            'Datos Personales',
-            style: Theme.of(context).textTheme.headlineSmall?.copyWith(
-                  fontWeight: FontWeight.bold,
+            'Datos del cliente',
+            style: Theme.of(context).textTheme.titleLarge?.copyWith(
+                  fontWeight: FontWeight.w800,
                 ),
           ),
-          const SizedBox(height: 8),
-          Text(
-            'Ingresá los datos de contacto del cliente.',
-            style: Theme.of(context).textTheme.bodyMedium?.copyWith(
-                  color: Theme.of(context).colorScheme.onSurfaceVariant,
-                ),
+          const SizedBox(height: 4),
+          const Text(
+            'Ingresá los datos de contacto.',
+            style: TextStyle(color: Color(0xFF9CA3AF), fontSize: 14),
           ),
-          const SizedBox(height: 32),
+          const SizedBox(height: 28),
           TextFormField(
             initialValue: name,
             onChanged: onNameChanged,
-            decoration: const InputDecoration(
-              labelText: 'Nombre Completo',
-              hintText: 'Ej. Juan Pérez',
-              prefixIcon: Icon(Icons.person_outline),
-              filled: true,
-            ),
             textCapitalization: TextCapitalization.words,
             autofocus: true,
-            validator: (value) {
-              if (value == null || value.isEmpty) {
-                return 'El nombre es requerido';
-              }
-              return null;
-            },
             autovalidateMode: AutovalidateMode.onUserInteraction,
+            validator: (v) =>
+                (v == null || v.isEmpty) ? 'El nombre es requerido' : null,
+            decoration: const InputDecoration(
+              labelText: 'Nombre completo',
+              hintText: 'Ej. Juan Pérez',
+              prefixIcon: Icon(Icons.person_outline, size: 20),
+              filled: true,
+              fillColor: Colors.white,
+              contentPadding:
+                  EdgeInsets.symmetric(horizontal: 16, vertical: 16),
+              border: _border,
+              enabledBorder: _border,
+              focusedBorder: _focusBorder,
+              errorBorder: _errorBorder,
+              focusedErrorBorder: _errorBorder,
+            ),
           ),
-          const SizedBox(height: 24),
+          const SizedBox(height: 16),
           TextFormField(
             initialValue: phone,
             onChanged: onPhoneChanged,
-            decoration: const InputDecoration(
-              labelText: 'Teléfono (Opcional)',
-              hintText: 'Ej. 1122334455',
-              prefixIcon: Icon(Icons.phone_outlined),
-              filled: true,
-            ),
             keyboardType: TextInputType.phone,
+            decoration: const InputDecoration(
+              labelText: 'Teléfono (opcional)',
+              hintText: 'Ej. 387-555-0101',
+              prefixIcon: Icon(Icons.phone_outlined, size: 20),
+              filled: true,
+              fillColor: Colors.white,
+              contentPadding:
+                  EdgeInsets.symmetric(horizontal: 16, vertical: 16),
+              border: _border,
+              enabledBorder: _border,
+              focusedBorder: _focusBorder,
+            ),
           ),
         ],
       ),

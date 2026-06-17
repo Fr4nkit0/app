@@ -1,11 +1,12 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:app/core/widgets/top_toast.dart';
 
 import '../providers/customer_form_provider.dart';
 import '../widgets/step_identity_view.dart';
 import '../widgets/step_address_view.dart';
 import '../widgets/step_preference_view.dart';
-import '../widgets/step_progress_indicator.dart';
+import 'package:app/core/widgets/core_horizontal_stepper.dart';
 
 class CreateCustomerScreen extends ConsumerStatefulWidget {
   const CreateCustomerScreen({super.key});
@@ -55,9 +56,7 @@ class _CreateCustomerScreenState extends ConsumerState<CreateCustomerScreen> {
       next,
     ) {
       if (next == true) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('Cliente guardado exitosamente')),
-        );
+        TopToast.showSuccess(context, 'Cliente guardado exitosamente');
         Navigator.of(context).pop();
       }
     });
@@ -68,103 +67,112 @@ class _CreateCustomerScreenState extends ConsumerState<CreateCustomerScreen> {
       next,
     ) {
       if (next != null) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text(next),
-            backgroundColor: Theme.of(context).colorScheme.error,
-          ),
-        );
+        TopToast.showError(context, next);
       }
     });
 
     return Scaffold(
-      backgroundColor: Theme.of(context).colorScheme.surface,
-      appBar: AppBar(title: const Text('Nuevo Cliente'), centerTitle: true),
+      backgroundColor: Colors.white,
+      appBar: AppBar(
+        title: const Text('Nuevo Cliente'),
+        backgroundColor: Colors.white,
+        foregroundColor: const Color(0xFF0D1B3E),
+      ),
       body: SafeArea(
         child: Column(
           children: [
-            CustomerStepIndicator(
-              currentStep: formState.currentStep,
-              isSubmitting: formState.isSubmitting,
-            ),
-            Expanded(
-              child: Container(
-                margin: const EdgeInsets.fromLTRB(16, 0, 16, 16),
-                decoration: BoxDecoration(
-                  color: Theme.of(context).colorScheme.surfaceContainerHigh,
-                  borderRadius: BorderRadius.circular(
-                    32,
-                  ), // XL corners for M3 Expressive
-                ),
-                clipBehavior: Clip.antiAlias,
-                child: PageView(
-                  controller: _pageController,
-                  physics:
-                      const NeverScrollableScrollPhysics(), // Managed by buttons
-                  children: [
-                    StepIdentityView(
-                      name: formState.name,
-                      phone: formState.phone,
-                      onNameChanged: formNotifier.updateName,
-                      onPhoneChanged: formNotifier.updatePhone,
-                    ),
-                    StepAddressView(
-                      street: formState.street,
-                      apartment: formState.apartment,
-                      floor: formState.floor,
-                      visualReference: formState.visualReference,
-                      onStreetChanged: formNotifier.updateStreet,
-                      onApartmentChanged: formNotifier.updateApartment,
-                      onFloorChanged: formNotifier.updateFloor,
-                      onVisualReferenceChanged:
-                          formNotifier.updateVisualReference,
-                    ),
-                    StepPreferenceView(
-                      preferences: formState.preferences,
-                      onAddPreference: formNotifier.addPreference,
-                      onRemovePreference: formNotifier.removePreference,
-                      onPreferenceChanged: formNotifier.updatePreference,
-                    ),
-                  ],
-                ),
+            Padding(
+              padding: const EdgeInsets.fromLTRB(20, 16, 20, 8),
+              child: CoreHorizontalStepper(
+                steps: const ['Datos', 'Dirección', 'Preferencias'],
+                currentStep: formState.currentStep,
+                isSubmitting: formState.isSubmitting,
               ),
             ),
-            Padding(
-              padding: const EdgeInsets.all(24.0),
+            Expanded(
+              child: PageView(
+                controller: _pageController,
+                physics: const NeverScrollableScrollPhysics(),
+                children: [
+                  StepIdentityView(
+                    name: formState.name,
+                    phone: formState.phone,
+                    onNameChanged: formNotifier.updateName,
+                    onPhoneChanged: formNotifier.updatePhone,
+                  ),
+                  StepAddressView(
+                    street: formState.street,
+                    apartment: formState.apartment,
+                    floor: formState.floor,
+                    visualReference: formState.visualReference,
+                    onStreetChanged: formNotifier.updateStreet,
+                    onApartmentChanged: formNotifier.updateApartment,
+                    onFloorChanged: formNotifier.updateFloor,
+                    onVisualReferenceChanged:
+                        formNotifier.updateVisualReference,
+                  ),
+                  StepPreferenceView(
+                    preferences: formState.preferences,
+                    onAddPreference: formNotifier.addPreference,
+                    onRemovePreference: formNotifier.removePreference,
+                    onPreferenceChanged: formNotifier.updatePreference,
+                    onNewPreferenceSaved: (day, start, end) {
+                      formNotifier.addPreference();
+                      final newId = ref.read(customerFormProvider).preferences.last.id;
+                      formNotifier.updatePreference(
+                        newId,
+                        dayOfWeek: day,
+                        timeWindowStart: start,
+                        timeWindowEnd: end,
+                      );
+                    },
+                  ),
+                ],
+              ),
+            ),
+            // Footer fijo con sombra
+            Container(
+              decoration: BoxDecoration(
+                color: Colors.white,
+                boxShadow: [
+                  BoxShadow(
+                    color: Colors.black.withValues(alpha: 0.06),
+                    blurRadius: 12,
+                    offset: const Offset(0, -4),
+                  ),
+                ],
+              ),
+              padding: const EdgeInsets.fromLTRB(20, 12, 20, 24),
               child: Row(
                 mainAxisAlignment: MainAxisAlignment.spaceBetween,
                 children: [
                   if (formState.currentStep > 0)
-                    TextButton(
+                    OutlinedButton(
                       onPressed: formState.isSubmitting
                           ? null
                           : formNotifier.previousStep,
+                      style: OutlinedButton.styleFrom(
+                        minimumSize: const Size(100, 52),
+                      ),
                       child: const Text('Atrás'),
                     )
                   else
                     const SizedBox.shrink(),
                   FilledButton(
-                    onPressed:
-                        formState.isCurrentStepValid && !formState.isSubmitting
+                    onPressed: formState.isCurrentStepValid &&
+                            !formState.isSubmitting
                         ? (formState.currentStep == 2
-                              ? formNotifier.submit
-                              : formNotifier.nextStep)
+                            ? formNotifier.submit
+                            : formNotifier.nextStep)
                         : null,
                     style: FilledButton.styleFrom(
-                      shape: RoundedRectangleBorder(
-                        borderRadius: BorderRadius.circular(
-                          100,
-                        ), // Full rounded
-                      ),
-                      padding: const EdgeInsets.symmetric(
-                        horizontal: 32,
-                        vertical: 16,
-                      ),
+                      backgroundColor: const Color(0xFF1565C0),
+                      minimumSize: const Size(160, 52),
                     ),
                     child: formState.isSubmitting
                         ? const SizedBox(
-                            width: 24,
-                            height: 24,
+                            width: 22,
+                            height: 22,
                             child: CircularProgressIndicator(
                               strokeWidth: 2,
                               color: Colors.white,
@@ -174,6 +182,7 @@ class _CreateCustomerScreenState extends ConsumerState<CreateCustomerScreen> {
                             formState.currentStep == 2
                                 ? 'Guardar Cliente'
                                 : 'Siguiente',
+                            style: const TextStyle(fontWeight: FontWeight.w700),
                           ),
                   ),
                 ],

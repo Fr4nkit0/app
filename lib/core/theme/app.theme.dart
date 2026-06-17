@@ -1,116 +1,128 @@
 import 'package:flutter/material.dart';
+import 'package:app/core/theme/sales_tokens.dart';
 
-/// AppTheme - Definición centralizada del sistema de diseño de Marilin.
-/// 
-/// Sigue las guías de Material 3 Expressive (M3E) con un enfoque en:
-/// - Jerarquía visual clara mediante tipografía enfatizada.
-/// - Formas orgánicas y consistentes (Large Increased Shapes).
-/// - Paleta de alto impacto con accesibilidad verificada.
 abstract final class AppTheme {
-  // ─── Paleta de Colores (Tokens Base) ───────────────────────────────────────
-  static const Color _primary = Color(0xFF0D1B3E); // Azul marino profundo
-  static const Color _secondary = Color(0xFFBF1B1B); // Rojo vibrante CTA
-  static const Color _tertiary = Color(0xFFBC6700); // Naranja oscuro (ajustado para contraste)
-  static const Color _surface = Color(0xFFF5E6C8); // Crema base
-  static const Color _surfaceVariant = Color(0xFFEAD9B8); // Crema oscuro / Contornos
-  static const Color _onSurfaceVariant = Color(0xFF4D4639); // Texto secundario sobre crema
-  static const Color _darkText = Color(0xFF111827); // Texto principal casi negro
-  static const Color _error = Color(0xFFB3261E); // Rojo error M3
+  // ─── Brand colors ──────────────────────────────────────────────────────────
+  static const Color _primary = Color(0xFF0D1B3E);
+  static const Color _secondary = Color(0xFFBF1B1B);
+  static const Color _navBlue = Color(0xFF1565C0);
+  static const Color _darkText = Color(0xFF111827);
+  static const Color _error = Color(0xFFB3261E);
 
-  // ─── ColorScheme ─────────────────────────────────────────────────────────
+  // ─── ColorScheme — paleta limpia (sin crema) ──────────────────────────────
   static const ColorScheme _colorScheme = ColorScheme(
     brightness: Brightness.light,
-    
-    // Brand Colors
+
     primary: _primary,
     onPrimary: Colors.white,
     primaryContainer: Color(0xFF1E3A6E),
     onPrimaryContainer: Color(0xFFD0E4FF),
-    
+
     secondary: _secondary,
     onSecondary: Colors.white,
     secondaryContainer: Color(0xFFFFDAD6),
     onSecondaryContainer: Color(0xFF410002),
 
-    tertiary: _tertiary,
+    tertiary: Color(0xFFBC6700),
     onTertiary: Colors.white,
     tertiaryContainer: Color(0xFFFFDDB4),
     onTertiaryContainer: Color(0xFF2B1700),
 
-    // Surface & Background
-    surface: _surface,
+    // Surfaces — todos blancos/gris neutro
+    surface: Colors.white,
     onSurface: _darkText,
-    surfaceContainerHighest: _surfaceVariant,
-    surfaceContainerHigh: Color(0xFFF0E1C0),
-    surfaceContainer: _surface,
-    surfaceContainerLow: Color(0xFFFAF1DF),
-    
+    surfaceContainerHighest: Color(0xFFF3F4F6),
+    surfaceContainerHigh: Color(0xFFF9FAFB),
+    surfaceContainer: Color(0xFFF9FAFB),
+    surfaceContainerLow: Colors.white,
+
     error: _error,
     onError: Colors.white,
     errorContainer: Color(0xFFFFDAD6),
     onErrorContainer: Color(0xFF410002),
 
-    outline: _onSurfaceVariant,
-    outlineVariant: _surfaceVariant,
+    // Outlines — gris neutro
+    outline: Color(0xFF9CA3AF),
+    outlineVariant: Color(0xFFE5E7EB),
+
+    onSurfaceVariant: Color(0xFF6B7280),
+    inverseSurface: Color(0xFF1F2937),
+    onInverseSurface: Colors.white,
   );
 
-  // ─── Geometría (Shape Tokens) ─────────────────────────────────────────────
-  static const double _radiusFull = 32.0; // Botones y FABs
-  static const double _radiusLarge = 28.0; // Cards
-  static const double _radiusMedium = 24.0; // Inputs y Sheets
-
-  // ─── Tema Principal ───────────────────────────────────────────────────────
+  // ─── Tema ─────────────────────────────────────────────────────────────────
   static ThemeData get lightTheme {
     return ThemeData(
       useMaterial3: true,
       colorScheme: _colorScheme,
-      scaffoldBackgroundColor: _surface,
+      scaffoldBackgroundColor: Colors.white,
+      extensions: const [SalesTokens.light],
 
-      // ── AppBar (M3E: Center Aligned, Emphasized) ──────────────────────────
-      appBarTheme: const AppBarTheme(
-        backgroundColor: _primary,
-        foregroundColor: Colors.white,
-        elevation: 0,
-        centerTitle: true,
-        scrolledUnderElevation: 0,
-        titleTextStyle: TextStyle(
-          color: Colors.white,
-          fontSize: 22,
-          fontWeight: FontWeight.w700,
-          letterSpacing: -0.5,
-        ),
+      // ── PageTransitions: evitar flash con color de fondo ──────────────────
+      pageTransitionsTheme: const PageTransitionsTheme(
+        builders: {
+          TargetPlatform.android: CupertinoPageTransitionsBuilder(),
+          TargetPlatform.iOS: CupertinoPageTransitionsBuilder(),
+          TargetPlatform.linux: CupertinoPageTransitionsBuilder(),
+        },
       ),
 
-      // ── Buttons (M3E: Extra Large Increased Shapes) ───────────────────────
+      // ── AppBar: blanco limpio para screens secundarias ────────────────────
+      appBarTheme: const AppBarTheme(
+        backgroundColor: Colors.white,
+        foregroundColor: _primary,
+        elevation: 0,
+        centerTitle: false,
+        scrolledUnderElevation: 0.5,
+        shadowColor: Color(0x14000000),
+        titleTextStyle: TextStyle(
+          color: _primary,
+          fontSize: 18,
+          fontWeight: FontWeight.w700,
+        ),
+        iconTheme: IconThemeData(color: _primary),
+      ),
+
+      // ── Buttons ──────────────────────────────────────────────────────────
       elevatedButtonTheme: ElevatedButtonThemeData(
         style: ElevatedButton.styleFrom(
           backgroundColor: _secondary,
           foregroundColor: Colors.white,
           elevation: 0,
-          minimumSize: const Size(double.infinity, 60), // Taller para M3E
+          minimumSize: const Size(double.infinity, 56),
           shape: RoundedRectangleBorder(
-            borderRadius: BorderRadius.circular(_radiusFull),
+            borderRadius: BorderRadius.circular(12),
           ),
           textStyle: const TextStyle(
-            fontSize: 16,
-            fontWeight: FontWeight.w800, // Extra Bold
-            letterSpacing: 0.2,
+            fontSize: 15,
+            fontWeight: FontWeight.w700,
           ),
-        ).copyWith(
-          overlayColor: WidgetStateProperty.all(Colors.white.withOpacity(0.1)),
+        ),
+      ),
+
+      filledButtonTheme: FilledButtonThemeData(
+        style: FilledButton.styleFrom(
+          minimumSize: const Size(double.infinity, 52),
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(12),
+          ),
+          textStyle: const TextStyle(
+            fontSize: 15,
+            fontWeight: FontWeight.w700,
+          ),
         ),
       ),
 
       outlinedButtonTheme: OutlinedButtonThemeData(
         style: OutlinedButton.styleFrom(
           foregroundColor: _primary,
-          side: const BorderSide(color: _primary, width: 2),
-          minimumSize: const Size(double.infinity, 60),
+          side: const BorderSide(color: Color(0xFFD1D5DB), width: 1.5),
+          minimumSize: const Size(double.infinity, 52),
           shape: RoundedRectangleBorder(
-            borderRadius: BorderRadius.circular(_radiusFull),
+            borderRadius: BorderRadius.circular(12),
           ),
           textStyle: const TextStyle(
-            fontSize: 16,
+            fontSize: 15,
             fontWeight: FontWeight.w700,
           ),
         ),
@@ -118,134 +130,158 @@ abstract final class AppTheme {
 
       textButtonTheme: TextButtonThemeData(
         style: TextButton.styleFrom(
-          foregroundColor: _secondary,
+          foregroundColor: _navBlue,
           textStyle: const TextStyle(
-            fontWeight: FontWeight.w800,
-            letterSpacing: 0.1,
+            fontWeight: FontWeight.w700,
           ),
         ),
       ),
 
-      // ── FAB (M3E: Large / Circular) ──────────────────────────────────────
-      floatingActionButtonTheme: FloatingActionButtonThemeData(
+      // ── FAB ──────────────────────────────────────────────────────────────
+      floatingActionButtonTheme: const FloatingActionButtonThemeData(
         backgroundColor: _secondary,
         foregroundColor: Colors.white,
-        elevation: 4,
+        elevation: 3,
         shape: RoundedRectangleBorder(
-          borderRadius: BorderRadius.circular(_radiusFull),
+          borderRadius: BorderRadius.all(Radius.circular(16)),
         ),
       ),
 
-      // ── Navigation Bar (M3E: Labels emphasized) ──────────────────────────
-      bottomNavigationBarTheme: const BottomNavigationBarThemeData(
-        backgroundColor: _primary,
-        selectedItemColor: Colors.white,
-        unselectedItemColor: Colors.white70,
-        selectedLabelStyle: TextStyle(fontWeight: FontWeight.w700, fontSize: 12),
-        unselectedLabelStyle: TextStyle(fontWeight: FontWeight.w500, fontSize: 12),
-        type: BottomNavigationBarType.fixed,
+      // ── NavigationBar: blanco + azul activo ──────────────────────────────
+      navigationBarTheme: NavigationBarThemeData(
+        backgroundColor: Colors.white,
         elevation: 0,
+        shadowColor: const Color(0x14000000),
+        surfaceTintColor: Colors.transparent,
+        indicatorColor: _navBlue,
+        iconTheme: WidgetStateProperty.resolveWith<IconThemeData>((states) {
+          if (states.contains(WidgetState.selected)) {
+            return const IconThemeData(color: Colors.white, size: 24);
+          }
+          return const IconThemeData(color: Color(0xFF6B7280), size: 24);
+        }),
+        labelTextStyle: WidgetStateProperty.resolveWith<TextStyle>((states) {
+          if (states.contains(WidgetState.selected)) {
+            return const TextStyle(
+              color: _navBlue,
+              fontSize: 12,
+              fontWeight: FontWeight.w600,
+            );
+          }
+          return const TextStyle(color: Color(0xFF6B7280), fontSize: 12);
+        }),
       ),
 
-      // ── Input Decoration (M3E: Medium-Large Shapes) ──────────────────────
+      // ── Inputs ───────────────────────────────────────────────────────────
       inputDecorationTheme: InputDecorationTheme(
         filled: true,
         fillColor: Colors.white,
-        contentPadding: const EdgeInsets.symmetric(horizontal: 24, vertical: 20),
+        contentPadding:
+            const EdgeInsets.symmetric(horizontal: 16, vertical: 16),
         border: OutlineInputBorder(
-          borderRadius: BorderRadius.circular(_radiusMedium),
-          borderSide: const BorderSide(color: _surfaceVariant),
+          borderRadius: BorderRadius.circular(12),
+          borderSide: const BorderSide(color: Color(0xFFE5E7EB)),
         ),
         enabledBorder: OutlineInputBorder(
-          borderRadius: BorderRadius.circular(_radiusMedium),
-          borderSide: const BorderSide(color: _surfaceVariant),
+          borderRadius: BorderRadius.circular(12),
+          borderSide: const BorderSide(color: Color(0xFFE5E7EB)),
         ),
         focusedBorder: OutlineInputBorder(
-          borderRadius: BorderRadius.circular(_radiusMedium),
-          borderSide: const BorderSide(color: _primary, width: 2),
+          borderRadius: BorderRadius.circular(12),
+          borderSide: const BorderSide(color: _navBlue, width: 2),
         ),
         errorBorder: OutlineInputBorder(
-          borderRadius: BorderRadius.circular(_radiusMedium),
+          borderRadius: BorderRadius.circular(12),
           borderSide: const BorderSide(color: _error),
         ),
-        labelStyle: const TextStyle(color: _onSurfaceVariant),
+        labelStyle: const TextStyle(color: Color(0xFF9CA3AF)),
         floatingLabelStyle: const TextStyle(
-          color: _primary,
-          fontWeight: FontWeight.w700,
+          color: _navBlue,
+          fontWeight: FontWeight.w600,
         ),
+        hintStyle: const TextStyle(color: Color(0xFF9CA3AF)),
       ),
 
-      // ── Cards (M3E: High Radius, Low Elevation) ──────────────────────────
+      // ── Cards ────────────────────────────────────────────────────────────
       cardTheme: CardThemeData(
         color: Colors.white,
         elevation: 0,
         shape: RoundedRectangleBorder(
-          borderRadius: BorderRadius.circular(_radiusLarge),
-          side: const BorderSide(color: _surfaceVariant, width: 1.5),
+          borderRadius: BorderRadius.circular(12),
+          side: const BorderSide(color: Color(0xFFE5E7EB)),
         ),
-        margin: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+        margin: const EdgeInsets.symmetric(horizontal: 16, vertical: 6),
       ),
 
-      // ── Feedback (SnackBar) ───────────────────────────────────────────────
+      // ── Divider ──────────────────────────────────────────────────────────
+      dividerTheme: const DividerThemeData(
+        color: Color(0xFFF3F4F6),
+        thickness: 1,
+        space: 1,
+      ),
+
+      // ── SnackBar ─────────────────────────────────────────────────────────
       snackBarTheme: SnackBarThemeData(
-        backgroundColor: _primary,
+        backgroundColor: const Color(0xFF1F2937),
         contentTextStyle: const TextStyle(color: Colors.white, fontSize: 14),
         behavior: SnackBarBehavior.floating,
-        shape: RoundedRectangleBorder(
-          borderRadius: BorderRadius.circular(16),
-        ),
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
       ),
 
-      // ── Tipografía (M3E Expressive Scale) ────────────────────────────────
+      // ── Tipografía ───────────────────────────────────────────────────────
       textTheme: const TextTheme(
-        displayLarge: TextStyle(
-          color: _darkText,
-          fontWeight: FontWeight.w900, // Black weight for display
-          fontSize: 42,
-          letterSpacing: -1.5,
-        ),
         headlineLarge: TextStyle(
           color: _darkText,
-          fontWeight: FontWeight.w800,
-          fontSize: 34,
-          letterSpacing: -1.0,
+          fontWeight: FontWeight.w900,
+          fontSize: 32,
+          letterSpacing: -0.5,
         ),
         headlineMedium: TextStyle(
-          color: _primary,
-          fontWeight: FontWeight.w700,
-          fontSize: 28,
-          letterSpacing: -0.5,
+          color: _darkText,
+          fontWeight: FontWeight.w800,
+          fontSize: 26,
         ),
         titleLarge: TextStyle(
           color: _darkText,
           fontWeight: FontWeight.w700,
-          fontSize: 22,
+          fontSize: 20,
         ),
         titleMedium: TextStyle(
           color: _darkText,
           fontWeight: FontWeight.w600,
-          fontSize: 18,
+          fontSize: 16,
+        ),
+        titleSmall: TextStyle(
+          color: _darkText,
+          fontWeight: FontWeight.w600,
+          fontSize: 14,
         ),
         bodyLarge: TextStyle(
           color: _darkText,
           fontSize: 16,
           height: 1.5,
-          letterSpacing: 0.15,
         ),
         bodyMedium: TextStyle(
           color: _darkText,
           fontSize: 14,
           height: 1.4,
-          letterSpacing: 0.25,
+        ),
+        bodySmall: TextStyle(
+          color: Color(0xFF6B7280),
+          fontSize: 12,
+          height: 1.4,
         ),
         labelLarge: TextStyle(
           color: _darkText,
-          fontWeight: FontWeight.w800,
+          fontWeight: FontWeight.w700,
           fontSize: 14,
-          letterSpacing: 0.5,
+        ),
+        labelMedium: TextStyle(
+          color: Color(0xFF6B7280),
+          fontWeight: FontWeight.w600,
+          fontSize: 12,
         ),
       ),
     );
   }
 }
-
