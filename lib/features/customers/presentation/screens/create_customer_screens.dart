@@ -116,6 +116,20 @@ class _CreateCustomerScreenState extends ConsumerState<CreateCustomerScreen> {
                     onAddPreference: formNotifier.addPreference,
                     onRemovePreference: formNotifier.removePreference,
                     onPreferenceChanged: formNotifier.updatePreference,
+                    onNewPreferenceSaved: (day, start, end) {
+                      formNotifier.addPreference();
+                      final newId = ref
+                          .read(customerFormProvider)
+                          .preferences
+                          .last
+                          .id;
+                      formNotifier.updatePreference(
+                        newId,
+                        dayOfWeek: day,
+                        timeWindowStart: start,
+                        timeWindowEnd: end,
+                      );
+                    },
                   ),
                 ],
               ),
@@ -149,11 +163,11 @@ class _CreateCustomerScreenState extends ConsumerState<CreateCustomerScreen> {
                   else
                     const SizedBox.shrink(),
                   FilledButton(
-                    onPressed: formState.isCurrentStepValid &&
-                            !formState.isSubmitting
+                    onPressed:
+                        formState.isCurrentStepValid && !formState.isSubmitting
                         ? (formState.currentStep == 2
-                            ? formNotifier.submit
-                            : formNotifier.nextStep)
+                              ? formNotifier.submit
+                              : formNotifier.nextStep)
                         : null,
                     style: FilledButton.styleFrom(
                       backgroundColor: const Color(0xFF1565C0),

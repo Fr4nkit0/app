@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:app/features/sales/presentation/widgets/product_quantity_row.dart';
-import 'package:app/features/sales/domain/models/product.dart';
+import 'package:app/features/products/domain/models/product.dart';
 import 'package:app/core/theme/sales_tokens.dart';
 
 // Helper to create a test Product
