@@ -8,4 +8,13 @@ abstract class CustomerRepository {
   Future<Resource<void>> deleteCustomer(String customerId);
   Stream<int> watchCustomerCount();
   Stream<List<Customer>> watchAllCustomers();
+  Future<List<Customer>> getCustomersPage({
+    required int page,
+    required int pageSize,
+  });
+  Future<List<Customer>> searchCustomers({
+    required String query,
+    required int page,
+    required int pageSize,
+  });
 }

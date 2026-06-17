@@ -58,6 +58,28 @@ class MockCustomerRepository implements CustomerRepository {
   }
 
   @override
+  Future<List<Customer>> getCustomersPage({required int page, required int pageSize}) async {
+    final offset = page * pageSize;
+    final end = offset + pageSize;
+    return _customers.sublist(
+      offset.clamp(0, _customers.length),
+      end.clamp(0, _customers.length),
+    );
+  }
+
+  @override
+  Future<List<Customer>> searchCustomers({required String query, required int page, required int pageSize}) async {
+    final offset = page * pageSize;
+    final end = offset + pageSize;
+    final lowerQuery = query.toLowerCase();
+    final matches = _customers.where((c) => c.name.toLowerCase().contains(lowerQuery)).toList();
+    return matches.sublist(
+      offset.clamp(0, matches.length),
+      end.clamp(0, matches.length),
+    );
+  }
+
+  @override
   Future<Resource<void>> saveCustomer(Customer customer) async {
     final idx = _customers.indexWhere((c) => c.id == customer.id);
     if (idx >= 0) {

@@ -2,18 +2,17 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:app/core/utils/avatar_utils.dart';
 import 'package:app/features/customers/domain/models/customer.dart';
-import 'package:app/features/customers/domain/models/customer.preference.dart';
+import 'package:app/features/customers/presentation/providers/customer_count_provider.dart';
 import 'package:app/features/history/domain/models/history_entry.dart';
-import 'package:app/features/history/domain/models/history_entry_type.dart';
 import 'package:app/features/history/presentation/providers/history_list_provider.dart';
 import 'package:app/features/history/presentation/widgets/history_entry_tile.dart';
 import 'package:app/features/sales/presentation/providers/sale_draft_provider.dart';
 import 'package:app/features/sales/presentation/screens/sale_step1_screen.dart';
 
 class CustomerProfileScreen extends ConsumerStatefulWidget {
-  const CustomerProfileScreen({super.key, required this.customer});
+  const CustomerProfileScreen({super.key, required this.customerId});
 
-  final Customer customer;
+  final String customerId;
 
   @override
   ConsumerState<CustomerProfileScreen> createState() =>
@@ -29,52 +28,40 @@ class _CustomerProfileScreenState extends ConsumerState<CustomerProfileScreen> {
 
   @override
   Widget build(BuildContext context) {
-    final customer = widget.customer;
+    final customerAsync = ref.watch(customerByIdProvider(widget.customerId));
     final historyAsync = ref.watch(historyListProvider);
 
-    final customerHistory = historyAsync.maybeWhen(
-      data: (entries) =>
-          entries.where((e) => e.customer.id == customer.id).toList(),
-      orElse: () => <HistoryEntry>[],
+    return customerAsync.when(
+      data: (customer) {
+        if (customer == null) {
+          return Scaffold(
+            appBar: AppBar(title: const Text('Perfil de Cliente')),
+            body: const Center(child: Text('Cliente no encontrado')),
+          );
+        }
+
+        final customerHistory = historyAsync.maybeWhen(
+          data: (entries) =>
+              entries.where((e) => e.customer.id == customer.id).toList(),
+          orElse: () => <HistoryEntry>[],
+        );
+
+        return _buildScaffold(context, customer, customerHistory);
+      },
+      loading: () =>
+          const Scaffold(body: Center(child: CircularProgressIndicator())),
+      error: (e, _) =>
+          Scaffold(body: Center(child: Text('Error al cargar: $e'))),
     );
+  }
 
-    // Dynamic list with high-fidelity mockup data if the DB history is empty
-    final displayHistory = customerHistory.isNotEmpty
-        ? customerHistory
-        : [
-            HistoryEntry(
-              id: 'mock_1',
-              type: HistoryEntryType.sale,
-              customer: customer,
-              date: DateTime.now().subtract(const Duration(hours: 2)),
-              amount: 13000,
-              description: 'Venta de Agua',
-              tags: const ['2 x 20L', 'MIXTO'],
-            ),
-            HistoryEntry(
-              id: 'mock_2',
-              type: HistoryEntryType.sale,
-              customer: customer,
-              date: DateTime.now().subtract(const Duration(hours: 5)),
-              amount: 9000,
-              description: 'Venta de Soda',
-              tags: const ['9 x 1.5L', 'MIXTO'],
-            ),
-            HistoryEntry(
-              id: 'mock_3',
-              type: HistoryEntryType.payment,
-              customer: customer,
-              date: DateTime.now().subtract(const Duration(days: 1)),
-              amount: 6500,
-              description: 'Pago recibido',
-              tags: const ['Transf. Bancaria'],
-            ),
-          ];
-
+  Widget _buildScaffold(
+    BuildContext context,
+    dynamic customer,
+    List<HistoryEntry> customerHistory,
+  ) {
     return Scaffold(
-      backgroundColor: const Color(
-        0xFFF8FAFC,
-      ), // Beautiful slate-50 background tint
+      backgroundColor: const Color(0xFFF8FAFC),
       appBar: AppBar(
         title: const Text(
           'Perfil de Cliente',
@@ -92,270 +79,11 @@ class _CustomerProfileScreenState extends ConsumerState<CustomerProfileScreen> {
       body: SingleChildScrollView(
         child: Column(
           children: [
-            // ─── Top Profile Header ──────────────────────────────────────────
-            Container(
-              color: Colors.white,
-              width: double.infinity,
-              padding: const EdgeInsets.only(top: 24, bottom: 20),
-              child: Column(
-                children: [
-                  // Massive Blue Avatar
-                  Container(
-                    width: 90,
-                    height: 90,
-                    decoration: const BoxDecoration(
-                      color: Color(0xFF1565C0),
-                      shape: BoxShape.circle,
-                    ),
-                    alignment: Alignment.center,
-                    child: Text(
-                      AvatarUtils.getInitials(customer.name),
-                      style: const TextStyle(
-                        color: Colors.white,
-                        fontWeight: FontWeight.bold,
-                        fontSize: 32,
-                      ),
-                    ),
-                  ),
-                  const SizedBox(height: 16),
-
-                  // Customer Name
-                  Text(
-                    customer.name,
-                    style: const TextStyle(
-                      fontSize: 24,
-                      fontWeight: FontWeight.w800,
-                      color: Color(0xFF0D1B3E),
-                    ),
-                  ),
-                  const SizedBox(height: 10),
-
-                  // Phone Pill
-                  if (customer.phone != null && customer.phone!.isNotEmpty)
-                    Container(
-                      padding: const EdgeInsets.symmetric(
-                        horizontal: 16,
-                        vertical: 8,
-                      ),
-                      decoration: BoxDecoration(
-                        color: const Color(0xFF1565C0).withValues(alpha: 0.05),
-                        borderRadius: BorderRadius.circular(30),
-                        border: Border.all(
-                          color: const Color(
-                            0xFF1565C0,
-                          ).withValues(alpha: 0.15),
-                        ),
-                      ),
-                      child: Row(
-                        mainAxisSize: MainAxisSize.min,
-                        children: [
-                          const Icon(
-                            Icons.phone_outlined,
-                            size: 16,
-                            color: Color(0xFF0D1B3E),
-                          ),
-                          const SizedBox(width: 8),
-                          Text(
-                            customer.phone!,
-                            style: const TextStyle(
-                              color: Color(0xFF0D1B3E),
-                              fontWeight: FontWeight.w600,
-                              fontSize: 14,
-                            ),
-                          ),
-                          const SizedBox(width: 8),
-                          Container(
-                            height: 14,
-                            width: 1,
-                            color: const Color(
-                              0xFF1565C0,
-                            ).withValues(alpha: 0.2),
-                          ),
-                          const SizedBox(width: 8),
-                          GestureDetector(
-                            onTap: () {
-                              ScaffoldMessenger.of(context).showSnackBar(
-                                SnackBar(
-                                  content: Text(
-                                    'Llamando a ${customer.name}...',
-                                  ),
-                                  duration: const Duration(seconds: 1),
-                                ),
-                              );
-                            },
-                            child: const Text(
-                              'Llamar',
-                              style: TextStyle(
-                                color: Color(0xFF1565C0),
-                                fontWeight: FontWeight.bold,
-                                fontSize: 14,
-                              ),
-                            ),
-                          ),
-                        ],
-                      ),
-                    ),
-
-                  const SizedBox(height: 24),
-
-                  // Metric Cards (Saldo + Comodatos)
-                  Padding(
-                    padding: const EdgeInsets.symmetric(horizontal: 16),
-                    child: Row(
-                      children: [
-                        // Card 1: Saldo en dinero
-                        Expanded(
-                          child: Container(
-                            padding: const EdgeInsets.all(14),
-                            decoration: BoxDecoration(
-                              color: const Color(0xFFFEF2F2),
-                              borderRadius: BorderRadius.circular(16),
-                              border: Border.all(
-                                color: const Color(0xFFFEE2E2),
-                              ),
-                            ),
-                            child: Column(
-                              crossAxisAlignment: CrossAxisAlignment.start,
-                              children: [
-                                Row(
-                                  mainAxisAlignment:
-                                      MainAxisAlignment.spaceBetween,
-                                  children: [
-                                    Text(
-                                      'Saldo en dinero',
-                                      style: TextStyle(
-                                        fontSize: 12,
-                                        fontWeight: FontWeight.w600,
-                                        color: Colors.red.shade900,
-                                      ),
-                                    ),
-                                    const Icon(
-                                      Icons.credit_card_rounded,
-                                      size: 16,
-                                      color: Color(0xFFEF4444),
-                                    ),
-                                  ],
-                                ),
-                                const SizedBox(height: 12),
-                                Text(
-                                  '\$${customer.debtAmount.toStringAsFixed(0)}',
-                                  style: const TextStyle(
-                                    fontSize: 22,
-                                    fontWeight: FontWeight.w800,
-                                    color: Color(0xFFEF4444),
-                                  ),
-                                ),
-                                const SizedBox(height: 4),
-                                Text(
-                                  'Deuda pendiente',
-                                  style: TextStyle(
-                                    fontSize: 11,
-                                    color: Colors.red.shade700,
-                                  ),
-                                ),
-                              ],
-                            ),
-                          ),
-                        ),
-                        const SizedBox(width: 12),
-
-                        // Card 2: Comodatos activos
-                        Expanded(
-                          child: Container(
-                            padding: const EdgeInsets.all(14),
-                            decoration: BoxDecoration(
-                              color: Colors.white,
-                              borderRadius: BorderRadius.circular(16),
-                              border: Border.all(
-                                color: const Color(0xFFE2E8F0),
-                              ),
-                            ),
-                            child: Column(
-                              crossAxisAlignment: CrossAxisAlignment.start,
-                              children: [
-                                const Row(
-                                  mainAxisAlignment:
-                                      MainAxisAlignment.spaceBetween,
-                                  children: [
-                                    Text(
-                                      'Comodatos activos',
-                                      style: TextStyle(
-                                        fontSize: 12,
-                                        fontWeight: FontWeight.w600,
-                                        color: Color(0xFF0D1B3E),
-                                      ),
-                                    ),
-                                    Icon(
-                                      Icons.inventory_2_outlined,
-                                      size: 16,
-                                      color: Color(0xFF1565C0),
-                                    ),
-                                  ],
-                                ),
-                                const SizedBox(height: 12),
-                                Row(
-                                  children: [
-                                    const Text(
-                                      '2',
-                                      style: TextStyle(
-                                        fontSize: 16,
-                                        fontWeight: FontWeight.w800,
-                                        color: Color(0xFF0D1B3E),
-                                      ),
-                                    ),
-                                    const SizedBox(width: 4),
-                                    Text(
-                                      'Bidones 20L',
-                                      style: TextStyle(
-                                        fontSize: 12,
-                                        color: Colors.grey.shade600,
-                                        fontWeight: FontWeight.w500,
-                                      ),
-                                    ),
-                                  ],
-                                ),
-                                const SizedBox(height: 2),
-                                Row(
-                                  children: [
-                                    const Text(
-                                      '9',
-                                      style: TextStyle(
-                                        fontSize: 16,
-                                        fontWeight: FontWeight.w800,
-                                        color: Color(0xFF0D1B3E),
-                                      ),
-                                    ),
-                                    const SizedBox(width: 4),
-                                    Text(
-                                      'Sifon 1.5L',
-                                      style: TextStyle(
-                                        fontSize: 12,
-                                        color: Colors.grey.shade600,
-                                        fontWeight: FontWeight.w500,
-                                      ),
-                                    ),
-                                  ],
-                                ),
-                              ],
-                            ),
-                          ),
-                        ),
-                      ],
-                    ),
-                  ),
-                ],
-              ),
-            ),
-
+            _buildProfileHeader(customer),
             const SizedBox(height: 16),
-
-            // ─── Custom Tab Bar ──────────────────────────────────────────────
             _buildTabBar(),
-
-            // ─── Tab Views ───────────────────────────────────────────────────
-            _buildTabContent(customer, displayHistory),
-
-            const SizedBox(height: 80), // Padding to avoid FAB coverage
+            _buildTabContent(customer, customerHistory),
+            const SizedBox(height: 80),
           ],
         ),
       ),
@@ -374,6 +102,201 @@ class _CustomerProfileScreenState extends ConsumerState<CustomerProfileScreen> {
           'Nueva Venta',
           style: TextStyle(fontWeight: FontWeight.w700),
         ),
+      ),
+    );
+  }
+
+  Widget _buildProfileHeader(dynamic customer) {
+    return Container(
+      color: Colors.white,
+      width: double.infinity,
+      padding: const EdgeInsets.only(top: 24, bottom: 20),
+      child: Column(
+        children: [
+          Container(
+            width: 90,
+            height: 90,
+            decoration: const BoxDecoration(
+              color: Color(0xFF1565C0),
+              shape: BoxShape.circle,
+            ),
+            alignment: Alignment.center,
+            child: Text(
+              AvatarUtils.getInitials(customer.name),
+              style: const TextStyle(
+                color: Colors.white,
+                fontWeight: FontWeight.bold,
+                fontSize: 32,
+              ),
+            ),
+          ),
+          const SizedBox(height: 16),
+          Text(
+            customer.name,
+            style: const TextStyle(
+              fontSize: 24,
+              fontWeight: FontWeight.w800,
+              color: Color(0xFF0D1B3E),
+            ),
+          ),
+          const SizedBox(height: 10),
+          if (customer.phone != null && customer.phone!.isNotEmpty)
+            Container(
+              padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+              decoration: BoxDecoration(
+                color: const Color(0xFF1565C0).withValues(alpha: 0.05),
+                borderRadius: BorderRadius.circular(30),
+                border: Border.all(
+                  color: const Color(0xFF1565C0).withValues(alpha: 0.15),
+                ),
+              ),
+              child: Row(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  const Icon(
+                    Icons.phone_outlined,
+                    size: 16,
+                    color: Color(0xFF0D1B3E),
+                  ),
+                  const SizedBox(width: 8),
+                  Text(
+                    customer.phone!,
+                    style: const TextStyle(
+                      color: Color(0xFF0D1B3E),
+                      fontWeight: FontWeight.w600,
+                      fontSize: 14,
+                    ),
+                  ),
+                  const SizedBox(width: 8),
+                  Container(
+                    height: 14,
+                    width: 1,
+                    color: const Color(0xFF1565C0).withValues(alpha: 0.2),
+                  ),
+                  const SizedBox(width: 8),
+                  GestureDetector(
+                    onTap: () {
+                      ScaffoldMessenger.of(context).showSnackBar(
+                        SnackBar(
+                          content: Text('Llamando a ${customer.name}...'),
+                          duration: const Duration(seconds: 1),
+                        ),
+                      );
+                    },
+                    child: const Text(
+                      'Llamar',
+                      style: TextStyle(
+                        color: Color(0xFF1565C0),
+                        fontWeight: FontWeight.bold,
+                        fontSize: 14,
+                      ),
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          const SizedBox(height: 24),
+          Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 16),
+            child: Row(
+              children: [
+                Expanded(
+                  child: Container(
+                    padding: const EdgeInsets.all(14),
+                    decoration: BoxDecoration(
+                      color: const Color(0xFFFEF2F2),
+                      borderRadius: BorderRadius.circular(16),
+                      border: Border.all(color: const Color(0xFFFEE2E2)),
+                    ),
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Row(
+                          mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                          children: [
+                            Text(
+                              'Saldo en dinero',
+                              style: TextStyle(
+                                fontSize: 12,
+                                fontWeight: FontWeight.w600,
+                                color: Colors.red.shade900,
+                              ),
+                            ),
+                            const Icon(
+                              Icons.credit_card_rounded,
+                              size: 16,
+                              color: Color(0xFFEF4444),
+                            ),
+                          ],
+                        ),
+                        const SizedBox(height: 12),
+                        Text(
+                          '\$${customer.debtAmount.toStringAsFixed(0)}',
+                          style: const TextStyle(
+                            fontSize: 22,
+                            fontWeight: FontWeight.w800,
+                            color: Color(0xFFEF4444),
+                          ),
+                        ),
+                        const SizedBox(height: 4),
+                        Text(
+                          'Deuda pendiente',
+                          style: TextStyle(
+                            fontSize: 11,
+                            color: Colors.red.shade700,
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                ),
+                const SizedBox(width: 12),
+                Expanded(
+                  child: Container(
+                    padding: const EdgeInsets.all(14),
+                    decoration: BoxDecoration(
+                      color: Colors.white,
+                      borderRadius: BorderRadius.circular(16),
+                      border: Border.all(color: const Color(0xFFE2E8F0)),
+                    ),
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        const Row(
+                          mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                          children: [
+                            Text(
+                              'Comodatos activos',
+                              style: TextStyle(
+                                fontSize: 12,
+                                fontWeight: FontWeight.w600,
+                                color: Color(0xFF0D1B3E),
+                              ),
+                            ),
+                            Icon(
+                              Icons.inventory_2_outlined,
+                              size: 16,
+                              color: Color(0xFF1565C0),
+                            ),
+                          ],
+                        ),
+                        const SizedBox(height: 12),
+                        Text(
+                          'Sin datos',
+                          style: TextStyle(
+                            fontSize: 14,
+                            color: Colors.grey.shade500,
+                            fontStyle: FontStyle.italic,
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                ),
+              ],
+            ),
+          ),
+        ],
       ),
     );
   }
@@ -472,28 +395,13 @@ class _CustomerProfileScreenState extends ConsumerState<CustomerProfileScreen> {
   }
 
   Widget _buildPreferencesTab(Customer customer) {
-    final displayPrefs = customer.preferences.isNotEmpty
-        ? customer.preferences
-        : [
-            CustomerPreference(
-              id: 'pref_1',
-              dayOfWeek: 3, // Wednesday
-              timeWindowStart: '14:00',
-              timeWindowEnd: '16:00',
-            ),
-            CustomerPreference(
-              id: 'pref_2',
-              dayOfWeek: 6, // Saturday
-              timeWindowStart: '10:00',
-              timeWindowEnd: '12:00',
-            ),
-            CustomerPreference(
-              id: 'pref_3',
-              dayOfWeek: 1, // Monday
-              timeWindowStart: '08:00',
-              timeWindowEnd: '10:00',
-            ),
-          ];
+    if (customer.preferences.isEmpty) {
+      return _buildEmptyState(
+        icon: Icons.schedule_outlined,
+        title: 'Sin preferencias',
+        subtitle: 'Este cliente no tiene horarios de entrega configurados.',
+      );
+    }
 
     return Container(
       padding: const EdgeInsets.all(16),
@@ -533,7 +441,7 @@ class _CustomerProfileScreenState extends ConsumerState<CustomerProfileScreen> {
               ],
             ),
             const Divider(height: 24, color: Color(0xFFE2E8F0)),
-            ...displayPrefs.map((pref) {
+            ...customer.preferences.map((pref) {
               final day = _dayName(pref.dayOfWeek);
               return Padding(
                 padding: const EdgeInsets.only(bottom: 12),
@@ -631,9 +539,10 @@ class _CustomerProfileScreenState extends ConsumerState<CustomerProfileScreen> {
   }
 
   Widget _buildDatosTab(Customer customer) {
+    final addresses = customer.addresses;
     final addr =
-        customer.addresses.where((a) => a.isPrimary).firstOrNull ??
-        customer.addresses.firstOrNull;
+        addresses.where((a) => a.isPrimary).firstOrNull ??
+        addresses.firstOrNull;
 
     return Container(
       padding: const EdgeInsets.all(16),
