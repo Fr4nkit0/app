@@ -51,29 +51,29 @@ class AppDatabase extends _$AppDatabase {
 
   @override
   MigrationStrategy get migration => MigrationStrategy(
-        onCreate: (m) async {
-          await m.createAll();
-          await seedDatabase(this);
-        },
-        onUpgrade: (m, from, to) async {
-          if (from < 3) {
-            await m.createTable(paymentTable);
-            await m.createTable(customerAccountEntryTable);
-            await m.createTable(customerBalanceTable);
-            await m.createTable(containerMovementTable);
-            await m.createTable(customerContainerBalanceTable);
-            await m.createTable(routeInventoryLoadTable);
-            await m.createTable(auditLogTable);
-          }
-        },
-        beforeOpen: (details) async {
-          if (details.wasCreated) return;
-          final existing = await (select(customerTable)..limit(1)).get();
-          if (existing.isEmpty) {
-            await seedDatabase(this);
-          }
-        },
-      );
+    onCreate: (m) async {
+      await m.createAll();
+      await seedDatabase(this);
+    },
+    onUpgrade: (m, from, to) async {
+      if (from < 3) {
+        await m.createTable(paymentTable);
+        await m.createTable(customerAccountEntryTable);
+        await m.createTable(customerBalanceTable);
+        await m.createTable(containerMovementTable);
+        await m.createTable(customerContainerBalanceTable);
+        await m.createTable(routeInventoryLoadTable);
+        await m.createTable(auditLogTable);
+      }
+    },
+    beforeOpen: (details) async {
+      if (details.wasCreated) return;
+      final existing = await (select(customerTable)..limit(1)).get();
+      if (existing.isEmpty) {
+        await seedDatabase(this);
+      }
+    },
+  );
 
   static QueryExecutor _openConnection() {
     return driftDatabase(

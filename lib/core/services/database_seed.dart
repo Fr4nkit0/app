@@ -54,7 +54,9 @@ Future<void> seedDatabase(AppDatabase db) async {
   await db.transaction(() async {
     for (final c in customers) {
       // 1. Insert Customer
-      await db.into(db.customerTable).insertOnConflictUpdate(
+      await db
+          .into(db.customerTable)
+          .insertOnConflictUpdate(
             CustomerTableCompanion.insert(
               customerId: Value(c.id),
               name: c.name,
@@ -63,7 +65,9 @@ Future<void> seedDatabase(AppDatabase db) async {
           );
 
       // 2. Insert Customer Address
-      await db.into(db.customerAddressTable).insertOnConflictUpdate(
+      await db
+          .into(db.customerAddressTable)
+          .insertOnConflictUpdate(
             CustomerAddressTableCompanion.insert(
               addressId: Value(c.addressId),
               customerId: Value(c.id),
@@ -73,7 +77,9 @@ Future<void> seedDatabase(AppDatabase db) async {
           );
 
       // 3. Insert Customer Preference
-      await db.into(db.customerPreferenceTable).insertOnConflictUpdate(
+      await db
+          .into(db.customerPreferenceTable)
+          .insertOnConflictUpdate(
             CustomerPreferenceTableCompanion.insert(
               customerPreferenceId: Value(c.prefId),
               customerId: Value(c.id),
@@ -89,14 +95,18 @@ Future<void> seedDatabase(AppDatabase db) async {
       final todayDate = DateTime.now();
 
       // 1. products
-      await db.into(db.productTable).insertOnConflictUpdate(
+      await db
+          .into(db.productTable)
+          .insertOnConflictUpdate(
             ProductTableCompanion.insert(
               productId: const Value('mock-prod-1'),
               name: 'Bidón 20L',
               price: 6500.0,
             ),
           );
-      await db.into(db.productTable).insertOnConflictUpdate(
+      await db
+          .into(db.productTable)
+          .insertOnConflictUpdate(
             ProductTableCompanion.insert(
               productId: const Value('mock-prod-2'),
               name: 'Sifón 1.5L',
@@ -105,7 +115,9 @@ Future<void> seedDatabase(AppDatabase db) async {
           );
 
       // 2. routes
-      await db.into(db.routeTable).insertOnConflictUpdate(
+      await db
+          .into(db.routeTable)
+          .insertOnConflictUpdate(
             RouteTableCompanion.insert(
               routeId: const Value('mock-route-1'),
               route_date: todayStr,
@@ -114,7 +126,9 @@ Future<void> seedDatabase(AppDatabase db) async {
 
       // 3. route_stops
       for (var i = 1; i <= 4; i++) {
-        await db.into(db.routeStopTable).insertOnConflictUpdate(
+        await db
+            .into(db.routeStopTable)
+            .insertOnConflictUpdate(
               RouteStopTableCompanion.insert(
                 routeStopId: Value('mock-stop-$i'),
                 routeId: 'mock-route-1',
@@ -129,7 +143,9 @@ Future<void> seedDatabase(AppDatabase db) async {
 
       // 4. visits
       for (var i = 1; i <= 4; i++) {
-        await db.into(db.visitTable).insertOnConflictUpdate(
+        await db
+            .into(db.visitTable)
+            .insertOnConflictUpdate(
               VisitTableCompanion.insert(
                 visitId: Value('mock-visit-$i'),
                 routeStopId: 'mock-stop-$i',
@@ -142,7 +158,9 @@ Future<void> seedDatabase(AppDatabase db) async {
       }
 
       // 5. sales
-      await db.into(db.saleTable).insertOnConflictUpdate(
+      await db
+          .into(db.saleTable)
+          .insertOnConflictUpdate(
             SaleTableCompanion.insert(
               saleId: const Value('mock-sale-1'),
               customerId: 'mock-customer-1',
@@ -156,7 +174,9 @@ Future<void> seedDatabase(AppDatabase db) async {
           );
 
       // 6. sale_items
-      await db.into(db.saleItemTable).insertOnConflictUpdate(
+      await db
+          .into(db.saleItemTable)
+          .insertOnConflictUpdate(
             SaleItemTableCompanion.insert(
               saleItemId: const Value('mock-sale-item-1'),
               saleId: 'mock-sale-1',
@@ -168,7 +188,9 @@ Future<void> seedDatabase(AppDatabase db) async {
           );
 
       // 7. payments
-      await db.into(db.paymentTable).insertOnConflictUpdate(
+      await db
+          .into(db.paymentTable)
+          .insertOnConflictUpdate(
             PaymentTableCompanion.insert(
               paymentId: const Value('mock-pay-1'),
               customerId: 'mock-customer-3',
@@ -180,7 +202,9 @@ Future<void> seedDatabase(AppDatabase db) async {
           );
 
       // 8. customer_account_entries
-      await db.into(db.customerAccountEntryTable).insertOnConflictUpdate(
+      await db
+          .into(db.customerAccountEntryTable)
+          .insertOnConflictUpdate(
             CustomerAccountEntryTableCompanion.insert(
               customerAccountEntryId: const Value('mock-cae-1'),
               customerId: 'mock-customer-1',
@@ -193,7 +217,9 @@ Future<void> seedDatabase(AppDatabase db) async {
 
       // 9. customer_balances
       for (var i = 1; i <= 4; i++) {
-        await db.into(db.customerBalanceTable).insertOnConflictUpdate(
+        await db
+            .into(db.customerBalanceTable)
+            .insertOnConflictUpdate(
               CustomerBalanceTableCompanion.insert(
                 customerId: 'mock-customer-$i',
                 currentBalance: const Value(0.0),
@@ -202,7 +228,9 @@ Future<void> seedDatabase(AppDatabase db) async {
       }
 
       // 10. container_movements
-      await db.into(db.containerMovementTable).insertOnConflictUpdate(
+      await db
+          .into(db.containerMovementTable)
+          .insertOnConflictUpdate(
             ContainerMovementTableCompanion.insert(
               containerMovementId: const Value('mock-cm-1'),
               customerId: 'mock-customer-1',
@@ -215,7 +243,9 @@ Future<void> seedDatabase(AppDatabase db) async {
           );
 
       // 11. customer_container_balances
-      await db.into(db.customerContainerBalanceTable).insertOnConflictUpdate(
+      await db
+          .into(db.customerContainerBalanceTable)
+          .insertOnConflictUpdate(
             CustomerContainerBalanceTableCompanion.insert(
               customerId: 'mock-customer-1',
               containerType: 'BIDON_20L',
@@ -224,7 +254,9 @@ Future<void> seedDatabase(AppDatabase db) async {
           );
 
       // 12. inventory_movements
-      await db.into(db.routeInventoryTable).insertOnConflictUpdate(
+      await db
+          .into(db.routeInventoryTable)
+          .insertOnConflictUpdate(
             RouteInventoryTableCompanion.insert(
               inventoryMovementId: const Value('mock-im-1'),
               productId: 'mock-prod-1',
@@ -233,7 +265,9 @@ Future<void> seedDatabase(AppDatabase db) async {
               reason: 'restock',
             ),
           );
-      await db.into(db.routeInventoryTable).insertOnConflictUpdate(
+      await db
+          .into(db.routeInventoryTable)
+          .insertOnConflictUpdate(
             RouteInventoryTableCompanion.insert(
               inventoryMovementId: const Value('mock-im-2'),
               productId: 'mock-prod-2',
@@ -244,7 +278,9 @@ Future<void> seedDatabase(AppDatabase db) async {
           );
 
       // 13. route_inventory_loads
-      await db.into(db.routeInventoryLoadTable).insertOnConflictUpdate(
+      await db
+          .into(db.routeInventoryLoadTable)
+          .insertOnConflictUpdate(
             RouteInventoryLoadTableCompanion.insert(
               routeInventoryLoadId: const Value('mock-ril-1'),
               routeId: 'mock-route-1',
@@ -252,7 +288,9 @@ Future<void> seedDatabase(AppDatabase db) async {
               quantity: 100,
             ),
           );
-      await db.into(db.routeInventoryLoadTable).insertOnConflictUpdate(
+      await db
+          .into(db.routeInventoryLoadTable)
+          .insertOnConflictUpdate(
             RouteInventoryLoadTableCompanion.insert(
               routeInventoryLoadId: const Value('mock-ril-2'),
               routeId: 'mock-route-1',
@@ -262,7 +300,9 @@ Future<void> seedDatabase(AppDatabase db) async {
           );
 
       // 14. audit_logs
-      await db.into(db.auditLogTable).insertOnConflictUpdate(
+      await db
+          .into(db.auditLogTable)
+          .insertOnConflictUpdate(
             AuditLogTableCompanion.insert(
               auditLogId: const Value('mock-audit-1'),
               tableNameColumn: 'sales',

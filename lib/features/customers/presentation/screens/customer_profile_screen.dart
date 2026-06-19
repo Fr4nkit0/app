@@ -8,6 +8,11 @@ import 'package:app/features/history/presentation/providers/history_list_provide
 import 'package:app/features/history/presentation/widgets/history_entry_tile.dart';
 import 'package:app/features/sales/presentation/providers/sale_draft_provider.dart';
 import 'package:app/features/sales/presentation/screens/sale_step1_screen.dart';
+import 'package:app/features/inventory/presentation/providers/inventory_repository_provider.dart';
+import 'package:app/features/inventory/domain/models/customer_container_balance.dart';
+import 'package:app/features/inventory/domain/models/container_movement.dart';
+import 'package:app/core/widgets/top_toast.dart';
+import 'package:uuid/uuid.dart';
 
 class CustomerProfileScreen extends ConsumerStatefulWidget {
   const CustomerProfileScreen({super.key, required this.customerId});
@@ -252,44 +257,118 @@ class _CustomerProfileScreenState extends ConsumerState<CustomerProfileScreen> {
                 ),
                 const SizedBox(width: 12),
                 Expanded(
-                  child: Container(
-                    padding: const EdgeInsets.all(14),
-                    decoration: BoxDecoration(
-                      color: Colors.white,
-                      borderRadius: BorderRadius.circular(16),
-                      border: Border.all(color: const Color(0xFFE2E8F0)),
-                    ),
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        const Row(
-                          mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                          children: [
-                            Text(
-                              'Comodatos activos',
-                              style: TextStyle(
-                                fontSize: 12,
-                                fontWeight: FontWeight.w600,
-                                color: Color(0xFF0D1B3E),
+                  child: GestureDetector(
+                    onLongPress: () {
+                      final balancesAsync = ref.read(
+                        customerContainerBalancesProvider(customer.id),
+                      );
+                      final balances = balancesAsync.maybeWhen(
+                        data: (list) => list,
+                        orElse: () => <CustomerContainerBalance>[],
+                      );
+                      final hasActiveCustody = balances.any(
+                        (b) => b.quantity > 0,
+                      );
+                      if (!hasActiveCustody) return;
+
+                      showDialog(
+                        context: context,
+                        barrierDismissible: false,
+                        builder: (context) =>
+                            ProfileContainerReturnDialog(customer: customer),
+                      );
+                    },
+                    child: Container(
+                      padding: const EdgeInsets.all(14),
+                      decoration: BoxDecoration(
+                        color: Colors.white,
+                        borderRadius: BorderRadius.circular(16),
+                        border: Border.all(color: const Color(0xFFE2E8F0)),
+                      ),
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          const Row(
+                            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                            children: [
+                              Text(
+                                'Comodatos activos',
+                                style: TextStyle(
+                                  fontSize: 12,
+                                  fontWeight: FontWeight.w600,
+                                  color: Color(0xFF0D1B3E),
+                                ),
                               ),
-                            ),
-                            Icon(
-                              Icons.inventory_2_outlined,
-                              size: 16,
-                              color: Color(0xFF1565C0),
-                            ),
-                          ],
-                        ),
-                        const SizedBox(height: 12),
-                        Text(
-                          'Sin datos',
-                          style: TextStyle(
-                            fontSize: 14,
-                            color: Colors.grey.shade500,
-                            fontStyle: FontStyle.italic,
+                              Icon(
+                                Icons.inventory_2_outlined,
+                                size: 16,
+                                color: Color(0xFF1565C0),
+                              ),
+                            ],
                           ),
-                        ),
-                      ],
+                          const SizedBox(height: 12),
+                          ref
+                              .watch(
+                                customerContainerBalancesProvider(customer.id),
+                              )
+                              .when(
+                                data: (balances) {
+                                  final bidon = balances
+                                      .firstWhere(
+                                        (b) => b.containerType == 'BIDON_20L',
+                                        orElse: () => CustomerContainerBalance(
+                                          customerId: customer.id,
+                                          containerType: 'BIDON_20L',
+                                          quantity: 0,
+                                        ),
+                                      )
+                                      .quantity;
+                                  final sifon = balances
+                                      .firstWhere(
+                                        (b) => b.containerType == 'SIFON_2L',
+                                        orElse: () => CustomerContainerBalance(
+                                          customerId: customer.id,
+                                          containerType: 'SIFON_2L',
+                                          quantity: 0,
+                                        ),
+                                      )
+                                      .quantity;
+
+                                  return Column(
+                                    children: [
+                                      _buildProfileCustodyRow(
+                                        icon: Icons.water_drop_outlined,
+                                        label: 'Bidón 20L',
+                                        count: bidon,
+                                      ),
+                                      const SizedBox(height: 8),
+                                      _buildProfileCustodyRow(
+                                        icon: Icons.local_drink_outlined,
+                                        label: 'Sifón 2L',
+                                        count: sifon,
+                                      ),
+                                    ],
+                                  );
+                                },
+                                loading: () => const Center(
+                                  child: SizedBox(
+                                    width: 16,
+                                    height: 16,
+                                    child: CircularProgressIndicator(
+                                      strokeWidth: 2,
+                                    ),
+                                  ),
+                                ),
+                                error: (err, stack) => const Text(
+                                  'Error',
+                                  style: TextStyle(
+                                    fontSize: 12,
+                                    color: Colors.red,
+                                  ),
+                                ),
+                              ),
+                        ],
+                      ),
                     ),
                   ),
                 ),
@@ -761,6 +840,49 @@ class _CustomerProfileScreenState extends ConsumerState<CustomerProfileScreen> {
     );
   }
 
+  Widget _buildProfileCustodyRow({
+    required IconData icon,
+    required String label,
+    required int count,
+  }) {
+    final hasStock = count > 0;
+    final color = hasStock ? const Color(0xFF1565C0) : Colors.grey.shade400;
+
+    return Row(
+      children: [
+        Container(
+          padding: const EdgeInsets.all(4),
+          decoration: BoxDecoration(
+            color: hasStock
+                ? const Color(0xFF1565C0).withValues(alpha: 0.08)
+                : Colors.grey.shade100,
+            shape: BoxShape.circle,
+          ),
+          child: Icon(icon, size: 14, color: color),
+        ),
+        const SizedBox(width: 8),
+        Expanded(
+          child: Text(
+            label,
+            style: TextStyle(
+              fontSize: 12,
+              fontWeight: FontWeight.w600,
+              color: hasStock ? const Color(0xFF0D1B3E) : Colors.grey.shade500,
+            ),
+          ),
+        ),
+        Text(
+          '$count',
+          style: TextStyle(
+            fontSize: 14,
+            fontWeight: FontWeight.w900,
+            color: color,
+          ),
+        ),
+      ],
+    );
+  }
+
   Widget _buildEmptyState({
     required IconData icon,
     required String title,
@@ -790,6 +912,163 @@ class _CustomerProfileScreenState extends ConsumerState<CustomerProfileScreen> {
           ),
         ],
       ),
+    );
+  }
+}
+
+class ProfileContainerReturnDialog extends ConsumerStatefulWidget {
+  const ProfileContainerReturnDialog({super.key, required this.customer});
+
+  final Customer customer;
+
+  @override
+  ConsumerState<ProfileContainerReturnDialog> createState() =>
+      _ProfileContainerReturnDialogState();
+}
+
+class _ProfileContainerReturnDialogState
+    extends ConsumerState<ProfileContainerReturnDialog> {
+  final Map<String, int> _returns = {'BIDON_20L': 0, 'SIFON_2L': 0};
+
+  @override
+  Widget build(BuildContext context) {
+    final balancesAsync = ref.watch(
+      customerContainerBalancesProvider(widget.customer.id),
+    );
+    final balances = balancesAsync.maybeWhen(
+      data: (list) => list,
+      orElse: () => <CustomerContainerBalance>[],
+    );
+
+    return AlertDialog(
+      title: const Text(
+        'Registrar Retorno de Envases',
+        style: TextStyle(fontWeight: FontWeight.bold),
+      ),
+      content: SingleChildScrollView(
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            const Text(
+              'Ajustá la cantidad de envases vacíos que devuelve el cliente.',
+              style: TextStyle(color: Colors.grey, fontSize: 14),
+            ),
+            const SizedBox(height: 16),
+            ...['BIDON_20L', 'SIFON_2L'].map((type) {
+              final returned = _returns[type] ?? 0;
+              final label = type == 'BIDON_20L' ? 'Bidón 20L' : 'Sifón 2L';
+              final balance = balances
+                  .firstWhere(
+                    (b) => b.containerType == type,
+                    orElse: () => CustomerContainerBalance(
+                      customerId: widget.customer.id,
+                      containerType: type,
+                      quantity: 0,
+                    ),
+                  )
+                  .quantity;
+
+              return Padding(
+                padding: const EdgeInsets.symmetric(vertical: 8.0),
+                child: Row(
+                  children: [
+                    Expanded(
+                      child: Text(
+                        label,
+                        style: const TextStyle(
+                          fontWeight: FontWeight.bold,
+                          fontSize: 16,
+                        ),
+                      ),
+                    ),
+                    Row(
+                      children: [
+                        IconButton(
+                          onPressed: returned > 0
+                              ? () {
+                                  setState(() {
+                                    _returns[type] = returned - 1;
+                                  });
+                                }
+                              : null,
+                          icon: const Icon(Icons.remove_circle_outline),
+                          color: const Color(0xFFEF4444),
+                        ),
+                        SizedBox(
+                          width: 32,
+                          child: Text(
+                            '$returned',
+                            textAlign: TextAlign.center,
+                            style: const TextStyle(
+                              fontSize: 16,
+                              fontWeight: FontWeight.bold,
+                            ),
+                          ),
+                        ),
+                        IconButton(
+                          onPressed: returned < balance
+                              ? () {
+                                  setState(() {
+                                    _returns[type] = returned + 1;
+                                  });
+                                }
+                              : null,
+                          icon: const Icon(Icons.add_circle_outline),
+                          color: const Color(0xFF1565C0),
+                        ),
+                      ],
+                    ),
+                  ],
+                ),
+              );
+            }),
+          ],
+        ),
+      ),
+      actions: [
+        TextButton(
+          onPressed: () => Navigator.of(context).pop(),
+          child: const Text('Cancelar'),
+        ),
+        FilledButton(
+          onPressed: () async {
+            final repository = ref.read(inventoryRepositoryProvider);
+            for (final type in ['BIDON_20L', 'SIFON_2L']) {
+              final returnedQty = _returns[type] ?? 0;
+              if (returnedQty > 0) {
+                final movement = ContainerMovement(
+                  id: const Uuid().v4(),
+                  customerId: widget.customer.id,
+                  containerType: type,
+                  deliveredQuantity: 0,
+                  returnedQuantity: returnedQty,
+                  createdAt: DateTime.now(),
+                );
+                await repository.recordContainerMovement(movement);
+              }
+            }
+
+            ref.invalidate(
+              customerContainerBalancesProvider(widget.customer.id),
+            );
+
+            if (context.mounted) {
+              Navigator.of(context).pop();
+              TopToast.show(
+                context,
+                message: 'Retorno de envases registrado',
+                icon: Icons.check_circle_rounded,
+                color: const Color(0xFF10B981),
+              );
+            }
+          },
+          style: FilledButton.styleFrom(
+            backgroundColor: const Color(0xFF1565C0),
+          ),
+          child: const Text('Guardar'),
+        ),
+      ],
     );
   }
 }

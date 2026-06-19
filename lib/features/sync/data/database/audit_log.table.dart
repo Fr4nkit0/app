@@ -9,7 +9,8 @@ class AuditLogTable extends Table with Timestamps {
   late final tableNameColumn = text().named('table_name')();
   late final recordId = text()();
   late final action = text()(); // 'INSERT' | 'UPDATE' | 'DELETE'
-  late final payload = text().nullable()(); // JSON payload of the changed record
+  late final payload = text()
+      .nullable()(); // JSON payload of the changed record
 
   @override
   Set<Column<Object>> get primaryKey => {auditLogId};

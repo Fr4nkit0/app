@@ -9,11 +9,13 @@ class VisitTable extends Table with Timestamps {
 
   late final visitId = text().clientDefault(() => uuid.v4())();
   late final routeStopId = text().references(
-    RouteStopTable, #routeStopId,
+    RouteStopTable,
+    #routeStopId,
     onDelete: KeyAction.cascade,
   )();
   late final customerId = text().references(
-    CustomerTable, #customerId,
+    CustomerTable,
+    #customerId,
     onDelete: KeyAction.restrict,
   )();
   late final visitType = text()();

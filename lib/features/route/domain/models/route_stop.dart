@@ -14,13 +14,10 @@ class RouteStop {
     required this.scheduledAt,
   });
 
-  RouteStop copyWith({
-    StopStatus? status,
-  }) =>
-      RouteStop(
-        id: id,
-        customer: customer,
-        status: status ?? this.status,
-        scheduledAt: scheduledAt,
-      );
+  RouteStop copyWith({StopStatus? status}) => RouteStop(
+    id: id,
+    customer: customer,
+    status: status ?? this.status,
+    scheduledAt: scheduledAt,
+  );
 }

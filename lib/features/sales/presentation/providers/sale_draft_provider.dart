@@ -8,6 +8,7 @@ import 'package:app/features/sales/domain/models/payment_method.dart';
 import 'package:app/features/sales/domain/models/sale.dart';
 import 'package:app/features/sales/domain/models/sale_draft_state.dart';
 import 'package:app/features/sales/domain/models/sale_item.dart';
+import 'package:app/features/products/domain/models/product.dart';
 import 'package:app/features/sales/presentation/providers/register_sale_usecase_provider.dart';
 
 class SaleDraft extends Notifier<SaleDraftState> {
@@ -23,26 +24,47 @@ class SaleDraft extends Notifier<SaleDraftState> {
   }
 
   void setQuantity(SaleItem item, int quantity) {
+    List<SaleItem> newItems;
     if (quantity <= 0) {
-      state = state.copyWith(
-        items: state.items
-            .where((i) => i.product.id != item.product.id)
-            .toList(),
-      );
-      return;
-    }
-    final existing = state.items.indexWhere(
-      (i) => i.product.id == item.product.id,
-    );
-    if (existing >= 0) {
-      final updated = List.of(state.items);
-      updated[existing] = SaleItem(product: item.product, quantity: quantity);
-      state = state.copyWith(items: updated);
+      newItems = state.items
+          .where((i) => i.product.id != item.product.id)
+          .toList();
     } else {
-      state = state.copyWith(
-        items: [...state.items, SaleItem(product: item.product, quantity: quantity)],
+      final existing = state.items.indexWhere(
+        (i) => i.product.id == item.product.id,
       );
+      if (existing >= 0) {
+        final updated = List.of(state.items);
+        updated[existing] = SaleItem(product: item.product, quantity: quantity);
+        newItems = updated;
+      } else {
+        newItems = [
+          ...state.items,
+          SaleItem(product: item.product, quantity: quantity),
+        ];
+      }
     }
+
+    final updatedReturns = Map<String, int>.from(state.returnedContainers);
+    for (final type in ['BIDON_20L', 'SIFON_2L']) {
+      final delivered = newItems
+          .where((i) => i.product.containerType == type)
+          .fold(0, (sum, i) => sum + i.quantity);
+      if (delivered > 0) {
+        updatedReturns[type] = delivered;
+      } else {
+        updatedReturns.remove(type);
+      }
+    }
+
+    state = state.copyWith(items: newItems, returnedContainers: updatedReturns);
+  }
+
+  void setReturnedQuantity(String type, int quantity) {
+    if (quantity < 0) return;
+    final updated = Map<String, int>.from(state.returnedContainers);
+    updated[type] = quantity;
+    state = state.copyWith(returnedContainers: updated);
   }
 
   void setPaymentMethod(PaymentMethod method) {
@@ -56,10 +78,7 @@ class SaleDraft extends Notifier<SaleDraftState> {
   }
 
   void setMixedAmounts({double? cash, double? transfer}) {
-    state = state.copyWith(
-      cashAmount: cash,
-      transferAmount: transfer,
-    );
+    state = state.copyWith(cashAmount: cash, transferAmount: transfer);
   }
 
   Future<void> commit() async {
@@ -80,7 +99,14 @@ class SaleDraft extends Notifier<SaleDraftState> {
       visitId: draft.visitId,
     );
 
-    await ref.read(registerSaleUseCaseProvider).execute(sale);
+    final movements = draft.toContainerMovements(
+      draft.customer!.id,
+      draft.visitId,
+    );
+
+    await ref
+        .read(registerSaleUseCaseProvider)
+        .execute(sale, containerMovements: movements);
 
     // TODO: when paymentMethod == credit, update customer.debtAmount by draft.total.
     // Deferred: Customer is immutable without copyWith and CustomerRepository
@@ -91,7 +117,9 @@ class SaleDraft extends Notifier<SaleDraftState> {
         .map((i) => '${i.quantity} ${i.product.unitLabel}')
         .join(' · ');
 
-    await ref.read(historyRepositoryProvider).addEntry(
+    await ref
+        .read(historyRepositoryProvider)
+        .addEntry(
           HistoryEntry(
             id: const Uuid().v4(),
             type: HistoryEntryType.sale,
@@ -111,5 +139,6 @@ class SaleDraft extends Notifier<SaleDraftState> {
 }
 
 // NOT autoDispose — draft must survive navigation between steps
-final saleDraftProvider =
-    NotifierProvider<SaleDraft, SaleDraftState>(SaleDraft.new);
+final saleDraftProvider = NotifierProvider<SaleDraft, SaleDraftState>(
+  SaleDraft.new,
+);

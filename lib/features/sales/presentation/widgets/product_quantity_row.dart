@@ -91,7 +91,9 @@ class ProductQuantityRow extends StatelessWidget {
                       style: TextStyle(
                         fontSize: 12,
                         fontWeight: FontWeight.w600,
-                        color: hasQuantity ? primary.withValues(alpha: 0.8) : cs.outline,
+                        color: hasQuantity
+                            ? primary.withValues(alpha: 0.8)
+                            : cs.outline,
                         fontFeatures: tokens.tabularStyle.fontFeatures,
                       ),
                     ),

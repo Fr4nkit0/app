@@ -270,12 +270,11 @@ class DriftCustomerRepository implements CustomerRepository {
     final offset = page * pageSize;
     final pattern = '%$query%';
 
-    final customerRows = await (db.select(
-      db.customerTable,
-    )
-          ..where((t) => t.name.like(pattern))
-          ..limit(pageSize, offset: offset))
-        .get();
+    final customerRows =
+        await (db.select(db.customerTable)
+              ..where((t) => t.name.like(pattern))
+              ..limit(pageSize, offset: offset))
+            .get();
 
     if (customerRows.isEmpty) return [];
 

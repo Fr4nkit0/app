@@ -14,7 +14,8 @@ class HistoryEntryTile extends StatelessWidget {
     final Color iconColor;
     final Color circleBgColor;
     final String typeTitle;
-    final String timeStr = '${entry.date.hour.toString().padLeft(2, '0')}:${entry.date.minute.toString().padLeft(2, '0')}';
+    final String timeStr =
+        '${entry.date.hour.toString().padLeft(2, '0')}:${entry.date.minute.toString().padLeft(2, '0')}';
 
     switch (entry.type) {
       case HistoryEntryType.visit:
@@ -74,11 +75,7 @@ class HistoryEntryTile extends StatelessWidget {
                     color: circleBgColor,
                     shape: BoxShape.circle,
                   ),
-                  child: Icon(
-                    iconData,
-                    color: iconColor,
-                    size: 20,
-                  ),
+                  child: Icon(iconData, color: iconColor, size: 20),
                 ),
                 const SizedBox(width: 14),
 
@@ -112,7 +109,8 @@ class HistoryEntryTile extends StatelessWidget {
 
                       // Nombre del cliente y monto formateado (si aplica)
                       Text(
-                        entry.type == HistoryEntryType.payment && entry.amount != null
+                        entry.type == HistoryEntryType.payment &&
+                                entry.amount != null
                             ? '${entry.customer.name} - \$${entry.amount!.toStringAsFixed(0).replaceAllMapped(RegExp(r'(\d{1,3})(?=(\d{3})+(?!\d))'), (Match m) => '${m[1]}.')}'
                             : entry.customer.name,
                         style: TextStyle(
@@ -131,7 +129,10 @@ class HistoryEntryTile extends StatelessWidget {
                           children: entry.tags.map((tag) {
                             final isMixto = tag.toLowerCase() == 'mixto';
                             return Container(
-                              padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
+                              padding: const EdgeInsets.symmetric(
+                                horizontal: 8,
+                                vertical: 3,
+                              ),
                               decoration: BoxDecoration(
                                 color: isMixto
                                     ? const Color(0xFFE8F5E9)

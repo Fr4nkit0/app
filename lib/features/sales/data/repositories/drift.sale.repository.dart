@@ -29,16 +29,17 @@ class DriftSaleRepository implements SaleRepository {
         final saleRow = row.readTable(_db.saleTable);
         final customerRow = row.readTable(_db.customerTable);
 
-        final itemRows = await (_db.select(_db.saleItemTable)
-              ..where((t) => t.saleId.equals(saleRow.saleId)))
-            .join([
+        final itemRows =
+            await (_db.select(
+              _db.saleItemTable,
+            )..where((t) => t.saleId.equals(saleRow.saleId))).join([
               innerJoin(
                 _db.productTable,
-                _db.productTable.productId
-                    .equalsExp(_db.saleItemTable.productId),
+                _db.productTable.productId.equalsExp(
+                  _db.saleItemTable.productId,
+                ),
               ),
-            ])
-            .get();
+            ]).get();
 
         final items = itemRows.map((itemRow) {
           final ir = itemRow.readTable(_db.saleItemTable);
@@ -55,26 +56,28 @@ class DriftSaleRepository implements SaleRepository {
           );
         }).toList();
 
-        sales.add(Sale(
-          id: saleRow.saleId,
-          customer: Customer(
-            id: customerRow.customerId,
-            name: customerRow.name,
-            addresses: const [],
-            preferences: const [],
-            productLabels: const [],
+        sales.add(
+          Sale(
+            id: saleRow.saleId,
+            customer: Customer(
+              id: customerRow.customerId,
+              name: customerRow.name,
+              addresses: const [],
+              preferences: const [],
+              productLabels: const [],
+            ),
+            items: items,
+            total: saleRow.totalAmount,
+            paymentMethod: PaymentMethod.values.firstWhere(
+              (m) => m.name == saleRow.paymentMethod,
+              orElse: () => PaymentMethod.cash,
+            ),
+            date: saleRow.saleDate,
+            cashAmount: saleRow.cashAmount,
+            transferAmount: saleRow.transferAmount,
+            visitId: saleRow.visitId,
           ),
-          items: items,
-          total: saleRow.totalAmount,
-          paymentMethod: PaymentMethod.values.firstWhere(
-            (m) => m.name == saleRow.paymentMethod,
-            orElse: () => PaymentMethod.cash,
-          ),
-          date: saleRow.saleDate,
-          cashAmount: saleRow.cashAmount,
-          transferAmount: saleRow.transferAmount,
-          visitId: saleRow.visitId,
-        ));
+        );
       }
 
       return sales;
@@ -85,30 +88,34 @@ class DriftSaleRepository implements SaleRepository {
   Future<Resource<void>> saveSale(Sale sale) async {
     try {
       await _db.transaction(() async {
-        await _db.into(_db.saleTable).insert(
-          SaleTableCompanion.insert(
-            saleId: Value(sale.id),
-            customerId: sale.customer.id,
-            totalAmount: sale.total,
-            paymentMethod: sale.paymentMethod.name,
-            quantity: 0,
-            shipping_amount: 0,
-            visitId: Value(sale.visitId),
-            cashAmount: Value(sale.cashAmount),
-            transferAmount: Value(sale.transferAmount),
-          ),
-        );
+        await _db
+            .into(_db.saleTable)
+            .insert(
+              SaleTableCompanion.insert(
+                saleId: Value(sale.id),
+                customerId: sale.customer.id,
+                totalAmount: sale.total,
+                paymentMethod: sale.paymentMethod.name,
+                quantity: 0,
+                shipping_amount: 0,
+                visitId: Value(sale.visitId),
+                cashAmount: Value(sale.cashAmount),
+                transferAmount: Value(sale.transferAmount),
+              ),
+            );
 
         for (final item in sale.items) {
-          await _db.into(_db.saleItemTable).insert(
-            SaleItemTableCompanion.insert(
-              saleId: sale.id,
-              productId: item.product.id,
-              quantity: item.quantity,
-              unitPrice: item.product.price,
-              subtotal: item.subtotal,
-            ),
-          );
+          await _db
+              .into(_db.saleItemTable)
+              .insert(
+                SaleItemTableCompanion.insert(
+                  saleId: sale.id,
+                  productId: item.product.id,
+                  quantity: item.quantity,
+                  unitPrice: item.product.price,
+                  subtotal: item.subtotal,
+                ),
+              );
         }
       });
 

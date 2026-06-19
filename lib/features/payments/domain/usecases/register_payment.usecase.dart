@@ -4,7 +4,7 @@ import 'package:app/features/payments/domain/models/payment.dart';
 
 class RegisterPaymentUseCase {
   const RegisterPaymentUseCase({required PaymentRepository paymentRepo})
-      : _paymentRepo = paymentRepo;
+    : _paymentRepo = paymentRepo;
 
   final PaymentRepository _paymentRepo;
 

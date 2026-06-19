@@ -120,7 +120,8 @@ class _DebtPaymentDialogState extends State<DebtPaymentDialog> {
 
   @override
   Widget build(BuildContext context) {
-    final tokens = Theme.of(context).extension<SalesTokens>() ?? SalesTokens.light;
+    final tokens =
+        Theme.of(context).extension<SalesTokens>() ?? SalesTokens.light;
 
     return Dialog(
       shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
@@ -133,8 +134,7 @@ class _DebtPaymentDialogState extends State<DebtPaymentDialog> {
             // ── Header ──
             Row(
               children: [
-                Icon(Icons.payments_rounded,
-                    color: tokens.primary, size: 22),
+                Icon(Icons.payments_rounded, color: tokens.primary, size: 22),
                 const SizedBox(width: 10),
                 Text(
                   'Pagar deuda',
@@ -270,10 +270,7 @@ class _DebtPaymentDialogState extends State<DebtPaymentDialog> {
     );
   }
 
-  Widget _buildPaymentOption({
-    required String label,
-    required String icon,
-  }) {
+  Widget _buildPaymentOption({required String label, required String icon}) {
     final isSelected = _selectedMethod == label;
     final primary = const Color(0xFF1565C0);
 
@@ -348,8 +345,10 @@ class _AmountField extends StatelessWidget {
         prefixText: '\$ ',
         filled: true,
         fillColor: Colors.grey.shade50,
-        contentPadding:
-            const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
+        contentPadding: const EdgeInsets.symmetric(
+          horizontal: 16,
+          vertical: 14,
+        ),
         border: OutlineInputBorder(
           borderRadius: BorderRadius.circular(10),
           borderSide: BorderSide(color: Colors.grey.shade200),
@@ -365,5 +364,4 @@ class _AmountField extends StatelessWidget {
       ),
     );
   }
- 
 }

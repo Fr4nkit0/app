@@ -59,15 +59,15 @@ class HistorySyncNotifier extends Notifier<HistorySyncState> {
       pendingCount: 2,
       isCompleted: false,
     );
-    
+
     const ticks = 30; // 3 seconds total at 100ms ticks
     int currentTick = 0;
-    
+
     _timer?.cancel();
     _timer = Timer.periodic(const Duration(milliseconds: 100), (timer) async {
       currentTick++;
       final currentProgress = currentTick / ticks;
-      
+
       if (currentProgress >= 1.0) {
         timer.cancel();
         // Update database / mock repository to mark everything as synced
@@ -92,5 +92,5 @@ class HistorySyncNotifier extends Notifier<HistorySyncState> {
 
 final historySyncProvider =
     NotifierProvider<HistorySyncNotifier, HistorySyncState>(() {
-  return HistorySyncNotifier();
-});
+      return HistorySyncNotifier();
+    });

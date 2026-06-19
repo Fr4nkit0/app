@@ -8,7 +8,8 @@ class SaleTable extends Table with Timestamps {
 
   late final saleId = text().clientDefault(() => uuid.v4())();
   late final customerId = text().references(
-    CustomerTable, #customerId,
+    CustomerTable,
+    #customerId,
     onDelete: KeyAction.restrict,
   )();
   late final totalAmount = real()();

@@ -15,7 +15,8 @@ class DriftProductRepository implements ProductRepository {
         return Product(
           id: row.productId,
           name: row.name,
-          unitLabel: row.description ?? '', // Using description as unitLabel mapping
+          unitLabel:
+              row.description ?? '', // Using description as unitLabel mapping
           price: row.price,
           available: row.stock,
         );

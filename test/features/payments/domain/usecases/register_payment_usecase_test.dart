@@ -44,17 +44,21 @@ void main() {
   // ───────────────────────────────────────────────────────────────
 
   group('execute — success', () {
-    test('F3a: returns Resource.success(null) and inserts PaymentTable row',
-        () async {
-      final result = await sut.execute(makePayment(id: 'pay-f3a', amount: 100.0));
+    test(
+      'F3a: returns Resource.success(null) and inserts PaymentTable row',
+      () async {
+        final result = await sut.execute(
+          makePayment(id: 'pay-f3a', amount: 100.0),
+        );
 
-      expect(result, isA<Success<void>>());
+        expect(result, isA<Success<void>>());
 
-      final rows = await db.select(db.paymentTable).get();
-      expect(rows.length, 1);
-      expect(rows.first.paymentId, 'pay-f3a');
-      expect(rows.first.amount, 100.0);
-    });
+        final rows = await db.select(db.paymentTable).get();
+        expect(rows.length, 1);
+        expect(rows.first.paymentId, 'pay-f3a');
+        expect(rows.first.amount, 100.0);
+      },
+    );
 
     test('F3a: CustomerBalanceTable is updated after payment', () async {
       await sut.execute(makePayment(id: 'pay-balance', amount: 200.0));

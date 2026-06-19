@@ -10,15 +10,18 @@ class RouteStopTable extends Table with Timestamps {
 
   late final routeStopId = text().clientDefault(() => uuid.v4())();
   late final routeId = text().references(
-    RouteTable, #routeId,
+    RouteTable,
+    #routeId,
     onDelete: KeyAction.cascade,
   )();
   late final customerId = text().references(
-    CustomerTable, #customerId,
+    CustomerTable,
+    #customerId,
     onDelete: KeyAction.restrict,
   )();
   late final customerAddressId = text().nullable().references(
-    CustomerAddressTable, #addressId,
+    CustomerAddressTable,
+    #addressId,
     onDelete: KeyAction.setNull,
   )();
   late final sequence = integer()();

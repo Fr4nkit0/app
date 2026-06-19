@@ -60,12 +60,8 @@ class _RouteDayScreenState extends ConsumerState<RouteDayScreen> {
             return CustomScrollView(
               controller: _scrollController,
               slivers: [
-                SliverToBoxAdapter(
-                  child: _RouteHeader(stops: allStops),
-                ),
-                SliverToBoxAdapter(
-                  child: _ProgressSection(stops: allStops),
-                ),
+                SliverToBoxAdapter(child: _RouteHeader(stops: allStops)),
+                SliverToBoxAdapter(child: _ProgressSection(stops: allStops)),
                 if (allStops.isEmpty)
                   const SliverFillRemaining(
                     child: EmptyState(
@@ -106,7 +102,9 @@ class _RouteDayScreenState extends ConsumerState<RouteDayScreen> {
                                 height: 24,
                                 child: CircularProgressIndicator(
                                   strokeWidth: 2.5,
-                                  valueColor: AlwaysStoppedAnimation<Color>(Color(0xFF1565C0)),
+                                  valueColor: AlwaysStoppedAnimation<Color>(
+                                    Color(0xFF1565C0),
+                                  ),
                                 ),
                               ),
                               const SizedBox(height: 8),
@@ -124,16 +122,13 @@ class _RouteDayScreenState extends ConsumerState<RouteDayScreen> {
                       ),
                     )
                   else
-                    const SliverToBoxAdapter(
-                      child: SizedBox(height: 32),
-                    ),
+                    const SliverToBoxAdapter(child: SizedBox(height: 32)),
                 ],
               ],
             );
           },
           loading: () => const Center(child: CircularProgressIndicator()),
-          error: (e, _) =>
-              const Center(child: Text('Error al cargar la ruta')),
+          error: (e, _) => const Center(child: Text('Error al cargar la ruta')),
         ),
       ),
     );
@@ -151,10 +146,30 @@ class _RouteHeader extends StatelessWidget {
   Widget build(BuildContext context) {
     final now = DateTime.now();
     const months = [
-      '', 'enero', 'febrero', 'marzo', 'abril', 'mayo', 'junio',
-      'julio', 'agosto', 'septiembre', 'octubre', 'noviembre', 'diciembre',
+      '',
+      'enero',
+      'febrero',
+      'marzo',
+      'abril',
+      'mayo',
+      'junio',
+      'julio',
+      'agosto',
+      'septiembre',
+      'octubre',
+      'noviembre',
+      'diciembre',
     ];
-    const days = ['', 'Lunes', 'Martes', 'Miércoles', 'Jueves', 'Viernes', 'Sábado', 'Domingo'];
+    const days = [
+      '',
+      'Lunes',
+      'Martes',
+      'Miércoles',
+      'Jueves',
+      'Viernes',
+      'Sábado',
+      'Domingo',
+    ];
 
     return Padding(
       padding: const EdgeInsets.fromLTRB(20, 16, 20, 0),
@@ -254,7 +269,8 @@ class _RouteHeader extends StatelessWidget {
                   children: [
                     Text(
                       '¡Hola Alberto!',
-                      style: Theme.of(context).textTheme.headlineMedium?.copyWith(
+                      style: Theme.of(context).textTheme.headlineMedium
+                          ?.copyWith(
                             fontWeight: FontWeight.w900,
                             color: const Color(0xFF0D1B3E),
                             fontSize: 26,
@@ -271,7 +287,8 @@ class _RouteHeader extends StatelessWidget {
                         const SizedBox(width: 5),
                         Text(
                           'Buen día de reparto',
-                          style: Theme.of(context).textTheme.bodyMedium?.copyWith(
+                          style: Theme.of(context).textTheme.bodyMedium
+                              ?.copyWith(
                                 color: Colors.grey.shade600,
                                 fontWeight: FontWeight.w600,
                               ),
@@ -328,10 +345,10 @@ class _ProgressSection extends StatelessWidget {
                 Text(
                   'Progreso de la jornada',
                   style: Theme.of(context).textTheme.labelLarge?.copyWith(
-                        color: const Color(0xFF0D1B3E),
-                        fontWeight: FontWeight.w900,
-                        fontSize: 14,
-                      ),
+                    color: const Color(0xFF0D1B3E),
+                    fontWeight: FontWeight.w900,
+                    fontSize: 14,
+                  ),
                 ),
                 Text(
                   '${(progress * 100).toInt()}% completado',

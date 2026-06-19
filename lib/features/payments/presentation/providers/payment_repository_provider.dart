@@ -8,5 +8,6 @@ final paymentRepositoryProvider = Provider<PaymentRepository>(
 );
 
 final registerPaymentUseCaseProvider = Provider<RegisterPaymentUseCase>(
-  (ref) => RegisterPaymentUseCase(paymentRepo: ref.watch(paymentRepositoryProvider)),
+  (ref) =>
+      RegisterPaymentUseCase(paymentRepo: ref.watch(paymentRepositoryProvider)),
 );

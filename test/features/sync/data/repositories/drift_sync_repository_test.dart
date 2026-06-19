@@ -63,11 +63,20 @@ void main() {
 
     test('inserts multiple entries independently', () async {
       await sut.logMutation(
-          tableName: 'payments', recordId: 'p-1', action: 'INSERT');
+        tableName: 'payments',
+        recordId: 'p-1',
+        action: 'INSERT',
+      );
       await sut.logMutation(
-          tableName: 'sales', recordId: 's-1', action: 'INSERT');
+        tableName: 'sales',
+        recordId: 's-1',
+        action: 'INSERT',
+      );
       await sut.logMutation(
-          tableName: 'visits', recordId: 'v-1', action: 'UPDATE');
+        tableName: 'visits',
+        recordId: 'v-1',
+        action: 'UPDATE',
+      );
 
       final rows = await db.select(db.auditLogTable).get();
       expect(rows.length, 3);
@@ -75,9 +84,15 @@ void main() {
 
     test('each entry receives a unique id', () async {
       await sut.logMutation(
-          tableName: 'payments', recordId: 'p-1', action: 'INSERT');
+        tableName: 'payments',
+        recordId: 'p-1',
+        action: 'INSERT',
+      );
       await sut.logMutation(
-          tableName: 'payments', recordId: 'p-2', action: 'INSERT');
+        tableName: 'payments',
+        recordId: 'p-2',
+        action: 'INSERT',
+      );
 
       final rows = await db.select(db.auditLogTable).get();
       final ids = rows.map((r) => r.auditLogId).toSet();
@@ -97,9 +112,15 @@ void main() {
 
     test('returns all entries when none have been synced', () async {
       await sut.logMutation(
-          tableName: 'payments', recordId: 'p-1', action: 'INSERT');
+        tableName: 'payments',
+        recordId: 'p-1',
+        action: 'INSERT',
+      );
       await sut.logMutation(
-          tableName: 'sales', recordId: 's-1', action: 'INSERT');
+        tableName: 'sales',
+        recordId: 's-1',
+        action: 'INSERT',
+      );
 
       final logs = await sut.getUnsyncedLogs();
       expect(logs.length, 2);
@@ -107,7 +128,10 @@ void main() {
 
     test('returns empty list when all entries are marked as synced', () async {
       await sut.logMutation(
-          tableName: 'payments', recordId: 'p-1', action: 'INSERT');
+        tableName: 'payments',
+        recordId: 'p-1',
+        action: 'INSERT',
+      );
 
       final all = await sut.getUnsyncedLogs();
       await sut.markAsSynced(all.map((e) => e.id).toList());
@@ -118,9 +142,15 @@ void main() {
 
     test('returns only unsynced entries in mixed-state log', () async {
       await sut.logMutation(
-          tableName: 'payments', recordId: 'p-1', action: 'INSERT');
+        tableName: 'payments',
+        recordId: 'p-1',
+        action: 'INSERT',
+      );
       await sut.logMutation(
-          tableName: 'payments', recordId: 'p-2', action: 'INSERT');
+        tableName: 'payments',
+        recordId: 'p-2',
+        action: 'INSERT',
+      );
 
       final first = await sut.getUnsyncedLogs();
       await sut.markAsSynced([first.first.id]);
@@ -154,7 +184,9 @@ void main() {
       final earlier = DateTime(2024, 1, 1, 10, 0, 0);
       final later = DateTime(2024, 1, 1, 12, 0, 0);
 
-      await db.into(db.auditLogTable).insert(
+      await db
+          .into(db.auditLogTable)
+          .insert(
             AuditLogTableCompanion.insert(
               tableNameColumn: 'payments',
               recordId: 'p-old',
@@ -162,7 +194,9 @@ void main() {
               createdAt: drift.Value(earlier),
             ),
           );
-      await db.into(db.auditLogTable).insert(
+      await db
+          .into(db.auditLogTable)
+          .insert(
             AuditLogTableCompanion.insert(
               tableNameColumn: 'payments',
               recordId: 'p-new',
@@ -184,7 +218,10 @@ void main() {
   group('markAsSynced', () {
     test('marks specified entries as synced', () async {
       await sut.logMutation(
-          tableName: 'payments', recordId: 'p-1', action: 'INSERT');
+        tableName: 'payments',
+        recordId: 'p-1',
+        action: 'INSERT',
+      );
 
       final logs = await sut.getUnsyncedLogs();
       await sut.markAsSynced([logs.first.id]);
@@ -195,9 +232,15 @@ void main() {
 
     test('only marks specified ids — others remain pending', () async {
       await sut.logMutation(
-          tableName: 'payments', recordId: 'p-1', action: 'INSERT');
+        tableName: 'payments',
+        recordId: 'p-1',
+        action: 'INSERT',
+      );
       await sut.logMutation(
-          tableName: 'payments', recordId: 'p-2', action: 'INSERT');
+        tableName: 'payments',
+        recordId: 'p-2',
+        action: 'INSERT',
+      );
 
       final logs = await sut.getUnsyncedLogs();
       await sut.markAsSynced([logs.first.id]);
@@ -209,7 +252,10 @@ void main() {
 
     test('does nothing when called with an empty list', () async {
       await sut.logMutation(
-          tableName: 'payments', recordId: 'p-1', action: 'INSERT');
+        tableName: 'payments',
+        recordId: 'p-1',
+        action: 'INSERT',
+      );
 
       await sut.markAsSynced([]);
 
@@ -219,11 +265,20 @@ void main() {
 
     test('marks multiple entries in a single call', () async {
       await sut.logMutation(
-          tableName: 'payments', recordId: 'p-1', action: 'INSERT');
+        tableName: 'payments',
+        recordId: 'p-1',
+        action: 'INSERT',
+      );
       await sut.logMutation(
-          tableName: 'sales', recordId: 's-1', action: 'INSERT');
+        tableName: 'sales',
+        recordId: 's-1',
+        action: 'INSERT',
+      );
       await sut.logMutation(
-          tableName: 'visits', recordId: 'v-1', action: 'UPDATE');
+        tableName: 'visits',
+        recordId: 'v-1',
+        action: 'UPDATE',
+      );
 
       final logs = await sut.getUnsyncedLogs();
       final ids = logs.map((e) => e.id).toList();
@@ -235,7 +290,10 @@ void main() {
 
     test('synced entries have synced = true in domain model', () async {
       await sut.logMutation(
-          tableName: 'payments', recordId: 'p-1', action: 'INSERT');
+        tableName: 'payments',
+        recordId: 'p-1',
+        action: 'INSERT',
+      );
 
       final before = await sut.getUnsyncedLogs();
       expect(before.first.synced, isFalse);
