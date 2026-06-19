@@ -44,18 +44,16 @@ class DebtChip extends StatelessWidget {
       padding: padding,
       decoration: BoxDecoration(
         color: backgroundColor,
-        border: borderColor != null ? Border.all(color: borderColor!, width: borderWidth) : null,
+        border: borderColor != null
+            ? Border.all(color: borderColor!, width: borderWidth)
+            : null,
         borderRadius: borderRadius ?? BorderRadius.circular(20),
       ),
       child: Row(
         mainAxisSize: MainAxisSize.min,
         children: [
           if (icon != null) ...[
-            Icon(
-              icon,
-              size: iconSize,
-              color: iconColor ?? textColor,
-            ),
+            Icon(icon, size: iconSize, color: iconColor ?? textColor),
             const SizedBox(width: 4),
           ],
           Text(

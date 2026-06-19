@@ -34,7 +34,11 @@ class MockRouteRepository implements RouteRepository {
     id: 'mock-1',
     name: 'José García',
     addresses: [
-      CustomerAddress(id: 'addr-1', street: 'Av. San Martín 1234', isPrimary: true),
+      CustomerAddress(
+        id: 'addr-1',
+        street: 'Av. San Martín 1234',
+        isPrimary: true,
+      ),
     ],
     preferences: const [],
     debtAmount: 1200,
@@ -116,7 +120,11 @@ class MockRouteRepository implements RouteRepository {
         id: 'mock-$i',
         name: 'Cliente N° $i',
         addresses: [
-          CustomerAddress(id: 'addr-$i', street: 'Calle Falsa ${100 + i}', isPrimary: true),
+          CustomerAddress(
+            id: 'addr-$i',
+            street: 'Calle Falsa ${100 + i}',
+            isPrimary: true,
+          ),
         ],
         preferences: const [],
         debtAmount: i % 5 == 0 ? (i * 150).toDouble() : 0.0,
@@ -130,8 +138,8 @@ class MockRouteRepository implements RouteRepository {
           status: isDone
               ? StopStatus.done
               : isAbsent
-                  ? StopStatus.absent
-                  : StopStatus.pending,
+              ? StopStatus.absent
+              : StopStatus.pending,
           scheduledAt: DateTime(now.year, now.month, now.day, hour, minute),
         ),
       );

@@ -23,7 +23,7 @@ abstract class CustomerFormState with _$CustomerFormState {
   const CustomerFormState._();
 
   bool get isIdentityValid => name.isNotEmpty;
-  
+
   bool get isAddressValid => street.isNotEmpty;
 
   bool get isPreferenceValid => preferences.isNotEmpty;

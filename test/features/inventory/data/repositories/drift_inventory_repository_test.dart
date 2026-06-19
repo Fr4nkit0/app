@@ -63,7 +63,8 @@ void main() {
   group('recordContainerMovement', () {
     test('inserts movement row with correct fields', () async {
       await sut.recordContainerMovement(
-          makeMovement(delivered: 4, returned: 2));
+        makeMovement(delivered: 4, returned: 2),
+      );
 
       final rows = await db.select(db.containerMovementTable).get();
       expect(rows.length, 1);
@@ -76,7 +77,8 @@ void main() {
 
     test('creates balance row on first movement with net quantity', () async {
       await sut.recordContainerMovement(
-          makeMovement(delivered: 5, returned: 2));
+        makeMovement(delivered: 5, returned: 2),
+      );
 
       final rows = await db.select(db.customerContainerBalanceTable).get();
       expect(rows.length, 1);
@@ -85,9 +87,11 @@ void main() {
 
     test('updates existing balance on subsequent movements', () async {
       await sut.recordContainerMovement(
-          makeMovement(id: 'mov-1', delivered: 5, returned: 1));
+        makeMovement(id: 'mov-1', delivered: 5, returned: 1),
+      );
       await sut.recordContainerMovement(
-          makeMovement(id: 'mov-2', delivered: 2, returned: 3));
+        makeMovement(id: 'mov-2', delivered: 2, returned: 3),
+      );
 
       final rows = await db.select(db.customerContainerBalanceTable).get();
       expect(rows.length, 1);
@@ -96,19 +100,33 @@ void main() {
 
     test('handles pure return movement (delivered = 0)', () async {
       await sut.recordContainerMovement(
-          makeMovement(id: 'mov-1', delivered: 4, returned: 0));
+        makeMovement(id: 'mov-1', delivered: 4, returned: 0),
+      );
       await sut.recordContainerMovement(
-          makeMovement(id: 'mov-2', delivered: 0, returned: 3));
+        makeMovement(id: 'mov-2', delivered: 0, returned: 3),
+      );
 
       final rows = await db.select(db.customerContainerBalanceTable).get();
       expect(rows.first.quantity, 1); // 4 - 3 = 1
     });
 
     test('tracks balances independently per container type', () async {
-      await sut.recordContainerMovement(makeMovement(
-          id: 'mov-1', containerType: 'BIDON_20L', delivered: 3, returned: 0));
-      await sut.recordContainerMovement(makeMovement(
-          id: 'mov-2', containerType: 'SIFON_2L', delivered: 10, returned: 2));
+      await sut.recordContainerMovement(
+        makeMovement(
+          id: 'mov-1',
+          containerType: 'BIDON_20L',
+          delivered: 3,
+          returned: 0,
+        ),
+      );
+      await sut.recordContainerMovement(
+        makeMovement(
+          id: 'mov-2',
+          containerType: 'SIFON_2L',
+          delivered: 10,
+          returned: 2,
+        ),
+      );
 
       final rows = await db.select(db.customerContainerBalanceTable).get();
       expect(rows.length, 2);
@@ -120,12 +138,22 @@ void main() {
     });
 
     test('tracks balances independently per customer', () async {
-      await sut.recordContainerMovement(makeMovement(
-          id: 'mov-1', customerId: 'mock-customer-1', delivered: 5,
-          returned: 0));
-      await sut.recordContainerMovement(makeMovement(
-          id: 'mov-2', customerId: 'mock-customer-2', delivered: 2,
-          returned: 1));
+      await sut.recordContainerMovement(
+        makeMovement(
+          id: 'mov-1',
+          customerId: 'mock-customer-1',
+          delivered: 5,
+          returned: 0,
+        ),
+      );
+      await sut.recordContainerMovement(
+        makeMovement(
+          id: 'mov-2',
+          customerId: 'mock-customer-2',
+          delivered: 2,
+          returned: 1,
+        ),
+      );
 
       final rows = await db.select(db.customerContainerBalanceTable).get();
       expect(rows.length, 2);
@@ -147,31 +175,37 @@ void main() {
       expect(logs.first.payload, isNotNull);
     });
 
-    test('rolls back all writes when movement insert fails (duplicate PK)',
-        () async {
-      await db.into(db.containerMovementTable).insert(
-            ContainerMovementTableCompanion.insert(
-              containerMovementId: const drift.Value('mov-dupe'),
-              customerId: 'mock-customer-1',
-              containerType: 'BIDON_20L',
-              deliveredQuantity: 1,
-              returnedQuantity: 0,
-            ),
-          );
+    test(
+      'rolls back all writes when movement insert fails (duplicate PK)',
+      () async {
+        await db
+            .into(db.containerMovementTable)
+            .insert(
+              ContainerMovementTableCompanion.insert(
+                containerMovementId: const drift.Value('mov-dupe'),
+                customerId: 'mock-customer-1',
+                containerType: 'BIDON_20L',
+                deliveredQuantity: 1,
+                returnedQuantity: 0,
+              ),
+            );
 
-      await expectLater(
-        sut.recordContainerMovement(
-            makeMovement(id: 'mov-dupe', delivered: 99, returned: 0)),
-        throwsA(anything),
-      );
+        await expectLater(
+          sut.recordContainerMovement(
+            makeMovement(id: 'mov-dupe', delivered: 99, returned: 0),
+          ),
+          throwsA(anything),
+        );
 
-      final balances =
-          await db.select(db.customerContainerBalanceTable).get();
-      expect(balances, isEmpty);
+        final balances = await db
+            .select(db.customerContainerBalanceTable)
+            .get();
+        expect(balances, isEmpty);
 
-      final logs = await db.select(db.auditLogTable).get();
-      expect(logs, isEmpty);
-    });
+        final logs = await db.select(db.auditLogTable).get();
+        expect(logs, isEmpty);
+      },
+    );
   });
 
   // ──────────────────────────────────────────────────────────────────────────
@@ -180,8 +214,7 @@ void main() {
 
   group('watchContainerBalances', () {
     test('emits empty list when no balances exist', () async {
-      final list =
-          await sut.watchContainerBalances('mock-customer-1').first;
+      final list = await sut.watchContainerBalances('mock-customer-1').first;
       expect(list, isEmpty);
     });
 
@@ -195,7 +228,8 @@ void main() {
       await Future.delayed(const Duration(milliseconds: 30));
 
       await sut.recordContainerMovement(
-          makeMovement(containerType: 'BIDON_20L', delivered: 4, returned: 1));
+        makeMovement(containerType: 'BIDON_20L', delivered: 4, returned: 1),
+      );
 
       await Future.delayed(const Duration(milliseconds: 30));
 
@@ -206,24 +240,36 @@ void main() {
 
     test('returns only balances for the specified customer', () async {
       await sut.recordContainerMovement(
-          makeMovement(id: 'mov-1', customerId: 'mock-customer-1'));
+        makeMovement(id: 'mov-1', customerId: 'mock-customer-1'),
+      );
       await sut.recordContainerMovement(
-          makeMovement(id: 'mov-2', customerId: 'mock-customer-2'));
+        makeMovement(id: 'mov-2', customerId: 'mock-customer-2'),
+      );
 
-      final list =
-          await sut.watchContainerBalances('mock-customer-1').first;
+      final list = await sut.watchContainerBalances('mock-customer-1').first;
       expect(list.length, 1);
       expect(list.first.customerId, 'mock-customer-1');
     });
 
     test('emits one entry per container type for the customer', () async {
-      await sut.recordContainerMovement(makeMovement(
-          id: 'mov-1', containerType: 'BIDON_20L', delivered: 3, returned: 0));
-      await sut.recordContainerMovement(makeMovement(
-          id: 'mov-2', containerType: 'SIFON_2L', delivered: 5, returned: 2));
+      await sut.recordContainerMovement(
+        makeMovement(
+          id: 'mov-1',
+          containerType: 'BIDON_20L',
+          delivered: 3,
+          returned: 0,
+        ),
+      );
+      await sut.recordContainerMovement(
+        makeMovement(
+          id: 'mov-2',
+          containerType: 'SIFON_2L',
+          delivered: 5,
+          returned: 2,
+        ),
+      );
 
-      final list =
-          await sut.watchContainerBalances('mock-customer-1').first;
+      final list = await sut.watchContainerBalances('mock-customer-1').first;
       expect(list.length, 2);
     });
   });
@@ -235,9 +281,11 @@ void main() {
   group('getVisitMovements', () {
     test('returns movements for the given visitId', () async {
       await sut.recordContainerMovement(
-          makeMovement(id: 'mov-v1', visitId: 'visit-abc'));
+        makeMovement(id: 'mov-v1', visitId: 'visit-abc'),
+      );
       await sut.recordContainerMovement(
-          makeMovement(id: 'mov-v2', visitId: 'visit-xyz'));
+        makeMovement(id: 'mov-v2', visitId: 'visit-xyz'),
+      );
 
       final results = await sut.getVisitMovements('visit-abc');
       expect(results.length, 1);
@@ -251,24 +299,34 @@ void main() {
 
     test('returns multiple movements for the same visit', () async {
       await sut.recordContainerMovement(
-          makeMovement(id: 'mov-a', containerType: 'BIDON_20L',
-              visitId: 'visit-1'));
+        makeMovement(
+          id: 'mov-a',
+          containerType: 'BIDON_20L',
+          visitId: 'visit-1',
+        ),
+      );
       await sut.recordContainerMovement(
-          makeMovement(id: 'mov-b', containerType: 'SIFON_2L',
-              visitId: 'visit-1'));
+        makeMovement(
+          id: 'mov-b',
+          containerType: 'SIFON_2L',
+          visitId: 'visit-1',
+        ),
+      );
 
       final results = await sut.getVisitMovements('visit-1');
       expect(results.length, 2);
     });
 
     test('movement domain model fields are mapped correctly', () async {
-      await sut.recordContainerMovement(makeMovement(
-        id: 'mov-map',
-        containerType: 'SIFON_2L',
-        delivered: 6,
-        returned: 2,
-        visitId: 'visit-map',
-      ));
+      await sut.recordContainerMovement(
+        makeMovement(
+          id: 'mov-map',
+          containerType: 'SIFON_2L',
+          delivered: 6,
+          returned: 2,
+          visitId: 'visit-map',
+        ),
+      );
 
       final results = await sut.getVisitMovements('visit-map');
       final m = results.first;
@@ -288,13 +346,15 @@ void main() {
   group('loadRouteInventory', () {
     test('inserts load record with correct fields', () async {
       final loadedAt = DateTime(2024, 6, 1, 8, 0);
-      await sut.loadRouteInventory(makeLoad(
-        id: 'load-1',
-        routeId: 'route-r1',
-        productId: 'product-p1',
-        quantity: 100,
-        loadedAt: loadedAt,
-      ));
+      await sut.loadRouteInventory(
+        makeLoad(
+          id: 'load-1',
+          routeId: 'route-r1',
+          productId: 'product-p1',
+          quantity: 100,
+          loadedAt: loadedAt,
+        ),
+      );
 
       final rows = await db.select(db.routeInventoryLoadTable).get();
       expect(rows.length, 1);
@@ -307,9 +367,11 @@ void main() {
 
     test('multiple loads for different products on same route', () async {
       await sut.loadRouteInventory(
-          makeLoad(id: 'load-1', productId: 'prod-a', quantity: 50));
+        makeLoad(id: 'load-1', productId: 'prod-a', quantity: 50),
+      );
       await sut.loadRouteInventory(
-          makeLoad(id: 'load-2', productId: 'prod-b', quantity: 30));
+        makeLoad(id: 'load-2', productId: 'prod-b', quantity: 30),
+      );
 
       final rows = await db.select(db.routeInventoryLoadTable).get();
       expect(rows.length, 2);
@@ -370,9 +432,11 @@ void main() {
       final later = DateTime(2024, 1, 1, 14, 0);
 
       await sut.loadRouteInventory(
-          makeLoad(id: 'load-late', routeId: 'route-A', loadedAt: later));
+        makeLoad(id: 'load-late', routeId: 'route-A', loadedAt: later),
+      );
       await sut.loadRouteInventory(
-          makeLoad(id: 'load-early', routeId: 'route-A', loadedAt: earlier));
+        makeLoad(id: 'load-early', routeId: 'route-A', loadedAt: earlier),
+      );
 
       final results = await sut.getRouteLoads('route-A');
       expect(results.first.id, 'load-early');
@@ -381,14 +445,16 @@ void main() {
 
     test('load domain model fields are mapped correctly', () async {
       final loadedAt = DateTime(2024, 3, 15);
-      await sut.loadRouteInventory(RouteInventoryLoad(
-        id: 'load-map',
-        routeId: 'route-r1',
-        productId: 'prod-p1',
-        quantity: 75,
-        loadedAt: loadedAt,
-        createdBy: 'driver-1',
-      ));
+      await sut.loadRouteInventory(
+        RouteInventoryLoad(
+          id: 'load-map',
+          routeId: 'route-r1',
+          productId: 'prod-p1',
+          quantity: 75,
+          loadedAt: loadedAt,
+          createdBy: 'driver-1',
+        ),
+      );
 
       final results = await sut.getRouteLoads('route-r1');
       final l = results.first;

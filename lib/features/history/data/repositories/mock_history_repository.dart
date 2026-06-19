@@ -52,7 +52,11 @@ class MockHistoryRepository implements HistoryRepository {
     id: 'mock-luis',
     name: 'Luis Morales',
     addresses: [
-      CustomerAddress(id: 'addr-luis', street: 'Pellegrini 456', isPrimary: true),
+      CustomerAddress(
+        id: 'addr-luis',
+        street: 'Pellegrini 456',
+        isPrimary: true,
+      ),
     ],
     preferences: const [],
     productLabels: const ['2 Bidones'],
@@ -72,7 +76,11 @@ class MockHistoryRepository implements HistoryRepository {
     id: 'mock-familia',
     name: 'Carnicería Familia',
     addresses: [
-      CustomerAddress(id: 'addr-familia', street: 'Av. San Martín 1234', isPrimary: true),
+      CustomerAddress(
+        id: 'addr-familia',
+        street: 'Av. San Martín 1234',
+        isPrimary: true,
+      ),
     ],
     preferences: const [],
     productLabels: const [],
@@ -82,7 +90,11 @@ class MockHistoryRepository implements HistoryRepository {
     id: 'mock-paco',
     name: 'Despensa Paco',
     addresses: [
-      CustomerAddress(id: 'addr-paco', street: 'Belgrano 1011', isPrimary: true),
+      CustomerAddress(
+        id: 'addr-paco',
+        street: 'Belgrano 1011',
+        isPrimary: true,
+      ),
     ],
     preferences: const [],
     productLabels: const ['Bidones 12L'],
@@ -102,7 +114,11 @@ class MockHistoryRepository implements HistoryRepository {
     id: 'mock-panaderia',
     name: 'Panadería del Sol',
     addresses: [
-      CustomerAddress(id: 'addr-panaderia', street: 'Urquiza 550', isPrimary: true),
+      CustomerAddress(
+        id: 'addr-panaderia',
+        street: 'Urquiza 550',
+        isPrimary: true,
+      ),
     ],
     preferences: const [],
     productLabels: const [],
@@ -112,7 +128,11 @@ class MockHistoryRepository implements HistoryRepository {
     id: 'mock-kiosco',
     name: 'Kiosco La Plaza',
     addresses: [
-      CustomerAddress(id: 'addr-kiosco', street: 'Rivadavia 202', isPrimary: true),
+      CustomerAddress(
+        id: 'addr-kiosco',
+        street: 'Rivadavia 202',
+        isPrimary: true,
+      ),
     ],
     preferences: const [],
     productLabels: const ['20L'],
@@ -122,7 +142,11 @@ class MockHistoryRepository implements HistoryRepository {
     id: 'mock-verduleria',
     name: 'Verdulería Tito',
     addresses: [
-      CustomerAddress(id: 'addr-verduleria', street: 'Sarmiento 890', isPrimary: true),
+      CustomerAddress(
+        id: 'addr-verduleria',
+        street: 'Sarmiento 890',
+        isPrimary: true,
+      ),
     ],
     preferences: const [],
     productLabels: const [],
@@ -189,7 +213,9 @@ class MockHistoryRepository implements HistoryRepository {
         id: 'hist-7',
         type: HistoryEntryType.visit,
         customer: _mockLuisMorales,
-        date: now.subtract(const Duration(days: 1)).copyWith(hour: 17, minute: 0),
+        date: now
+            .subtract(const Duration(days: 1))
+            .copyWith(hour: 17, minute: 0),
         description: 'Visita iniciada',
         isSynced: true,
       ),
@@ -197,7 +223,9 @@ class MockHistoryRepository implements HistoryRepository {
         id: 'hist-8',
         type: HistoryEntryType.sale,
         customer: _mockKioscoLaPlaza,
-        date: now.subtract(const Duration(days: 1)).copyWith(hour: 15, minute: 45),
+        date: now
+            .subtract(const Duration(days: 1))
+            .copyWith(hour: 15, minute: 45),
         description: 'Venta registrada',
         isSynced: true,
         tags: const ['1 x 20L'],
@@ -206,7 +234,9 @@ class MockHistoryRepository implements HistoryRepository {
         id: 'hist-9',
         type: HistoryEntryType.delivery,
         customer: _mockVerduleriaTito,
-        date: now.subtract(const Duration(days: 1)).copyWith(hour: 14, minute: 30),
+        date: now
+            .subtract(const Duration(days: 1))
+            .copyWith(hour: 14, minute: 30),
         description: 'Entrega de bidones',
         isSynced: true,
         tags: const ['3 bidones 20L'],
@@ -215,7 +245,9 @@ class MockHistoryRepository implements HistoryRepository {
         id: 'hist-10',
         type: HistoryEntryType.payment,
         customer: _mockLuisMorales,
-        date: now.subtract(const Duration(days: 1)).copyWith(hour: 11, minute: 15),
+        date: now
+            .subtract(const Duration(days: 1))
+            .copyWith(hour: 11, minute: 15),
         amount: 8400,
         description: 'Cobro realizado',
         isSynced: true,
@@ -225,7 +257,9 @@ class MockHistoryRepository implements HistoryRepository {
         id: 'hist-11',
         type: HistoryEntryType.sale,
         customer: _mockDespensaPaco,
-        date: now.subtract(const Duration(days: 2)).copyWith(hour: 16, minute: 45),
+        date: now
+            .subtract(const Duration(days: 2))
+            .copyWith(hour: 16, minute: 45),
         description: 'Venta registrada',
         isSynced: true,
         tags: const ['12 x 12L'],
@@ -234,7 +268,9 @@ class MockHistoryRepository implements HistoryRepository {
         id: 'hist-12',
         type: HistoryEntryType.payment,
         customer: _mockLuisMorales,
-        date: now.subtract(const Duration(days: 2)).copyWith(hour: 15, minute: 30),
+        date: now
+            .subtract(const Duration(days: 2))
+            .copyWith(hour: 15, minute: 30),
         amount: 9800,
         description: 'Cobro realizado',
         isSynced: true,
@@ -243,7 +279,9 @@ class MockHistoryRepository implements HistoryRepository {
         id: 'hist-13',
         type: HistoryEntryType.delivery,
         customer: _mockCarniceriaFamilia,
-        date: now.subtract(const Duration(days: 2)).copyWith(hour: 14, minute: 15),
+        date: now
+            .subtract(const Duration(days: 2))
+            .copyWith(hour: 14, minute: 15),
         description: 'Entrega de bidones',
         isSynced: true,
         tags: const ['4 bidones 20L'],
@@ -252,7 +290,9 @@ class MockHistoryRepository implements HistoryRepository {
         id: 'hist-14',
         type: HistoryEntryType.visit,
         customer: _mockSupermercadoChino,
-        date: now.subtract(const Duration(days: 2)).copyWith(hour: 10, minute: 50),
+        date: now
+            .subtract(const Duration(days: 2))
+            .copyWith(hour: 10, minute: 50),
         description: 'Visita iniciada',
         isSynced: true,
       ),
@@ -261,7 +301,9 @@ class MockHistoryRepository implements HistoryRepository {
         id: 'hist-15',
         type: HistoryEntryType.delivery,
         customer: _mockPanaderiaDelSol,
-        date: now.subtract(const Duration(days: 3)).copyWith(hour: 17, minute: 15),
+        date: now
+            .subtract(const Duration(days: 3))
+            .copyWith(hour: 17, minute: 15),
         description: 'Entrega de bidones',
         isSynced: true,
         tags: const ['6 bidones 12L'],
@@ -270,7 +312,9 @@ class MockHistoryRepository implements HistoryRepository {
         id: 'hist-16',
         type: HistoryEntryType.sale,
         customer: _mockLuisMorales,
-        date: now.subtract(const Duration(days: 3)).copyWith(hour: 15, minute: 0),
+        date: now
+            .subtract(const Duration(days: 3))
+            .copyWith(hour: 15, minute: 0),
         description: 'Venta registrada',
         isSynced: true,
         tags: const ['2 x 20L'],
@@ -280,7 +324,9 @@ class MockHistoryRepository implements HistoryRepository {
         id: 'hist-17',
         type: HistoryEntryType.payment,
         customer: _mockLuisMorales,
-        date: now.subtract(const Duration(days: 4)).copyWith(hour: 13, minute: 45),
+        date: now
+            .subtract(const Duration(days: 4))
+            .copyWith(hour: 13, minute: 45),
         amount: 6500,
         description: 'Cobro realizado',
         isSynced: true,
@@ -289,7 +335,9 @@ class MockHistoryRepository implements HistoryRepository {
         id: 'hist-18',
         type: HistoryEntryType.visit,
         customer: _mockDespensaPaco,
-        date: now.subtract(const Duration(days: 4)).copyWith(hour: 11, minute: 0),
+        date: now
+            .subtract(const Duration(days: 4))
+            .copyWith(hour: 11, minute: 0),
         description: 'Visita iniciada',
         isSynced: true,
       ),

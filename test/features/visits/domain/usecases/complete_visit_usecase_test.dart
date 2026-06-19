@@ -42,13 +42,17 @@ void main() {
 
     // Insert a route + stop fixture.
     // Customers mock-customer-1..4 are already seeded.
-    await db.into(db.routeTable).insert(
+    await db
+        .into(db.routeTable)
+        .insert(
           RouteTableCompanion.insert(
             routeId: const drift.Value('route-test-1'),
             route_date: _dateOnly(DateTime.now()),
           ),
         );
-    await db.into(db.routeStopTable).insert(
+    await db
+        .into(db.routeStopTable)
+        .insert(
           RouteStopTableCompanion.insert(
             routeStopId: const drift.Value('stop-test-1'),
             routeId: 'route-test-1',
@@ -107,9 +111,9 @@ void main() {
         outcome: 'successful',
       );
 
-      final row = await (db.select(db.routeStopTable)
-            ..where((t) => t.routeStopId.equals('stop-test-1')))
-          .getSingle();
+      final row = await (db.select(
+        db.routeStopTable,
+      )..where((t) => t.routeStopId.equals('stop-test-1'))).getSingle();
       expect(row.status, 'done');
       expect(row.visitedAt, isNotNull);
     });
@@ -152,29 +156,31 @@ void main() {
       expect(result, isA<Error<void>>());
     });
 
-    test('RouteStopTable status is UNCHANGED when recordVisit fails (F2b)',
-        () async {
-      final failingVisitRepo = FakeFailingVisitRepository();
-      final sutWithFailing = CompleteVisitUseCase(
-        routeRepo: routeRepo,
-        visitRepo: failingVisitRepo,
-      );
+    test(
+      'RouteStopTable status is UNCHANGED when recordVisit fails (F2b)',
+      () async {
+        final failingVisitRepo = FakeFailingVisitRepository();
+        final sutWithFailing = CompleteVisitUseCase(
+          routeRepo: routeRepo,
+          visitRepo: failingVisitRepo,
+        );
 
-      await sutWithFailing.execute(
-        stopId: 'stop-test-1',
-        customerId: 'mock-customer-1',
-        visitType: VisitType.sale,
-        nextStatus: StopStatus.done,
-        outcome: 'successful',
-      );
+        await sutWithFailing.execute(
+          stopId: 'stop-test-1',
+          customerId: 'mock-customer-1',
+          visitType: VisitType.sale,
+          nextStatus: StopStatus.done,
+          outcome: 'successful',
+        );
 
-      // markStop must NOT have been called.
-      final row = await (db.select(db.routeStopTable)
-            ..where((t) => t.routeStopId.equals('stop-test-1')))
-          .getSingle();
-      expect(row.status, 'pending'); // unchanged
-      expect(row.visitedAt, isNull);
-    });
+        // markStop must NOT have been called.
+        final row = await (db.select(
+          db.routeStopTable,
+        )..where((t) => t.routeStopId.equals('stop-test-1'))).getSingle();
+        expect(row.status, 'pending'); // unchanged
+        expect(row.visitedAt, isNull);
+      },
+    );
   });
 }
 

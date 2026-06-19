@@ -68,17 +68,15 @@ class CoreHorizontalStepper extends StatelessWidget {
                     ),
                   )
                 : isDone
-                    ? const Icon(Icons.check, size: 14, color: Colors.white)
-                    : Text(
-                        '${index + 1}',
-                        style: TextStyle(
-                          fontSize: 12,
-                          fontWeight: FontWeight.w700,
-                          color: isActive
-                              ? Colors.white
-                              : const Color(0xFF9CA3AF),
-                        ),
-                      ),
+                ? const Icon(Icons.check, size: 14, color: Colors.white)
+                : Text(
+                    '${index + 1}',
+                    style: TextStyle(
+                      fontSize: 12,
+                      fontWeight: FontWeight.w700,
+                      color: isActive ? Colors.white : const Color(0xFF9CA3AF),
+                    ),
+                  ),
           ),
         );
 
@@ -87,13 +85,12 @@ class CoreHorizontalStepper extends StatelessWidget {
           style: TextStyle(
             fontSize: 10,
             fontWeight: isActive ? FontWeight.w700 : FontWeight.w500,
-            color: isActive
-                ? effectiveActiveColor
-                : const Color(0xFF9CA3AF),
+            color: isActive ? effectiveActiveColor : const Color(0xFF9CA3AF),
           ),
         );
 
-        final hasDescription = stepDescriptions != null &&
+        final hasDescription =
+            stepDescriptions != null &&
             index < stepDescriptions!.length &&
             stepDescriptions![index].isNotEmpty;
         final descriptionText = hasDescription

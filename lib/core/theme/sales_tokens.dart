@@ -32,9 +32,8 @@ class SalesTokens extends ThemeExtension<SalesTokens> {
 
   /// TextStyle con [FontFeature.tabularFigures] para totales y subtotales.
   /// Evita layout-shift cuando la cantidad de dígitos cambia.
-  TextStyle get tabularStyle => const TextStyle(
-        fontFeatures: [FontFeature.tabularFigures()],
-      );
+  TextStyle get tabularStyle =>
+      const TextStyle(fontFeatures: [FontFeature.tabularFigures()]);
 
   // ─── Preset ───────────────────────────────────────────────────────────────
 
@@ -47,11 +46,7 @@ class SalesTokens extends ThemeExtension<SalesTokens> {
   // ─── ThemeExtension contract ──────────────────────────────────────────────
 
   @override
-  SalesTokens copyWith({
-    Color? primary,
-    Color? accent,
-    Color? destructive,
-  }) {
+  SalesTokens copyWith({Color? primary, Color? accent, Color? destructive}) {
     return SalesTokens(
       primary: primary ?? this.primary,
       accent: accent ?? this.accent,

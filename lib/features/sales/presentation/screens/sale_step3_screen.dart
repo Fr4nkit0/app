@@ -9,6 +9,11 @@ import 'package:app/features/sales/domain/models/payment_method.dart';
 import 'package:app/features/sales/domain/models/sale_draft_state.dart';
 import 'package:app/features/sales/presentation/providers/sale_draft_provider.dart';
 import 'package:app/core/widgets/core_horizontal_stepper.dart';
+import 'package:app/features/inventory/presentation/providers/inventory_repository_provider.dart';
+import 'package:app/features/inventory/domain/models/customer_container_balance.dart';
+
+import 'package:app/features/products/domain/models/product.dart';
+import 'package:app/features/sales/domain/models/sale_item.dart';
 
 class SaleStep3Screen extends ConsumerWidget {
   const SaleStep3Screen({super.key});
@@ -32,10 +37,16 @@ class SaleStep3Screen extends ConsumerWidget {
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
                     const Padding(
-                      padding: EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+                      padding: EdgeInsets.symmetric(
+                        horizontal: 16,
+                        vertical: 8,
+                      ),
                       child: CoreHorizontalStepper(
                         steps: ['Pedido', 'Cobro'],
-                        stepDescriptions: ['Elegir productos', 'Registrar pago'],
+                        stepDescriptions: [
+                          'Elegir productos',
+                          'Registrar pago',
+                        ],
                         layoutRow: true,
                         currentStep: 1,
                       ),
@@ -45,17 +56,30 @@ class SaleStep3Screen extends ConsumerWidget {
                       DebtChip(
                         amount: draft.customer!.debtAmount,
                         margin: const EdgeInsets.fromLTRB(16, 8, 16, 0),
-                        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+                        padding: const EdgeInsets.symmetric(
+                          horizontal: 12,
+                          vertical: 8,
+                        ),
                         borderRadius: BorderRadius.circular(10),
-                        backgroundColor: Theme.of(context).extension<SalesTokens>()!.destructive.withValues(alpha: 0.08),
-                        borderColor: Theme.of(context).extension<SalesTokens>()!.destructive.withValues(alpha: 0.3),
+                        backgroundColor: Theme.of(context)
+                            .extension<SalesTokens>()!
+                            .destructive
+                            .withValues(alpha: 0.08),
+                        borderColor: Theme.of(context)
+                            .extension<SalesTokens>()!
+                            .destructive
+                            .withValues(alpha: 0.3),
                         borderWidth: 1.0,
-                        textColor: Theme.of(context).extension<SalesTokens>()!.destructive,
+                        textColor: Theme.of(
+                          context,
+                        ).extension<SalesTokens>()!.destructive,
                         fontSize: 13,
                         fontWeight: FontWeight.w700,
                         icon: Icons.warning_amber_rounded,
                         iconSize: 16,
-                        iconColor: Theme.of(context).extension<SalesTokens>()!.destructive,
+                        iconColor: Theme.of(
+                          context,
+                        ).extension<SalesTokens>()!.destructive,
                         prefixText: 'Deuda previa: \$',
                       ),
                     // Client + order summary card
@@ -131,50 +155,57 @@ class _ClientCard extends StatelessWidget {
         children: [
           Row(
             children: [
-              Icon(Icons.person_outline,
-                  size: 15, color: tokens.primary),
+              Icon(Icons.person_outline, size: 15, color: tokens.primary),
               const SizedBox(width: 6),
               Text(
                 draft.customer?.name ?? '',
                 style: Theme.of(context).textTheme.titleSmall?.copyWith(
-                      fontWeight: FontWeight.w700,
-                      color: Theme.of(context).colorScheme.primary,
-                    ),
+                  fontWeight: FontWeight.w700,
+                  color: Theme.of(context).colorScheme.primary,
+                ),
               ),
             ],
           ),
           const SizedBox(height: 10),
-          ...draft.items.map((item) => Padding(
-                padding: const EdgeInsets.only(bottom: 4),
-                child: Row(
-                  children: [
-                    const Icon(Icons.water_drop_outlined,
-                        size: 13, color: Colors.grey),
-                    const SizedBox(width: 6),
-                    Expanded(
-                      child: Text(
-                        '${item.quantity}× ${item.product.name}',
-                        style: Theme.of(context).textTheme.bodySmall,
-                      ),
+          ...draft.items.map(
+            (item) => Padding(
+              padding: const EdgeInsets.only(bottom: 4),
+              child: Row(
+                children: [
+                  const Icon(
+                    Icons.water_drop_outlined,
+                    size: 13,
+                    color: Colors.grey,
+                  ),
+                  const SizedBox(width: 6),
+                  Expanded(
+                    child: Text(
+                      '${item.quantity}× ${item.product.name}',
+                      style: Theme.of(context).textTheme.bodySmall,
                     ),
-                    Text(
-                      '\$${item.subtotal.toStringAsFixed(0)}',
-                      style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                            fontWeight: FontWeight.w700,
-                            fontFeatures: tokens.tabularStyle.fontFeatures,
-                          ),
+                  ),
+                  Text(
+                    '\$${item.subtotal.toStringAsFixed(0)}',
+                    style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                      fontWeight: FontWeight.w700,
+                      fontFeatures: tokens.tabularStyle.fontFeatures,
                     ),
-                  ],
-                ),
-              )),
+                  ),
+                ],
+              ),
+            ),
+          ),
           const Divider(height: 14),
           Row(
             mainAxisAlignment: MainAxisAlignment.spaceBetween,
             children: [
-              Text('Total',
-                  style: TextStyle(
-                      fontWeight: FontWeight.w700,
-                      color: Theme.of(context).colorScheme.primary)),
+              Text(
+                'Total',
+                style: TextStyle(
+                  fontWeight: FontWeight.w700,
+                  color: Theme.of(context).colorScheme.primary,
+                ),
+              ),
               Text(
                 '\$${draft.total.toStringAsFixed(0)}',
                 style: TextStyle(
@@ -282,8 +313,7 @@ class _MixedAmountsSection extends ConsumerStatefulWidget {
       _MixedAmountsSectionState();
 }
 
-class _MixedAmountsSectionState
-    extends ConsumerState<_MixedAmountsSection> {
+class _MixedAmountsSectionState extends ConsumerState<_MixedAmountsSection> {
   final _cashController = TextEditingController();
   final _transferController = TextEditingController();
 
@@ -382,8 +412,10 @@ class _AmountField extends StatelessWidget {
         prefixText: '\$ ',
         filled: true,
         fillColor: Colors.grey.shade50,
-        contentPadding:
-            const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
+        contentPadding: const EdgeInsets.symmetric(
+          horizontal: 16,
+          vertical: 14,
+        ),
         border: OutlineInputBorder(
           borderRadius: BorderRadius.circular(10),
           borderSide: BorderSide(color: Colors.grey.shade200),
@@ -494,55 +526,283 @@ class _Footer extends ConsumerWidget {
               style: OutlinedButton.styleFrom(
                 foregroundColor: Theme.of(context).colorScheme.primary,
                 side: BorderSide(
-                    color: Theme.of(context).colorScheme.primary, width: 1.5),
-                minimumSize: const Size(0, 56),
-                shape: RoundedRectangleBorder(
-                  borderRadius: BorderRadius.circular(12),
+                  color: Theme.of(context).colorScheme.primary,
+                  width: 1.5,
                 ),
-              ),
-              child: const Text('Atrás',
-                  style: TextStyle(fontWeight: FontWeight.w700)),
-            ),
-          ),
-          const SizedBox(width: 10),
-          // Botón Confirmar — gated by canConfirm (REQ-COB-06)
-          Expanded(
-            flex: 6,
-            child: FilledButton(
-              onPressed: draft.canConfirm
-                  ? () async {
-                      final visitId = draft.visitId;
-                      await ref.read(saleDraftProvider.notifier).commit();
-                      if (context.mounted) {
-                        if (visitId != null) {
-                          Navigator.of(context).pop();
-                          Navigator.of(context).pop();
-                        } else {
-                          Navigator.of(context)
-                              .popUntil((route) => route.isFirst);
-                          
-                          // Show gorgeous premium top toast ONLY for general sales outside routes!
-                          TopToast.showSuccess(context, 'Venta registrada con éxito');
-                        }
-                      }
-                    }
-                  : null,
-              style: FilledButton.styleFrom(
-                backgroundColor: tokens.primary,
-                disabledBackgroundColor: Colors.grey.shade200,
                 minimumSize: const Size(0, 56),
                 shape: RoundedRectangleBorder(
                   borderRadius: BorderRadius.circular(12),
                 ),
               ),
               child: const Text(
-                'Confirmar',
-                style: TextStyle(fontWeight: FontWeight.w800, fontSize: 15),
+                'Atrás',
+                style: TextStyle(fontWeight: FontWeight.w700),
               ),
+            ),
+          ),
+          const SizedBox(width: 10),
+          // Botón Confirmar — gated by canConfirm (REQ-COB-06)
+          Expanded(
+            flex: 6,
+            child: Consumer(
+              builder: (context, ref, child) {
+                final balancesAsync = ref.watch(
+                  customerContainerBalancesProvider(draft.customer?.id ?? ''),
+                );
+
+                return FilledButton(
+                  onPressed: draft.canConfirm
+                      ? () async {
+                          final hasContainers = draft.items.any(
+                            (item) => item.product.containerType != null,
+                          );
+                          final visitId = draft.visitId;
+
+                          final balances = balancesAsync.maybeWhen(
+                            data: (list) => list,
+                            orElse: () => <CustomerContainerBalance>[],
+                          );
+                          final hasActiveCustody = balances.any(
+                            (b) => b.quantity > 0,
+                          );
+
+                          Future<void> handleCommit() async {
+                            await ref.read(saleDraftProvider.notifier).commit();
+                            if (visitId != null) {
+                              ref.invalidate(visitMovementsProvider(visitId));
+                            }
+                            if (context.mounted) {
+                              if (visitId != null) {
+                                Navigator.of(context).pop();
+                                Navigator.of(context).pop();
+                              } else {
+                                Navigator.of(
+                                  context,
+                                ).popUntil((route) => route.isFirst);
+
+                                // Show gorgeous premium top toast ONLY for general sales outside routes!
+                                TopToast.showSuccess(
+                                  context,
+                                  'Venta registrada con éxito',
+                                );
+                              }
+                            }
+                          }
+
+                          if (hasContainers && hasActiveCustody) {
+                            final customerBalancesMap = {
+                              for (final b in balances)
+                                b.containerType: b.quantity,
+                            };
+                            showDialog(
+                              context: context,
+                              barrierDismissible: false,
+                              builder: (context) =>
+                                  ContainerReturnConfirmationDialog(
+                                    items: draft.items,
+                                    initialReturns: draft.returnedContainers,
+                                    customerBalances: customerBalancesMap,
+                                    onConfirm: (adjustedReturns) async {
+                                      for (final entry
+                                          in adjustedReturns.entries) {
+                                        ref
+                                            .read(saleDraftProvider.notifier)
+                                            .setReturnedQuantity(
+                                              entry.key,
+                                              entry.value,
+                                            );
+                                      }
+                                      await handleCommit();
+                                    },
+                                  ),
+                            );
+                          } else {
+                            if (hasContainers) {
+                              for (final type in ['BIDON_20L', 'SIFON_2L']) {
+                                ref
+                                    .read(saleDraftProvider.notifier)
+                                    .setReturnedQuantity(type, 0);
+                              }
+                            }
+                            await handleCommit();
+                          }
+                        }
+                      : null,
+                  style: FilledButton.styleFrom(
+                    backgroundColor: tokens.primary,
+                    disabledBackgroundColor: Colors.grey.shade200,
+                    minimumSize: const Size(0, 56),
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(12),
+                    ),
+                  ),
+                  child: const Text(
+                    'Confirmar',
+                    style: TextStyle(fontWeight: FontWeight.w800, fontSize: 15),
+                  ),
+                );
+              },
             ),
           ),
         ],
       ),
+    );
+  }
+}
+
+// ─── Container Return Confirmation Dialog ─────────────────────────────────────
+
+class ContainerReturnConfirmationDialog extends StatefulWidget {
+  const ContainerReturnConfirmationDialog({
+    super.key,
+    required this.items,
+    required this.initialReturns,
+    required this.customerBalances,
+    required this.onConfirm,
+  });
+
+  final List<SaleItem> items;
+  final Map<String, int> initialReturns;
+  final Map<String, int> customerBalances;
+  final ValueChanged<Map<String, int>> onConfirm;
+
+  @override
+  State<ContainerReturnConfirmationDialog> createState() =>
+      _ContainerReturnConfirmationDialogState();
+}
+
+class _ContainerReturnConfirmationDialogState
+    extends State<ContainerReturnConfirmationDialog> {
+  late Map<String, int> _returns;
+
+  @override
+  void initState() {
+    super.initState();
+    _returns = Map<String, int>.from(widget.initialReturns);
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final containerTypes = <String>[];
+    for (final type in ['BIDON_20L', 'SIFON_2L']) {
+      final delivered = widget.items
+          .where((item) => item.product.containerType == type)
+          .fold(0, (sum, item) => sum + item.quantity);
+      if (delivered > 0) {
+        containerTypes.add(type);
+        _returns[type] ??= delivered;
+      }
+    }
+
+    final tokens = Theme.of(context).extension<SalesTokens>()!;
+
+    return AlertDialog(
+      title: const Text(
+        'Retorno de Envases',
+        style: TextStyle(fontWeight: FontWeight.bold),
+      ),
+      content: SingleChildScrollView(
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            const Text(
+              'Confirmá o ajustá la cantidad de envases retornados por el cliente.',
+              style: TextStyle(color: Colors.grey, fontSize: 14),
+            ),
+            const SizedBox(height: 16),
+            ...containerTypes.map((type) {
+              final delivered = widget.items
+                  .where((item) => item.product.containerType == type)
+                  .fold(0, (sum, item) => sum + item.quantity);
+              final returned = _returns[type] ?? delivered;
+              final balance = widget.customerBalances[type] ?? 0;
+              final maxReturns = balance + delivered;
+              final label = type == 'BIDON_20L' ? 'Bidón 20L' : 'Sifón 2L';
+
+              return Padding(
+                padding: const EdgeInsets.symmetric(vertical: 8.0),
+                child: Row(
+                  children: [
+                    Expanded(
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Text(
+                            label,
+                            style: const TextStyle(
+                              fontWeight: FontWeight.bold,
+                              fontSize: 16,
+                            ),
+                          ),
+                          Text(
+                            'Entregados: $delivered',
+                            style: const TextStyle(
+                              color: Colors.grey,
+                              fontSize: 13,
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                    Row(
+                      children: [
+                        IconButton(
+                          onPressed: returned > 0
+                              ? () {
+                                  setState(() {
+                                    _returns[type] = returned - 1;
+                                  });
+                                }
+                              : null,
+                          icon: const Icon(Icons.remove_circle_outline),
+                          color: tokens.destructive,
+                        ),
+                        SizedBox(
+                          width: 32,
+                          child: Text(
+                            '$returned',
+                            textAlign: TextAlign.center,
+                            style: const TextStyle(
+                              fontSize: 16,
+                              fontWeight: FontWeight.bold,
+                            ),
+                          ),
+                        ),
+                        IconButton(
+                          onPressed: returned < maxReturns
+                              ? () {
+                                  setState(() {
+                                    _returns[type] = returned + 1;
+                                  });
+                                }
+                              : null,
+                          icon: const Icon(Icons.add_circle_outline),
+                          color: tokens.primary,
+                        ),
+                      ],
+                    ),
+                  ],
+                ),
+              );
+            }),
+          ],
+        ),
+      ),
+      actions: [
+        TextButton(
+          onPressed: () => Navigator.of(context).pop(),
+          child: const Text('Cancelar'),
+        ),
+        FilledButton(
+          onPressed: () {
+            widget.onConfirm(_returns);
+            Navigator.of(context).pop();
+          },
+          style: FilledButton.styleFrom(backgroundColor: tokens.primary),
+          child: const Text('Confirmar'),
+        ),
+      ],
     );
   }
 }

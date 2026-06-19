@@ -32,23 +32,25 @@ class DriftSyncRepository implements SyncRepository {
     required String action,
     String? payload,
   }) async {
-    await _db.into(_db.auditLogTable).insert(
+    await _db
+        .into(_db.auditLogTable)
+        .insert(
           AuditLogTableCompanion.insert(
             tableNameColumn: tableName,
             recordId: recordId,
             action: action,
-            payload:
-                payload != null ? Value(payload) : const Value.absent(),
+            payload: payload != null ? Value(payload) : const Value.absent(),
           ),
         );
   }
 
   @override
   Future<List<AuditLogEntry>> getUnsyncedLogs() async {
-    final rows = await (_db.select(_db.auditLogTable)
-          ..where((t) => t.enabled.equals(true))
-          ..orderBy([(t) => OrderingTerm.asc(t.createdAt)]))
-        .get();
+    final rows =
+        await (_db.select(_db.auditLogTable)
+              ..where((t) => t.enabled.equals(true))
+              ..orderBy([(t) => OrderingTerm.asc(t.createdAt)]))
+            .get();
     return rows.map(_rowToEntry).toList();
   }
 
@@ -61,12 +63,12 @@ class DriftSyncRepository implements SyncRepository {
   }
 
   AuditLogEntry _rowToEntry(AuditLogTableData row) => AuditLogEntry(
-        id: row.auditLogId,
-        tableName: row.tableNameColumn,
-        recordId: row.recordId,
-        action: row.action,
-        payload: row.payload,
-        createdAt: row.createdAt,
-        synced: !row.enabled,
-      );
+    id: row.auditLogId,
+    tableName: row.tableNameColumn,
+    recordId: row.recordId,
+    action: row.action,
+    payload: row.payload,
+    createdAt: row.createdAt,
+    synced: !row.enabled,
+  );
 }

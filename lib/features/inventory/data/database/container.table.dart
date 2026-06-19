@@ -11,18 +11,21 @@ class ContainerMovementTable extends Table with Timestamps {
 
   late final containerMovementId = text().clientDefault(() => uuid.v4())();
   late final customerId = text().references(
-    CustomerTable, #customerId,
+    CustomerTable,
+    #customerId,
     onDelete: KeyAction.restrict,
   )();
   late final containerType = text()(); // 'BIDON_20L' | 'SIFON_2L'
   late final deliveredQuantity = integer()();
   late final returnedQuantity = integer()();
   late final visitId = text().nullable().references(
-    VisitTable, #visitId,
+    VisitTable,
+    #visitId,
     onDelete: KeyAction.setNull,
   )();
   late final routeId = text().nullable().references(
-    RouteTable, #routeId,
+    RouteTable,
+    #routeId,
     onDelete: KeyAction.setNull,
   )();
 
@@ -35,7 +38,8 @@ class CustomerContainerBalanceTable extends Table with Timestamps {
   String get tableName => 'customer_container_balances';
 
   late final customerId = text().references(
-    CustomerTable, #customerId,
+    CustomerTable,
+    #customerId,
     onDelete: KeyAction.restrict,
   )();
   late final containerType = text()(); // 'BIDON_20L' | 'SIFON_2L'
@@ -51,11 +55,13 @@ class RouteInventoryLoadTable extends Table with Timestamps {
 
   late final routeInventoryLoadId = text().clientDefault(() => uuid.v4())();
   late final routeId = text().references(
-    RouteTable, #routeId,
+    RouteTable,
+    #routeId,
     onDelete: KeyAction.restrict,
   )();
   late final productId = text().references(
-    ProductTable, #productId,
+    ProductTable,
+    #productId,
     onDelete: KeyAction.restrict,
   )();
   late final quantity = integer()();

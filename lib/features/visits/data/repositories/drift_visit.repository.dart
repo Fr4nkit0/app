@@ -12,7 +12,9 @@ class DriftVisitRepository implements VisitRepository {
 
   @override
   Future<void> recordVisit(Visit v) async {
-    await _db.into(_db.visitTable).insert(
+    await _db
+        .into(_db.visitTable)
+        .insert(
           VisitTableCompanion.insert(
             visitId: Value(v.visitId),
             routeStopId: v.routeStopId,
@@ -36,16 +38,16 @@ class DriftVisitRepository implements VisitRepository {
   }
 
   Visit _rowToVisit(VisitTableData row) => Visit(
-        visitId: row.visitId,
-        routeStopId: row.routeStopId,
-        customerId: row.customerId,
-        visitType: VisitType.values.firstWhere(
-          (e) => e.name == row.visitType,
-          orElse: () => VisitType.visit,
-        ),
-        outcome: row.outcome,
-        arrivedAt: row.arrived_at,
-        observations: row.observations,
-        amountCollected: row.amountCollected,
-      );
+    visitId: row.visitId,
+    routeStopId: row.routeStopId,
+    customerId: row.customerId,
+    visitType: VisitType.values.firstWhere(
+      (e) => e.name == row.visitType,
+      orElse: () => VisitType.visit,
+    ),
+    outcome: row.outcome,
+    arrivedAt: row.arrived_at,
+    observations: row.observations,
+    amountCollected: row.amountCollected,
+  );
 }

@@ -24,7 +24,9 @@ class DriftPaymentRepository implements PaymentRepository {
   @override
   Future<void> recordPayment(Payment payment) async {
     await _db.transaction(() async {
-      await _db.into(_db.paymentTable).insert(
+      await _db
+          .into(_db.paymentTable)
+          .insert(
             PaymentTableCompanion.insert(
               paymentId: Value(payment.id),
               customerId: payment.customerId,
@@ -38,7 +40,9 @@ class DriftPaymentRepository implements PaymentRepository {
           );
 
       final entryId = _uuid.v4();
-      await _db.into(_db.customerAccountEntryTable).insert(
+      await _db
+          .into(_db.customerAccountEntryTable)
+          .insert(
             CustomerAccountEntryTableCompanion.insert(
               customerAccountEntryId: Value(entryId),
               customerId: payment.customerId,
@@ -52,14 +56,17 @@ class DriftPaymentRepository implements PaymentRepository {
             ),
           );
 
-      final existing = await (_db.select(_db.customerBalanceTable)
-            ..where((t) => t.customerId.equals(payment.customerId)))
-          .getSingleOrNull();
+      final existing =
+          await (_db.select(_db.customerBalanceTable)
+                ..where((t) => t.customerId.equals(payment.customerId)))
+              .getSingleOrNull();
 
       final newBalance = (existing?.currentBalance ?? 0.0) - payment.amount;
 
       if (existing == null) {
-        await _db.into(_db.customerBalanceTable).insert(
+        await _db
+            .into(_db.customerBalanceTable)
+            .insert(
               CustomerBalanceTableCompanion.insert(
                 customerId: payment.customerId,
                 currentBalance: Value(newBalance),
@@ -67,25 +74,31 @@ class DriftPaymentRepository implements PaymentRepository {
               ),
             );
       } else {
-        await (_db.update(_db.customerBalanceTable)
-              ..where((t) => t.customerId.equals(payment.customerId)))
-            .write(CustomerBalanceTableCompanion(
-          currentBalance: Value(newBalance),
-          lastEntryId: Value(entryId),
-        ));
+        await (_db.update(
+          _db.customerBalanceTable,
+        )..where((t) => t.customerId.equals(payment.customerId))).write(
+          CustomerBalanceTableCompanion(
+            currentBalance: Value(newBalance),
+            lastEntryId: Value(entryId),
+          ),
+        );
       }
 
-      await _db.into(_db.auditLogTable).insert(
+      await _db
+          .into(_db.auditLogTable)
+          .insert(
             AuditLogTableCompanion.insert(
               tableNameColumn: 'payments',
               recordId: payment.id,
               action: 'INSERT',
-              payload: Value(jsonEncode({
-                'paymentId': payment.id,
-                'customerId': payment.customerId,
-                'amount': payment.amount,
-                'paymentMethod': payment.type.dbValue,
-              })),
+              payload: Value(
+                jsonEncode({
+                  'paymentId': payment.id,
+                  'customerId': payment.customerId,
+                  'amount': payment.amount,
+                  'paymentMethod': payment.type.dbValue,
+                }),
+              ),
             ),
           );
     });
@@ -101,31 +114,34 @@ class DriftPaymentRepository implements PaymentRepository {
 
   @override
   Future<List<Payment>> getVisitPayments(String visitId) async {
-    final rows = await (_db.select(_db.paymentTable)
-          ..where((t) => t.visitId.equals(visitId)))
-        .get();
+    final rows = await (_db.select(
+      _db.paymentTable,
+    )..where((t) => t.visitId.equals(visitId))).get();
     return rows.map(_rowToPayment).toList();
   }
 
   @override
-  Future<List<CustomerAccountEntry>> getCustomerLedger(String customerId) async {
-    final rows = await (_db.select(_db.customerAccountEntryTable)
-          ..where((t) => t.customerId.equals(customerId))
-          ..orderBy([(t) => OrderingTerm.desc(t.createdAt)]))
-        .get();
+  Future<List<CustomerAccountEntry>> getCustomerLedger(
+    String customerId,
+  ) async {
+    final rows =
+        await (_db.select(_db.customerAccountEntryTable)
+              ..where((t) => t.customerId.equals(customerId))
+              ..orderBy([(t) => OrderingTerm.desc(t.createdAt)]))
+            .get();
     return rows.map(_rowToEntry).toList();
   }
 
   Payment _rowToPayment(PaymentTableData row) => Payment(
-        id: row.paymentId,
-        customerId: row.customerId,
-        amount: row.amount,
-        type: PaymentType.fromDb(row.paymentMethod),
-        createdAt: row.createdAt,
-        visitId: row.visitId,
-        saleId: row.saleId,
-        notes: row.notes,
-      );
+    id: row.paymentId,
+    customerId: row.customerId,
+    amount: row.amount,
+    type: PaymentType.fromDb(row.paymentMethod),
+    createdAt: row.createdAt,
+    visitId: row.visitId,
+    saleId: row.saleId,
+    notes: row.notes,
+  );
 
   CustomerAccountEntry _rowToEntry(CustomerAccountEntryTableData row) =>
       CustomerAccountEntry(

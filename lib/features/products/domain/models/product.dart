@@ -20,3 +20,11 @@ class Product {
   @override
   int get hashCode => id.hashCode;
 }
+
+extension ProductContainerExtension on Product {
+  String? get containerType {
+    if (name.contains('20L')) return 'BIDON_20L';
+    if (name.contains('Sifón')) return 'SIFON_2L';
+    return null;
+  }
+}

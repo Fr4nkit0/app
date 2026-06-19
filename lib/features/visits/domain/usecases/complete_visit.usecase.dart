@@ -11,8 +11,8 @@ class CompleteVisitUseCase {
   const CompleteVisitUseCase({
     required RouteRepository routeRepo,
     required VisitRepository visitRepo,
-  })  : _routeRepo = routeRepo,
-        _visitRepo = visitRepo;
+  }) : _routeRepo = routeRepo,
+       _visitRepo = visitRepo;
 
   final RouteRepository _routeRepo;
   final VisitRepository _visitRepo;
@@ -27,15 +27,17 @@ class CompleteVisitUseCase {
   }) async {
     try {
       // Step 1: record visit FIRST (spec F2 order).
-      await _visitRepo.recordVisit(Visit(
-        visitId: const Uuid().v4(),
-        routeStopId: stopId,
-        customerId: customerId,
-        visitType: visitType,
-        outcome: outcome,
-        arrivedAt: DateTime.now(),
-        observations: observations,
-      ));
+      await _visitRepo.recordVisit(
+        Visit(
+          visitId: const Uuid().v4(),
+          routeStopId: stopId,
+          customerId: customerId,
+          visitType: visitType,
+          outcome: outcome,
+          arrivedAt: DateTime.now(),
+          observations: observations,
+        ),
+      );
 
       // Step 2: mark stop ONLY if recordVisit succeeded.
       await _routeRepo.markStop(stopId, nextStatus);

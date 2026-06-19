@@ -58,7 +58,10 @@ class MockCustomerRepository implements CustomerRepository {
   }
 
   @override
-  Future<List<Customer>> getCustomersPage({required int page, required int pageSize}) async {
+  Future<List<Customer>> getCustomersPage({
+    required int page,
+    required int pageSize,
+  }) async {
     final offset = page * pageSize;
     final end = offset + pageSize;
     return _customers.sublist(
@@ -68,11 +71,17 @@ class MockCustomerRepository implements CustomerRepository {
   }
 
   @override
-  Future<List<Customer>> searchCustomers({required String query, required int page, required int pageSize}) async {
+  Future<List<Customer>> searchCustomers({
+    required String query,
+    required int page,
+    required int pageSize,
+  }) async {
     final offset = page * pageSize;
     final end = offset + pageSize;
     final lowerQuery = query.toLowerCase();
-    final matches = _customers.where((c) => c.name.toLowerCase().contains(lowerQuery)).toList();
+    final matches = _customers
+        .where((c) => c.name.toLowerCase().contains(lowerQuery))
+        .toList();
     return matches.sublist(
       offset.clamp(0, matches.length),
       end.clamp(0, matches.length),
@@ -93,62 +102,50 @@ class MockCustomerRepository implements CustomerRepository {
   }
 
   static List<Customer> _buildInitialCustomers() => [
-        Customer(
-          id: 'mock-1',
-          name: 'José García',
-          phone: '387-555-0101',
-          addresses: [
-            CustomerAddress(
-              id: 'addr-1',
-              street: 'Av. San Martín 1234',
-              isPrimary: true,
-            ),
-          ],
-          preferences: const [],
-          productLabels: const ['2 Bidones', '9 Sifones'],
+    Customer(
+      id: 'mock-1',
+      name: 'José García',
+      phone: '387-555-0101',
+      addresses: [
+        CustomerAddress(
+          id: 'addr-1',
+          street: 'Av. San Martín 1234',
+          isPrimary: true,
         ),
-        Customer(
-          id: 'mock-2',
-          name: 'Laura Gómez',
-          phone: '387-555-0202',
-          addresses: [
-            CustomerAddress(
-              id: 'addr-2',
-              street: 'Belgrano 456',
-              isPrimary: true,
-            ),
-          ],
-          preferences: const [],
-          productLabels: const ['1 Bidón'],
-        ),
-        Customer(
-          id: 'mock-3',
-          name: "Despensa 'El Sol'",
-          phone: '387-555-0303',
-          addresses: [
-            CustomerAddress(
-              id: 'addr-3',
-              street: 'Mitre 789',
-              isPrimary: true,
-            ),
-          ],
-          preferences: const [],
-          debtAmount: 6500,
-          productLabels: const ['10 Bidones'],
-        ),
-        Customer(
-          id: 'mock-4',
-          name: 'Kiosco Don Juan',
-          phone: '387-555-0404',
-          addresses: [
-            CustomerAddress(
-              id: 'addr-4',
-              street: 'Zuviría 101',
-              isPrimary: true,
-            ),
-          ],
-          preferences: const [],
-          productLabels: const ['5 Bidones'],
-        ),
-      ];
+      ],
+      preferences: const [],
+      productLabels: const ['2 Bidones', '9 Sifones'],
+    ),
+    Customer(
+      id: 'mock-2',
+      name: 'Laura Gómez',
+      phone: '387-555-0202',
+      addresses: [
+        CustomerAddress(id: 'addr-2', street: 'Belgrano 456', isPrimary: true),
+      ],
+      preferences: const [],
+      productLabels: const ['1 Bidón'],
+    ),
+    Customer(
+      id: 'mock-3',
+      name: "Despensa 'El Sol'",
+      phone: '387-555-0303',
+      addresses: [
+        CustomerAddress(id: 'addr-3', street: 'Mitre 789', isPrimary: true),
+      ],
+      preferences: const [],
+      debtAmount: 6500,
+      productLabels: const ['10 Bidones'],
+    ),
+    Customer(
+      id: 'mock-4',
+      name: 'Kiosco Don Juan',
+      phone: '387-555-0404',
+      addresses: [
+        CustomerAddress(id: 'addr-4', street: 'Zuviría 101', isPrimary: true),
+      ],
+      preferences: const [],
+      productLabels: const ['5 Bidones'],
+    ),
+  ];
 }

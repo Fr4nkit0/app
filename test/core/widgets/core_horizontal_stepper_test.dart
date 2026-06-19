@@ -121,28 +121,29 @@ void main() {
       expect(find.text('Desc Three'), findsOneWidget);
     });
 
-    testWidgets('renders step descriptions when stepDescriptions has fewer items than steps', (
-      WidgetTester tester,
-    ) async {
-      final descriptions = ['Desc One', 'Desc Two'];
-      await tester.pumpWidget(
-        MaterialApp(
-          home: Scaffold(
-            body: CoreHorizontalStepper(
-              currentStep: 1,
-              steps: steps,
-              stepDescriptions: descriptions,
+    testWidgets(
+      'renders step descriptions when stepDescriptions has fewer items than steps',
+      (WidgetTester tester) async {
+        final descriptions = ['Desc One', 'Desc Two'];
+        await tester.pumpWidget(
+          MaterialApp(
+            home: Scaffold(
+              body: CoreHorizontalStepper(
+                currentStep: 1,
+                steps: steps,
+                stepDescriptions: descriptions,
+              ),
             ),
           ),
-        ),
-      );
+        );
 
-      // Verify first two description labels are rendered
-      expect(find.text('Desc One'), findsOneWidget);
-      expect(find.text('Desc Two'), findsOneWidget);
-      // Verify third is not rendered and does not crash
-      expect(find.text('Desc Three'), findsNothing);
-    });
+        // Verify first two description labels are rendered
+        expect(find.text('Desc One'), findsOneWidget);
+        expect(find.text('Desc Two'), findsOneWidget);
+        // Verify third is not rendered and does not crash
+        expect(find.text('Desc Three'), findsNothing);
+      },
+    );
 
     testWidgets('renders horizontal layout when layoutRow is true', (
       WidgetTester tester,
@@ -163,10 +164,12 @@ void main() {
       // Find the step Row by checking for a Row containing the circle container.
       final stepRowFinder = find.byWidgetPredicate((widget) {
         return widget is Row &&
-            widget.children.any((child) =>
-                child is AnimatedContainer &&
-                child.decoration is BoxDecoration &&
-                (child.decoration as BoxDecoration).shape == BoxShape.circle);
+            widget.children.any(
+              (child) =>
+                  child is AnimatedContainer &&
+                  child.decoration is BoxDecoration &&
+                  (child.decoration as BoxDecoration).shape == BoxShape.circle,
+            );
       });
 
       expect(stepRowFinder, findsNWidgets(3));
