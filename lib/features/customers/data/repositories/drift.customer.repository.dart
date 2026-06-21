@@ -163,10 +163,16 @@ class DriftCustomerRepository implements CustomerRepository {
         db.customerPreferenceTable,
       )..where((t) => t.customerId.equals(id))).get();
 
+      final balanceData = await (db.select(
+        db.customerBalanceTable,
+      )..where((t) => t.customerId.equals(id))).getSingleOrNull();
+      final debtAmount = balanceData?.currentBalance ?? 0.0;
+
       final customer = Customer(
         id: customerData.customerId,
         name: customerData.name,
         phone: customerData.phone,
+        debtAmount: debtAmount,
         addresses: addresses
             .map(
               (a) => CustomerAddress(
@@ -219,6 +225,10 @@ class DriftCustomerRepository implements CustomerRepository {
       db.customerPreferenceTable,
     )..where((t) => t.customerId.isIn(customerIds))).get();
 
+    final balances = await (db.select(
+      db.customerBalanceTable,
+    )..where((t) => t.customerId.isIn(customerIds))).get();
+
     final addrMap = <String, List<CustomerAddressTableData>>{};
     for (final a in addresses) {
       addrMap.putIfAbsent(a.customerId, () => []).add(a);
@@ -229,12 +239,18 @@ class DriftCustomerRepository implements CustomerRepository {
       prefMap.putIfAbsent(p.customerId, () => []).add(p);
     }
 
+    final balanceMap = <String, double>{};
+    for (final b in balances) {
+      balanceMap[b.customerId] = b.currentBalance;
+    }
+
     return customerRows.map((row) {
       final cid = row.customerId;
       return Customer(
         id: cid,
         name: row.name,
         phone: row.phone,
+        debtAmount: balanceMap[cid] ?? 0.0,
         addresses: (addrMap[cid] ?? [])
             .map(
               (a) => CustomerAddress(
@@ -288,6 +304,10 @@ class DriftCustomerRepository implements CustomerRepository {
       db.customerPreferenceTable,
     )..where((t) => t.customerId.isIn(customerIds))).get();
 
+    final balances = await (db.select(
+      db.customerBalanceTable,
+    )..where((t) => t.customerId.isIn(customerIds))).get();
+
     final addrMap = <String, List<CustomerAddressTableData>>{};
     for (final a in addresses) {
       addrMap.putIfAbsent(a.customerId, () => []).add(a);
@@ -298,12 +318,18 @@ class DriftCustomerRepository implements CustomerRepository {
       prefMap.putIfAbsent(p.customerId, () => []).add(p);
     }
 
+    final balanceMap = <String, double>{};
+    for (final b in balances) {
+      balanceMap[b.customerId] = b.currentBalance;
+    }
+
     return customerRows.map((row) {
       final cid = row.customerId;
       return Customer(
         id: cid,
         name: row.name,
         phone: row.phone,
+        debtAmount: balanceMap[cid] ?? 0.0,
         addresses: (addrMap[cid] ?? [])
             .map(
               (a) => CustomerAddress(
@@ -353,6 +379,12 @@ class DriftCustomerRepository implements CustomerRepository {
           db.customerTable.customerId,
         ),
       ),
+      leftOuterJoin(
+        db.customerBalanceTable,
+        db.customerBalanceTable.customerId.equalsExp(
+          db.customerTable.customerId,
+        ),
+      ),
     ]);
 
     return query.watch().map((rows) {
@@ -364,6 +396,7 @@ class DriftCustomerRepository implements CustomerRepository {
         final customerData = row.readTable(db.customerTable);
         final addressData = row.readTableOrNull(db.customerAddressTable);
         final prefData = row.readTableOrNull(db.customerPreferenceTable);
+        final balanceData = row.readTableOrNull(db.customerBalanceTable);
 
         final cid = customerData.customerId;
 
@@ -372,6 +405,7 @@ class DriftCustomerRepository implements CustomerRepository {
             id: cid,
             name: customerData.name,
             phone: customerData.phone,
+            debtAmount: balanceData?.currentBalance ?? 0.0,
             addresses: [],
             preferences: [],
           );

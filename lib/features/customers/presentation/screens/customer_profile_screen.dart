@@ -13,6 +13,10 @@ import 'package:app/features/inventory/domain/models/customer_container_balance.
 import 'package:app/features/inventory/domain/models/container_movement.dart';
 import 'package:app/core/widgets/top_toast.dart';
 import 'package:uuid/uuid.dart';
+import 'package:app/features/payments/presentation/providers/payment_repository_provider.dart';
+import 'package:app/features/payments/presentation/widgets/debt_payment_dialog.dart';
+import 'package:app/features/payments/domain/models/payment.dart';
+import 'package:app/core/utils/resource.dart';
 
 class CustomerProfileScreen extends ConsumerStatefulWidget {
   const CustomerProfileScreen({super.key, required this.customerId});
@@ -206,52 +210,149 @@ class _CustomerProfileScreenState extends ConsumerState<CustomerProfileScreen> {
             child: Row(
               children: [
                 Expanded(
-                  child: Container(
-                    padding: const EdgeInsets.all(14),
-                    decoration: BoxDecoration(
-                      color: const Color(0xFFFEF2F2),
+                  child: Material(
+                    color: const Color(0xFFFEF2F2),
+                    borderRadius: BorderRadius.circular(16),
+                    child: InkWell(
+                      onTap: customer.debtAmount > 0
+                          ? () async {
+                              final result = await showDialog<DebtPaymentResult>(
+                                context: context,
+                                builder: (_) => DebtPaymentDialog(
+                                  totalDebt: customer.debtAmount,
+                                ),
+                              );
+                              if (result == null) return;
+
+                              final payments = <Payment>[];
+                              final now = DateTime.now();
+                              if (result.method == 'Efectivo') {
+                                payments.add(
+                                  Payment(
+                                    id: const Uuid().v4(),
+                                    customerId: customer.id,
+                                    amount: result.cashAmount!,
+                                    type: PaymentType.cash,
+                                    createdAt: now,
+                                  ),
+                                );
+                              } else if (result.method == 'Transferencia') {
+                                payments.add(
+                                  Payment(
+                                    id: const Uuid().v4(),
+                                    customerId: customer.id,
+                                    amount: result.transferAmount!,
+                                    type: PaymentType.transfer,
+                                    createdAt: now,
+                                  ),
+                                );
+                              } else if (result.method == 'Mixto') {
+                                if (result.cashAmount != null &&
+                                    result.cashAmount! > 0) {
+                                  payments.add(
+                                    Payment(
+                                      id: const Uuid().v4(),
+                                      customerId: customer.id,
+                                      amount: result.cashAmount!,
+                                      type: PaymentType.cash,
+                                      createdAt: now,
+                                    ),
+                                  );
+                                }
+                                if (result.transferAmount != null &&
+                                    result.transferAmount! > 0) {
+                                  payments.add(
+                                    Payment(
+                                      id: const Uuid().v4(),
+                                      customerId: customer.id,
+                                      amount: result.transferAmount!,
+                                      type: PaymentType.transfer,
+                                      createdAt: now.add(
+                                        const Duration(milliseconds: 10),
+                                      ),
+                                    ),
+                                  );
+                                }
+                              }
+
+                              if (payments.isNotEmpty) {
+                                final usecase = ref.read(
+                                  registerPaymentUseCaseProvider,
+                                );
+                                final res = await usecase.execute(payments);
+                                if (res is Success) {
+                                  if (context.mounted) {
+                                    TopToast.show(
+                                      context,
+                                      message: 'Pago registrado con éxito',
+                                      icon: Icons.check_circle_rounded,
+                                      color: const Color(0xFF10B981),
+                                    );
+                                  }
+                                } else if (res is Error) {
+                                  if (context.mounted) {
+                                    TopToast.show(
+                                      context,
+                                      message:
+                                          'Error al registrar pago: ${res.error}',
+                                      icon: Icons.error_outline,
+                                      color: const Color(0xFFDC2626),
+                                    );
+                                  }
+                                }
+                              }
+                            }
+                          : null,
                       borderRadius: BorderRadius.circular(16),
-                      border: Border.all(color: const Color(0xFFFEE2E2)),
-                    ),
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        Row(
-                          mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                      child: Container(
+                        padding: const EdgeInsets.all(14),
+                        decoration: BoxDecoration(
+                          borderRadius: BorderRadius.circular(16),
+                          border: Border.all(color: const Color(0xFFFEE2E2)),
+                        ),
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
                           children: [
+                            Row(
+                              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                              children: [
+                                Text(
+                                  'Saldo en dinero',
+                                  style: TextStyle(
+                                    fontSize: 12,
+                                    fontWeight: FontWeight.w600,
+                                    color: Colors.red.shade900,
+                                  ),
+                                ),
+                                const Icon(
+                                  Icons.credit_card_rounded,
+                                  size: 16,
+                                  color: Color(0xFFEF4444),
+                                ),
+                              ],
+                            ),
+                            const SizedBox(height: 12),
                             Text(
-                              'Saldo en dinero',
-                              style: TextStyle(
-                                fontSize: 12,
-                                fontWeight: FontWeight.w600,
-                                color: Colors.red.shade900,
+                              '\$${customer.debtAmount.toStringAsFixed(0)}',
+                              style: const TextStyle(
+                                fontSize: 22,
+                                fontWeight: FontWeight.w800,
+                                color: Color(0xFFEF4444),
                               ),
                             ),
-                            const Icon(
-                              Icons.credit_card_rounded,
-                              size: 16,
-                              color: Color(0xFFEF4444),
+                            const SizedBox(height: 4),
+                            Text(
+                              customer.debtAmount > 0
+                                  ? 'Tocar para pagar'
+                                  : 'Sin deuda',
+                              style: TextStyle(
+                                fontSize: 11,
+                                color: Colors.red.shade700,
+                              ),
                             ),
                           ],
                         ),
-                        const SizedBox(height: 12),
-                        Text(
-                          '\$${customer.debtAmount.toStringAsFixed(0)}',
-                          style: const TextStyle(
-                            fontSize: 22,
-                            fontWeight: FontWeight.w800,
-                            color: Color(0xFFEF4444),
-                          ),
-                        ),
-                        const SizedBox(height: 4),
-                        Text(
-                          'Deuda pendiente',
-                          style: TextStyle(
-                            fontSize: 11,
-                            color: Colors.red.shade700,
-                          ),
-                        ),
-                      ],
+                      ),
                     ),
                   ),
                 ),

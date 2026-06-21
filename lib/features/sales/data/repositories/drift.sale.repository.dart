@@ -1,4 +1,5 @@
 import 'package:drift/drift.dart';
+import 'package:uuid/uuid.dart';
 import 'package:app/core/services/database.helper.dart';
 import 'package:app/core/utils/resource.dart';
 import 'package:app/features/customers/domain/models/customer.dart';
@@ -116,6 +117,51 @@ class DriftSaleRepository implements SaleRepository {
                   subtotal: item.subtotal,
                 ),
               );
+        }
+
+        if (sale.paymentMethod == PaymentMethod.credit) {
+          final entryId = const Uuid().v4();
+          await _db
+              .into(_db.customerAccountEntryTable)
+              .insert(
+                CustomerAccountEntryTableCompanion.insert(
+                  customerAccountEntryId: Value(entryId),
+                  customerId: sale.customer.id,
+                  saleId: Value(sale.id),
+                  entryType: 'SALE',
+                  amount: sale.total,
+                  direction: 1,
+                  createdAt: Value(sale.date),
+                  description: const Value('Credit sale'),
+                ),
+              );
+
+          final existing = await (_db.select(_db.customerBalanceTable)
+                ..where((t) => t.customerId.equals(sale.customer.id)))
+              .getSingleOrNull();
+
+          final newBalance = (existing?.currentBalance ?? 0.0) + sale.total;
+
+          if (existing == null) {
+            await _db
+                .into(_db.customerBalanceTable)
+                .insert(
+                  CustomerBalanceTableCompanion.insert(
+                    customerId: sale.customer.id,
+                    currentBalance: Value(newBalance),
+                    lastEntryId: Value(entryId),
+                  ),
+                );
+          } else {
+            await (_db.update(_db.customerBalanceTable)
+                  ..where((t) => t.customerId.equals(sale.customer.id)))
+                .write(
+              CustomerBalanceTableCompanion(
+                currentBalance: Value(newBalance),
+                lastEntryId: Value(entryId),
+              ),
+            );
+          }
         }
       });
 

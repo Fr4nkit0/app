@@ -15,6 +15,10 @@ import 'package:app/features/inventory/presentation/providers/inventory_reposito
 import 'package:app/features/inventory/domain/models/customer_container_balance.dart';
 import 'package:app/features/inventory/domain/models/container_movement.dart';
 import 'package:uuid/uuid.dart';
+import 'package:app/features/payments/presentation/providers/payment_repository_provider.dart';
+import 'package:app/features/payments/presentation/widgets/debt_payment_dialog.dart';
+import 'package:app/features/payments/domain/models/payment.dart';
+import 'package:app/core/utils/resource.dart';
 
 final stopSalesProvider = StreamProvider.family<List<Sale>, String>((
   ref,
@@ -24,6 +28,14 @@ final stopSalesProvider = StreamProvider.family<List<Sale>, String>((
   return repo.watchAllSales().map(
     (sales) => sales.where((s) => s.visitId == stopId).toList(),
   );
+});
+
+final visitPaymentsProvider = StreamProvider.family<List<Payment>, String>((
+  ref,
+  stopId,
+) {
+  final repo = ref.watch(paymentRepositoryProvider);
+  return repo.watchVisitPayments(stopId);
 });
 
 class VisitScreen extends ConsumerStatefulWidget {
@@ -64,6 +76,9 @@ class _VisitScreenState extends ConsumerState<VisitScreen> {
     final visitMovementsAsync = ref.watch(
       visitMovementsProvider(widget.stopId),
     );
+    final visitPaymentsAsync = ref.watch(
+      visitPaymentsProvider(widget.stopId),
+    );
 
     return salesAsync.when(
       data: (sales) {
@@ -72,8 +87,12 @@ class _VisitScreenState extends ConsumerState<VisitScreen> {
           data: (movements) => movements.any((m) => m.returnedQuantity > 0),
           orElse: () => false,
         );
+        final hasPayments = visitPaymentsAsync.maybeWhen(
+          data: (payments) => payments.isNotEmpty,
+          orElse: () => false,
+        );
 
-        if (hasReturns && _soloVisitResult == 'absent') {
+        if ((hasReturns || hasPayments) && _soloVisitResult == 'absent') {
           _soloVisitResult = null;
         }
 
@@ -144,7 +163,7 @@ class _VisitScreenState extends ConsumerState<VisitScreen> {
 
                         // Custom banners based on state
                         if (stop.customer.debtAmount > 0)
-                          _buildDebtBanner(stop.customer.debtAmount),
+                          _buildDebtBanner(stop.customer.debtAmount, stop),
                         const SizedBox(height: 12),
                         _buildCustodyBanner(stop),
                         const SizedBox(height: 24),
@@ -190,6 +209,7 @@ class _VisitScreenState extends ConsumerState<VisitScreen> {
                               child: !_isSaleSelected
                                   ? _buildSoloVisitSubSection(
                                       hasReturns: hasReturns,
+                                      hasPayments: hasPayments,
                                     )
                                   : const SizedBox.shrink(),
                             ),
@@ -370,44 +390,141 @@ class _VisitScreenState extends ConsumerState<VisitScreen> {
     );
   }
 
-  Widget _buildDebtBanner(double debt) {
-    return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
-      decoration: BoxDecoration(
-        color: const Color(0xFFFEF2F2),
-        borderRadius: BorderRadius.circular(16),
-        border: Border.all(
-          color: const Color(0xFFFCA5A5).withValues(alpha: 0.5),
-          width: 1,
-        ),
-      ),
-      child: Row(
-        children: [
-          const Icon(
-            Icons.warning_amber_rounded,
-            color: Color(0xFFDC2626),
-            size: 20,
-          ),
-          const SizedBox(width: 10),
-          const Expanded(
-            child: Text(
-              'Deuda pendiente',
-              style: TextStyle(
-                fontSize: 13,
-                fontWeight: FontWeight.w700,
-                color: Color(0xFF991B1B),
+  Widget _buildDebtBanner(double debt, RouteStop stop) {
+    final isDone = stop.status != StopStatus.pending;
+    return Material(
+      color: const Color(0xFFFEF2F2),
+      borderRadius: BorderRadius.circular(16),
+      child: InkWell(
+        onTap: isDone ? null : () async {
+          final result = await showDialog<DebtPaymentResult>(
+            context: context,
+            builder: (_) => DebtPaymentDialog(totalDebt: debt),
+          );
+          if (result == null) return;
+
+          final payments = <Payment>[];
+          final now = DateTime.now();
+          if (result.method == 'Efectivo') {
+            payments.add(
+              Payment(
+                id: const Uuid().v4(),
+                customerId: stop.customer.id,
+                amount: result.cashAmount!,
+                type: PaymentType.cash,
+                createdAt: now,
+                visitId: stop.id,
               ),
+            );
+          } else if (result.method == 'Transferencia') {
+            payments.add(
+              Payment(
+                id: const Uuid().v4(),
+                customerId: stop.customer.id,
+                amount: result.transferAmount!,
+                type: PaymentType.transfer,
+                createdAt: now,
+                visitId: stop.id,
+              ),
+            );
+          } else if (result.method == 'Mixto') {
+            if (result.cashAmount != null && result.cashAmount! > 0) {
+              payments.add(
+                Payment(
+                  id: const Uuid().v4(),
+                  customerId: stop.customer.id,
+                  amount: result.cashAmount!,
+                  type: PaymentType.cash,
+                  createdAt: now,
+                  visitId: stop.id,
+                ),
+              );
+            }
+            if (result.transferAmount != null && result.transferAmount! > 0) {
+              payments.add(
+                Payment(
+                  id: const Uuid().v4(),
+                  customerId: stop.customer.id,
+                  amount: result.transferAmount!,
+                  type: PaymentType.transfer,
+                  createdAt: now.add(const Duration(milliseconds: 10)),
+                  visitId: stop.id,
+                ),
+              );
+            }
+          }
+
+          if (payments.isNotEmpty) {
+            final usecase = ref.read(registerPaymentUseCaseProvider);
+            final res = await usecase.execute(payments);
+            if (res is Success) {
+              if (context.mounted) {
+                TopToast.show(
+                  context,
+                  message: 'Pago registrado con éxito',
+                  icon: Icons.check_circle_rounded,
+                  color: const Color(0xFF10B981),
+                );
+              }
+            } else if (res is Error) {
+              if (context.mounted) {
+                TopToast.show(
+                  context,
+                  message: 'Error al registrar pago: ${res.error}',
+                  icon: Icons.error_outline,
+                  color: const Color(0xFFDC2626),
+                );
+              }
+            }
+          }
+        },
+        borderRadius: BorderRadius.circular(16),
+        child: Container(
+          padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
+          decoration: BoxDecoration(
+            borderRadius: BorderRadius.circular(16),
+            border: Border.all(
+              color: const Color(0xFFFCA5A5).withValues(alpha: 0.5),
+              width: 1,
             ),
           ),
-          Text(
-            '-\$${debt.toStringAsFixed(0)}',
-            style: const TextStyle(
-              fontSize: 15,
-              fontWeight: FontWeight.w900,
-              color: Color(0xFFDC2626),
-            ),
+          child: Row(
+            children: [
+              const Icon(
+                Icons.warning_amber_rounded,
+                color: Color(0xFFDC2626),
+                size: 20,
+              ),
+              const SizedBox(width: 10),
+              Expanded(
+                child: Text(
+                  isDone ? 'Deuda pendiente' : 'Deuda pendiente (Tocar para pagar)',
+                  style: const TextStyle(
+                    fontSize: 13,
+                    fontWeight: FontWeight.w700,
+                    color: Color(0xFF991B1B),
+                  ),
+                ),
+              ),
+              Text(
+                '-\$${debt.toStringAsFixed(0)}',
+                style: const TextStyle(
+                  fontSize: 15,
+                  fontWeight: FontWeight.w900,
+                  color: Color(0xFFDC2626),
+                ),
+              ),
+              if (!isDone) ...[
+                const SizedBox(width: 6),
+                const Icon(
+                  Icons.chevron_right_rounded,
+                  color: Color(0xFFDC2626),
+                  size: 20,
+                ),
+              ],
+            ],
           ),
-        ],
+        ),
       ),
     );
   }
@@ -672,7 +789,10 @@ class _VisitScreenState extends ConsumerState<VisitScreen> {
     );
   }
 
-  Widget _buildSoloVisitSubSection({required bool hasReturns}) {
+  Widget _buildSoloVisitSubSection({
+    required bool hasReturns,
+    required bool hasPayments,
+  }) {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
@@ -693,7 +813,7 @@ class _VisitScreenState extends ConsumerState<VisitScreen> {
               'Ausente',
               'absent',
               Icons.person_off_outlined,
-              isEnabled: !hasReturns,
+              isEnabled: !hasReturns && !hasPayments,
             ),
             const SizedBox(width: 8),
             _buildResultButton('No quiso', 'refused', Icons.block_flipped),

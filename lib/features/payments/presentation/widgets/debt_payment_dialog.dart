@@ -44,11 +44,12 @@ class _DebtPaymentDialogState extends State<DebtPaymentDialog> {
     final transfer = double.tryParse(_transferController.text) ?? 0;
     switch (_selectedMethod) {
       case 'Efectivo':
-        return cash >= widget.totalDebt - 0.01;
+        return cash > 0 && cash <= widget.totalDebt + 0.01;
       case 'Transferencia':
-        return transfer >= widget.totalDebt - 0.01;
+        return transfer > 0 && transfer <= widget.totalDebt + 0.01;
       case 'Mixto':
-        return cash + transfer >= widget.totalDebt - 0.01;
+        return (cash > 0 || transfer > 0) &&
+            (cash + transfer) <= widget.totalDebt + 0.01;
       default:
         return false;
     }
@@ -84,26 +85,51 @@ class _DebtPaymentDialogState extends State<DebtPaymentDialog> {
 
   Widget _buildRemainingIndicator() {
     final isCovered = _remaining.abs() <= 0.01;
+    final isOverpaid = _remaining < -0.01;
     final primary = const Color(0xFF1565C0);
+
+    if (isOverpaid) {
+      return Padding(
+        padding: const EdgeInsets.only(top: 4, bottom: 8),
+        child: Row(
+          children: [
+            const Icon(
+              Icons.warning_amber_rounded,
+              size: 16,
+              color: Color(0xFFD32F2F),
+            ),
+            const SizedBox(width: 6),
+            const Text(
+              'Excede la deuda',
+              style: TextStyle(
+                fontWeight: FontWeight.w700,
+                fontSize: 13,
+                color: Color(0xFFD32F2F),
+              ),
+            ),
+          ],
+        ),
+      );
+    }
 
     return Padding(
       padding: const EdgeInsets.only(top: 4, bottom: 8),
       child: Row(
         children: [
           Icon(
-            isCovered ? Icons.check_circle_outline : Icons.error_outline,
+            isCovered ? Icons.check_circle_outline : Icons.info_outline,
             size: 16,
-            color: isCovered ? primary : const Color(0xFFD32F2F),
+            color: isCovered ? primary : const Color(0xFFE65100),
           ),
           const SizedBox(width: 6),
           Text(
             isCovered
                 ? '✓ Cubierto'
-                : 'Falta: \$${_remaining.toStringAsFixed(2)}',
+                : 'Restante: \$${_remaining.toStringAsFixed(2)}',
             style: TextStyle(
               fontWeight: FontWeight.w700,
               fontSize: 13,
-              color: isCovered ? primary : const Color(0xFFD32F2F),
+              color: isCovered ? primary : const Color(0xFFE65100),
             ),
           ),
         ],
