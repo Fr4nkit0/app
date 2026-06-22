@@ -1,9 +1,11 @@
 import 'package:flutter/material.dart';
+import 'package:url_launcher/url_launcher.dart';
 import 'package:app/core/widgets/debt_chip.dart';
 import 'package:app/core/widgets/product_chip.dart';
 import 'package:app/core/utils/avatar_utils.dart';
 import 'package:app/core/widgets/circular_action_button.dart';
 import 'package:app/features/customers/domain/models/customer.dart';
+import 'package:font_awesome_flutter/font_awesome_flutter.dart';
 
 class CustomerListTile extends StatelessWidget {
   const CustomerListTile({
@@ -194,19 +196,37 @@ class CustomerListTile extends StatelessWidget {
                           children: [
                             if (customer.phone != null &&
                                 customer.phone!.isNotEmpty) ...[
-                              CircularActionButton(
-                                icon: Icons.phone_in_talk_outlined,
-                                color: const Color(0xFF4B5563),
-                                onPressed: () {
-                                  ScaffoldMessenger.of(context).showSnackBar(
-                                    SnackBar(
-                                      content: Text(
-                                        'Llamando a ${customer.name}...',
-                                      ),
-                                      duration: const Duration(seconds: 1),
-                                    ),
-                                  );
+                              GestureDetector(
+                                onTap: () async {
+                                  final phone = customer.phone!.replaceAll(RegExp(r'[^\d]'), '');
+                                  final uri = Uri.parse('https://wa.me/$phone');
+                                  try {
+                                    await launchUrl(uri, mode: LaunchMode.externalApplication);
+                                  } catch (_) {
+                                    if (context.mounted) {
+                                      ScaffoldMessenger.of(context).showSnackBar(
+                                        const SnackBar(
+                                          content: Text('No se pudo abrir WhatsApp'),
+                                          duration: Duration(seconds: 2),
+                                        ),
+                                      );
+                                    }
+                                  }
                                 },
+                                child: Container(
+                                  width: 44,
+                                  height: 44,
+                                  alignment: Alignment.center,
+                                  decoration: BoxDecoration(
+                                    color: const Color(0xFF4B5563).withValues(alpha: 0.12),
+                                    shape: BoxShape.circle,
+                                  ),
+                                  child: FaIcon(
+                                    FontAwesomeIcons.whatsapp,
+                                    color: const Color(0xFF4B5563),
+                                    size: 28,
+                                  ),
+                                ),
                               ),
                               const SizedBox(width: 8),
                             ],

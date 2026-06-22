@@ -275,7 +275,7 @@ class _PreferenceDialogState extends State<_PreferenceDialog> {
   void initState() {
     super.initState();
     _selectedDay = widget.existing?.dayOfWeek ?? 1;
-    _startTime = widget.existing?.timeWindowStart ?? '08:00';
+    _startTime = widget.existing?.timeWindowStart ?? '09:00';
     _endTime = widget.existing?.timeWindowEnd ?? '12:00';
   }
 
