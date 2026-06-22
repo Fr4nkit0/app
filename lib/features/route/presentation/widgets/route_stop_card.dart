@@ -1,4 +1,6 @@
 import 'package:flutter/material.dart';
+import 'package:font_awesome_flutter/font_awesome_flutter.dart';
+import 'package:url_launcher/url_launcher.dart';
 import 'package:app/core/utils/avatar_utils.dart';
 import 'package:app/core/widgets/circular_action_button.dart';
 import 'package:app/core/widgets/debt_chip.dart';
@@ -289,28 +291,61 @@ class RouteStopCard extends StatelessWidget {
                                   // Mini Quick Actions
                                   Row(
                                     children: [
-                                      CircularActionButton(
-                                        icon: Icons.phone_in_talk_outlined,
-                                        color: const Color(0xFF4B5563),
-                                        onPressed: () {
-                                          ScaffoldMessenger.of(
-                                            context,
-                                          ).showSnackBar(
-                                            SnackBar(
-                                              content: Text(
-                                                'Llamando a ${stop.customer.name}...',
-                                              ),
-                                              duration: const Duration(
-                                                seconds: 1,
-                                              ),
+                                      if (stop.customer.phone != null &&
+                                          stop.customer.phone!.isNotEmpty) ...[
+                                        GestureDetector(
+                                          onTap: () async {
+                                            final phone = stop.customer.phone!
+                                                .replaceAll(
+                                                  RegExp(r'[^\d]'),
+                                                  '',
+                                                );
+                                            final uri = Uri.parse(
+                                              'https://wa.me/$phone',
+                                            );
+                                            try {
+                                              await launchUrl(
+                                                uri,
+                                                mode: LaunchMode
+                                                    .externalApplication,
+                                              );
+                                            } catch (_) {
+                                              if (context.mounted) {
+                                                ScaffoldMessenger.of(
+                                                  context,
+                                                ).showSnackBar(
+                                                  const SnackBar(
+                                                    content: Text(
+                                                      'No se pudo abrir WhatsApp',
+                                                    ),
+                                                    duration: Duration(
+                                                      seconds: 2,
+                                                    ),
+                                                  ),
+                                                );
+                                              }
+                                            }
+                                          },
+                                          child: Container(
+                                            width: 44,
+                                            height: 44,
+                                            alignment: Alignment.center,
+                                            decoration: const BoxDecoration(
+                                              color: Color(0xFF25D366),
+                                              shape: BoxShape.circle,
                                             ),
-                                          );
-                                        },
-                                      ),
-                                      const SizedBox(width: 8),
+                                            child: FaIcon(
+                                              FontAwesomeIcons.whatsapp,
+                                              color: Colors.white,
+                                              size: 28,
+                                            ),
+                                          ),
+                                        ),
+                                        const SizedBox(width: 8),
+                                      ],
                                       CircularActionButton(
-                                        icon: Icons.map_outlined,
-                                        color: const Color(0xFF4B5563),
+                                        icon: Icons.location_on,
+                                        color: const Color(0xFF0369A1),
                                         onPressed: () {
                                           ScaffoldMessenger.of(
                                             context,

@@ -198,15 +198,25 @@ class CustomerListTile extends StatelessWidget {
                                 customer.phone!.isNotEmpty) ...[
                               GestureDetector(
                                 onTap: () async {
-                                  final phone = customer.phone!.replaceAll(RegExp(r'[^\d]'), '');
+                                  final phone = customer.phone!.replaceAll(
+                                    RegExp(r'[^\d]'),
+                                    '',
+                                  );
                                   final uri = Uri.parse('https://wa.me/$phone');
                                   try {
-                                    await launchUrl(uri, mode: LaunchMode.externalApplication);
+                                    await launchUrl(
+                                      uri,
+                                      mode: LaunchMode.externalApplication,
+                                    );
                                   } catch (_) {
                                     if (context.mounted) {
-                                      ScaffoldMessenger.of(context).showSnackBar(
+                                      ScaffoldMessenger.of(
+                                        context,
+                                      ).showSnackBar(
                                         const SnackBar(
-                                          content: Text('No se pudo abrir WhatsApp'),
+                                          content: Text(
+                                            'No se pudo abrir WhatsApp',
+                                          ),
                                           duration: Duration(seconds: 2),
                                         ),
                                       );
@@ -217,13 +227,13 @@ class CustomerListTile extends StatelessWidget {
                                   width: 44,
                                   height: 44,
                                   alignment: Alignment.center,
-                                  decoration: BoxDecoration(
-                                    color: const Color(0xFF4B5563).withValues(alpha: 0.12),
+                                  decoration: const BoxDecoration(
+                                    color: Color(0xFF25D366),
                                     shape: BoxShape.circle,
                                   ),
                                   child: FaIcon(
                                     FontAwesomeIcons.whatsapp,
-                                    color: const Color(0xFF4B5563),
+                                    color: Colors.white,
                                     size: 28,
                                   ),
                                 ),
@@ -232,8 +242,8 @@ class CustomerListTile extends StatelessWidget {
                             ],
                             if (_address.isNotEmpty)
                               CircularActionButton(
-                                icon: Icons.map_outlined,
-                                color: const Color(0xFF4B5563),
+                                icon: Icons.location_on,
+                                color: const Color(0xFF0369A1),
                                 onPressed: () {
                                   ScaffoldMessenger.of(context).showSnackBar(
                                     SnackBar(
