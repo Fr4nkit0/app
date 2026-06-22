@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:url_launcher/url_launcher.dart';
 import 'package:app/core/widgets/top_toast.dart';
 import 'package:app/features/route/domain/models/route_stop.dart';
 import 'package:app/features/route/domain/models/stop_status.dart';
@@ -14,6 +15,7 @@ import 'package:app/features/visits/presentation/providers/complete_visit_usecas
 import 'package:app/features/inventory/presentation/providers/inventory_repository_provider.dart';
 import 'package:app/features/inventory/domain/models/customer_container_balance.dart';
 import 'package:app/features/inventory/domain/models/container_movement.dart';
+import 'package:font_awesome_flutter/font_awesome_flutter.dart';
 import 'package:uuid/uuid.dart';
 import 'package:app/features/payments/presentation/providers/payment_repository_provider.dart';
 import 'package:app/features/payments/presentation/widgets/debt_payment_dialog.dart';
@@ -76,9 +78,7 @@ class _VisitScreenState extends ConsumerState<VisitScreen> {
     final visitMovementsAsync = ref.watch(
       visitMovementsProvider(widget.stopId),
     );
-    final visitPaymentsAsync = ref.watch(
-      visitPaymentsProvider(widget.stopId),
-    );
+    final visitPaymentsAsync = ref.watch(visitPaymentsProvider(widget.stopId));
 
     return salesAsync.when(
       data: (sales) {
@@ -273,7 +273,7 @@ class _VisitScreenState extends ConsumerState<VisitScreen> {
             children: [
               Expanded(
                 child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
+                  crossAxisAlignment: CrossAxisAlignment.center,
                   children: [
                     Text(
                       'CLIENTE ACTUAL',
@@ -299,7 +299,7 @@ class _VisitScreenState extends ConsumerState<VisitScreen> {
               ),
               const SizedBox(width: 12),
               // Beautiful Map Action Button
-              Material(
+              /*Material(
                 color: const Color(0xFF1565C0).withValues(alpha: 0.08),
                 borderRadius: BorderRadius.circular(16),
                 child: InkWell(
@@ -316,13 +316,13 @@ class _VisitScreenState extends ConsumerState<VisitScreen> {
                     height: 48,
                     alignment: Alignment.center,
                     child: const Icon(
-                      Icons.map_outlined,
+                      Icons.location_on,
                       color: Color(0xFF1565C0),
-                      size: 24,
+                      size: 28,
                     ),
                   ),
                 ),
-              ),
+              ),*/
             ],
           ),
           const SizedBox(height: 16),
@@ -337,7 +337,7 @@ class _VisitScreenState extends ConsumerState<VisitScreen> {
                   shape: BoxShape.circle,
                 ),
                 child: const Icon(
-                  Icons.location_on_outlined,
+                  Icons.location_on,
                   size: 16,
                   color: Color(0xFF1565C0),
                 ),
@@ -362,23 +362,47 @@ class _VisitScreenState extends ConsumerState<VisitScreen> {
                 Container(
                   padding: const EdgeInsets.all(6),
                   decoration: BoxDecoration(
-                    color: const Color(0xFF10B981).withValues(alpha: 0.06),
+                    color: const Color(0xFF25D366), //.withValues(alpha: 0.06),
                     shape: BoxShape.circle,
                   ),
-                  child: const Icon(
-                    Icons.phone_outlined,
+                  child: const FaIcon(
+                    FontAwesomeIcons.whatsapp,
+                    color: Colors.white,
                     size: 16,
-                    color: Color(0xFF10B981),
                   ),
                 ),
                 const SizedBox(width: 10),
                 Expanded(
-                  child: Text(
-                    stop.customer.phone!,
-                    style: const TextStyle(
-                      fontSize: 14,
-                      fontWeight: FontWeight.w600,
-                      color: Color(0xFF475569),
+                  child: GestureDetector(
+                    onLongPress: () async {
+                      final phone = stop.customer.phone!.replaceAll(
+                        RegExp(r'[^\d]'),
+                        '',
+                      );
+                      final uri = Uri.parse('https://wa.me/$phone');
+                      try {
+                        await launchUrl(
+                          uri,
+                          mode: LaunchMode.externalApplication,
+                        );
+                      } catch (_) {
+                        if (context.mounted) {
+                          ScaffoldMessenger.of(context).showSnackBar(
+                            const SnackBar(
+                              content: Text('No se pudo abrir WhatsApp'),
+                              duration: Duration(seconds: 2),
+                            ),
+                          );
+                        }
+                      }
+                    },
+                    child: Text(
+                      stop.customer.phone!,
+                      style: const TextStyle(
+                        fontSize: 14,
+                        fontWeight: FontWeight.w600,
+                        color: Color(0xFF475569),
+                      ),
                     ),
                   ),
                 ),
@@ -396,88 +420,91 @@ class _VisitScreenState extends ConsumerState<VisitScreen> {
       color: const Color(0xFFFEF2F2),
       borderRadius: BorderRadius.circular(16),
       child: InkWell(
-        onTap: isDone ? null : () async {
-          final result = await showDialog<DebtPaymentResult>(
-            context: context,
-            builder: (_) => DebtPaymentDialog(totalDebt: debt),
-          );
-          if (result == null) return;
-
-          final payments = <Payment>[];
-          final now = DateTime.now();
-          if (result.method == 'Efectivo') {
-            payments.add(
-              Payment(
-                id: const Uuid().v4(),
-                customerId: stop.customer.id,
-                amount: result.cashAmount!,
-                type: PaymentType.cash,
-                createdAt: now,
-                visitId: stop.id,
-              ),
-            );
-          } else if (result.method == 'Transferencia') {
-            payments.add(
-              Payment(
-                id: const Uuid().v4(),
-                customerId: stop.customer.id,
-                amount: result.transferAmount!,
-                type: PaymentType.transfer,
-                createdAt: now,
-                visitId: stop.id,
-              ),
-            );
-          } else if (result.method == 'Mixto') {
-            if (result.cashAmount != null && result.cashAmount! > 0) {
-              payments.add(
-                Payment(
-                  id: const Uuid().v4(),
-                  customerId: stop.customer.id,
-                  amount: result.cashAmount!,
-                  type: PaymentType.cash,
-                  createdAt: now,
-                  visitId: stop.id,
-                ),
-              );
-            }
-            if (result.transferAmount != null && result.transferAmount! > 0) {
-              payments.add(
-                Payment(
-                  id: const Uuid().v4(),
-                  customerId: stop.customer.id,
-                  amount: result.transferAmount!,
-                  type: PaymentType.transfer,
-                  createdAt: now.add(const Duration(milliseconds: 10)),
-                  visitId: stop.id,
-                ),
-              );
-            }
-          }
-
-          if (payments.isNotEmpty) {
-            final usecase = ref.read(registerPaymentUseCaseProvider);
-            final res = await usecase.execute(payments);
-            if (res is Success) {
-              if (context.mounted) {
-                TopToast.show(
-                  context,
-                  message: 'Pago registrado con éxito',
-                  icon: Icons.check_circle_rounded,
-                  color: const Color(0xFF10B981),
+        onTap: isDone
+            ? null
+            : () async {
+                final result = await showDialog<DebtPaymentResult>(
+                  context: context,
+                  builder: (_) => DebtPaymentDialog(totalDebt: debt),
                 );
-              }
-            } else if (res is Error) {
-              if (context.mounted) {
-                TopToast.show(
-                  context,
-                  message: 'Error al registrar pago: ${res.error}',
-                  icon: Icons.error_outline,
-                  color: const Color(0xFFDC2626),
-                );
-              }
-            }
-          }
-        },
+                if (result == null) return;
+
+                final payments = <Payment>[];
+                final now = DateTime.now();
+                if (result.method == 'Efectivo') {
+                  payments.add(
+                    Payment(
+                      id: const Uuid().v4(),
+                      customerId: stop.customer.id,
+                      amount: result.cashAmount!,
+                      type: PaymentType.cash,
+                      createdAt: now,
+                      visitId: stop.id,
+                    ),
+                  );
+                } else if (result.method == 'Transferencia') {
+                  payments.add(
+                    Payment(
+                      id: const Uuid().v4(),
+                      customerId: stop.customer.id,
+                      amount: result.transferAmount!,
+                      type: PaymentType.transfer,
+                      createdAt: now,
+                      visitId: stop.id,
+                    ),
+                  );
+                } else if (result.method == 'Mixto') {
+                  if (result.cashAmount != null && result.cashAmount! > 0) {
+                    payments.add(
+                      Payment(
+                        id: const Uuid().v4(),
+                        customerId: stop.customer.id,
+                        amount: result.cashAmount!,
+                        type: PaymentType.cash,
+                        createdAt: now,
+                        visitId: stop.id,
+                      ),
+                    );
+                  }
+                  if (result.transferAmount != null &&
+                      result.transferAmount! > 0) {
+                    payments.add(
+                      Payment(
+                        id: const Uuid().v4(),
+                        customerId: stop.customer.id,
+                        amount: result.transferAmount!,
+                        type: PaymentType.transfer,
+                        createdAt: now.add(const Duration(milliseconds: 10)),
+                        visitId: stop.id,
+                      ),
+                    );
+                  }
+                }
+
+                if (payments.isNotEmpty) {
+                  final usecase = ref.read(registerPaymentUseCaseProvider);
+                  final res = await usecase.execute(payments);
+                  if (res is Success) {
+                    if (context.mounted) {
+                      TopToast.show(
+                        context,
+                        message: 'Pago registrado con éxito',
+                        icon: Icons.check_circle_rounded,
+                        color: const Color(0xFF10B981),
+                      );
+                    }
+                  } else if (res is Error) {
+                    if (context.mounted) {
+                      TopToast.show(
+                        context,
+                        message: 'Error al registrar pago: ${res.error}',
+                        icon: Icons.error_outline,
+                        color: const Color(0xFFDC2626),
+                      );
+                    }
+                  }
+                }
+              },
         borderRadius: BorderRadius.circular(16),
         child: Container(
           padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
@@ -498,7 +525,9 @@ class _VisitScreenState extends ConsumerState<VisitScreen> {
               const SizedBox(width: 10),
               Expanded(
                 child: Text(
-                  isDone ? 'Deuda pendiente' : 'Deuda pendiente (Tocar para pagar)',
+                  isDone
+                      ? 'Deuda pendiente'
+                      : 'Deuda pendiente (Tocar para pagar)',
                   style: const TextStyle(
                     fontSize: 13,
                     fontWeight: FontWeight.w700,

@@ -326,9 +326,18 @@ class _PreferenceDialogState extends State<_PreferenceDialog> {
   bool _isValidTime() {
     final startParts = _startTime.split(':');
     final startHour = int.tryParse(startParts[0]) ?? 0;
+    final startMinute = int.tryParse(startParts[1]) ?? 0;
 
     final endParts = _endTime.split(':');
     final endHour = int.tryParse(endParts[0]) ?? 0;
+    final endMinute = int.tryParse(endParts[1]) ?? 0;
+
+    final startMinutes = startHour * 60 + startMinute;
+    final endMinutes = endHour * 60 + endMinute;
+
+    if (endMinutes <= startMinutes) {
+      return false;
+    }
 
     // Lunes (1) a Viernes (5)
     if (_selectedDay >= 1 && _selectedDay <= 5) {
@@ -345,7 +354,7 @@ class _PreferenceDialogState extends State<_PreferenceDialog> {
   void _save() {
     if (!_isValidTime()) {
       setState(() {
-        _errorMessage = 'Horario inválido. L a V: 9-18hs, Sáb: 9-15hs';
+        _errorMessage = 'Horario inválido. La hora "Hasta" debe ser posterior a "Desde". L a V: 9-18hs, Sáb: 9-15hs';
       });
       return;
     }
