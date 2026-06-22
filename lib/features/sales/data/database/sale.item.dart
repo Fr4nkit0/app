@@ -9,11 +9,13 @@ class SaleItemTable extends Table with Timestamps {
 
   late final saleItemId = text().clientDefault(() => uuid.v4())();
   late final saleId = text().references(
-    SaleTable, #saleId,
+    SaleTable,
+    #saleId,
     onDelete: KeyAction.cascade,
   )();
   late final productId = text().references(
-    ProductTable, #productId,
+    ProductTable,
+    #productId,
     onDelete: KeyAction.restrict,
   )();
   late final quantity = integer()();

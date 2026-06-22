@@ -36,9 +36,9 @@ class StepIdentityView extends StatelessWidget {
         children: [
           Text(
             'Datos del cliente',
-            style: Theme.of(context).textTheme.titleLarge?.copyWith(
-                  fontWeight: FontWeight.w800,
-                ),
+            style: Theme.of(
+              context,
+            ).textTheme.titleLarge?.copyWith(fontWeight: FontWeight.w800),
           ),
           const SizedBox(height: 4),
           const Text(
@@ -60,8 +60,10 @@ class StepIdentityView extends StatelessWidget {
               prefixIcon: Icon(Icons.person_outline, size: 20),
               filled: true,
               fillColor: Colors.white,
-              contentPadding:
-                  EdgeInsets.symmetric(horizontal: 16, vertical: 16),
+              contentPadding: EdgeInsets.symmetric(
+                horizontal: 16,
+                vertical: 16,
+              ),
               border: _border,
               enabledBorder: _border,
               focusedBorder: _focusBorder,
@@ -80,8 +82,10 @@ class StepIdentityView extends StatelessWidget {
               prefixIcon: Icon(Icons.phone_outlined, size: 20),
               filled: true,
               fillColor: Colors.white,
-              contentPadding:
-                  EdgeInsets.symmetric(horizontal: 16, vertical: 16),
+              contentPadding: EdgeInsets.symmetric(
+                horizontal: 16,
+                vertical: 16,
+              ),
               border: _border,
               enabledBorder: _border,
               focusedBorder: _focusBorder,

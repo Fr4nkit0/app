@@ -44,20 +44,24 @@ void main() {
   // ───────────────────────────────────────────────────────────────
 
   group('execute — success', () {
-    test('F3a: returns Resource.success(null) and inserts PaymentTable row',
-        () async {
-      final result = await sut.execute(makePayment(id: 'pay-f3a', amount: 100.0));
+    test(
+      'F3a: returns Resource.success(null) and inserts PaymentTable row',
+      () async {
+        final result = await sut.execute([
+          makePayment(id: 'pay-f3a', amount: 100.0),
+        ]);
 
-      expect(result, isA<Success<void>>());
+        expect(result, isA<Success<void>>());
 
-      final rows = await db.select(db.paymentTable).get();
-      expect(rows.length, 1);
-      expect(rows.first.paymentId, 'pay-f3a');
-      expect(rows.first.amount, 100.0);
-    });
+        final rows = await db.select(db.paymentTable).get();
+        expect(rows.length, 1);
+        expect(rows.first.paymentId, 'pay-f3a');
+        expect(rows.first.amount, 100.0);
+      },
+    );
 
     test('F3a: CustomerBalanceTable is updated after payment', () async {
-      await sut.execute(makePayment(id: 'pay-balance', amount: 200.0));
+      await sut.execute([makePayment(id: 'pay-balance', amount: 200.0)]);
 
       final balances = await db.select(db.customerBalanceTable).get();
       // DriftPaymentRepository updates or inserts a customer_balance row.
@@ -66,7 +70,7 @@ void main() {
     });
 
     test('positive amount just above zero is accepted', () async {
-      final result = await sut.execute(makePayment(amount: 0.01));
+      final result = await sut.execute([makePayment(amount: 0.01)]);
       expect(result, isA<Success<void>>());
     });
   });
@@ -77,13 +81,13 @@ void main() {
 
   group('execute — zero amount', () {
     test('F3b: returns Resource.error for amount == 0.0', () async {
-      final result = await sut.execute(makePayment(amount: 0.0));
+      final result = await sut.execute([makePayment(amount: 0.0)]);
 
       expect(result, isA<Error<void>>());
     });
 
     test('F3b: no DB write when amount is zero', () async {
-      await sut.execute(makePayment(amount: 0.0));
+      await sut.execute([makePayment(amount: 0.0)]);
 
       final rows = await db.select(db.paymentTable).get();
       expect(rows, isEmpty);
@@ -96,13 +100,13 @@ void main() {
 
   group('execute — negative amount', () {
     test('F3c: returns Resource.error for amount == -50.0', () async {
-      final result = await sut.execute(makePayment(amount: -50.0));
+      final result = await sut.execute([makePayment(amount: -50.0)]);
 
       expect(result, isA<Error<void>>());
     });
 
     test('F3c: no DB write when amount is negative', () async {
-      await sut.execute(makePayment(amount: -1.0));
+      await sut.execute([makePayment(amount: -1.0)]);
 
       final rows = await db.select(db.paymentTable).get();
       expect(rows, isEmpty);

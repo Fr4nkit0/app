@@ -37,7 +37,9 @@ class ScreenHeader extends StatelessWidget {
                       style: const TextStyle(
                         fontSize: 22,
                         fontWeight: FontWeight.w900,
-                        color: Color(0xFF0F4C81), // Elegant blue matching Historial exactly
+                        color: Color(
+                          0xFF0F4C81,
+                        ), // Elegant blue matching Historial exactly
                         letterSpacing: 0.5,
                       ),
                       textAlign: TextAlign.center,
@@ -74,11 +76,7 @@ class ScreenHeader extends StatelessWidget {
                     ),
                   ),
                 // Trailing widget (right aligned)
-                if (trailing != null)
-                  Positioned(
-                    right: 0,
-                    child: trailing!,
-                  ),
+                if (trailing != null) Positioned(right: 0, child: trailing!),
               ],
             ),
           ),

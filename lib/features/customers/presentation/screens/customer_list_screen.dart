@@ -92,7 +92,8 @@ class _CustomerListScreenState extends ConsumerState<CustomerListScreen> {
                       child: ListView.builder(
                         controller: _controller,
                         padding: const EdgeInsets.only(bottom: 96),
-                        itemCount: state.customers.length +
+                        itemCount:
+                            state.customers.length +
                             (state.hasReachedMax ? 0 : 1),
                         itemBuilder: (context, index) {
                           if (index < state.customers.length) {

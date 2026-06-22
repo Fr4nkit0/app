@@ -27,11 +27,11 @@ class DriftRouteRepository implements RouteRepository {
       ),
       leftOuterJoin(
         _db.customerBalanceTable,
-        _db.customerBalanceTable.customerId
-            .equalsExp(_db.routeStopTable.customerId),
+        _db.customerBalanceTable.customerId.equalsExp(
+          _db.routeStopTable.customerId,
+        ),
       ),
-    ])
-      ..where(_db.routeTable.route_date.equals(todayStr));
+    ])..where(_db.routeTable.route_date.equals(todayStr));
 
     return q.watch().asyncMap((rows) async {
       final stops = <RouteStop>[];
@@ -42,11 +42,13 @@ class DriftRouteRepository implements RouteRepository {
         final balanceRow = row.readTableOrNull(_db.customerBalanceTable);
 
         // Fetch primary address via secondary query.
-        final addrRow = await (_db.select(_db.customerAddressTable)
-              ..where((t) =>
-                  t.customerId.equals(custRow.customerId) &
-                  t.isPrimary.equals(true)))
-            .getSingleOrNull();
+        final addrRow =
+            await (_db.select(_db.customerAddressTable)..where(
+                  (t) =>
+                      t.customerId.equals(custRow.customerId) &
+                      t.isPrimary.equals(true),
+                ))
+                .getSingleOrNull();
 
         final addresses = addrRow != null
             ? [
@@ -61,20 +63,22 @@ class DriftRouteRepository implements RouteRepository {
         final currentBalance = balanceRow?.currentBalance ?? 0.0;
         final debtAmount = currentBalance > 0 ? currentBalance : 0.0;
 
-        stops.add(RouteStop(
-          id: stopRow.routeStopId,
-          customer: Customer(
-            id: custRow.customerId,
-            name: custRow.name,
-            phone: custRow.phone,
-            addresses: addresses,
-            preferences: const [],
-            debtAmount: debtAmount,
-            productLabels: const [],
+        stops.add(
+          RouteStop(
+            id: stopRow.routeStopId,
+            customer: Customer(
+              id: custRow.customerId,
+              name: custRow.name,
+              phone: custRow.phone,
+              addresses: addresses,
+              preferences: const [],
+              debtAmount: debtAmount,
+              productLabels: const [],
+            ),
+            status: _statusFromDb(stopRow.status),
+            scheduledAt: stopRow.scheduledAt,
           ),
-          status: _statusFromDb(stopRow.status),
-          scheduledAt: stopRow.scheduledAt,
-        ));
+        );
       }
 
       // Pending-first, then scheduledAt ascending (replicates MockRouteRepository._sortStops).
@@ -91,14 +95,16 @@ class DriftRouteRepository implements RouteRepository {
 
   @override
   Future<void> markStop(String id, StopStatus status) async {
-    await (_db.update(_db.routeStopTable)
-          ..where((t) => t.routeStopId.equals(id)))
-        .write(RouteStopTableCompanion(
-      status: Value(status.name),
-      visitedAt: status == StopStatus.pending
-          ? const Value.absent()
-          : Value(DateTime.now()),
-    ));
+    await (_db.update(
+      _db.routeStopTable,
+    )..where((t) => t.routeStopId.equals(id))).write(
+      RouteStopTableCompanion(
+        status: Value(status.name),
+        visitedAt: status == StopStatus.pending
+            ? const Value.absent()
+            : Value(DateTime.now()),
+      ),
+    );
   }
 
   static String _dateOnly(DateTime d) =>
@@ -106,9 +112,8 @@ class DriftRouteRepository implements RouteRepository {
       '${d.month.toString().padLeft(2, '0')}-'
       '${d.day.toString().padLeft(2, '0')}';
 
-  static StopStatus _statusFromDb(String text) =>
-      StopStatus.values.firstWhere(
-        (s) => s.name == text,
-        orElse: () => StopStatus.pending,
-      );
+  static StopStatus _statusFromDb(String text) => StopStatus.values.firstWhere(
+    (s) => s.name == text,
+    orElse: () => StopStatus.pending,
+  );
 }

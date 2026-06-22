@@ -105,9 +105,10 @@ class _TopToastWidgetState extends State<_TopToastWidget>
       end: Offset.zero,
     ).animate(CurvedAnimation(parent: _controller, curve: Curves.easeOutBack));
 
-    _fadeAnimation = Tween<double>(begin: 0.0, end: 1.0).animate(
-      CurvedAnimation(parent: _controller, curve: Curves.easeIn),
-    );
+    _fadeAnimation = Tween<double>(
+      begin: 0.0,
+      end: 1.0,
+    ).animate(CurvedAnimation(parent: _controller, curve: Curves.easeIn));
 
     _controller.forward();
 
@@ -164,11 +165,7 @@ class _TopToastWidgetState extends State<_TopToastWidget>
                       color: widget.color.withValues(alpha: 0.08),
                       shape: BoxShape.circle,
                     ),
-                    child: Icon(
-                      widget.icon,
-                      color: widget.color,
-                      size: 20,
-                    ),
+                    child: Icon(widget.icon, color: widget.color, size: 20),
                   ),
                   const SizedBox(width: 12),
                   Expanded(

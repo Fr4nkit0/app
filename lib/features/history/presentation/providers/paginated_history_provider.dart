@@ -42,31 +42,30 @@ class PaginatedHistoryNotifier extends Notifier<PaginatedHistoryState> {
   @override
   PaginatedHistoryState build() {
     // Listen to historyListProvider reactively to sync updates
-    ref.listen<AsyncValue<List<HistoryEntry>>>(
-      historyListProvider,
-      (previous, next) {
-        next.when(
-          data: (allData) {
-            _allEntries = allData;
-            final int currentEntriesCount = pageSize * state.currentPage;
-            final slicedEntries = allData.take(currentEntriesCount).toList();
-            
-            state = state.copyWith(
-              entries: slicedEntries,
-              isLoading: false,
-              hasReachedMax: slicedEntries.length >= allData.length,
-            );
-          },
-          error: (err, stack) {
-            state = state.copyWith(isLoading: false);
-          },
-          loading: () {
-            // Do not force full rebuild during micro-loading
-          },
-        );
-      },
-      fireImmediately: true,
-    );
+    ref.listen<AsyncValue<List<HistoryEntry>>>(historyListProvider, (
+      previous,
+      next,
+    ) {
+      next.when(
+        data: (allData) {
+          _allEntries = allData;
+          final int currentEntriesCount = pageSize * state.currentPage;
+          final slicedEntries = allData.take(currentEntriesCount).toList();
+
+          state = state.copyWith(
+            entries: slicedEntries,
+            isLoading: false,
+            hasReachedMax: slicedEntries.length >= allData.length,
+          );
+        },
+        error: (err, stack) {
+          state = state.copyWith(isLoading: false);
+        },
+        loading: () {
+          // Do not force full rebuild during micro-loading
+        },
+      );
+    }, fireImmediately: true);
 
     return const PaginatedHistoryState(entries: [], isLoading: true);
   }
@@ -98,6 +97,9 @@ class PaginatedHistoryNotifier extends Notifier<PaginatedHistoryState> {
 }
 
 final paginatedHistoryProvider =
-    NotifierProvider.autoDispose<PaginatedHistoryNotifier, PaginatedHistoryState>(() {
-  return PaginatedHistoryNotifier();
-});
+    NotifierProvider.autoDispose<
+      PaginatedHistoryNotifier,
+      PaginatedHistoryState
+    >(() {
+      return PaginatedHistoryNotifier();
+    });

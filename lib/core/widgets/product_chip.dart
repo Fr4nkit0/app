@@ -39,10 +39,13 @@ class ProductChip extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     const blue = Color(0xFF1565C0);
-    final resolvedBackgroundColor = backgroundColor ?? (selected ? blue : blue.withValues(alpha: 0.1));
+    final resolvedBackgroundColor =
+        backgroundColor ?? (selected ? blue : blue.withValues(alpha: 0.1));
     final resolvedTextColor = textColor ?? (selected ? Colors.white : blue);
     final resolvedIconColor = iconColor ?? (selected ? Colors.white : blue);
-    final border = borderColor != null ? Border.all(color: borderColor!, width: borderWidth) : null;
+    final border = borderColor != null
+        ? Border.all(color: borderColor!, width: borderWidth)
+        : null;
 
     return GestureDetector(
       onTap: onTap,
@@ -57,11 +60,7 @@ class ProductChip extends StatelessWidget {
           mainAxisSize: MainAxisSize.min,
           children: [
             if (showIcon) ...[
-              Icon(
-                icon,
-                size: iconSize,
-                color: resolvedIconColor,
-              ),
+              Icon(icon, size: iconSize, color: resolvedIconColor),
               const SizedBox(width: 4),
             ],
             Text(

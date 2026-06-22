@@ -13,8 +13,9 @@ void main() {
   late RouteRepository sut;
 
   final todayStr = _dateOnly(DateTime.now());
-  final yesterdayStr =
-      _dateOnly(DateTime.now().subtract(const Duration(days: 1)));
+  final yesterdayStr = _dateOnly(
+    DateTime.now().subtract(const Duration(days: 1)),
+  );
 
   setUp(() async {
     db = AppDatabase(NativeDatabase.memory());
@@ -32,7 +33,9 @@ void main() {
   // ─── Helpers ────────────────────────────────────────────────────────────────
 
   Future<void> insertRoute(String routeId, String dateStr) async {
-    await db.into(db.routeTable).insert(
+    await db
+        .into(db.routeTable)
+        .insert(
           RouteTableCompanion.insert(
             routeId: drift.Value(routeId),
             route_date: dateStr,
@@ -48,7 +51,9 @@ void main() {
     String status = 'pending',
     required DateTime scheduledAt,
   }) async {
-    await db.into(db.routeStopTable).insert(
+    await db
+        .into(db.routeStopTable)
+        .insert(
           RouteStopTableCompanion.insert(
             routeStopId: drift.Value(stopId),
             routeId: routeId,
@@ -61,7 +66,9 @@ void main() {
   }
 
   Future<void> insertBalance(String customerId, double balance) async {
-    await db.into(db.customerBalanceTable).insertOnConflictUpdate(
+    await db
+        .into(db.customerBalanceTable)
+        .insertOnConflictUpdate(
           CustomerBalanceTableCompanion.insert(
             customerId: customerId,
             currentBalance: drift.Value(balance),
@@ -91,22 +98,24 @@ void main() {
       expect(stops.length, 4);
     });
 
-    test('each RouteStop has a non-null customer with the correct name',
-        () async {
-      await insertRoute('route-today', todayStr);
-      final now = DateTime.now();
-      await insertStop(
-        stopId: 'stop-t1',
-        routeId: 'route-today',
-        customerId: 'mock-customer-1',
-        sequence: 1,
-        scheduledAt: DateTime(now.year, now.month, now.day, 9, 0),
-      );
+    test(
+      'each RouteStop has a non-null customer with the correct name',
+      () async {
+        await insertRoute('route-today', todayStr);
+        final now = DateTime.now();
+        await insertStop(
+          stopId: 'stop-t1',
+          routeId: 'route-today',
+          customerId: 'mock-customer-1',
+          sequence: 1,
+          scheduledAt: DateTime(now.year, now.month, now.day, 9, 0),
+        );
 
-      final stops = await sut.watchDayStops().first;
-      expect(stops.first.customer, isNotNull);
-      expect(stops.first.customer.name, 'José García');
-    });
+        final stops = await sut.watchDayStops().first;
+        expect(stops.first.customer, isNotNull);
+        expect(stops.first.customer.name, 'José García');
+      },
+    );
 
     test('RouteStop has NO visitType field (compile-time guarantee)', () async {
       // If RouteStop had visitType this test would fail to compile.
@@ -129,22 +138,24 @@ void main() {
       expect(stop.scheduledAt, isNotNull);
     });
 
-    test('debtAmount hydrated from CustomerBalanceTable (positive balance)',
-        () async {
-      await insertRoute('route-today', todayStr);
-      await insertBalance('mock-customer-1', 1200.0);
-      final now = DateTime.now();
-      await insertStop(
-        stopId: 'stop-t1',
-        routeId: 'route-today',
-        customerId: 'mock-customer-1',
-        sequence: 1,
-        scheduledAt: DateTime(now.year, now.month, now.day, 9, 0),
-      );
+    test(
+      'debtAmount hydrated from CustomerBalanceTable (positive balance)',
+      () async {
+        await insertRoute('route-today', todayStr);
+        await insertBalance('mock-customer-1', 1200.0);
+        final now = DateTime.now();
+        await insertStop(
+          stopId: 'stop-t1',
+          routeId: 'route-today',
+          customerId: 'mock-customer-1',
+          sequence: 1,
+          scheduledAt: DateTime(now.year, now.month, now.day, 9, 0),
+        );
 
-      final stops = await sut.watchDayStops().first;
-      expect(stops.first.customer.debtAmount, 1200.0);
-    });
+        final stops = await sut.watchDayStops().first;
+        expect(stops.first.customer.debtAmount, 1200.0);
+      },
+    );
 
     test('debtAmount is 0 when balance is negative (credit)', () async {
       await insertRoute('route-today', todayStr);
@@ -191,7 +202,10 @@ void main() {
 
       final stops = await sut.watchDayStops().first;
       expect(stops.first.customer.addresses.length, 1);
-      expect(stops.first.customer.addresses.first.street, 'Av. San Martín 1234');
+      expect(
+        stops.first.customer.addresses.first.street,
+        'Av. San Martín 1234',
+      );
       expect(stops.first.customer.addresses.first.isPrimary, isTrue);
     });
   });
@@ -295,9 +309,9 @@ void main() {
 
       await sut.markStop('stop-1', StopStatus.done);
 
-      final row = await (db.select(db.routeStopTable)
-            ..where((t) => t.routeStopId.equals('stop-1')))
-          .getSingle();
+      final row = await (db.select(
+        db.routeStopTable,
+      )..where((t) => t.routeStopId.equals('stop-1'))).getSingle();
       expect(row.status, 'done');
       expect(row.visitedAt, isNotNull);
     });
@@ -332,9 +346,9 @@ void main() {
 
       await sut.markStop('stop-1', StopStatus.absent);
 
-      final row = await (db.select(db.routeStopTable)
-            ..where((t) => t.routeStopId.equals('stop-1')))
-          .getSingle();
+      final row = await (db.select(
+        db.routeStopTable,
+      )..where((t) => t.routeStopId.equals('stop-1'))).getSingle();
       expect(row.status, 'absent');
       expect(row.visitedAt, isNotNull);
     });

@@ -33,7 +33,10 @@ final routeAllStopsProvider = StreamProvider<List<RouteStop>>((ref) {
 
 /// Exposes the total number of stops available for the day in real-time
 final routeTotalStopsCountProvider = StreamProvider<int>((ref) {
-  return ref.watch(routeRepositoryProvider).watchDayStops().map((list) => list.length);
+  return ref
+      .watch(routeRepositoryProvider)
+      .watchDayStops()
+      .map((list) => list.length);
 });
 
 /// Exposes the reactive list of day stops sliced by the current pagination limit
@@ -44,8 +47,7 @@ final routeDayProvider = StreamProvider<List<RouteStop>>((ref) {
   });
 });
 
-final routeStopByIdProvider =
-    Provider.family<RouteStop?, String>((ref, id) {
+final routeStopByIdProvider = Provider.family<RouteStop?, String>((ref, id) {
   return ref
       .watch(routeAllStopsProvider)
       .value

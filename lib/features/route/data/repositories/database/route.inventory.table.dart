@@ -8,12 +8,14 @@ class RouteInventoryTable extends Table with Timestamps {
 
   late final inventoryMovementId = text().clientDefault(() => uuid.v4())();
   late final productId = text().references(
-    ProductTable, #productId,
+    ProductTable,
+    #productId,
     onDelete: KeyAction.restrict,
   )();
   late final movementType = text()(); // 'in' | 'out' | 'adjustment'
   late final quantity = integer()(); // signed: +in, -out
-  late final reason = text()(); // 'sale' | 'restock' | 'return' | 'damage' | 'manual_adjustment'
+  late final reason =
+      text()(); // 'sale' | 'restock' | 'return' | 'damage' | 'manual_adjustment'
   late final movementDate = dateTime().withDefault(currentDateAndTime)();
   late final notes = text().nullable()();
 

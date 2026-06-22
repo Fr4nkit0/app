@@ -11,6 +11,14 @@ import 'package:app/features/sales/domain/models/payment_method.dart';
 import 'package:app/features/sales/presentation/providers/sale_repository_provider.dart';
 import 'package:app/features/visits/domain/models/visit_type.dart';
 import 'package:app/features/visits/presentation/providers/complete_visit_usecase_provider.dart';
+import 'package:app/features/inventory/presentation/providers/inventory_repository_provider.dart';
+import 'package:app/features/inventory/domain/models/customer_container_balance.dart';
+import 'package:app/features/inventory/domain/models/container_movement.dart';
+import 'package:uuid/uuid.dart';
+import 'package:app/features/payments/presentation/providers/payment_repository_provider.dart';
+import 'package:app/features/payments/presentation/widgets/debt_payment_dialog.dart';
+import 'package:app/features/payments/domain/models/payment.dart';
+import 'package:app/core/utils/resource.dart';
 
 final stopSalesProvider = StreamProvider.family<List<Sale>, String>((
   ref,
@@ -20,6 +28,14 @@ final stopSalesProvider = StreamProvider.family<List<Sale>, String>((
   return repo.watchAllSales().map(
     (sales) => sales.where((s) => s.visitId == stopId).toList(),
   );
+});
+
+final visitPaymentsProvider = StreamProvider.family<List<Payment>, String>((
+  ref,
+  stopId,
+) {
+  final repo = ref.watch(paymentRepositoryProvider);
+  return repo.watchVisitPayments(stopId);
 });
 
 class VisitScreen extends ConsumerStatefulWidget {
@@ -57,10 +73,28 @@ class _VisitScreenState extends ConsumerState<VisitScreen> {
 
     final isDone = stop.status != StopStatus.pending;
     final salesAsync = ref.watch(stopSalesProvider(widget.stopId));
+    final visitMovementsAsync = ref.watch(
+      visitMovementsProvider(widget.stopId),
+    );
+    final visitPaymentsAsync = ref.watch(
+      visitPaymentsProvider(widget.stopId),
+    );
 
     return salesAsync.when(
       data: (sales) {
         final hasSales = sales.isNotEmpty;
+        final hasReturns = visitMovementsAsync.maybeWhen(
+          data: (movements) => movements.any((m) => m.returnedQuantity > 0),
+          orElse: () => false,
+        );
+        final hasPayments = visitPaymentsAsync.maybeWhen(
+          data: (payments) => payments.isNotEmpty,
+          orElse: () => false,
+        );
+
+        if ((hasReturns || hasPayments) && _soloVisitResult == 'absent') {
+          _soloVisitResult = null;
+        }
 
         return Scaffold(
           backgroundColor: Colors.white,
@@ -129,9 +163,9 @@ class _VisitScreenState extends ConsumerState<VisitScreen> {
 
                         // Custom banners based on state
                         if (stop.customer.debtAmount > 0)
-                          _buildDebtBanner(stop.customer.debtAmount),
+                          _buildDebtBanner(stop.customer.debtAmount, stop),
                         const SizedBox(height: 12),
-                        _buildCustodyBanner(),
+                        _buildCustodyBanner(stop),
                         const SizedBox(height: 24),
 
                         if (!isDone) ...[
@@ -173,7 +207,10 @@ class _VisitScreenState extends ConsumerState<VisitScreen> {
                               duration: const Duration(milliseconds: 250),
                               curve: Curves.easeInOut,
                               child: !_isSaleSelected
-                                  ? _buildSoloVisitSubSection()
+                                  ? _buildSoloVisitSubSection(
+                                      hasReturns: hasReturns,
+                                      hasPayments: hasPayments,
+                                    )
                                   : const SizedBox.shrink(),
                             ),
                           ],
@@ -185,7 +222,12 @@ class _VisitScreenState extends ConsumerState<VisitScreen> {
                   ),
                 ),
                 // Unified Sticky Footer
-                _buildStickyFooter(stop, isDone, hasSales),
+                _buildStickyFooter(
+                  stop,
+                  isDone,
+                  hasSales,
+                  hasReturns: hasReturns,
+                ),
               ],
             ),
           ),
@@ -348,83 +390,306 @@ class _VisitScreenState extends ConsumerState<VisitScreen> {
     );
   }
 
-  Widget _buildDebtBanner(double debt) {
-    return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
-      decoration: BoxDecoration(
-        color: const Color(0xFFFEF2F2),
-        borderRadius: BorderRadius.circular(16),
-        border: Border.all(
-          color: const Color(0xFFFCA5A5).withValues(alpha: 0.5),
-          width: 1,
-        ),
-      ),
-      child: Row(
-        children: [
-          const Icon(
-            Icons.warning_amber_rounded,
-            color: Color(0xFFDC2626),
-            size: 20,
-          ),
-          const SizedBox(width: 10),
-          const Expanded(
-            child: Text(
-              'Deuda pendiente',
-              style: TextStyle(
-                fontSize: 13,
-                fontWeight: FontWeight.w700,
-                color: Color(0xFF991B1B),
+  Widget _buildDebtBanner(double debt, RouteStop stop) {
+    final isDone = stop.status != StopStatus.pending;
+    return Material(
+      color: const Color(0xFFFEF2F2),
+      borderRadius: BorderRadius.circular(16),
+      child: InkWell(
+        onTap: isDone ? null : () async {
+          final result = await showDialog<DebtPaymentResult>(
+            context: context,
+            builder: (_) => DebtPaymentDialog(totalDebt: debt),
+          );
+          if (result == null) return;
+
+          final payments = <Payment>[];
+          final now = DateTime.now();
+          if (result.method == 'Efectivo') {
+            payments.add(
+              Payment(
+                id: const Uuid().v4(),
+                customerId: stop.customer.id,
+                amount: result.cashAmount!,
+                type: PaymentType.cash,
+                createdAt: now,
+                visitId: stop.id,
               ),
+            );
+          } else if (result.method == 'Transferencia') {
+            payments.add(
+              Payment(
+                id: const Uuid().v4(),
+                customerId: stop.customer.id,
+                amount: result.transferAmount!,
+                type: PaymentType.transfer,
+                createdAt: now,
+                visitId: stop.id,
+              ),
+            );
+          } else if (result.method == 'Mixto') {
+            if (result.cashAmount != null && result.cashAmount! > 0) {
+              payments.add(
+                Payment(
+                  id: const Uuid().v4(),
+                  customerId: stop.customer.id,
+                  amount: result.cashAmount!,
+                  type: PaymentType.cash,
+                  createdAt: now,
+                  visitId: stop.id,
+                ),
+              );
+            }
+            if (result.transferAmount != null && result.transferAmount! > 0) {
+              payments.add(
+                Payment(
+                  id: const Uuid().v4(),
+                  customerId: stop.customer.id,
+                  amount: result.transferAmount!,
+                  type: PaymentType.transfer,
+                  createdAt: now.add(const Duration(milliseconds: 10)),
+                  visitId: stop.id,
+                ),
+              );
+            }
+          }
+
+          if (payments.isNotEmpty) {
+            final usecase = ref.read(registerPaymentUseCaseProvider);
+            final res = await usecase.execute(payments);
+            if (res is Success) {
+              if (context.mounted) {
+                TopToast.show(
+                  context,
+                  message: 'Pago registrado con éxito',
+                  icon: Icons.check_circle_rounded,
+                  color: const Color(0xFF10B981),
+                );
+              }
+            } else if (res is Error) {
+              if (context.mounted) {
+                TopToast.show(
+                  context,
+                  message: 'Error al registrar pago: ${res.error}',
+                  icon: Icons.error_outline,
+                  color: const Color(0xFFDC2626),
+                );
+              }
+            }
+          }
+        },
+        borderRadius: BorderRadius.circular(16),
+        child: Container(
+          padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
+          decoration: BoxDecoration(
+            borderRadius: BorderRadius.circular(16),
+            border: Border.all(
+              color: const Color(0xFFFCA5A5).withValues(alpha: 0.5),
+              width: 1,
             ),
           ),
-          Text(
-            '-\$${debt.toStringAsFixed(0)}',
-            style: const TextStyle(
-              fontSize: 15,
-              fontWeight: FontWeight.w900,
-              color: Color(0xFFDC2626),
-            ),
+          child: Row(
+            children: [
+              const Icon(
+                Icons.warning_amber_rounded,
+                color: Color(0xFFDC2626),
+                size: 20,
+              ),
+              const SizedBox(width: 10),
+              Expanded(
+                child: Text(
+                  isDone ? 'Deuda pendiente' : 'Deuda pendiente (Tocar para pagar)',
+                  style: const TextStyle(
+                    fontSize: 13,
+                    fontWeight: FontWeight.w700,
+                    color: Color(0xFF991B1B),
+                  ),
+                ),
+              ),
+              Text(
+                '-\$${debt.toStringAsFixed(0)}',
+                style: const TextStyle(
+                  fontSize: 15,
+                  fontWeight: FontWeight.w900,
+                  color: Color(0xFFDC2626),
+                ),
+              ),
+              if (!isDone) ...[
+                const SizedBox(width: 6),
+                const Icon(
+                  Icons.chevron_right_rounded,
+                  color: Color(0xFFDC2626),
+                  size: 20,
+                ),
+              ],
+            ],
           ),
-        ],
+        ),
       ),
     );
   }
 
-  Widget _buildCustodyBanner() {
-    return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
-      decoration: BoxDecoration(
-        color: const Color(0xFFEFF6FF),
-        borderRadius: BorderRadius.circular(16),
-        border: Border.all(
-          color: const Color(0xFF93C5FD).withValues(alpha: 0.5),
-          width: 1,
-        ),
-      ),
-      child: Row(
-        children: [
-          const Icon(
-            Icons.inventory_2_outlined,
-            color: Color(0xFF1D4ED8),
-            size: 20,
-          ),
-          const SizedBox(width: 10),
-          const Expanded(
-            child: Text(
-              'Envases bajo custodia',
-              style: TextStyle(
-                fontSize: 13,
-                fontWeight: FontWeight.w700,
-                color: Color(0xFF1E3A8A),
+  Widget _buildCustodyBanner(RouteStop stop) {
+    final balancesAsync = ref.watch(
+      customerContainerBalancesProvider(stop.customer.id),
+    );
+
+    return balancesAsync.when(
+      data: (balances) {
+        final bidon = balances
+            .firstWhere(
+              (b) => b.containerType == 'BIDON_20L',
+              orElse: () => CustomerContainerBalance(
+                customerId: stop.customer.id,
+                containerType: 'BIDON_20L',
+                quantity: 0,
+              ),
+            )
+            .quantity;
+        final sifon = balances
+            .firstWhere(
+              (b) => b.containerType == 'SIFON_2L',
+              orElse: () => CustomerContainerBalance(
+                customerId: stop.customer.id,
+                containerType: 'SIFON_2L',
+                quantity: 0,
+              ),
+            )
+            .quantity;
+
+        final isDone = stop.status != StopStatus.pending;
+
+        return Material(
+          color: const Color(0xFFEFF6FF),
+          borderRadius: BorderRadius.circular(16),
+          child: InkWell(
+            onTap: (isDone || (bidon == 0 && sifon == 0))
+                ? null
+                : () {
+                    showDialog(
+                      context: context,
+                      barrierDismissible: false,
+                      builder: (context) =>
+                          StandaloneContainerReturnDialog(stop: stop),
+                    );
+                  },
+            borderRadius: BorderRadius.circular(16),
+            child: Container(
+              padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
+              decoration: BoxDecoration(
+                borderRadius: BorderRadius.circular(16),
+                border: Border.all(
+                  color: const Color(0xFF93C5FD).withValues(alpha: 0.5),
+                  width: 1,
+                ),
+              ),
+              child: Row(
+                crossAxisAlignment: CrossAxisAlignment.center,
+                children: [
+                  Container(
+                    padding: const EdgeInsets.all(10),
+                    decoration: BoxDecoration(
+                      color: const Color(0xFF1D4ED8).withValues(alpha: 0.1),
+                      shape: BoxShape.circle,
+                    ),
+                    child: const Icon(
+                      Icons.inventory_2_outlined,
+                      color: Color(0xFF1D4ED8),
+                      size: 20,
+                    ),
+                  ),
+                  const SizedBox(width: 14),
+                  Expanded(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        const Text(
+                          'Envases bajo custodia',
+                          style: TextStyle(
+                            fontSize: 14,
+                            fontWeight: FontWeight.w800,
+                            color: Color(0xFF0F172A),
+                          ),
+                        ),
+                        const SizedBox(height: 8),
+                        Row(
+                          children: [
+                            _buildContainerBadge(
+                              icon: Icons.water_drop_outlined,
+                              label: 'Bidón 20L',
+                              count: bidon,
+                            ),
+                            const SizedBox(width: 8),
+                            _buildContainerBadge(
+                              icon: Icons.local_drink_outlined,
+                              label: 'Sifón 2L',
+                              count: sifon,
+                            ),
+                          ],
+                        ),
+                      ],
+                    ),
+                  ),
+                  if (!isDone)
+                    const Icon(
+                      Icons.chevron_right_rounded,
+                      color: Color(0xFF1D4ED8),
+                      size: 22,
+                    ),
+                ],
               ),
             ),
           ),
-          const Text(
-            'Bidón 20L (3 u.)',
+        );
+      },
+      loading: () => const SizedBox.shrink(),
+      error: (_, __) => const SizedBox.shrink(),
+    );
+  }
+
+  Widget _buildContainerBadge({
+    required IconData icon,
+    required String label,
+    required int count,
+  }) {
+    final hasStock = count > 0;
+    final Color bgColor = hasStock
+        ? const Color(0xFF1D4ED8).withValues(alpha: 0.08)
+        : const Color(0xFFF1F5F9);
+    final Color textColor = hasStock
+        ? const Color(0xFF1D4ED8)
+        : const Color(0xFF64748B);
+
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+      decoration: BoxDecoration(
+        color: bgColor,
+        borderRadius: BorderRadius.circular(10),
+        border: Border.all(
+          color: hasStock
+              ? const Color(0xFF1D4ED8).withValues(alpha: 0.15)
+              : const Color(0xFFE2E8F0),
+        ),
+      ),
+      child: Row(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Icon(icon, size: 14, color: textColor),
+          const SizedBox(width: 6),
+          Text(
+            '$label: ',
             style: TextStyle(
-              fontSize: 13,
-              fontWeight: FontWeight.w800,
-              color: Color(0xFF1D4ED8),
+              fontSize: 11,
+              fontWeight: FontWeight.w600,
+              color: textColor,
+            ),
+          ),
+          Text(
+            '$count',
+            style: TextStyle(
+              fontSize: 12,
+              fontWeight: FontWeight.w900,
+              color: textColor,
             ),
           ),
         ],
@@ -524,7 +789,10 @@ class _VisitScreenState extends ConsumerState<VisitScreen> {
     );
   }
 
-  Widget _buildSoloVisitSubSection() {
+  Widget _buildSoloVisitSubSection({
+    required bool hasReturns,
+    required bool hasPayments,
+  }) {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
@@ -541,7 +809,12 @@ class _VisitScreenState extends ConsumerState<VisitScreen> {
         // Toggle Buttons for Results
         Row(
           children: [
-            _buildResultButton('Ausente', 'absent', Icons.person_off_outlined),
+            _buildResultButton(
+              'Ausente',
+              'absent',
+              Icons.person_off_outlined,
+              isEnabled: !hasReturns && !hasPayments,
+            ),
             const SizedBox(width: 8),
             _buildResultButton('No quiso', 'refused', Icons.block_flipped),
             const SizedBox(width: 8),
@@ -618,19 +891,30 @@ class _VisitScreenState extends ConsumerState<VisitScreen> {
     );
   }
 
-  Widget _buildResultButton(String label, String value, IconData icon) {
+  Widget _buildResultButton(
+    String label,
+    String value,
+    IconData icon, {
+    bool isEnabled = true,
+  }) {
     final isSelected = _soloVisitResult == value;
     final activeColor = const Color(0xFF1565C0);
 
     return Expanded(
       child: OutlinedButton(
         style: OutlinedButton.styleFrom(
-          backgroundColor: isSelected
-              ? activeColor.withValues(alpha: 0.06)
-              : Colors.white,
-          foregroundColor: isSelected ? activeColor : const Color(0xFF4B5563),
+          backgroundColor: !isEnabled
+              ? Colors.grey.shade100
+              : (isSelected
+                    ? activeColor.withValues(alpha: 0.06)
+                    : Colors.white),
+          foregroundColor: !isEnabled
+              ? Colors.grey.shade400
+              : (isSelected ? activeColor : const Color(0xFF4B5563)),
           side: BorderSide(
-            color: isSelected ? activeColor : const Color(0xFFD1D5DB),
+            color: !isEnabled
+                ? Colors.grey.shade300
+                : (isSelected ? activeColor : const Color(0xFFD1D5DB)),
             width: isSelected ? 1.5 : 1,
           ),
           padding: const EdgeInsets.symmetric(vertical: 12),
@@ -638,14 +922,28 @@ class _VisitScreenState extends ConsumerState<VisitScreen> {
             borderRadius: BorderRadius.circular(12),
           ),
         ),
-        onPressed: () => setState(() => _soloVisitResult = value),
+        onPressed: isEnabled
+            ? () => setState(() => _soloVisitResult = value)
+            : null,
         child: Column(
           children: [
-            Icon(icon, size: 18),
+            Icon(
+              icon,
+              size: 18,
+              color: !isEnabled
+                  ? Colors.grey.shade400
+                  : (isSelected ? activeColor : const Color(0xFF4B5563)),
+            ),
             const SizedBox(height: 4),
             Text(
               label,
-              style: const TextStyle(fontSize: 12, fontWeight: FontWeight.bold),
+              style: TextStyle(
+                fontSize: 12,
+                fontWeight: FontWeight.bold,
+                color: !isEnabled
+                    ? Colors.grey.shade400
+                    : (isSelected ? activeColor : const Color(0xFF4B5563)),
+              ),
             ),
           ],
         ),
@@ -770,7 +1068,12 @@ class _VisitScreenState extends ConsumerState<VisitScreen> {
     );
   }
 
-  Widget _buildStickyFooter(RouteStop stop, bool isDone, bool hasSales) {
+  Widget _buildStickyFooter(
+    RouteStop stop,
+    bool isDone,
+    bool hasSales, {
+    required bool hasReturns,
+  }) {
     return Container(
       decoration: BoxDecoration(
         color: Colors.white,
@@ -842,10 +1145,13 @@ class _VisitScreenState extends ConsumerState<VisitScreen> {
                               // Visita trigger (either normal solo visit, or closing the visit after sales!)
                               StopStatus nextStatus = StopStatus.done;
                               if (!hasSales) {
-                                if (_soloVisitResult == 'absent') {
+                                if (_soloVisitResult == 'absent' &&
+                                    !hasReturns) {
                                   nextStatus = StopStatus.absent;
                                 } else if (_soloVisitResult == 'refused') {
-                                  nextStatus = StopStatus.absent;
+                                  nextStatus = hasReturns
+                                      ? StopStatus.done
+                                      : StopStatus.absent;
                                 }
                               }
 
@@ -890,13 +1196,14 @@ class _VisitScreenState extends ConsumerState<VisitScreen> {
 
                               // 4. Update state asynchronously — record visit
                               //    first, then mark stop (spec F2 order).
-                              final visitType =
-                                  _isSaleSelected ? VisitType.sale : VisitType.visit;
+                              final visitType = _isSaleSelected
+                                  ? VisitType.sale
+                                  : VisitType.visit;
                               final outcome = _soloVisitResult == 'absent'
                                   ? 'absent'
                                   : _soloVisitResult == 'refused'
-                                      ? 'refused'
-                                      : 'successful';
+                                  ? 'refused'
+                                  : 'successful';
                               await ref
                                   .read(completeVisitUseCaseProvider)
                                   .execute(
@@ -905,7 +1212,8 @@ class _VisitScreenState extends ConsumerState<VisitScreen> {
                                     visitType: visitType,
                                     nextStatus: nextStatus,
                                     outcome: outcome,
-                                    observations: _noteController.text.isNotEmpty
+                                    observations:
+                                        _noteController.text.isNotEmpty
                                         ? _noteController.text
                                         : null,
                                   );
@@ -1127,6 +1435,160 @@ class _VisitScreenState extends ConsumerState<VisitScreen> {
           ),
         ],
       ),
+    );
+  }
+}
+
+class StandaloneContainerReturnDialog extends ConsumerStatefulWidget {
+  const StandaloneContainerReturnDialog({super.key, required this.stop});
+
+  final RouteStop stop;
+
+  @override
+  ConsumerState<StandaloneContainerReturnDialog> createState() =>
+      _StandaloneContainerReturnDialogState();
+}
+
+class _StandaloneContainerReturnDialogState
+    extends ConsumerState<StandaloneContainerReturnDialog> {
+  final Map<String, int> _returns = {'BIDON_20L': 0, 'SIFON_2L': 0};
+
+  @override
+  Widget build(BuildContext context) {
+    final balancesAsync = ref.watch(
+      customerContainerBalancesProvider(widget.stop.customer.id),
+    );
+    final balances = balancesAsync.maybeWhen(
+      data: (list) => list,
+      orElse: () => <CustomerContainerBalance>[],
+    );
+
+    return AlertDialog(
+      title: const Text(
+        'Registrar Retorno de Envases',
+        style: TextStyle(fontWeight: FontWeight.bold),
+      ),
+      content: SingleChildScrollView(
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            const Text(
+              'Ajustá la cantidad de envases vacíos que devuelve el cliente.',
+              style: TextStyle(color: Colors.grey, fontSize: 14),
+            ),
+            const SizedBox(height: 16),
+            ...['BIDON_20L', 'SIFON_2L'].map((type) {
+              final returned = _returns[type] ?? 0;
+              final label = type == 'BIDON_20L' ? 'Bidón 20L' : 'Sifón 2L';
+              final balance = balances
+                  .firstWhere(
+                    (b) => b.containerType == type,
+                    orElse: () => CustomerContainerBalance(
+                      customerId: widget.stop.customer.id,
+                      containerType: type,
+                      quantity: 0,
+                    ),
+                  )
+                  .quantity;
+
+              return Padding(
+                padding: const EdgeInsets.symmetric(vertical: 8.0),
+                child: Row(
+                  children: [
+                    Expanded(
+                      child: Text(
+                        label,
+                        style: const TextStyle(
+                          fontWeight: FontWeight.bold,
+                          fontSize: 16,
+                        ),
+                      ),
+                    ),
+                    Row(
+                      children: [
+                        IconButton(
+                          onPressed: returned > 0
+                              ? () {
+                                  setState(() {
+                                    _returns[type] = returned - 1;
+                                  });
+                                }
+                              : null,
+                          icon: const Icon(Icons.remove_circle_outline),
+                          color: const Color(0xFFEF4444),
+                        ),
+                        SizedBox(
+                          width: 32,
+                          child: Text(
+                            '$returned',
+                            textAlign: TextAlign.center,
+                            style: const TextStyle(
+                              fontSize: 16,
+                              fontWeight: FontWeight.bold,
+                            ),
+                          ),
+                        ),
+                        IconButton(
+                          onPressed: returned < balance
+                              ? () {
+                                  setState(() {
+                                    _returns[type] = returned + 1;
+                                  });
+                                }
+                              : null,
+                          icon: const Icon(Icons.add_circle_outline),
+                          color: const Color(0xFF1565C0),
+                        ),
+                      ],
+                    ),
+                  ],
+                ),
+              );
+            }),
+          ],
+        ),
+      ),
+      actions: [
+        TextButton(
+          onPressed: () => Navigator.of(context).pop(),
+          child: const Text('Cancelar'),
+        ),
+        FilledButton(
+          onPressed: () async {
+            final repository = ref.read(inventoryRepositoryProvider);
+            for (final type in ['BIDON_20L', 'SIFON_2L']) {
+              final returnedQty = _returns[type] ?? 0;
+              final movement = ContainerMovement(
+                id: const Uuid().v4(),
+                customerId: widget.stop.customer.id,
+                containerType: type,
+                deliveredQuantity: 0,
+                returnedQuantity: returnedQty,
+                createdAt: DateTime.now(),
+                visitId: widget.stop.id,
+              );
+              await repository.recordContainerMovement(movement);
+            }
+
+            ref.invalidate(visitMovementsProvider(widget.stop.id));
+
+            if (context.mounted) {
+              Navigator.of(context).pop();
+              TopToast.show(
+                context,
+                message: 'Retorno de envases registrado',
+                icon: Icons.check_circle_rounded,
+                color: const Color(0xFF10B981),
+              );
+            }
+          },
+          style: FilledButton.styleFrom(
+            backgroundColor: const Color(0xFF1565C0),
+          ),
+          child: const Text('Guardar'),
+        ),
+      ],
     );
   }
 }

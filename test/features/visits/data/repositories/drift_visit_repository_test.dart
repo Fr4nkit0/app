@@ -21,19 +21,25 @@ void main() {
 
     // Insert fixture: customer + route + route_stop rows.
     // SQLite does NOT enforce FK constraints in tests — arbitrary IDs are valid.
-    await db.into(db.customerTable).insert(
+    await db
+        .into(db.customerTable)
+        .insert(
           CustomerTableCompanion.insert(
             customerId: const drift.Value('customer-test-1'),
             name: 'Test Customer',
           ),
         );
-    await db.into(db.routeTable).insert(
+    await db
+        .into(db.routeTable)
+        .insert(
           RouteTableCompanion.insert(
             routeId: const drift.Value('route-test-1'),
             route_date: '2026-06-06',
           ),
         );
-    await db.into(db.routeStopTable).insert(
+    await db
+        .into(db.routeStopTable)
+        .insert(
           RouteStopTableCompanion.insert(
             routeStopId: const drift.Value('stop-1'),
             routeId: 'route-test-1',
@@ -42,7 +48,9 @@ void main() {
             scheduledAt: DateTime(2026, 6, 6, 9, 0),
           ),
         );
-    await db.into(db.routeStopTable).insert(
+    await db
+        .into(db.routeStopTable)
+        .insert(
           RouteStopTableCompanion.insert(
             routeStopId: const drift.Value('stop-2'),
             routeId: 'route-test-1',
@@ -97,15 +105,16 @@ void main() {
     });
 
     test('persists visitType as text (enum name)', () async {
-      await sut.recordVisit(makeVisit(
-        visitId: 'visit-type-sale',
-        visitType: VisitType.sale,
-      ));
-      await sut.recordVisit(makeVisit(
-        visitId: 'visit-type-visit',
-        visitType: VisitType.visit,
-        routeStopId: 'stop-2',
-      ));
+      await sut.recordVisit(
+        makeVisit(visitId: 'visit-type-sale', visitType: VisitType.sale),
+      );
+      await sut.recordVisit(
+        makeVisit(
+          visitId: 'visit-type-visit',
+          visitType: VisitType.visit,
+          routeStopId: 'stop-2',
+        ),
+      );
 
       final rows = await db.select(db.visitTable).get();
       final saleRow = rows.firstWhere((r) => r.visitId == 'visit-type-sale');
@@ -115,10 +124,9 @@ void main() {
     });
 
     test('persists observations when provided', () async {
-      await sut.recordVisit(makeVisit(
-        visitId: 'visit-obs',
-        observations: 'Client was happy',
-      ));
+      await sut.recordVisit(
+        makeVisit(visitId: 'visit-obs', observations: 'Client was happy'),
+      );
 
       final rows = await db.select(db.visitTable).get();
       expect(rows.first.observations, 'Client was happy');
@@ -137,35 +145,48 @@ void main() {
   // ───────────────────────────────────────────────────────────────
 
   group('watchVisitsForStop', () {
-    test('first emission contains 2 visits for stop-1, excludes stop-2',
-        () async {
-      await sut.recordVisit(makeVisit(
-        visitId: 'v1',
-        routeStopId: 'stop-1',
-        arrivedAt: DateTime(2026, 6, 6, 9, 0),
-      ));
-      await sut.recordVisit(makeVisit(
-        visitId: 'v2',
-        routeStopId: 'stop-1',
-        arrivedAt: DateTime(2026, 6, 6, 9, 30),
-      ));
-      await sut.recordVisit(makeVisit(
-        visitId: 'v-other',
-        routeStopId: 'stop-2',
-      ));
+    test(
+      'first emission contains 2 visits for stop-1, excludes stop-2',
+      () async {
+        await sut.recordVisit(
+          makeVisit(
+            visitId: 'v1',
+            routeStopId: 'stop-1',
+            arrivedAt: DateTime(2026, 6, 6, 9, 0),
+          ),
+        );
+        await sut.recordVisit(
+          makeVisit(
+            visitId: 'v2',
+            routeStopId: 'stop-1',
+            arrivedAt: DateTime(2026, 6, 6, 9, 30),
+          ),
+        );
+        await sut.recordVisit(
+          makeVisit(visitId: 'v-other', routeStopId: 'stop-2'),
+        );
 
-      final first = await sut.watchVisitsForStop('stop-1').first;
-      expect(first.length, 2);
-      expect(first.every((v) => v.routeStopId == 'stop-1'), isTrue);
-    });
+        final first = await sut.watchVisitsForStop('stop-1').first;
+        expect(first.length, 2);
+        expect(first.every((v) => v.routeStopId == 'stop-1'), isTrue);
+      },
+    );
 
     test('re-emits with 3 visits after inserting a third for stop-1', () async {
-      await sut.recordVisit(makeVisit(
-          visitId: 'v1', routeStopId: 'stop-1',
-          arrivedAt: DateTime(2026, 6, 6, 9, 0)));
-      await sut.recordVisit(makeVisit(
-          visitId: 'v2', routeStopId: 'stop-1',
-          arrivedAt: DateTime(2026, 6, 6, 9, 30)));
+      await sut.recordVisit(
+        makeVisit(
+          visitId: 'v1',
+          routeStopId: 'stop-1',
+          arrivedAt: DateTime(2026, 6, 6, 9, 0),
+        ),
+      );
+      await sut.recordVisit(
+        makeVisit(
+          visitId: 'v2',
+          routeStopId: 'stop-1',
+          arrivedAt: DateTime(2026, 6, 6, 9, 30),
+        ),
+      );
 
       final emissions = <List<Visit>>[];
       final sub = sut.watchVisitsForStop('stop-1').listen(emissions.add);
@@ -173,9 +194,13 @@ void main() {
 
       await Future.delayed(const Duration(milliseconds: 30));
 
-      await sut.recordVisit(makeVisit(
-          visitId: 'v3', routeStopId: 'stop-1',
-          arrivedAt: DateTime(2026, 6, 6, 10, 0)));
+      await sut.recordVisit(
+        makeVisit(
+          visitId: 'v3',
+          routeStopId: 'stop-1',
+          arrivedAt: DateTime(2026, 6, 6, 10, 0),
+        ),
+      );
 
       await Future.delayed(const Duration(milliseconds: 30));
 
@@ -187,16 +212,17 @@ void main() {
       expect(first, isEmpty);
     });
 
-    test('returned Visit objects have correct visitType mapped from text',
-        () async {
-      await sut.recordVisit(makeVisit(
-        visitId: 'v-map',
-        visitType: VisitType.visit,
-      ));
+    test(
+      'returned Visit objects have correct visitType mapped from text',
+      () async {
+        await sut.recordVisit(
+          makeVisit(visitId: 'v-map', visitType: VisitType.visit),
+        );
 
-      final first = await sut.watchVisitsForStop('stop-1').first;
-      expect(first.first.visitType, VisitType.visit);
-    });
+        final first = await sut.watchVisitsForStop('stop-1').first;
+        expect(first.first.visitType, VisitType.visit);
+      },
+    );
   });
 }
 

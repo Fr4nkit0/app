@@ -43,6 +43,7 @@ void main() {
       saleRepo: saleRepo,
       paymentRepo: paymentRepo,
       inventoryRepo: inventoryRepo,
+      db: db,
     );
   });
 
@@ -58,8 +59,7 @@ void main() {
     return Sale(
       id: id,
       customer: testCustomer,
-      items: items ??
-          [const SaleItem(product: testProduct, quantity: 2)],
+      items: items ?? [const SaleItem(product: testProduct, quantity: 2)],
       total: 13000.0,
       paymentMethod: PaymentMethod.cash,
       date: DateTime.now(),
@@ -101,13 +101,14 @@ void main() {
         items: [
           const SaleItem(product: testProduct, quantity: 1),
           const SaleItem(
-              product: Product(
-                id: 'prod-test-2',
-                name: 'Sifón 1.5L',
-                unitLabel: 'Sifón',
-                price: 1500.0,
-              ),
-              quantity: 3),
+            product: Product(
+              id: 'prod-test-2',
+              name: 'Sifón 1.5L',
+              unitLabel: 'Sifón',
+              price: 1500.0,
+            ),
+            quantity: 3,
+          ),
         ],
       );
       await sut.execute(sale);
