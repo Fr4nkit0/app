@@ -1,15 +1,22 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:font_awesome_flutter/font_awesome_flutter.dart';
 import 'package:url_launcher/url_launcher.dart';
 import 'package:app/core/utils/avatar_utils.dart';
+import 'package:app/core/utils/address_formatter.dart';
+import 'package:app/core/utils/resource.dart';
 import 'package:app/core/widgets/circular_action_button.dart';
 import 'package:app/core/widgets/debt_chip.dart';
 import 'package:app/core/widgets/product_chip.dart';
+import 'package:app/core/widgets/top_toast.dart';
 import 'package:app/features/route/domain/models/route_stop.dart';
 import 'package:app/features/route/domain/models/stop_status.dart';
-// import 'package:app/features/visits/domain/models/visit_type.dart';
+import 'package:app/features/customers/presentation/providers/customer_count_provider.dart';
+import 'package:app/features/customers/presentation/providers/customer_repository_provider.dart';
+import 'package:app/features/customers/presentation/widgets/address_picker_map.dart';
+import 'package:latlong2/latlong.dart';
 
-class RouteStopCard extends StatelessWidget {
+class RouteStopCard extends ConsumerWidget {
   const RouteStopCard({
     super.key,
     required this.stop,
@@ -24,7 +31,7 @@ class RouteStopCard extends StatelessWidget {
   final bool isLast;
 
   @override
-  Widget build(BuildContext context) {
+  Widget build(BuildContext context, WidgetRef ref) {
     final isDone = stop.status == StopStatus.done;
     final isAbsent = stop.status == StopStatus.absent;
 
@@ -191,12 +198,12 @@ class RouteStopCard extends StatelessWidget {
                                         const SizedBox(height: 2),
                                         Text(
                                           stop.customer.addresses.isNotEmpty
-                                              ? stop
-                                                        .customer
-                                                        .addresses
-                                                        .first
-                                                        .street ??
-                                                    ''
+                                              ? AddressFormatter.format(
+                                                  street: stop.customer.addresses.first.street,
+                                                  floor: stop.customer.addresses.first.floor,
+                                                  apartment: stop.customer.addresses.first.apartment,
+                                                  visualReference: stop.customer.addresses.first.visualReference,
+                                                )
                                               : 'Sin dirección',
                                           style: TextStyle(
                                             fontSize: 13,
@@ -346,17 +353,40 @@ class RouteStopCard extends StatelessWidget {
                                       CircularActionButton(
                                         icon: Icons.location_on,
                                         color: const Color(0xFF0369A1),
-                                        onPressed: () {
-                                          ScaffoldMessenger.of(
-                                            context,
-                                          ).showSnackBar(
-                                            SnackBar(
-                                              content: Text(
-                                                'Abriendo mapa para ${stop.customer.addresses.first.street ?? ''}...',
+                                        onPressed: () async {
+                                          final addr = stop.customer.addresses.firstOrNull;
+                                          if (addr == null) return;
+                                          await Navigator.of(context).push<LatLng>(
+                                            MaterialPageRoute(
+                                              builder: (context) => AddressPickerMap(
+                                                initialLatitude: addr.latitude,
+                                                initialLongitude: addr.longitude,
+                                                initialSearchQuery: addr.street,
+                                                onSave: (latLng) async {
+                                                  final repository = ref.read(customerRepositoryProvider);
+                                                  final updateResult = await repository.updateAddressCoordinates(
+                                                    addr.id,
+                                                    latLng.latitude,
+                                                    latLng.longitude,
+                                                  );
+                                                  if (context.mounted) {
+                                                    switch (updateResult) {
+                                                      case Success():
+                                                        TopToast.showSuccess(
+                                                          context,
+                                                          'Ubicación del cliente guardada',
+                                                        );
+                                                        ref.invalidate(customerByIdProvider(stop.customer.id));
+                                                      case Error(:final error):
+                                                        TopToast.showError(
+                                                          context,
+                                                          'Error al guardar ubicación: $error',
+                                                        );
+                                                    }
+                                                  }
+                                                },
                                               ),
-                                              duration: const Duration(
-                                                seconds: 1,
-                                              ),
+                                              fullscreenDialog: true,
                                             ),
                                           );
                                         },

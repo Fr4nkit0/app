@@ -37,6 +37,8 @@ class DriftCustomerRepository implements CustomerRepository {
                   floor: Value(address.floor),
                   visualReference: Value(address.visualReference),
                   isPrimary: Value(address.isPrimary),
+                  latitude: Value(address.latitude),
+                  longitude: Value(address.longitude),
                 ),
               );
         }
@@ -97,6 +99,8 @@ class DriftCustomerRepository implements CustomerRepository {
                   floor: Value(address.floor),
                   visualReference: Value(address.visualReference),
                   isPrimary: Value(address.isPrimary),
+                  latitude: Value(address.latitude),
+                  longitude: Value(address.longitude),
                 ),
               );
         }
@@ -182,6 +186,8 @@ class DriftCustomerRepository implements CustomerRepository {
                 floor: a.floor,
                 visualReference: a.visualReference,
                 isPrimary: a.isPrimary,
+                latitude: a.latitude,
+                longitude: a.longitude,
               ),
             )
             .toList(),
@@ -260,6 +266,8 @@ class DriftCustomerRepository implements CustomerRepository {
                 floor: a.floor,
                 visualReference: a.visualReference,
                 isPrimary: a.isPrimary,
+                latitude: a.latitude,
+                longitude: a.longitude,
               ),
             )
             .toList(),
@@ -339,6 +347,8 @@ class DriftCustomerRepository implements CustomerRepository {
                 floor: a.floor,
                 visualReference: a.visualReference,
                 isPrimary: a.isPrimary,
+                latitude: a.latitude,
+                longitude: a.longitude,
               ),
             )
             .toList(),
@@ -424,6 +434,8 @@ class DriftCustomerRepository implements CustomerRepository {
               floor: addressData.floor,
               visualReference: addressData.visualReference,
               isPrimary: addressData.isPrimary,
+              latitude: addressData.latitude,
+              longitude: addressData.longitude,
             ),
           );
         }
@@ -444,6 +456,30 @@ class DriftCustomerRepository implements CustomerRepository {
 
       return customers.values.toList();
     });
+  }
+
+  @override
+  Future<Resource<void>> updateAddressCoordinates(
+    String addressId,
+    double latitude,
+    double longitude,
+  ) async {
+    try {
+      final updatedRows = await (db.update(db.customerAddressTable)
+            ..where((t) => t.addressId.equals(addressId)))
+          .write(
+        CustomerAddressTableCompanion(
+          latitude: Value(latitude),
+          longitude: Value(longitude),
+        ),
+      );
+      if (updatedRows == 0) {
+        return Resource.error(Exception('Address not found'));
+      }
+      return const Resource.success(null);
+    } catch (e) {
+      return Resource.error(e is Exception ? e : Exception(e.toString()));
+    }
   }
 }
 

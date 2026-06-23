@@ -18,6 +18,8 @@ abstract class CustomerFormState with _$CustomerFormState {
     @Default(false) bool isSubmitting,
     @Default(false) bool isSuccess,
     String? errorMessage,
+    double? latitude,
+    double? longitude,
   }) = _CustomerFormState;
 
   const CustomerFormState._();

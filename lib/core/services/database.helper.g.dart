@@ -551,6 +551,28 @@ class $CustomerAddressTableTable extends CustomerAddressTable
     requiredDuringInsert: false,
     clientDefault: () => uuid.v4(),
   );
+  static const VerificationMeta _latitudeMeta = const VerificationMeta(
+    'latitude',
+  );
+  @override
+  late final GeneratedColumn<double> latitude = GeneratedColumn<double>(
+    'latitude',
+    aliasedName,
+    true,
+    type: DriftSqlType.double,
+    requiredDuringInsert: false,
+  );
+  static const VerificationMeta _longitudeMeta = const VerificationMeta(
+    'longitude',
+  );
+  @override
+  late final GeneratedColumn<double> longitude = GeneratedColumn<double>(
+    'longitude',
+    aliasedName,
+    true,
+    type: DriftSqlType.double,
+    requiredDuringInsert: false,
+  );
   @override
   List<GeneratedColumn> get $columns => [
     createdAt,
@@ -563,6 +585,8 @@ class $CustomerAddressTableTable extends CustomerAddressTable
     visualReference,
     isPrimary,
     customerId,
+    latitude,
+    longitude,
   ];
   @override
   String get aliasedName => _alias ?? actualTableName;
@@ -642,6 +666,18 @@ class $CustomerAddressTableTable extends CustomerAddressTable
         customerId.isAcceptableOrUnknown(data['customer_id']!, _customerIdMeta),
       );
     }
+    if (data.containsKey('latitude')) {
+      context.handle(
+        _latitudeMeta,
+        latitude.isAcceptableOrUnknown(data['latitude']!, _latitudeMeta),
+      );
+    }
+    if (data.containsKey('longitude')) {
+      context.handle(
+        _longitudeMeta,
+        longitude.isAcceptableOrUnknown(data['longitude']!, _longitudeMeta),
+      );
+    }
     return context;
   }
 
@@ -694,6 +730,14 @@ class $CustomerAddressTableTable extends CustomerAddressTable
         DriftSqlType.string,
         data['${effectivePrefix}customer_id'],
       )!,
+      latitude: attachedDatabase.typeMapping.read(
+        DriftSqlType.double,
+        data['${effectivePrefix}latitude'],
+      ),
+      longitude: attachedDatabase.typeMapping.read(
+        DriftSqlType.double,
+        data['${effectivePrefix}longitude'],
+      ),
     );
   }
 
@@ -715,6 +759,8 @@ class CustomerAddressTableData extends DataClass
   final String? visualReference;
   final bool isPrimary;
   final String customerId;
+  final double? latitude;
+  final double? longitude;
   const CustomerAddressTableData({
     required this.createdAt,
     required this.lastModifiedDate,
@@ -726,6 +772,8 @@ class CustomerAddressTableData extends DataClass
     this.visualReference,
     required this.isPrimary,
     required this.customerId,
+    this.latitude,
+    this.longitude,
   });
   @override
   Map<String, Expression> toColumns(bool nullToAbsent) {
@@ -748,6 +796,12 @@ class CustomerAddressTableData extends DataClass
     }
     map['is_primary'] = Variable<bool>(isPrimary);
     map['customer_id'] = Variable<String>(customerId);
+    if (!nullToAbsent || latitude != null) {
+      map['latitude'] = Variable<double>(latitude);
+    }
+    if (!nullToAbsent || longitude != null) {
+      map['longitude'] = Variable<double>(longitude);
+    }
     return map;
   }
 
@@ -771,6 +825,12 @@ class CustomerAddressTableData extends DataClass
           : Value(visualReference),
       isPrimary: Value(isPrimary),
       customerId: Value(customerId),
+      latitude: latitude == null && nullToAbsent
+          ? const Value.absent()
+          : Value(latitude),
+      longitude: longitude == null && nullToAbsent
+          ? const Value.absent()
+          : Value(longitude),
     );
   }
 
@@ -790,6 +850,8 @@ class CustomerAddressTableData extends DataClass
       visualReference: serializer.fromJson<String?>(json['visualReference']),
       isPrimary: serializer.fromJson<bool>(json['isPrimary']),
       customerId: serializer.fromJson<String>(json['customerId']),
+      latitude: serializer.fromJson<double?>(json['latitude']),
+      longitude: serializer.fromJson<double?>(json['longitude']),
     );
   }
   @override
@@ -806,6 +868,8 @@ class CustomerAddressTableData extends DataClass
       'visualReference': serializer.toJson<String?>(visualReference),
       'isPrimary': serializer.toJson<bool>(isPrimary),
       'customerId': serializer.toJson<String>(customerId),
+      'latitude': serializer.toJson<double?>(latitude),
+      'longitude': serializer.toJson<double?>(longitude),
     };
   }
 
@@ -820,6 +884,8 @@ class CustomerAddressTableData extends DataClass
     Value<String?> visualReference = const Value.absent(),
     bool? isPrimary,
     String? customerId,
+    Value<double?> latitude = const Value.absent(),
+    Value<double?> longitude = const Value.absent(),
   }) => CustomerAddressTableData(
     createdAt: createdAt ?? this.createdAt,
     lastModifiedDate: lastModifiedDate ?? this.lastModifiedDate,
@@ -833,6 +899,8 @@ class CustomerAddressTableData extends DataClass
         : this.visualReference,
     isPrimary: isPrimary ?? this.isPrimary,
     customerId: customerId ?? this.customerId,
+    latitude: latitude.present ? latitude.value : this.latitude,
+    longitude: longitude.present ? longitude.value : this.longitude,
   );
   CustomerAddressTableData copyWithCompanion(
     CustomerAddressTableCompanion data,
@@ -854,6 +922,8 @@ class CustomerAddressTableData extends DataClass
       customerId: data.customerId.present
           ? data.customerId.value
           : this.customerId,
+      latitude: data.latitude.present ? data.latitude.value : this.latitude,
+      longitude: data.longitude.present ? data.longitude.value : this.longitude,
     );
   }
 
@@ -869,7 +939,9 @@ class CustomerAddressTableData extends DataClass
           ..write('floor: $floor, ')
           ..write('visualReference: $visualReference, ')
           ..write('isPrimary: $isPrimary, ')
-          ..write('customerId: $customerId')
+          ..write('customerId: $customerId, ')
+          ..write('latitude: $latitude, ')
+          ..write('longitude: $longitude')
           ..write(')'))
         .toString();
   }
@@ -886,6 +958,8 @@ class CustomerAddressTableData extends DataClass
     visualReference,
     isPrimary,
     customerId,
+    latitude,
+    longitude,
   );
   @override
   bool operator ==(Object other) =>
@@ -900,7 +974,9 @@ class CustomerAddressTableData extends DataClass
           other.floor == this.floor &&
           other.visualReference == this.visualReference &&
           other.isPrimary == this.isPrimary &&
-          other.customerId == this.customerId);
+          other.customerId == this.customerId &&
+          other.latitude == this.latitude &&
+          other.longitude == this.longitude);
 }
 
 class CustomerAddressTableCompanion
@@ -915,6 +991,8 @@ class CustomerAddressTableCompanion
   final Value<String?> visualReference;
   final Value<bool> isPrimary;
   final Value<String> customerId;
+  final Value<double?> latitude;
+  final Value<double?> longitude;
   final Value<int> rowid;
   const CustomerAddressTableCompanion({
     this.createdAt = const Value.absent(),
@@ -927,6 +1005,8 @@ class CustomerAddressTableCompanion
     this.visualReference = const Value.absent(),
     this.isPrimary = const Value.absent(),
     this.customerId = const Value.absent(),
+    this.latitude = const Value.absent(),
+    this.longitude = const Value.absent(),
     this.rowid = const Value.absent(),
   });
   CustomerAddressTableCompanion.insert({
@@ -940,6 +1020,8 @@ class CustomerAddressTableCompanion
     this.visualReference = const Value.absent(),
     this.isPrimary = const Value.absent(),
     this.customerId = const Value.absent(),
+    this.latitude = const Value.absent(),
+    this.longitude = const Value.absent(),
     this.rowid = const Value.absent(),
   });
   static Insertable<CustomerAddressTableData> custom({
@@ -953,6 +1035,8 @@ class CustomerAddressTableCompanion
     Expression<String>? visualReference,
     Expression<bool>? isPrimary,
     Expression<String>? customerId,
+    Expression<double>? latitude,
+    Expression<double>? longitude,
     Expression<int>? rowid,
   }) {
     return RawValuesInsertable({
@@ -966,6 +1050,8 @@ class CustomerAddressTableCompanion
       if (visualReference != null) 'visual_reference': visualReference,
       if (isPrimary != null) 'is_primary': isPrimary,
       if (customerId != null) 'customer_id': customerId,
+      if (latitude != null) 'latitude': latitude,
+      if (longitude != null) 'longitude': longitude,
       if (rowid != null) 'rowid': rowid,
     });
   }
@@ -981,6 +1067,8 @@ class CustomerAddressTableCompanion
     Value<String?>? visualReference,
     Value<bool>? isPrimary,
     Value<String>? customerId,
+    Value<double?>? latitude,
+    Value<double?>? longitude,
     Value<int>? rowid,
   }) {
     return CustomerAddressTableCompanion(
@@ -994,6 +1082,8 @@ class CustomerAddressTableCompanion
       visualReference: visualReference ?? this.visualReference,
       isPrimary: isPrimary ?? this.isPrimary,
       customerId: customerId ?? this.customerId,
+      latitude: latitude ?? this.latitude,
+      longitude: longitude ?? this.longitude,
       rowid: rowid ?? this.rowid,
     );
   }
@@ -1031,6 +1121,12 @@ class CustomerAddressTableCompanion
     if (customerId.present) {
       map['customer_id'] = Variable<String>(customerId.value);
     }
+    if (latitude.present) {
+      map['latitude'] = Variable<double>(latitude.value);
+    }
+    if (longitude.present) {
+      map['longitude'] = Variable<double>(longitude.value);
+    }
     if (rowid.present) {
       map['rowid'] = Variable<int>(rowid.value);
     }
@@ -1050,6 +1146,8 @@ class CustomerAddressTableCompanion
           ..write('visualReference: $visualReference, ')
           ..write('isPrimary: $isPrimary, ')
           ..write('customerId: $customerId, ')
+          ..write('latitude: $latitude, ')
+          ..write('longitude: $longitude, ')
           ..write('rowid: $rowid')
           ..write(')'))
         .toString();
@@ -11499,6 +11597,8 @@ typedef $$CustomerAddressTableTableCreateCompanionBuilder =
       Value<String?> visualReference,
       Value<bool> isPrimary,
       Value<String> customerId,
+      Value<double?> latitude,
+      Value<double?> longitude,
       Value<int> rowid,
     });
 typedef $$CustomerAddressTableTableUpdateCompanionBuilder =
@@ -11513,6 +11613,8 @@ typedef $$CustomerAddressTableTableUpdateCompanionBuilder =
       Value<String?> visualReference,
       Value<bool> isPrimary,
       Value<String> customerId,
+      Value<double?> latitude,
+      Value<double?> longitude,
       Value<int> rowid,
     });
 
@@ -11612,6 +11714,16 @@ class $$CustomerAddressTableTableFilterComposer
     builder: (column) => ColumnFilters(column),
   );
 
+  ColumnFilters<double> get latitude => $composableBuilder(
+    column: $table.latitude,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<double> get longitude => $composableBuilder(
+    column: $table.longitude,
+    builder: (column) => ColumnFilters(column),
+  );
+
   Expression<bool> routeStopTableRefs(
     Expression<bool> Function($$RouteStopTableTableFilterComposer f) f,
   ) {
@@ -11696,6 +11808,16 @@ class $$CustomerAddressTableTableOrderingComposer
     column: $table.customerId,
     builder: (column) => ColumnOrderings(column),
   );
+
+  ColumnOrderings<double> get latitude => $composableBuilder(
+    column: $table.latitude,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<double> get longitude => $composableBuilder(
+    column: $table.longitude,
+    builder: (column) => ColumnOrderings(column),
+  );
 }
 
 class $$CustomerAddressTableTableAnnotationComposer
@@ -11742,6 +11864,12 @@ class $$CustomerAddressTableTableAnnotationComposer
     column: $table.customerId,
     builder: (column) => column,
   );
+
+  GeneratedColumn<double> get latitude =>
+      $composableBuilder(column: $table.latitude, builder: (column) => column);
+
+  GeneratedColumn<double> get longitude =>
+      $composableBuilder(column: $table.longitude, builder: (column) => column);
 
   Expression<T> routeStopTableRefs<T extends Object>(
     Expression<T> Function($$RouteStopTableTableAnnotationComposer a) f,
@@ -11815,6 +11943,8 @@ class $$CustomerAddressTableTableTableManager
                 Value<String?> visualReference = const Value.absent(),
                 Value<bool> isPrimary = const Value.absent(),
                 Value<String> customerId = const Value.absent(),
+                Value<double?> latitude = const Value.absent(),
+                Value<double?> longitude = const Value.absent(),
                 Value<int> rowid = const Value.absent(),
               }) => CustomerAddressTableCompanion(
                 createdAt: createdAt,
@@ -11827,6 +11957,8 @@ class $$CustomerAddressTableTableTableManager
                 visualReference: visualReference,
                 isPrimary: isPrimary,
                 customerId: customerId,
+                latitude: latitude,
+                longitude: longitude,
                 rowid: rowid,
               ),
           createCompanionCallback:
@@ -11841,6 +11973,8 @@ class $$CustomerAddressTableTableTableManager
                 Value<String?> visualReference = const Value.absent(),
                 Value<bool> isPrimary = const Value.absent(),
                 Value<String> customerId = const Value.absent(),
+                Value<double?> latitude = const Value.absent(),
+                Value<double?> longitude = const Value.absent(),
                 Value<int> rowid = const Value.absent(),
               }) => CustomerAddressTableCompanion.insert(
                 createdAt: createdAt,
@@ -11853,6 +11987,8 @@ class $$CustomerAddressTableTableTableManager
                 visualReference: visualReference,
                 isPrimary: isPrimary,
                 customerId: customerId,
+                latitude: latitude,
+                longitude: longitude,
                 rowid: rowid,
               ),
           withReferenceMapper: (p0) => p0

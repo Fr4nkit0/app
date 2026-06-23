@@ -1,9 +1,13 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:app/core/utils/avatar_utils.dart';
+import 'package:app/core/utils/address_formatter.dart';
 import 'package:app/features/customers/domain/models/customer.dart';
 import 'package:app/features/customers/presentation/providers/customer_count_provider.dart';
+import 'package:app/features/customers/presentation/providers/customer_repository_provider.dart';
+import 'package:app/features/customers/presentation/widgets/address_picker_map.dart';
 import 'package:app/features/history/domain/models/history_entry.dart';
+import 'package:latlong2/latlong.dart';
 import 'package:app/features/history/presentation/providers/history_list_provider.dart';
 import 'package:app/features/history/presentation/widgets/history_entry_tile.dart';
 import 'package:app/features/sales/presentation/providers/sale_draft_provider.dart';
@@ -13,9 +17,6 @@ import 'package:app/features/inventory/domain/models/customer_container_balance.
 import 'package:app/features/inventory/domain/models/container_movement.dart';
 import 'package:app/core/widgets/top_toast.dart';
 import 'package:uuid/uuid.dart';
-import 'package:app/features/payments/presentation/providers/payment_repository_provider.dart';
-import 'package:app/features/payments/presentation/widgets/debt_payment_dialog.dart';
-import 'package:app/features/payments/domain/models/payment.dart';
 import 'package:app/core/utils/resource.dart';
 
 class CustomerProfileScreen extends ConsumerStatefulWidget {
@@ -34,6 +35,26 @@ class _CustomerProfileScreenState extends ConsumerState<CustomerProfileScreen> {
   static const _days = ['', 'Lun', 'Mar', 'Mié', 'Jue', 'Vie', 'Sáb', 'Dom'];
 
   String _dayName(int day) => day >= 1 && day <= 7 ? _days[day] : 'Día $day';
+
+  Future<void> _updateCoordinates(
+    BuildContext context,
+    String addressId,
+    double lat,
+    double lng,
+  ) async {
+    final repository = ref.read(customerRepositoryProvider);
+    final result = await repository.updateAddressCoordinates(addressId, lat, lng);
+
+    if (context.mounted) {
+      switch (result) {
+        case Success():
+          TopToast.showSuccess(context, 'Coordenadas actualizadas correctamente');
+          ref.invalidate(customerByIdProvider(widget.customerId));
+        case Error(:final error):
+          TopToast.showError(context, 'Error al guardar coordenadas: $error');
+      }
+    }
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -592,74 +613,65 @@ class _CustomerProfileScreenState extends ConsumerState<CustomerProfileScreen> {
                 const Divider(height: 24, color: Color(0xFFE2E8F0)),
                 if (addr != null) ...[
                   Text(
-                    addr.street ?? 'Sin nombre de calle',
+                    AddressFormatter.format(
+                      street: addr.street,
+                      floor: addr.floor,
+                      apartment: addr.apartment,
+                      visualReference: addr.visualReference,
+                    ),
                     style: const TextStyle(
                       fontSize: 15,
                       fontWeight: FontWeight.w700,
                       color: Color(0xFF0D1B3E),
                     ),
                   ),
-                  if (addr.floor != null || addr.apartment != null) ...[
-                    const SizedBox(height: 4),
-                    Text(
-                      [
-                        if (addr.floor != null) 'Piso ${addr.floor}',
-                        if (addr.apartment != null) 'Depto ${addr.apartment}',
-                      ].join(' - '),
-                      style: TextStyle(
-                        fontSize: 13,
-                        color: Colors.grey.shade600,
-                      ),
-                    ),
-                  ],
-                  if (addr.visualReference != null &&
-                      addr.visualReference!.isNotEmpty) ...[
+                  if (addr.latitude != null && addr.longitude != null) ...[
                     const SizedBox(height: 8),
-                    Container(
-                      padding: const EdgeInsets.all(10),
-                      decoration: BoxDecoration(
-                        color: const Color(0xFFF8FAFC),
-                        borderRadius: BorderRadius.circular(8),
-                        border: Border.all(color: const Color(0xFFF1F5F9)),
-                      ),
-                      child: Row(
-                        children: [
-                          Icon(
-                            Icons.info_outline,
-                            size: 14,
-                            color: Colors.grey.shade500,
+                    Row(
+                      children: [
+                        const Icon(Icons.check_circle, size: 16, color: Colors.green),
+                        const SizedBox(width: 8),
+                        Text(
+                          'Ubicación fijada (${addr.latitude!.toStringAsFixed(6)}, ${addr.longitude!.toStringAsFixed(6)})',
+                          style: const TextStyle(
+                            fontSize: 13,
+                            color: Colors.green,
+                            fontWeight: FontWeight.w500,
                           ),
-                          const SizedBox(width: 8),
-                          Expanded(
-                            child: Text(
-                              addr.visualReference!,
-                              style: TextStyle(
-                                fontSize: 12,
-                                color: Colors.grey.shade600,
-                                fontStyle: FontStyle.italic,
-                              ),
-                            ),
-                          ),
-                        ],
-                      ),
+                        ),
+                      ],
                     ),
                   ],
                   const SizedBox(height: 14),
                   SizedBox(
                     width: double.infinity,
                     child: OutlinedButton.icon(
-                      onPressed: () {
-                        ScaffoldMessenger.of(context).showSnackBar(
-                          SnackBar(
-                            content: Text(
-                              'Abriendo mapa para ${addr.street ?? ''}...',
+                      onPressed: () async {
+                        await Navigator.of(context).push<LatLng>(
+                          MaterialPageRoute(
+                            builder: (context) => AddressPickerMap(
+                              initialLatitude: addr.latitude,
+                              initialLongitude: addr.longitude,
+                              initialSearchQuery: addr.street,
+                              onSave: (latLng) async {
+                                await _updateCoordinates(
+                                  context,
+                                  addr.id,
+                                  latLng.latitude,
+                                  latLng.longitude,
+                                );
+                              },
                             ),
-                            duration: const Duration(seconds: 1),
+                            fullscreenDialog: true,
                           ),
                         );
                       },
                       icon: const Icon(Icons.map_outlined, size: 16),
-                      label: const Text('Cómo llegar / Ver en Mapa'),
+                      label: Text(
+                        addr.latitude != null && addr.longitude != null
+                            ? 'Ver / Editar Ubicación'
+                            : 'Ubicar en Mapa',
+                      ),
                       style: OutlinedButton.styleFrom(
                         foregroundColor: const Color(0xFF1565C0),
                         side: const BorderSide(color: Color(0xFF1565C0)),

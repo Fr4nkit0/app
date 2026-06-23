@@ -1,13 +1,21 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:url_launcher/url_launcher.dart';
+import 'package:latlong2/latlong.dart';
 import 'package:app/core/widgets/debt_chip.dart';
 import 'package:app/core/widgets/product_chip.dart';
 import 'package:app/core/utils/avatar_utils.dart';
+import 'package:app/core/utils/address_formatter.dart';
 import 'package:app/core/widgets/circular_action_button.dart';
+import 'package:app/core/widgets/top_toast.dart';
+import 'package:app/core/utils/resource.dart';
 import 'package:app/features/customers/domain/models/customer.dart';
+import 'package:app/features/customers/presentation/widgets/address_picker_map.dart';
+import 'package:app/features/customers/presentation/providers/customer_repository_provider.dart';
+import 'package:app/features/customers/presentation/providers/customer_count_provider.dart';
 import 'package:font_awesome_flutter/font_awesome_flutter.dart';
 
-class CustomerListTile extends StatelessWidget {
+class CustomerListTile extends ConsumerWidget {
   const CustomerListTile({
     super.key,
     required this.customer,
@@ -25,11 +33,17 @@ class CustomerListTile extends StatelessWidget {
     final addr =
         customer.addresses.where((a) => a.isPrimary).firstOrNull ??
         customer.addresses.firstOrNull;
-    return addr?.street ?? '';
+    if (addr == null) return '';
+    return AddressFormatter.format(
+      street: addr.street,
+      floor: addr.floor,
+      apartment: addr.apartment,
+      visualReference: addr.visualReference,
+    );
   }
 
   @override
-  Widget build(BuildContext context) {
+  Widget build(BuildContext context, WidgetRef ref) {
     const blue = Color(0xFF1565C0);
     final initials = AvatarUtils.getInitials(customer.name);
     final avatarColors = AvatarUtils.getColors(
@@ -244,13 +258,55 @@ class CustomerListTile extends StatelessWidget {
                               CircularActionButton(
                                 icon: Icons.location_on,
                                 color: const Color(0xFF0369A1),
-                                onPressed: () {
-                                  ScaffoldMessenger.of(context).showSnackBar(
-                                    SnackBar(
-                                      content: Text(
-                                        'Abriendo mapa para $_address...',
+                                onPressed: () async {
+                                  final addr = customer.addresses
+                                          .where((a) => a.isPrimary)
+                                          .firstOrNull ??
+                                      customer.addresses.firstOrNull;
+                                  if (addr == null) return;
+
+                                  await Navigator.of(context).push<LatLng>(
+                                    MaterialPageRoute(
+                                      builder: (context) => AddressPickerMap(
+                                        initialLatitude: addr.latitude,
+                                        initialLongitude: addr.longitude,
+                                        initialSearchQuery: addr.street,
+                                        onSave: (latLng) async {
+                                          final repository =
+                                              ref.read(customerRepositoryProvider);
+                                          final updateResult =
+                                              await repository
+                                                  .updateAddressCoordinates(
+                                            addr.id,
+                                            latLng.latitude,
+                                            latLng.longitude,
+                                          );
+
+                                          if (context.mounted) {
+                                            switch (updateResult) {
+                                              case Success():
+                                                TopToast.showSuccess(
+                                                  context,
+                                                  'Ubicación del cliente guardada',
+                                                );
+                                                ref
+                                                    .read(
+                                                        paginatedCustomerListProvider
+                                                            .notifier)
+                                                    .refresh();
+                                                ref.invalidate(
+                                                    customerByIdProvider(
+                                                        customer.id));
+                                              case Error(:final error):
+                                                TopToast.showError(
+                                                  context,
+                                                  'Error al guardar ubicación: $error',
+                                                );
+                                            }
+                                          }
+                                        },
                                       ),
-                                      duration: const Duration(seconds: 1),
+                                      fullscreenDialog: true,
                                     ),
                                   );
                                 },

@@ -151,146 +151,148 @@ class _DebtPaymentDialogState extends State<DebtPaymentDialog> {
 
     return Dialog(
       shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
-      child: Padding(
-        padding: const EdgeInsets.all(18),
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            // ── Header ──
-            Row(
-              children: [
-                Icon(Icons.payments_rounded, color: tokens.primary, size: 22),
-                const SizedBox(width: 10),
-                Text(
-                  'Pagar deuda',
-                  style: const TextStyle(
-                    fontSize: 18,
-                    fontWeight: FontWeight.w800,
-                    color: Color(0xFF0D1B3E),
+      child: SingleChildScrollView(
+        child: Padding(
+          padding: const EdgeInsets.all(18),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              // ── Header ──
+              Row(
+                children: [
+                  Icon(Icons.payments_rounded, color: tokens.primary, size: 22),
+                  const SizedBox(width: 10),
+                  Text(
+                    'Pagar deuda',
+                    style: const TextStyle(
+                      fontSize: 18,
+                      fontWeight: FontWeight.w800,
+                      color: Color(0xFF0D1B3E),
+                    ),
                   ),
-                ),
-              ],
-            ),
-            const SizedBox(height: 4),
-            Text(
-              'Deuda total: \$${widget.totalDebt.toStringAsFixed(0)}',
-              style: const TextStyle(
-                fontSize: 14,
-                fontWeight: FontWeight.w600,
-                color: Color(0xFF9CA3AF),
+                ],
               ),
-            ),
-            const SizedBox(height: 20),
-
-            // ── Grid de métodos de pago ──
-            GridView.count(
-              crossAxisCount: 2,
-              mainAxisSpacing: 10,
-              crossAxisSpacing: 10,
-              childAspectRatio: 1.6,
-              shrinkWrap: true,
-              physics: const NeverScrollableScrollPhysics(),
-              children: [
-                _buildPaymentOption(label: 'Efectivo', icon: '💵'),
-                _buildPaymentOption(label: 'Transferencia', icon: '🏦'),
-                _buildPaymentOption(label: 'Mixto', icon: '🔄'),
-              ],
-            ),
-
-            // ── Campos de montos (según método) ──
-            if (_selectedMethod != null) ...[
-              const SizedBox(height: 16),
-              const Divider(height: 1),
-              const SizedBox(height: 12),
+              const SizedBox(height: 4),
               Text(
-                _selectedMethod == 'Mixto' ? 'MONTOS MIXTOS' : 'MONTO',
-                style: TextStyle(
-                  fontSize: 11,
-                  fontWeight: FontWeight.w700,
-                  color: Colors.grey.shade500,
-                  letterSpacing: 0.8,
+                'Deuda total: \$${widget.totalDebt.toStringAsFixed(0)}',
+                style: const TextStyle(
+                  fontSize: 14,
+                  fontWeight: FontWeight.w600,
+                  color: Color(0xFF9CA3AF),
                 ),
               ),
-              const SizedBox(height: 10),
-              if (_selectedMethod == 'Efectivo')
-                _AmountField(
-                  label: 'Efectivo',
-                  controller: _cashController,
-                  onChanged: _onCashChanged,
-                ),
-              if (_selectedMethod == 'Transferencia')
-                _AmountField(
-                  label: 'Transferencia',
-                  controller: _transferController,
-                  onChanged: _onTransferChanged,
-                ),
-              if (_selectedMethod == 'Mixto') ...[
-                _AmountField(
-                  label: 'Efectivo',
-                  controller: _cashController,
-                  onChanged: _onCashChanged,
+              const SizedBox(height: 20),
+
+              // ── Grid de métodos de pago ──
+              GridView.count(
+                crossAxisCount: 2,
+                mainAxisSpacing: 10,
+                crossAxisSpacing: 10,
+                childAspectRatio: 1.6,
+                shrinkWrap: true,
+                physics: const NeverScrollableScrollPhysics(),
+                children: [
+                  _buildPaymentOption(label: 'Efectivo', icon: '💵'),
+                  _buildPaymentOption(label: 'Transferencia', icon: '🏦'),
+                  _buildPaymentOption(label: 'Mixto', icon: '🔄'),
+                ],
+              ),
+
+              // ── Campos de montos (según método) ──
+              if (_selectedMethod != null) ...[
+                const SizedBox(height: 16),
+                const Divider(height: 1),
+                const SizedBox(height: 12),
+                Text(
+                  _selectedMethod == 'Mixto' ? 'MONTOS MIXTOS' : 'MONTO',
+                  style: TextStyle(
+                    fontSize: 11,
+                    fontWeight: FontWeight.w700,
+                    color: Colors.grey.shade500,
+                    letterSpacing: 0.8,
+                  ),
                 ),
                 const SizedBox(height: 10),
-                _AmountField(
-                  label: 'Transferencia',
-                  controller: _transferController,
-                  onChanged: _onTransferChanged,
-                ),
+                if (_selectedMethod == 'Efectivo')
+                  _AmountField(
+                    label: 'Efectivo',
+                    controller: _cashController,
+                    onChanged: _onCashChanged,
+                  ),
+                if (_selectedMethod == 'Transferencia')
+                  _AmountField(
+                    label: 'Transferencia',
+                    controller: _transferController,
+                    onChanged: _onTransferChanged,
+                  ),
+                if (_selectedMethod == 'Mixto') ...[
+                  _AmountField(
+                    label: 'Efectivo',
+                    controller: _cashController,
+                    onChanged: _onCashChanged,
+                  ),
+                  const SizedBox(height: 10),
+                  _AmountField(
+                    label: 'Transferencia',
+                    controller: _transferController,
+                    onChanged: _onTransferChanged,
+                  ),
+                ],
+                const SizedBox(height: 4),
+                _buildRemainingIndicator(),
               ],
-              const SizedBox(height: 4),
-              _buildRemainingIndicator(),
+
+              const SizedBox(height: 24),
+
+              // ── Botones Cancelar + Confirmar ──
+              Row(
+                children: [
+                  Expanded(
+                    child: OutlinedButton(
+                      onPressed: () => Navigator.of(context).pop(),
+                      style: OutlinedButton.styleFrom(
+                        padding: const EdgeInsets.symmetric(vertical: 14),
+                        shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(12),
+                        ),
+                        side: const BorderSide(color: SalesTokens.muted),
+                      ),
+                      child: const Text(
+                        'Cancelar',
+                        style: TextStyle(
+                          fontWeight: FontWeight.w700,
+                          fontSize: 15,
+                          color: Color(0xFF0D1B3E),
+                        ),
+                      ),
+                    ),
+                  ),
+                  const SizedBox(width: 12),
+                  Expanded(
+                    child: FilledButton(
+                      onPressed: _canConfirm ? _confirm : null,
+                      style: FilledButton.styleFrom(
+                        backgroundColor: tokens.primary,
+                        disabledBackgroundColor: Colors.grey.shade200,
+                        padding: const EdgeInsets.symmetric(vertical: 14),
+                        shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(12),
+                        ),
+                      ),
+                      child: const Text(
+                        'Confirmar pago',
+                        style: TextStyle(
+                          fontWeight: FontWeight.w700,
+                          fontSize: 15,
+                        ),
+                      ),
+                    ),
+                  ),
+                ],
+              ),
             ],
-
-            const SizedBox(height: 24),
-
-            // ── Botones Cancelar + Confirmar ──
-            Row(
-              children: [
-                Expanded(
-                  child: OutlinedButton(
-                    onPressed: () => Navigator.of(context).pop(),
-                    style: OutlinedButton.styleFrom(
-                      padding: const EdgeInsets.symmetric(vertical: 14),
-                      shape: RoundedRectangleBorder(
-                        borderRadius: BorderRadius.circular(12),
-                      ),
-                      side: const BorderSide(color: SalesTokens.muted),
-                    ),
-                    child: const Text(
-                      'Cancelar',
-                      style: TextStyle(
-                        fontWeight: FontWeight.w700,
-                        fontSize: 15,
-                        color: Color(0xFF0D1B3E),
-                      ),
-                    ),
-                  ),
-                ),
-                const SizedBox(width: 12),
-                Expanded(
-                  child: FilledButton(
-                    onPressed: _canConfirm ? _confirm : null,
-                    style: FilledButton.styleFrom(
-                      backgroundColor: tokens.primary,
-                      disabledBackgroundColor: Colors.grey.shade200,
-                      padding: const EdgeInsets.symmetric(vertical: 14),
-                      shape: RoundedRectangleBorder(
-                        borderRadius: BorderRadius.circular(12),
-                      ),
-                    ),
-                    child: const Text(
-                      'Confirmar pago',
-                      style: TextStyle(
-                        fontWeight: FontWeight.w700,
-                        fontSize: 15,
-                      ),
-                    ),
-                  ),
-                ),
-              ],
-            ),
-          ],
+          ),
         ),
       ),
     );

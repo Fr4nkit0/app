@@ -55,7 +55,12 @@ class DriftRouteRepository implements RouteRepository {
                 CustomerAddress(
                   id: addrRow.addressId,
                   street: addrRow.street,
+                  apartment: addrRow.apartment,
+                  floor: addrRow.floor,
+                  visualReference: addrRow.visualReference,
                   isPrimary: true,
+                  latitude: addrRow.latitude,
+                  longitude: addrRow.longitude,
                 ),
               ]
             : const <CustomerAddress>[];

@@ -70,6 +70,10 @@ class CustomerForm extends Notifier<CustomerFormState> {
     state = state.copyWith(visualReference: visualReference);
   }
 
+  void updateCoordinates(double? latitude, double? longitude) {
+    state = state.copyWith(latitude: latitude, longitude: longitude);
+  }
+
   void addPreference() {
     state = state.copyWith(
       preferences: [
@@ -145,6 +149,8 @@ class CustomerForm extends Notifier<CustomerFormState> {
             visualReference: state.visualReference.isEmpty
                 ? null
                 : state.visualReference,
+            latitude: state.latitude,
+            longitude: state.longitude,
           ),
         ],
         preferences: state.preferences
