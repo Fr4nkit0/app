@@ -37,6 +37,8 @@ class DriftCustomerRepository implements CustomerRepository {
                   floor: Value(address.floor),
                   visualReference: Value(address.visualReference),
                   isPrimary: Value(address.isPrimary),
+                  latitude: Value(address.latitude),
+                  longitude: Value(address.longitude),
                 ),
               );
         }
@@ -97,6 +99,8 @@ class DriftCustomerRepository implements CustomerRepository {
                   floor: Value(address.floor),
                   visualReference: Value(address.visualReference),
                   isPrimary: Value(address.isPrimary),
+                  latitude: Value(address.latitude),
+                  longitude: Value(address.longitude),
                 ),
               );
         }
@@ -163,10 +167,16 @@ class DriftCustomerRepository implements CustomerRepository {
         db.customerPreferenceTable,
       )..where((t) => t.customerId.equals(id))).get();
 
+      final balanceData = await (db.select(
+        db.customerBalanceTable,
+      )..where((t) => t.customerId.equals(id))).getSingleOrNull();
+      final debtAmount = balanceData?.currentBalance ?? 0.0;
+
       final customer = Customer(
         id: customerData.customerId,
         name: customerData.name,
         phone: customerData.phone,
+        debtAmount: debtAmount,
         addresses: addresses
             .map(
               (a) => CustomerAddress(
@@ -176,6 +186,8 @@ class DriftCustomerRepository implements CustomerRepository {
                 floor: a.floor,
                 visualReference: a.visualReference,
                 isPrimary: a.isPrimary,
+                latitude: a.latitude,
+                longitude: a.longitude,
               ),
             )
             .toList(),
@@ -219,6 +231,10 @@ class DriftCustomerRepository implements CustomerRepository {
       db.customerPreferenceTable,
     )..where((t) => t.customerId.isIn(customerIds))).get();
 
+    final balances = await (db.select(
+      db.customerBalanceTable,
+    )..where((t) => t.customerId.isIn(customerIds))).get();
+
     final addrMap = <String, List<CustomerAddressTableData>>{};
     for (final a in addresses) {
       addrMap.putIfAbsent(a.customerId, () => []).add(a);
@@ -229,12 +245,18 @@ class DriftCustomerRepository implements CustomerRepository {
       prefMap.putIfAbsent(p.customerId, () => []).add(p);
     }
 
+    final balanceMap = <String, double>{};
+    for (final b in balances) {
+      balanceMap[b.customerId] = b.currentBalance;
+    }
+
     return customerRows.map((row) {
       final cid = row.customerId;
       return Customer(
         id: cid,
         name: row.name,
         phone: row.phone,
+        debtAmount: balanceMap[cid] ?? 0.0,
         addresses: (addrMap[cid] ?? [])
             .map(
               (a) => CustomerAddress(
@@ -244,6 +266,8 @@ class DriftCustomerRepository implements CustomerRepository {
                 floor: a.floor,
                 visualReference: a.visualReference,
                 isPrimary: a.isPrimary,
+                latitude: a.latitude,
+                longitude: a.longitude,
               ),
             )
             .toList(),
@@ -288,6 +312,10 @@ class DriftCustomerRepository implements CustomerRepository {
       db.customerPreferenceTable,
     )..where((t) => t.customerId.isIn(customerIds))).get();
 
+    final balances = await (db.select(
+      db.customerBalanceTable,
+    )..where((t) => t.customerId.isIn(customerIds))).get();
+
     final addrMap = <String, List<CustomerAddressTableData>>{};
     for (final a in addresses) {
       addrMap.putIfAbsent(a.customerId, () => []).add(a);
@@ -298,12 +326,18 @@ class DriftCustomerRepository implements CustomerRepository {
       prefMap.putIfAbsent(p.customerId, () => []).add(p);
     }
 
+    final balanceMap = <String, double>{};
+    for (final b in balances) {
+      balanceMap[b.customerId] = b.currentBalance;
+    }
+
     return customerRows.map((row) {
       final cid = row.customerId;
       return Customer(
         id: cid,
         name: row.name,
         phone: row.phone,
+        debtAmount: balanceMap[cid] ?? 0.0,
         addresses: (addrMap[cid] ?? [])
             .map(
               (a) => CustomerAddress(
@@ -313,6 +347,8 @@ class DriftCustomerRepository implements CustomerRepository {
                 floor: a.floor,
                 visualReference: a.visualReference,
                 isPrimary: a.isPrimary,
+                latitude: a.latitude,
+                longitude: a.longitude,
               ),
             )
             .toList(),
@@ -353,6 +389,12 @@ class DriftCustomerRepository implements CustomerRepository {
           db.customerTable.customerId,
         ),
       ),
+      leftOuterJoin(
+        db.customerBalanceTable,
+        db.customerBalanceTable.customerId.equalsExp(
+          db.customerTable.customerId,
+        ),
+      ),
     ]);
 
     return query.watch().map((rows) {
@@ -364,6 +406,7 @@ class DriftCustomerRepository implements CustomerRepository {
         final customerData = row.readTable(db.customerTable);
         final addressData = row.readTableOrNull(db.customerAddressTable);
         final prefData = row.readTableOrNull(db.customerPreferenceTable);
+        final balanceData = row.readTableOrNull(db.customerBalanceTable);
 
         final cid = customerData.customerId;
 
@@ -372,6 +415,7 @@ class DriftCustomerRepository implements CustomerRepository {
             id: cid,
             name: customerData.name,
             phone: customerData.phone,
+            debtAmount: balanceData?.currentBalance ?? 0.0,
             addresses: [],
             preferences: [],
           );
@@ -390,6 +434,8 @@ class DriftCustomerRepository implements CustomerRepository {
               floor: addressData.floor,
               visualReference: addressData.visualReference,
               isPrimary: addressData.isPrimary,
+              latitude: addressData.latitude,
+              longitude: addressData.longitude,
             ),
           );
         }
@@ -410,6 +456,30 @@ class DriftCustomerRepository implements CustomerRepository {
 
       return customers.values.toList();
     });
+  }
+
+  @override
+  Future<Resource<void>> updateAddressCoordinates(
+    String addressId,
+    double latitude,
+    double longitude,
+  ) async {
+    try {
+      final updatedRows = await (db.update(db.customerAddressTable)
+            ..where((t) => t.addressId.equals(addressId)))
+          .write(
+        CustomerAddressTableCompanion(
+          latitude: Value(latitude),
+          longitude: Value(longitude),
+        ),
+      );
+      if (updatedRows == 0) {
+        return Resource.error(Exception('Address not found'));
+      }
+      return const Resource.success(null);
+    } catch (e) {
+      return Resource.error(e is Exception ? e : Exception(e.toString()));
+    }
   }
 }
 

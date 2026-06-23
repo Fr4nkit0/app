@@ -1,11 +1,21 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:url_launcher/url_launcher.dart';
+import 'package:latlong2/latlong.dart';
 import 'package:app/core/widgets/debt_chip.dart';
 import 'package:app/core/widgets/product_chip.dart';
 import 'package:app/core/utils/avatar_utils.dart';
+import 'package:app/core/utils/address_formatter.dart';
 import 'package:app/core/widgets/circular_action_button.dart';
+import 'package:app/core/widgets/top_toast.dart';
+import 'package:app/core/utils/resource.dart';
 import 'package:app/features/customers/domain/models/customer.dart';
+import 'package:app/features/customers/presentation/widgets/address_picker_map.dart';
+import 'package:app/features/customers/presentation/providers/customer_repository_provider.dart';
+import 'package:app/features/customers/presentation/providers/customer_count_provider.dart';
+import 'package:font_awesome_flutter/font_awesome_flutter.dart';
 
-class CustomerListTile extends StatelessWidget {
+class CustomerListTile extends ConsumerWidget {
   const CustomerListTile({
     super.key,
     required this.customer,
@@ -23,11 +33,17 @@ class CustomerListTile extends StatelessWidget {
     final addr =
         customer.addresses.where((a) => a.isPrimary).firstOrNull ??
         customer.addresses.firstOrNull;
-    return addr?.street ?? '';
+    if (addr == null) return '';
+    return AddressFormatter.format(
+      street: addr.street,
+      floor: addr.floor,
+      apartment: addr.apartment,
+      visualReference: addr.visualReference,
+    );
   }
 
   @override
-  Widget build(BuildContext context) {
+  Widget build(BuildContext context, WidgetRef ref) {
     const blue = Color(0xFF1565C0);
     final initials = AvatarUtils.getInitials(customer.name);
     final avatarColors = AvatarUtils.getColors(
@@ -194,33 +210,103 @@ class CustomerListTile extends StatelessWidget {
                           children: [
                             if (customer.phone != null &&
                                 customer.phone!.isNotEmpty) ...[
-                              CircularActionButton(
-                                icon: Icons.phone_in_talk_outlined,
-                                color: const Color(0xFF4B5563),
-                                onPressed: () {
-                                  ScaffoldMessenger.of(context).showSnackBar(
-                                    SnackBar(
-                                      content: Text(
-                                        'Llamando a ${customer.name}...',
-                                      ),
-                                      duration: const Duration(seconds: 1),
-                                    ),
+                              GestureDetector(
+                                onTap: () async {
+                                  final phone = customer.phone!.replaceAll(
+                                    RegExp(r'[^\d]'),
+                                    '',
                                   );
+                                  final uri = Uri.parse('https://wa.me/$phone');
+                                  try {
+                                    await launchUrl(
+                                      uri,
+                                      mode: LaunchMode.externalApplication,
+                                    );
+                                  } catch (_) {
+                                    if (context.mounted) {
+                                      ScaffoldMessenger.of(
+                                        context,
+                                      ).showSnackBar(
+                                        const SnackBar(
+                                          content: Text(
+                                            'No se pudo abrir WhatsApp',
+                                          ),
+                                          duration: Duration(seconds: 2),
+                                        ),
+                                      );
+                                    }
+                                  }
                                 },
+                                child: Container(
+                                  width: 44,
+                                  height: 44,
+                                  alignment: Alignment.center,
+                                  decoration: const BoxDecoration(
+                                    color: Color(0xFF25D366),
+                                    shape: BoxShape.circle,
+                                  ),
+                                  child: FaIcon(
+                                    FontAwesomeIcons.whatsapp,
+                                    color: Colors.white,
+                                    size: 28,
+                                  ),
+                                ),
                               ),
                               const SizedBox(width: 8),
                             ],
                             if (_address.isNotEmpty)
                               CircularActionButton(
-                                icon: Icons.map_outlined,
-                                color: const Color(0xFF4B5563),
-                                onPressed: () {
-                                  ScaffoldMessenger.of(context).showSnackBar(
-                                    SnackBar(
-                                      content: Text(
-                                        'Abriendo mapa para $_address...',
+                                icon: Icons.location_on,
+                                color: const Color(0xFF0369A1),
+                                onPressed: () async {
+                                  final addr = customer.addresses
+                                          .where((a) => a.isPrimary)
+                                          .firstOrNull ??
+                                      customer.addresses.firstOrNull;
+                                  if (addr == null) return;
+
+                                  await Navigator.of(context).push<LatLng>(
+                                    MaterialPageRoute(
+                                      builder: (context) => AddressPickerMap(
+                                        initialLatitude: addr.latitude,
+                                        initialLongitude: addr.longitude,
+                                        initialSearchQuery: addr.street,
+                                        onSave: (latLng) async {
+                                          final repository =
+                                              ref.read(customerRepositoryProvider);
+                                          final updateResult =
+                                              await repository
+                                                  .updateAddressCoordinates(
+                                            addr.id,
+                                            latLng.latitude,
+                                            latLng.longitude,
+                                          );
+
+                                          if (context.mounted) {
+                                            switch (updateResult) {
+                                              case Success():
+                                                TopToast.showSuccess(
+                                                  context,
+                                                  'Ubicación del cliente guardada',
+                                                );
+                                                ref
+                                                    .read(
+                                                        paginatedCustomerListProvider
+                                                            .notifier)
+                                                    .refresh();
+                                                ref.invalidate(
+                                                    customerByIdProvider(
+                                                        customer.id));
+                                              case Error(:final error):
+                                                TopToast.showError(
+                                                  context,
+                                                  'Error al guardar ubicación: $error',
+                                                );
+                                            }
+                                          }
+                                        },
                                       ),
-                                      duration: const Duration(seconds: 1),
+                                      fullscreenDialog: true,
                                     ),
                                   );
                                 },

@@ -36,17 +36,13 @@ class _CreateCustomerScreenState extends ConsumerState<CreateCustomerScreen> {
     final formState = ref.watch(customerFormProvider);
     final formNotifier = ref.read(customerFormProvider.notifier);
 
-    // Listen to step changes to animate page view
+    // Listen to step changes to jump page view
     ref.listen(customerFormProvider.select((state) => state.currentStep), (
       prev,
       next,
     ) {
       if (prev != next && _pageController.hasClients) {
-        _pageController.animateToPage(
-          next,
-          duration: const Duration(milliseconds: 300),
-          curve: Curves.easeInOutCubic,
-        );
+        _pageController.jumpToPage(next);
       }
     });
 
@@ -105,11 +101,14 @@ class _CreateCustomerScreenState extends ConsumerState<CreateCustomerScreen> {
                     apartment: formState.apartment,
                     floor: formState.floor,
                     visualReference: formState.visualReference,
+                    latitude: formState.latitude,
+                    longitude: formState.longitude,
                     onStreetChanged: formNotifier.updateStreet,
                     onApartmentChanged: formNotifier.updateApartment,
                     onFloorChanged: formNotifier.updateFloor,
                     onVisualReferenceChanged:
                         formNotifier.updateVisualReference,
+                    onCoordinatesChanged: formNotifier.updateCoordinates,
                   ),
                   StepPreferenceView(
                     preferences: formState.preferences,

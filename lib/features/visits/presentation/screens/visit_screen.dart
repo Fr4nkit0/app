@@ -1,7 +1,13 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:url_launcher/url_launcher.dart';
+import 'package:app/core/utils/address_formatter.dart';
 import 'package:app/core/widgets/top_toast.dart';
+import 'package:app/features/customers/presentation/providers/customer_count_provider.dart';
+import 'package:app/features/customers/presentation/providers/customer_repository_provider.dart';
+import 'package:app/features/customers/presentation/widgets/address_picker_map.dart';
 import 'package:app/features/route/domain/models/route_stop.dart';
+import 'package:latlong2/latlong.dart';
 import 'package:app/features/route/domain/models/stop_status.dart';
 import 'package:app/features/route/presentation/providers/route_repository_provider.dart';
 import 'package:app/features/sales/presentation/providers/sale_draft_provider.dart';
@@ -14,7 +20,12 @@ import 'package:app/features/visits/presentation/providers/complete_visit_usecas
 import 'package:app/features/inventory/presentation/providers/inventory_repository_provider.dart';
 import 'package:app/features/inventory/domain/models/customer_container_balance.dart';
 import 'package:app/features/inventory/domain/models/container_movement.dart';
+import 'package:font_awesome_flutter/font_awesome_flutter.dart';
 import 'package:uuid/uuid.dart';
+import 'package:app/features/payments/presentation/providers/payment_repository_provider.dart';
+import 'package:app/features/payments/presentation/widgets/debt_payment_dialog.dart';
+import 'package:app/features/payments/domain/models/payment.dart';
+import 'package:app/core/utils/resource.dart';
 
 final stopSalesProvider = StreamProvider.family<List<Sale>, String>((
   ref,
@@ -24,6 +35,14 @@ final stopSalesProvider = StreamProvider.family<List<Sale>, String>((
   return repo.watchAllSales().map(
     (sales) => sales.where((s) => s.visitId == stopId).toList(),
   );
+});
+
+final visitPaymentsProvider = StreamProvider.family<List<Payment>, String>((
+  ref,
+  stopId,
+) {
+  final repo = ref.watch(paymentRepositoryProvider);
+  return repo.watchVisitPayments(stopId);
 });
 
 class VisitScreen extends ConsumerStatefulWidget {
@@ -59,11 +78,15 @@ class _VisitScreenState extends ConsumerState<VisitScreen> {
       );
     }
 
+    final balanceAsync = ref.watch(customerBalanceProvider(stop.customer.id));
+    final balance = balanceAsync.value ?? stop.customer.debtAmount;
+
     final isDone = stop.status != StopStatus.pending;
     final salesAsync = ref.watch(stopSalesProvider(widget.stopId));
     final visitMovementsAsync = ref.watch(
       visitMovementsProvider(widget.stopId),
     );
+    final visitPaymentsAsync = ref.watch(visitPaymentsProvider(widget.stopId));
 
     return salesAsync.when(
       data: (sales) {
@@ -72,8 +95,12 @@ class _VisitScreenState extends ConsumerState<VisitScreen> {
           data: (movements) => movements.any((m) => m.returnedQuantity > 0),
           orElse: () => false,
         );
+        final hasPayments = visitPaymentsAsync.maybeWhen(
+          data: (payments) => payments.isNotEmpty,
+          orElse: () => false,
+        );
 
-        if (hasReturns && _soloVisitResult == 'absent') {
+        if ((hasReturns || hasPayments) && _soloVisitResult == 'absent') {
           _soloVisitResult = null;
         }
 
@@ -143,8 +170,8 @@ class _VisitScreenState extends ConsumerState<VisitScreen> {
                         const SizedBox(height: 20),
 
                         // Custom banners based on state
-                        if (stop.customer.debtAmount > 0)
-                          _buildDebtBanner(stop.customer.debtAmount),
+                        if (balance > 0)
+                          _buildDebtBanner(balance, stop),
                         const SizedBox(height: 12),
                         _buildCustodyBanner(stop),
                         const SizedBox(height: 24),
@@ -190,6 +217,7 @@ class _VisitScreenState extends ConsumerState<VisitScreen> {
                               child: !_isSaleSelected
                                   ? _buildSoloVisitSubSection(
                                       hasReturns: hasReturns,
+                                      hasPayments: hasPayments,
                                     )
                                   : const SizedBox.shrink(),
                             ),
@@ -228,7 +256,12 @@ class _VisitScreenState extends ConsumerState<VisitScreen> {
 
   Widget _buildCustomerCard(RouteStop stop) {
     final address = stop.customer.addresses.isNotEmpty
-        ? stop.customer.addresses.first.street ?? ''
+        ? AddressFormatter.format(
+            street: stop.customer.addresses.first.street,
+            floor: stop.customer.addresses.first.floor,
+            apartment: stop.customer.addresses.first.apartment,
+            visualReference: stop.customer.addresses.first.visualReference,
+          )
         : 'Sin dirección cargada';
 
     return Container(
@@ -253,7 +286,7 @@ class _VisitScreenState extends ConsumerState<VisitScreen> {
             children: [
               Expanded(
                 child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
+                  crossAxisAlignment: CrossAxisAlignment.center,
                   children: [
                     Text(
                       'CLIENTE ACTUAL',
@@ -283,10 +316,40 @@ class _VisitScreenState extends ConsumerState<VisitScreen> {
                 color: const Color(0xFF1565C0).withValues(alpha: 0.08),
                 borderRadius: BorderRadius.circular(16),
                 child: InkWell(
-                  onTap: () {
-                    ScaffoldMessenger.of(context).showSnackBar(
-                      SnackBar(
-                        content: Text('Abriendo mapa para: $address...'),
+                  onTap: () async {
+                    final addr = stop.customer.addresses.firstOrNull;
+                    if (addr == null) return;
+
+                    await Navigator.of(context).push<LatLng>(
+                      MaterialPageRoute(
+                        builder: (context) => AddressPickerMap(
+                          initialLatitude: addr.latitude,
+                          initialLongitude: addr.longitude,
+                          initialSearchQuery: addr.street,
+                          onSave: (latLng) async {
+                            final repository = ref.read(customerRepositoryProvider);
+                            final updateResult = await repository.updateAddressCoordinates(
+                              addr.id,
+                              latLng.latitude,
+                              latLng.longitude,
+                            );
+                            if (!mounted) return;
+                            switch (updateResult) {
+                              case Success():
+                                TopToast.showSuccess(
+                                  context,
+                                  'Ubicación del cliente guardada',
+                                );
+                                ref.invalidate(customerByIdProvider(stop.customer.id));
+                              case Error(:final error):
+                                TopToast.showError(
+                                  context,
+                                  'Error al guardar ubicación: $error',
+                                );
+                            }
+                          },
+                        ),
+                        fullscreenDialog: true,
                       ),
                     );
                   },
@@ -296,9 +359,9 @@ class _VisitScreenState extends ConsumerState<VisitScreen> {
                     height: 48,
                     alignment: Alignment.center,
                     child: const Icon(
-                      Icons.map_outlined,
+                      Icons.location_on,
                       color: Color(0xFF1565C0),
-                      size: 24,
+                      size: 28,
                     ),
                   ),
                 ),
@@ -317,7 +380,7 @@ class _VisitScreenState extends ConsumerState<VisitScreen> {
                   shape: BoxShape.circle,
                 ),
                 child: const Icon(
-                  Icons.location_on_outlined,
+                  Icons.location_on,
                   size: 16,
                   color: Color(0xFF1565C0),
                 ),
@@ -342,23 +405,47 @@ class _VisitScreenState extends ConsumerState<VisitScreen> {
                 Container(
                   padding: const EdgeInsets.all(6),
                   decoration: BoxDecoration(
-                    color: const Color(0xFF10B981).withValues(alpha: 0.06),
+                    color: const Color(0xFF25D366), //.withValues(alpha: 0.06),
                     shape: BoxShape.circle,
                   ),
-                  child: const Icon(
-                    Icons.phone_outlined,
+                  child: const FaIcon(
+                    FontAwesomeIcons.whatsapp,
+                    color: Colors.white,
                     size: 16,
-                    color: Color(0xFF10B981),
                   ),
                 ),
                 const SizedBox(width: 10),
                 Expanded(
-                  child: Text(
-                    stop.customer.phone!,
-                    style: const TextStyle(
-                      fontSize: 14,
-                      fontWeight: FontWeight.w600,
-                      color: Color(0xFF475569),
+                  child: GestureDetector(
+                    onLongPress: () async {
+                      final phone = stop.customer.phone!.replaceAll(
+                        RegExp(r'[^\d]'),
+                        '',
+                      );
+                      final uri = Uri.parse('https://wa.me/$phone');
+                      try {
+                        await launchUrl(
+                          uri,
+                          mode: LaunchMode.externalApplication,
+                        );
+                      } catch (_) {
+                        if (context.mounted) {
+                          ScaffoldMessenger.of(context).showSnackBar(
+                            const SnackBar(
+                              content: Text('No se pudo abrir WhatsApp'),
+                              duration: Duration(seconds: 2),
+                            ),
+                          );
+                        }
+                      }
+                    },
+                    child: Text(
+                      stop.customer.phone!,
+                      style: const TextStyle(
+                        fontSize: 14,
+                        fontWeight: FontWeight.w600,
+                        color: Color(0xFF475569),
+                      ),
                     ),
                   ),
                 ),
@@ -370,44 +457,146 @@ class _VisitScreenState extends ConsumerState<VisitScreen> {
     );
   }
 
-  Widget _buildDebtBanner(double debt) {
-    return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
-      decoration: BoxDecoration(
-        color: const Color(0xFFFEF2F2),
+  Widget _buildDebtBanner(double debt, RouteStop stop) {
+    final isDone = stop.status != StopStatus.pending;
+    return Material(
+      color: const Color(0xFFFEF2F2),
+      borderRadius: BorderRadius.circular(16),
+      child: InkWell(
+        onTap: isDone
+            ? null
+            : () async {
+                final result = await showDialog<DebtPaymentResult>(
+                  context: context,
+                  builder: (_) => DebtPaymentDialog(totalDebt: debt),
+                );
+                if (result == null) return;
+
+                final payments = <Payment>[];
+                final now = DateTime.now();
+                if (result.method == 'Efectivo') {
+                  payments.add(
+                    Payment(
+                      id: const Uuid().v4(),
+                      customerId: stop.customer.id,
+                      amount: result.cashAmount!,
+                      type: PaymentType.cash,
+                      createdAt: now,
+                      visitId: stop.id,
+                    ),
+                  );
+                } else if (result.method == 'Transferencia') {
+                  payments.add(
+                    Payment(
+                      id: const Uuid().v4(),
+                      customerId: stop.customer.id,
+                      amount: result.transferAmount!,
+                      type: PaymentType.transfer,
+                      createdAt: now,
+                      visitId: stop.id,
+                    ),
+                  );
+                } else if (result.method == 'Mixto') {
+                  if (result.cashAmount != null && result.cashAmount! > 0) {
+                    payments.add(
+                      Payment(
+                        id: const Uuid().v4(),
+                        customerId: stop.customer.id,
+                        amount: result.cashAmount!,
+                        type: PaymentType.cash,
+                        createdAt: now,
+                        visitId: stop.id,
+                      ),
+                    );
+                  }
+                  if (result.transferAmount != null &&
+                      result.transferAmount! > 0) {
+                    payments.add(
+                      Payment(
+                        id: const Uuid().v4(),
+                        customerId: stop.customer.id,
+                        amount: result.transferAmount!,
+                        type: PaymentType.transfer,
+                        createdAt: now.add(const Duration(milliseconds: 10)),
+                        visitId: stop.id,
+                      ),
+                    );
+                  }
+                }
+
+                if (payments.isNotEmpty) {
+                  final usecase = ref.read(registerPaymentUseCaseProvider);
+                  final res = await usecase.execute(payments);
+                  if (res is Success) {
+                    if (context.mounted) {
+                      TopToast.show(
+                        context,
+                        message: 'Pago registrado con éxito',
+                        icon: Icons.check_circle_rounded,
+                        color: const Color(0xFF10B981),
+                      );
+                    }
+                  } else if (res is Error) {
+                    if (context.mounted) {
+                      TopToast.show(
+                        context,
+                        message: 'Error al registrar pago: ${res.error}',
+                        icon: Icons.error_outline,
+                        color: const Color(0xFFDC2626),
+                      );
+                    }
+                  }
+                }
+              },
         borderRadius: BorderRadius.circular(16),
-        border: Border.all(
-          color: const Color(0xFFFCA5A5).withValues(alpha: 0.5),
-          width: 1,
-        ),
-      ),
-      child: Row(
-        children: [
-          const Icon(
-            Icons.warning_amber_rounded,
-            color: Color(0xFFDC2626),
-            size: 20,
+        child: Container(
+          padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
+          decoration: BoxDecoration(
+            borderRadius: BorderRadius.circular(16),
+            border: Border.all(
+              color: const Color(0xFFFEE2E2),
+              width: 1.5,
+            ),
           ),
-          const SizedBox(width: 10),
-          const Expanded(
-            child: Text(
-              'Deuda pendiente',
-              style: TextStyle(
-                fontSize: 13,
-                fontWeight: FontWeight.w700,
-                color: Color(0xFF991B1B),
+          child: Row(
+            children: [
+              const Icon(
+                Icons.warning_amber_rounded,
+                color: Color(0xFFEF4444),
+                size: 20,
               ),
-            ),
+              const SizedBox(width: 10),
+              Expanded(
+                child: Text(
+                  isDone
+                      ? 'Deuda pendiente'
+                      : 'Deuda pendiente (Tocar para pagar)',
+                  style: TextStyle(
+                    fontSize: 13,
+                    fontWeight: FontWeight.w700,
+                    color: Colors.red.shade700,
+                  ),
+                ),
+              ),
+              Text(
+                '-\$${debt.toStringAsFixed(0)}',
+                style: const TextStyle(
+                  fontSize: 15,
+                  fontWeight: FontWeight.w900,
+                  color: Color(0xFFEF4444),
+                ),
+              ),
+              if (!isDone) ...[
+                const SizedBox(width: 6),
+                const Icon(
+                  Icons.chevron_right_rounded,
+                  color: Color(0xFFEF4444),
+                  size: 20,
+                ),
+              ],
+            ],
           ),
-          Text(
-            '-\$${debt.toStringAsFixed(0)}',
-            style: const TextStyle(
-              fontSize: 15,
-              fontWeight: FontWeight.w900,
-              color: Color(0xFFDC2626),
-            ),
-          ),
-        ],
+        ),
       ),
     );
   }
@@ -672,7 +861,10 @@ class _VisitScreenState extends ConsumerState<VisitScreen> {
     );
   }
 
-  Widget _buildSoloVisitSubSection({required bool hasReturns}) {
+  Widget _buildSoloVisitSubSection({
+    required bool hasReturns,
+    required bool hasPayments,
+  }) {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
@@ -693,7 +885,7 @@ class _VisitScreenState extends ConsumerState<VisitScreen> {
               'Ausente',
               'absent',
               Icons.person_off_outlined,
-              isEnabled: !hasReturns,
+              isEnabled: !hasReturns && !hasPayments,
             ),
             const SizedBox(width: 8),
             _buildResultButton('No quiso', 'refused', Icons.block_flipped),

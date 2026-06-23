@@ -17,4 +17,9 @@ abstract class CustomerRepository {
     required int page,
     required int pageSize,
   });
+  Future<Resource<void>> updateAddressCoordinates(
+    String addressId,
+    double latitude,
+    double longitude,
+  );
 }

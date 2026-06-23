@@ -10,7 +10,7 @@ Future<void> seedDatabase(AppDatabase db) async {
       name: 'José García',
       phone: '387-555-0101',
       addressId: 'mock-addr-1',
-      street: 'Av. San Martín 1234',
+      street: 'Av. San Martín 1300',
       prefId: 'mock-pref-1',
       dayOfWeek: 1, // Lunes
       start: '08:00',
@@ -21,7 +21,7 @@ Future<void> seedDatabase(AppDatabase db) async {
       name: 'Laura Gómez',
       phone: '387-555-0202',
       addressId: 'mock-addr-2',
-      street: 'Belgrano 456',
+      street: 'mza 517 C',
       prefId: 'mock-pref-2',
       dayOfWeek: 2, // Martes
       start: '14:00',
@@ -32,7 +32,7 @@ Future<void> seedDatabase(AppDatabase db) async {
       name: "Despensa 'El Sol'",
       phone: '387-555-0303',
       addressId: 'mock-addr-3',
-      street: 'Mitre 789',
+      street: 'mza 77 A',
       prefId: 'mock-pref-3',
       dayOfWeek: 3, // Miércoles
       start: '09:00',
@@ -43,7 +43,7 @@ Future<void> seedDatabase(AppDatabase db) async {
       name: 'Kiosco Don Juan',
       phone: '387-555-0404',
       addressId: 'mock-addr-4',
-      street: 'Zuviría 101',
+      street: 'mza 912 D',
       prefId: 'mock-pref-4',
       dayOfWeek: 4, // Jueves
       start: '15:00',

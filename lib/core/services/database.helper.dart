@@ -47,7 +47,7 @@ class AppDatabase extends _$AppDatabase {
   AppDatabase([QueryExecutor? executor]) : super(executor ?? _openConnection());
 
   @override
-  int get schemaVersion => 3;
+  int get schemaVersion => 4;
 
   @override
   MigrationStrategy get migration => MigrationStrategy(
@@ -64,6 +64,16 @@ class AppDatabase extends _$AppDatabase {
         await m.createTable(customerContainerBalanceTable);
         await m.createTable(routeInventoryLoadTable);
         await m.createTable(auditLogTable);
+      }
+      if (from < 4) {
+        final columns = await customSelect("PRAGMA table_info(customer_addresses)").get();
+        final columnNames = columns.map((row) => row.read<String>('name')).toList();
+        if (!columnNames.contains('latitude')) {
+          await m.addColumn(customerAddressTable, customerAddressTable.latitude);
+        }
+        if (!columnNames.contains('longitude')) {
+          await m.addColumn(customerAddressTable, customerAddressTable.longitude);
+        }
       }
     },
     beforeOpen: (details) async {

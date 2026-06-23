@@ -5,6 +5,8 @@ class CustomerAddress {
   final String? floor;
   final String? visualReference;
   final bool isPrimary;
+  final double? latitude;
+  final double? longitude;
 
   CustomerAddress({
     required this.id,
@@ -13,5 +15,7 @@ class CustomerAddress {
     this.floor,
     this.visualReference,
     this.isPrimary = false,
+    this.latitude,
+    this.longitude,
   });
 }

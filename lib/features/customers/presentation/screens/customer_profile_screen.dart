@@ -1,9 +1,13 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:app/core/utils/avatar_utils.dart';
+import 'package:app/core/utils/address_formatter.dart';
 import 'package:app/features/customers/domain/models/customer.dart';
 import 'package:app/features/customers/presentation/providers/customer_count_provider.dart';
+import 'package:app/features/customers/presentation/providers/customer_repository_provider.dart';
+import 'package:app/features/customers/presentation/widgets/address_picker_map.dart';
 import 'package:app/features/history/domain/models/history_entry.dart';
+import 'package:latlong2/latlong.dart';
 import 'package:app/features/history/presentation/providers/history_list_provider.dart';
 import 'package:app/features/history/presentation/widgets/history_entry_tile.dart';
 import 'package:app/features/sales/presentation/providers/sale_draft_provider.dart';
@@ -13,6 +17,10 @@ import 'package:app/features/inventory/domain/models/customer_container_balance.
 import 'package:app/features/inventory/domain/models/container_movement.dart';
 import 'package:app/core/widgets/top_toast.dart';
 import 'package:uuid/uuid.dart';
+import 'package:app/core/utils/resource.dart';
+import 'package:app/features/payments/presentation/providers/payment_repository_provider.dart';
+import 'package:app/features/payments/presentation/widgets/debt_payment_dialog.dart';
+import 'package:app/features/payments/domain/models/payment.dart';
 
 class CustomerProfileScreen extends ConsumerStatefulWidget {
   const CustomerProfileScreen({super.key, required this.customerId});
@@ -30,6 +38,26 @@ class _CustomerProfileScreenState extends ConsumerState<CustomerProfileScreen> {
   static const _days = ['', 'Lun', 'Mar', 'Mié', 'Jue', 'Vie', 'Sáb', 'Dom'];
 
   String _dayName(int day) => day >= 1 && day <= 7 ? _days[day] : 'Día $day';
+
+  Future<void> _updateCoordinates(
+    BuildContext context,
+    String addressId,
+    double lat,
+    double lng,
+  ) async {
+    final repository = ref.read(customerRepositoryProvider);
+    final result = await repository.updateAddressCoordinates(addressId, lat, lng);
+
+    if (context.mounted) {
+      switch (result) {
+        case Success():
+          TopToast.showSuccess(context, 'Coordenadas actualizadas correctamente');
+          ref.invalidate(customerByIdProvider(widget.customerId));
+        case Error(:final error):
+          TopToast.showError(context, 'Error al guardar coordenadas: $error');
+      }
+    }
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -203,176 +231,280 @@ class _CustomerProfileScreenState extends ConsumerState<CustomerProfileScreen> {
           const SizedBox(height: 24),
           Padding(
             padding: const EdgeInsets.symmetric(horizontal: 16),
-            child: Row(
-              children: [
-                Expanded(
-                  child: Container(
-                    padding: const EdgeInsets.all(14),
-                    decoration: BoxDecoration(
-                      color: const Color(0xFFFEF2F2),
-                      borderRadius: BorderRadius.circular(16),
-                      border: Border.all(color: const Color(0xFFFEE2E2)),
-                    ),
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        Row(
-                          mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                          children: [
-                            Text(
-                              'Saldo en dinero',
-                              style: TextStyle(
-                                fontSize: 12,
-                                fontWeight: FontWeight.w600,
-                                color: Colors.red.shade900,
-                              ),
-                            ),
-                            const Icon(
-                              Icons.credit_card_rounded,
-                              size: 16,
-                              color: Color(0xFFEF4444),
-                            ),
-                          ],
-                        ),
-                        const SizedBox(height: 12),
-                        Text(
-                          '\$${customer.debtAmount.toStringAsFixed(0)}',
-                          style: const TextStyle(
-                            fontSize: 22,
-                            fontWeight: FontWeight.w800,
-                            color: Color(0xFFEF4444),
-                          ),
-                        ),
-                        const SizedBox(height: 4),
-                        Text(
-                          'Deuda pendiente',
-                          style: TextStyle(
-                            fontSize: 11,
-                            color: Colors.red.shade700,
-                          ),
-                        ),
-                      ],
-                    ),
-                  ),
-                ),
-                const SizedBox(width: 12),
-                Expanded(
-                  child: GestureDetector(
-                    onLongPress: () {
-                      final balancesAsync = ref.read(
-                        customerContainerBalancesProvider(customer.id),
-                      );
-                      final balances = balancesAsync.maybeWhen(
-                        data: (list) => list,
-                        orElse: () => <CustomerContainerBalance>[],
-                      );
-                      final hasActiveCustody = balances.any(
-                        (b) => b.quantity > 0,
-                      );
-                      if (!hasActiveCustody) return;
+            child: IntrinsicHeight(
+              child: Builder(
+                builder: (context) {
+                  final balanceAsync = ref.watch(customerBalanceProvider(customer.id));
+                  final balance = balanceAsync.value ?? customer.debtAmount;
+                  final containerBalancesAsync = ref.watch(customerContainerBalancesProvider(customer.id));
 
-                      showDialog(
-                        context: context,
-                        barrierDismissible: false,
-                        builder: (context) =>
-                            ProfileContainerReturnDialog(customer: customer),
-                      );
-                    },
-                    child: Container(
-                      padding: const EdgeInsets.all(14),
-                      decoration: BoxDecoration(
-                        color: Colors.white,
-                        borderRadius: BorderRadius.circular(16),
-                        border: Border.all(color: const Color(0xFFE2E8F0)),
-                      ),
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          const Row(
-                            mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                            children: [
-                              Text(
-                                'Comodatos activos',
-                                style: TextStyle(
-                                  fontSize: 12,
-                                  fontWeight: FontWeight.w600,
-                                  color: Color(0xFF0D1B3E),
+                  return Row(
+                    children: [
+                      Expanded(
+                        child: Material(
+                          color: balance > 0 ? const Color(0xFFFEF2F2) : const Color(0xFFECFDF5),
+                          borderRadius: BorderRadius.circular(16),
+                          child: InkWell(
+                            borderRadius: BorderRadius.circular(16),
+                            onTap: balance > 0
+                                ? () async {
+                                    final result = await showDialog<DebtPaymentResult>(
+                                      context: context,
+                                      builder: (_) => DebtPaymentDialog(totalDebt: balance),
+                                    );
+                                    if (result == null) return;
+
+                                    final payments = <Payment>[];
+                                    final now = DateTime.now();
+                                    if (result.method == 'Efectivo') {
+                                      payments.add(
+                                        Payment(
+                                          id: const Uuid().v4(),
+                                          customerId: customer.id,
+                                          amount: result.cashAmount!,
+                                          type: PaymentType.cash,
+                                          createdAt: now,
+                                        ),
+                                      );
+                                    } else if (result.method == 'Transferencia') {
+                                      payments.add(
+                                        Payment(
+                                          id: const Uuid().v4(),
+                                          customerId: customer.id,
+                                          amount: result.transferAmount!,
+                                          type: PaymentType.transfer,
+                                          createdAt: now,
+                                        ),
+                                      );
+                                    } else if (result.method == 'Mixto') {
+                                      if (result.cashAmount != null && result.cashAmount! > 0) {
+                                        payments.add(
+                                          Payment(
+                                            id: const Uuid().v4(),
+                                            customerId: customer.id,
+                                            amount: result.cashAmount!,
+                                            type: PaymentType.cash,
+                                            createdAt: now,
+                                          ),
+                                        );
+                                      }
+                                      if (result.transferAmount != null &&
+                                          result.transferAmount! > 0) {
+                                        payments.add(
+                                          Payment(
+                                            id: const Uuid().v4(),
+                                            customerId: customer.id,
+                                            amount: result.transferAmount!,
+                                            type: PaymentType.transfer,
+                                            createdAt: now.add(const Duration(milliseconds: 10)),
+                                          ),
+                                        );
+                                      }
+                                    }
+
+                                    if (payments.isNotEmpty) {
+                                      final usecase = ref.read(registerPaymentUseCaseProvider);
+                                      final res = await usecase.execute(payments);
+                                      if (res is Success) {
+                                        if (context.mounted) {
+                                          TopToast.show(
+                                            context,
+                                            message: 'Pago registrado con éxito',
+                                            icon: Icons.check_circle_rounded,
+                                            color: const Color(0xFF10B981),
+                                          );
+                                        }
+                                      } else if (res is Error) {
+                                        if (context.mounted) {
+                                          TopToast.show(
+                                            context,
+                                            message: 'Error al registrar pago: ${res.error}',
+                                            icon: Icons.error_outline,
+                                            color: const Color(0xFFDC2626),
+                                          );
+                                        }
+                                      }
+                                    }
+                                  }
+                                : null,
+                            child: Container(
+                              padding: const EdgeInsets.all(14),
+                              decoration: BoxDecoration(
+                                borderRadius: BorderRadius.circular(16),
+                                border: Border.all(
+                                  color: balance > 0
+                                      ? const Color(0xFFFEE2E2)
+                                      : const Color(0xFFA7F3D0),
                                 ),
                               ),
-                              Icon(
-                                Icons.inventory_2_outlined,
-                                size: 16,
-                                color: Color(0xFF1565C0),
-                              ),
-                            ],
-                          ),
-                          const SizedBox(height: 12),
-                          ref
-                              .watch(
-                                customerContainerBalancesProvider(customer.id),
-                              )
-                              .when(
-                                data: (balances) {
-                                  final bidon = balances
-                                      .firstWhere(
-                                        (b) => b.containerType == 'BIDON_20L',
-                                        orElse: () => CustomerContainerBalance(
-                                          customerId: customer.id,
-                                          containerType: 'BIDON_20L',
-                                          quantity: 0,
-                                        ),
-                                      )
-                                      .quantity;
-                                  final sifon = balances
-                                      .firstWhere(
-                                        (b) => b.containerType == 'SIFON_2L',
-                                        orElse: () => CustomerContainerBalance(
-                                          customerId: customer.id,
-                                          containerType: 'SIFON_2L',
-                                          quantity: 0,
-                                        ),
-                                      )
-                                      .quantity;
-
-                                  return Column(
+                              child: Column(
+                                crossAxisAlignment: CrossAxisAlignment.start,
+                                children: [
+                                  Row(
+                                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
                                     children: [
-                                      _buildProfileCustodyRow(
-                                        icon: Icons.water_drop_outlined,
-                                        label: 'Bidón 20L',
-                                        count: bidon,
+                                      Text(
+                                        'Saldo en dinero',
+                                        style: TextStyle(
+                                          fontSize: 12,
+                                          fontWeight: FontWeight.w600,
+                                          color: balance > 0
+                                              ? Colors.red.shade900
+                                              : Colors.green.shade900,
+                                        ),
                                       ),
-                                      const SizedBox(height: 8),
-                                      _buildProfileCustodyRow(
-                                        icon: Icons.local_drink_outlined,
-                                        label: 'Sifón 2L',
-                                        count: sifon,
+                                      Icon(
+                                        balance > 0
+                                            ? Icons.credit_card_rounded
+                                            : (balance == 0
+                                                ? Icons.check_circle_rounded
+                                                : Icons.monetization_on_outlined),
+                                        size: 16,
+                                        color: balance > 0
+                                            ? const Color(0xFFEF4444)
+                                            : const Color(0xFF10B981),
                                       ),
                                     ],
-                                  );
-                                },
-                                loading: () => const Center(
-                                  child: SizedBox(
-                                    width: 16,
-                                    height: 16,
-                                    child: CircularProgressIndicator(
-                                      strokeWidth: 2,
+                                  ),
+                                  const SizedBox(height: 12),
+                                  Text(
+                                    balance > 0
+                                        ? '\$${balance.toStringAsFixed(0)}'
+                                        : (balance == 0
+                                            ? '\$0'
+                                            : '\$${(-balance).toStringAsFixed(0)}'),
+                                    style: TextStyle(
+                                      fontSize: 22,
+                                      fontWeight: FontWeight.w800,
+                                      color: balance > 0
+                                          ? const Color(0xFFEF4444)
+                                          : const Color(0xFF10B981),
                                     ),
                                   ),
-                                ),
-                                error: (err, stack) => const Text(
-                                  'Error',
-                                  style: TextStyle(
-                                    fontSize: 12,
-                                    color: Colors.red,
+                                  const SizedBox(height: 4),
+                                  Text(
+                                    balance > 0
+                                        ? 'Deuda: \$${balance.toStringAsFixed(0)} (Tocar para pagar)'
+                                        : (balance == 0
+                                            ? 'Al día'
+                                            : 'Saldo a favor: \$${(-balance).toStringAsFixed(0)}'),
+                                    style: TextStyle(
+                                      fontSize: 11,
+                                      color: balance > 0
+                                          ? Colors.red.shade700
+                                          : Colors.green.shade700,
+                                    ),
                                   ),
-                                ),
+                                ],
                               ),
-                        ],
+                            ),
+                          ),
+                        ),
                       ),
-                    ),
-                  ),
-                ),
-              ],
+                      const SizedBox(width: 12),
+                      Flexible(
+                        child: Material(
+                          color: Colors.white,
+                          borderRadius: BorderRadius.circular(16),
+                          child: InkWell(
+                            borderRadius: BorderRadius.circular(16),
+                            onTap: () {
+                              showDialog(
+                                context: context,
+                                builder: (_) => ProfileContainerReturnDialog(customer: customer),
+                              );
+                            },
+                            child: Container(
+                              padding: const EdgeInsets.all(14),
+                              decoration: BoxDecoration(
+                                borderRadius: BorderRadius.circular(16),
+                                border: Border.all(color: const Color(0xFFE2E8F0)),
+                              ),
+                              child: Column(
+                                crossAxisAlignment: CrossAxisAlignment.start,
+                                children: [
+                                  const Row(
+                                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                                    children: [
+                                      Text(
+                                        'Comodatos activos',
+                                        style: TextStyle(
+                                          fontSize: 12,
+                                          fontWeight: FontWeight.w600,
+                                          color: Color(0xFF0D1B3E),
+                                        ),
+                                      ),
+                                      Icon(
+                                        Icons.inventory_2_outlined,
+                                        size: 16,
+                                        color: Color(0xFF1565C0),
+                                      ),
+                                    ],
+                                  ),
+                                  const SizedBox(height: 12),
+                                  containerBalancesAsync.when(
+                                    data: (balances) {
+                                      final bidon = balances
+                                          .firstWhere(
+                                            (b) => b.containerType == 'BIDON_20L',
+                                            orElse: () => CustomerContainerBalance(
+                                              customerId: customer.id,
+                                              containerType: 'BIDON_20L',
+                                              quantity: 0,
+                                            ),
+                                          )
+                                          .quantity;
+                                      final sifon = balances
+                                          .firstWhere(
+                                            (b) => b.containerType == 'SIFON_2L',
+                                            orElse: () => CustomerContainerBalance(
+                                              customerId: customer.id,
+                                              containerType: 'SIFON_2L',
+                                              quantity: 0,
+                                            ),
+                                          )
+                                          .quantity;
+
+                                      return Column(
+                                        children: [
+                                          _buildProfileCustodyRow(
+                                            icon: Icons.water_drop_outlined,
+                                            label: 'Bidón 20L',
+                                            count: bidon,
+                                          ),
+                                          const SizedBox(height: 8),
+                                          _buildProfileCustodyRow(
+                                            icon: Icons.local_drink_outlined,
+                                            label: 'Sifón 2L',
+                                            count: sifon,
+                                          ),
+                                        ],
+                                      );
+                                    },
+                                    loading: () => const SizedBox(
+                                      height: 16,
+                                      width: 16,
+                                      child: CircularProgressIndicator(strokeWidth: 2),
+                                    ),
+                                    error: (_, __) => Text(
+                                      'Sin comodatos',
+                                      style: TextStyle(
+                                        fontSize: 13,
+                                        color: Colors.grey.shade500,
+                                        fontStyle: FontStyle.italic,
+                                      ),
+                                    ),
+                                  ),
+                                ],
+                              ),
+                            ),
+                          ),
+                        ),
+                      ),
+                    ],
+                  );
+                },
+              ),
             ),
           ),
         ],
@@ -660,74 +792,65 @@ class _CustomerProfileScreenState extends ConsumerState<CustomerProfileScreen> {
                 const Divider(height: 24, color: Color(0xFFE2E8F0)),
                 if (addr != null) ...[
                   Text(
-                    addr.street ?? 'Sin nombre de calle',
+                    AddressFormatter.format(
+                      street: addr.street,
+                      floor: addr.floor,
+                      apartment: addr.apartment,
+                      visualReference: addr.visualReference,
+                    ),
                     style: const TextStyle(
                       fontSize: 15,
                       fontWeight: FontWeight.w700,
                       color: Color(0xFF0D1B3E),
                     ),
                   ),
-                  if (addr.floor != null || addr.apartment != null) ...[
-                    const SizedBox(height: 4),
-                    Text(
-                      [
-                        if (addr.floor != null) 'Piso ${addr.floor}',
-                        if (addr.apartment != null) 'Depto ${addr.apartment}',
-                      ].join(' - '),
-                      style: TextStyle(
-                        fontSize: 13,
-                        color: Colors.grey.shade600,
-                      ),
-                    ),
-                  ],
-                  if (addr.visualReference != null &&
-                      addr.visualReference!.isNotEmpty) ...[
+                  if (addr.latitude != null && addr.longitude != null) ...[
                     const SizedBox(height: 8),
-                    Container(
-                      padding: const EdgeInsets.all(10),
-                      decoration: BoxDecoration(
-                        color: const Color(0xFFF8FAFC),
-                        borderRadius: BorderRadius.circular(8),
-                        border: Border.all(color: const Color(0xFFF1F5F9)),
-                      ),
-                      child: Row(
-                        children: [
-                          Icon(
-                            Icons.info_outline,
-                            size: 14,
-                            color: Colors.grey.shade500,
+                    Row(
+                      children: [
+                        const Icon(Icons.check_circle, size: 16, color: Colors.green),
+                        const SizedBox(width: 8),
+                        Text(
+                          'Ubicación fijada (${addr.latitude!.toStringAsFixed(6)}, ${addr.longitude!.toStringAsFixed(6)})',
+                          style: const TextStyle(
+                            fontSize: 13,
+                            color: Colors.green,
+                            fontWeight: FontWeight.w500,
                           ),
-                          const SizedBox(width: 8),
-                          Expanded(
-                            child: Text(
-                              addr.visualReference!,
-                              style: TextStyle(
-                                fontSize: 12,
-                                color: Colors.grey.shade600,
-                                fontStyle: FontStyle.italic,
-                              ),
-                            ),
-                          ),
-                        ],
-                      ),
+                        ),
+                      ],
                     ),
                   ],
                   const SizedBox(height: 14),
                   SizedBox(
                     width: double.infinity,
                     child: OutlinedButton.icon(
-                      onPressed: () {
-                        ScaffoldMessenger.of(context).showSnackBar(
-                          SnackBar(
-                            content: Text(
-                              'Abriendo mapa para ${addr.street ?? ''}...',
+                      onPressed: () async {
+                        await Navigator.of(context).push<LatLng>(
+                          MaterialPageRoute(
+                            builder: (context) => AddressPickerMap(
+                              initialLatitude: addr.latitude,
+                              initialLongitude: addr.longitude,
+                              initialSearchQuery: addr.street,
+                              onSave: (latLng) async {
+                                await _updateCoordinates(
+                                  context,
+                                  addr.id,
+                                  latLng.latitude,
+                                  latLng.longitude,
+                                );
+                              },
                             ),
-                            duration: const Duration(seconds: 1),
+                            fullscreenDialog: true,
                           ),
                         );
                       },
                       icon: const Icon(Icons.map_outlined, size: 16),
-                      label: const Text('Cómo llegar / Ver en Mapa'),
+                      label: Text(
+                        addr.latitude != null && addr.longitude != null
+                            ? 'Ver / Editar Ubicación'
+                            : 'Ubicar en Mapa',
+                      ),
                       style: OutlinedButton.styleFrom(
                         foregroundColor: const Color(0xFF1565C0),
                         side: const BorderSide(color: Color(0xFF1565C0)),

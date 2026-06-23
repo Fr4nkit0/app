@@ -189,7 +189,7 @@ void main() {
     });
 
     test('primary address is mapped from the seeded customer address', () async {
-      // mock-customer-1 has mock-addr-1 ('Av. San Martín 1234') seeded as primary.
+      // mock-customer-1 has mock-addr-1 ('Av. San Martín 1300') seeded as primary.
       await insertRoute('route-today', todayStr);
       final now = DateTime.now();
       await insertStop(
@@ -204,7 +204,7 @@ void main() {
       expect(stops.first.customer.addresses.length, 1);
       expect(
         stops.first.customer.addresses.first.street,
-        'Av. San Martín 1234',
+        'Av. San Martín 1300',
       );
       expect(stops.first.customer.addresses.first.isPrimary, isTrue);
     });

@@ -14,7 +14,7 @@ T _$identity<T>(T value) => value;
 /// @nodoc
 mixin _$CustomerFormState {
 
- int get currentStep; String get name; String get phone; String get street; String get apartment; String get floor; String get visualReference; List<CustomerPreference> get preferences; bool get isSubmitting; bool get isSuccess; String? get errorMessage;
+ int get currentStep; String get name; String get phone; String get street; String get apartment; String get floor; String get visualReference; List<CustomerPreference> get preferences; bool get isSubmitting; bool get isSuccess; String? get errorMessage; double? get latitude; double? get longitude;
 /// Create a copy of CustomerFormState
 /// with the given fields replaced by the non-null parameter values.
 @JsonKey(includeFromJson: false, includeToJson: false)
@@ -25,16 +25,16 @@ $CustomerFormStateCopyWith<CustomerFormState> get copyWith => _$CustomerFormStat
 
 @override
 bool operator ==(Object other) {
-  return identical(this, other) || (other.runtimeType == runtimeType&&other is CustomerFormState&&(identical(other.currentStep, currentStep) || other.currentStep == currentStep)&&(identical(other.name, name) || other.name == name)&&(identical(other.phone, phone) || other.phone == phone)&&(identical(other.street, street) || other.street == street)&&(identical(other.apartment, apartment) || other.apartment == apartment)&&(identical(other.floor, floor) || other.floor == floor)&&(identical(other.visualReference, visualReference) || other.visualReference == visualReference)&&const DeepCollectionEquality().equals(other.preferences, preferences)&&(identical(other.isSubmitting, isSubmitting) || other.isSubmitting == isSubmitting)&&(identical(other.isSuccess, isSuccess) || other.isSuccess == isSuccess)&&(identical(other.errorMessage, errorMessage) || other.errorMessage == errorMessage));
+  return identical(this, other) || (other.runtimeType == runtimeType&&other is CustomerFormState&&(identical(other.currentStep, currentStep) || other.currentStep == currentStep)&&(identical(other.name, name) || other.name == name)&&(identical(other.phone, phone) || other.phone == phone)&&(identical(other.street, street) || other.street == street)&&(identical(other.apartment, apartment) || other.apartment == apartment)&&(identical(other.floor, floor) || other.floor == floor)&&(identical(other.visualReference, visualReference) || other.visualReference == visualReference)&&const DeepCollectionEquality().equals(other.preferences, preferences)&&(identical(other.isSubmitting, isSubmitting) || other.isSubmitting == isSubmitting)&&(identical(other.isSuccess, isSuccess) || other.isSuccess == isSuccess)&&(identical(other.errorMessage, errorMessage) || other.errorMessage == errorMessage)&&(identical(other.latitude, latitude) || other.latitude == latitude)&&(identical(other.longitude, longitude) || other.longitude == longitude));
 }
 
 
 @override
-int get hashCode => Object.hash(runtimeType,currentStep,name,phone,street,apartment,floor,visualReference,const DeepCollectionEquality().hash(preferences),isSubmitting,isSuccess,errorMessage);
+int get hashCode => Object.hash(runtimeType,currentStep,name,phone,street,apartment,floor,visualReference,const DeepCollectionEquality().hash(preferences),isSubmitting,isSuccess,errorMessage,latitude,longitude);
 
 @override
 String toString() {
-  return 'CustomerFormState(currentStep: $currentStep, name: $name, phone: $phone, street: $street, apartment: $apartment, floor: $floor, visualReference: $visualReference, preferences: $preferences, isSubmitting: $isSubmitting, isSuccess: $isSuccess, errorMessage: $errorMessage)';
+  return 'CustomerFormState(currentStep: $currentStep, name: $name, phone: $phone, street: $street, apartment: $apartment, floor: $floor, visualReference: $visualReference, preferences: $preferences, isSubmitting: $isSubmitting, isSuccess: $isSuccess, errorMessage: $errorMessage, latitude: $latitude, longitude: $longitude)';
 }
 
 
@@ -45,7 +45,7 @@ abstract mixin class $CustomerFormStateCopyWith<$Res>  {
   factory $CustomerFormStateCopyWith(CustomerFormState value, $Res Function(CustomerFormState) _then) = _$CustomerFormStateCopyWithImpl;
 @useResult
 $Res call({
- int currentStep, String name, String phone, String street, String apartment, String floor, String visualReference, List<CustomerPreference> preferences, bool isSubmitting, bool isSuccess, String? errorMessage
+ int currentStep, String name, String phone, String street, String apartment, String floor, String visualReference, List<CustomerPreference> preferences, bool isSubmitting, bool isSuccess, String? errorMessage, double? latitude, double? longitude
 });
 
 
@@ -62,7 +62,7 @@ class _$CustomerFormStateCopyWithImpl<$Res>
 
 /// Create a copy of CustomerFormState
 /// with the given fields replaced by the non-null parameter values.
-@pragma('vm:prefer-inline') @override $Res call({Object? currentStep = null,Object? name = null,Object? phone = null,Object? street = null,Object? apartment = null,Object? floor = null,Object? visualReference = null,Object? preferences = null,Object? isSubmitting = null,Object? isSuccess = null,Object? errorMessage = freezed,}) {
+@pragma('vm:prefer-inline') @override $Res call({Object? currentStep = null,Object? name = null,Object? phone = null,Object? street = null,Object? apartment = null,Object? floor = null,Object? visualReference = null,Object? preferences = null,Object? isSubmitting = null,Object? isSuccess = null,Object? errorMessage = freezed,Object? latitude = freezed,Object? longitude = freezed,}) {
   return _then(_self.copyWith(
 currentStep: null == currentStep ? _self.currentStep : currentStep // ignore: cast_nullable_to_non_nullable
 as int,name: null == name ? _self.name : name // ignore: cast_nullable_to_non_nullable
@@ -75,7 +75,9 @@ as String,preferences: null == preferences ? _self.preferences : preferences // 
 as List<CustomerPreference>,isSubmitting: null == isSubmitting ? _self.isSubmitting : isSubmitting // ignore: cast_nullable_to_non_nullable
 as bool,isSuccess: null == isSuccess ? _self.isSuccess : isSuccess // ignore: cast_nullable_to_non_nullable
 as bool,errorMessage: freezed == errorMessage ? _self.errorMessage : errorMessage // ignore: cast_nullable_to_non_nullable
-as String?,
+as String?,latitude: freezed == latitude ? _self.latitude : latitude // ignore: cast_nullable_to_non_nullable
+as double?,longitude: freezed == longitude ? _self.longitude : longitude // ignore: cast_nullable_to_non_nullable
+as double?,
   ));
 }
 
@@ -160,10 +162,10 @@ return $default(_that);case _:
 /// }
 /// ```
 
-@optionalTypeArgs TResult maybeWhen<TResult extends Object?>(TResult Function( int currentStep,  String name,  String phone,  String street,  String apartment,  String floor,  String visualReference,  List<CustomerPreference> preferences,  bool isSubmitting,  bool isSuccess,  String? errorMessage)?  $default,{required TResult orElse(),}) {final _that = this;
+@optionalTypeArgs TResult maybeWhen<TResult extends Object?>(TResult Function( int currentStep,  String name,  String phone,  String street,  String apartment,  String floor,  String visualReference,  List<CustomerPreference> preferences,  bool isSubmitting,  bool isSuccess,  String? errorMessage,  double? latitude,  double? longitude)?  $default,{required TResult orElse(),}) {final _that = this;
 switch (_that) {
 case _CustomerFormState() when $default != null:
-return $default(_that.currentStep,_that.name,_that.phone,_that.street,_that.apartment,_that.floor,_that.visualReference,_that.preferences,_that.isSubmitting,_that.isSuccess,_that.errorMessage);case _:
+return $default(_that.currentStep,_that.name,_that.phone,_that.street,_that.apartment,_that.floor,_that.visualReference,_that.preferences,_that.isSubmitting,_that.isSuccess,_that.errorMessage,_that.latitude,_that.longitude);case _:
   return orElse();
 
 }
@@ -181,10 +183,10 @@ return $default(_that.currentStep,_that.name,_that.phone,_that.street,_that.apar
 /// }
 /// ```
 
-@optionalTypeArgs TResult when<TResult extends Object?>(TResult Function( int currentStep,  String name,  String phone,  String street,  String apartment,  String floor,  String visualReference,  List<CustomerPreference> preferences,  bool isSubmitting,  bool isSuccess,  String? errorMessage)  $default,) {final _that = this;
+@optionalTypeArgs TResult when<TResult extends Object?>(TResult Function( int currentStep,  String name,  String phone,  String street,  String apartment,  String floor,  String visualReference,  List<CustomerPreference> preferences,  bool isSubmitting,  bool isSuccess,  String? errorMessage,  double? latitude,  double? longitude)  $default,) {final _that = this;
 switch (_that) {
 case _CustomerFormState():
-return $default(_that.currentStep,_that.name,_that.phone,_that.street,_that.apartment,_that.floor,_that.visualReference,_that.preferences,_that.isSubmitting,_that.isSuccess,_that.errorMessage);case _:
+return $default(_that.currentStep,_that.name,_that.phone,_that.street,_that.apartment,_that.floor,_that.visualReference,_that.preferences,_that.isSubmitting,_that.isSuccess,_that.errorMessage,_that.latitude,_that.longitude);case _:
   throw StateError('Unexpected subclass');
 
 }
@@ -201,10 +203,10 @@ return $default(_that.currentStep,_that.name,_that.phone,_that.street,_that.apar
 /// }
 /// ```
 
-@optionalTypeArgs TResult? whenOrNull<TResult extends Object?>(TResult? Function( int currentStep,  String name,  String phone,  String street,  String apartment,  String floor,  String visualReference,  List<CustomerPreference> preferences,  bool isSubmitting,  bool isSuccess,  String? errorMessage)?  $default,) {final _that = this;
+@optionalTypeArgs TResult? whenOrNull<TResult extends Object?>(TResult? Function( int currentStep,  String name,  String phone,  String street,  String apartment,  String floor,  String visualReference,  List<CustomerPreference> preferences,  bool isSubmitting,  bool isSuccess,  String? errorMessage,  double? latitude,  double? longitude)?  $default,) {final _that = this;
 switch (_that) {
 case _CustomerFormState() when $default != null:
-return $default(_that.currentStep,_that.name,_that.phone,_that.street,_that.apartment,_that.floor,_that.visualReference,_that.preferences,_that.isSubmitting,_that.isSuccess,_that.errorMessage);case _:
+return $default(_that.currentStep,_that.name,_that.phone,_that.street,_that.apartment,_that.floor,_that.visualReference,_that.preferences,_that.isSubmitting,_that.isSuccess,_that.errorMessage,_that.latitude,_that.longitude);case _:
   return null;
 
 }
@@ -216,7 +218,7 @@ return $default(_that.currentStep,_that.name,_that.phone,_that.street,_that.apar
 
 
 class _CustomerFormState extends CustomerFormState {
-  const _CustomerFormState({this.currentStep = 0, this.name = '', this.phone = '', this.street = '', this.apartment = '', this.floor = '', this.visualReference = '', final  List<CustomerPreference> preferences = const [], this.isSubmitting = false, this.isSuccess = false, this.errorMessage}): _preferences = preferences,super._();
+  const _CustomerFormState({this.currentStep = 0, this.name = '', this.phone = '', this.street = '', this.apartment = '', this.floor = '', this.visualReference = '', final  List<CustomerPreference> preferences = const [], this.isSubmitting = false, this.isSuccess = false, this.errorMessage, this.latitude, this.longitude}): _preferences = preferences,super._();
   
 
 @override@JsonKey() final  int currentStep;
@@ -236,6 +238,8 @@ class _CustomerFormState extends CustomerFormState {
 @override@JsonKey() final  bool isSubmitting;
 @override@JsonKey() final  bool isSuccess;
 @override final  String? errorMessage;
+@override final  double? latitude;
+@override final  double? longitude;
 
 /// Create a copy of CustomerFormState
 /// with the given fields replaced by the non-null parameter values.
@@ -247,16 +251,16 @@ _$CustomerFormStateCopyWith<_CustomerFormState> get copyWith => __$CustomerFormS
 
 @override
 bool operator ==(Object other) {
-  return identical(this, other) || (other.runtimeType == runtimeType&&other is _CustomerFormState&&(identical(other.currentStep, currentStep) || other.currentStep == currentStep)&&(identical(other.name, name) || other.name == name)&&(identical(other.phone, phone) || other.phone == phone)&&(identical(other.street, street) || other.street == street)&&(identical(other.apartment, apartment) || other.apartment == apartment)&&(identical(other.floor, floor) || other.floor == floor)&&(identical(other.visualReference, visualReference) || other.visualReference == visualReference)&&const DeepCollectionEquality().equals(other._preferences, _preferences)&&(identical(other.isSubmitting, isSubmitting) || other.isSubmitting == isSubmitting)&&(identical(other.isSuccess, isSuccess) || other.isSuccess == isSuccess)&&(identical(other.errorMessage, errorMessage) || other.errorMessage == errorMessage));
+  return identical(this, other) || (other.runtimeType == runtimeType&&other is _CustomerFormState&&(identical(other.currentStep, currentStep) || other.currentStep == currentStep)&&(identical(other.name, name) || other.name == name)&&(identical(other.phone, phone) || other.phone == phone)&&(identical(other.street, street) || other.street == street)&&(identical(other.apartment, apartment) || other.apartment == apartment)&&(identical(other.floor, floor) || other.floor == floor)&&(identical(other.visualReference, visualReference) || other.visualReference == visualReference)&&const DeepCollectionEquality().equals(other._preferences, _preferences)&&(identical(other.isSubmitting, isSubmitting) || other.isSubmitting == isSubmitting)&&(identical(other.isSuccess, isSuccess) || other.isSuccess == isSuccess)&&(identical(other.errorMessage, errorMessage) || other.errorMessage == errorMessage)&&(identical(other.latitude, latitude) || other.latitude == latitude)&&(identical(other.longitude, longitude) || other.longitude == longitude));
 }
 
 
 @override
-int get hashCode => Object.hash(runtimeType,currentStep,name,phone,street,apartment,floor,visualReference,const DeepCollectionEquality().hash(_preferences),isSubmitting,isSuccess,errorMessage);
+int get hashCode => Object.hash(runtimeType,currentStep,name,phone,street,apartment,floor,visualReference,const DeepCollectionEquality().hash(_preferences),isSubmitting,isSuccess,errorMessage,latitude,longitude);
 
 @override
 String toString() {
-  return 'CustomerFormState(currentStep: $currentStep, name: $name, phone: $phone, street: $street, apartment: $apartment, floor: $floor, visualReference: $visualReference, preferences: $preferences, isSubmitting: $isSubmitting, isSuccess: $isSuccess, errorMessage: $errorMessage)';
+  return 'CustomerFormState(currentStep: $currentStep, name: $name, phone: $phone, street: $street, apartment: $apartment, floor: $floor, visualReference: $visualReference, preferences: $preferences, isSubmitting: $isSubmitting, isSuccess: $isSuccess, errorMessage: $errorMessage, latitude: $latitude, longitude: $longitude)';
 }
 
 
@@ -267,7 +271,7 @@ abstract mixin class _$CustomerFormStateCopyWith<$Res> implements $CustomerFormS
   factory _$CustomerFormStateCopyWith(_CustomerFormState value, $Res Function(_CustomerFormState) _then) = __$CustomerFormStateCopyWithImpl;
 @override @useResult
 $Res call({
- int currentStep, String name, String phone, String street, String apartment, String floor, String visualReference, List<CustomerPreference> preferences, bool isSubmitting, bool isSuccess, String? errorMessage
+ int currentStep, String name, String phone, String street, String apartment, String floor, String visualReference, List<CustomerPreference> preferences, bool isSubmitting, bool isSuccess, String? errorMessage, double? latitude, double? longitude
 });
 
 
@@ -284,7 +288,7 @@ class __$CustomerFormStateCopyWithImpl<$Res>
 
 /// Create a copy of CustomerFormState
 /// with the given fields replaced by the non-null parameter values.
-@override @pragma('vm:prefer-inline') $Res call({Object? currentStep = null,Object? name = null,Object? phone = null,Object? street = null,Object? apartment = null,Object? floor = null,Object? visualReference = null,Object? preferences = null,Object? isSubmitting = null,Object? isSuccess = null,Object? errorMessage = freezed,}) {
+@override @pragma('vm:prefer-inline') $Res call({Object? currentStep = null,Object? name = null,Object? phone = null,Object? street = null,Object? apartment = null,Object? floor = null,Object? visualReference = null,Object? preferences = null,Object? isSubmitting = null,Object? isSuccess = null,Object? errorMessage = freezed,Object? latitude = freezed,Object? longitude = freezed,}) {
   return _then(_CustomerFormState(
 currentStep: null == currentStep ? _self.currentStep : currentStep // ignore: cast_nullable_to_non_nullable
 as int,name: null == name ? _self.name : name // ignore: cast_nullable_to_non_nullable
@@ -297,7 +301,9 @@ as String,preferences: null == preferences ? _self._preferences : preferences //
 as List<CustomerPreference>,isSubmitting: null == isSubmitting ? _self.isSubmitting : isSubmitting // ignore: cast_nullable_to_non_nullable
 as bool,isSuccess: null == isSuccess ? _self.isSuccess : isSuccess // ignore: cast_nullable_to_non_nullable
 as bool,errorMessage: freezed == errorMessage ? _self.errorMessage : errorMessage // ignore: cast_nullable_to_non_nullable
-as String?,
+as String?,latitude: freezed == latitude ? _self.latitude : latitude // ignore: cast_nullable_to_non_nullable
+as double?,longitude: freezed == longitude ? _self.longitude : longitude // ignore: cast_nullable_to_non_nullable
+as double?,
   ));
 }
 

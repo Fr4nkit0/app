@@ -12,6 +12,8 @@ class CustomerAddressTable extends Table with Timestamps {
   late final visualReference = text().nullable()();
   late final isPrimary = boolean().withDefault(const Constant(false))();
   late final customerId = text().clientDefault(() => uuid.v4())();
+  late final latitude = real().nullable()();
+  late final longitude = real().nullable()();
 
   @override
   Set<Column<Object>> get primaryKey => {addressId};
