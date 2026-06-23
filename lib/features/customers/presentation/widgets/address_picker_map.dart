@@ -51,10 +51,14 @@ class _AddressPickerMapState extends ConsumerState<AddressPickerMap> {
   void initState() {
     super.initState();
     if (widget.initialLatitude != null && widget.initialLongitude != null) {
-      _selectedLatLng = LatLng(widget.initialLatitude!, widget.initialLongitude!);
+      _selectedLatLng = LatLng(
+        widget.initialLatitude!,
+        widget.initialLongitude!,
+      );
     }
-    
-    if (widget.initialSearchQuery != null && widget.initialSearchQuery!.isNotEmpty) {
+
+    if (widget.initialSearchQuery != null &&
+        widget.initialSearchQuery!.isNotEmpty) {
       _searchController.text = widget.initialSearchQuery!;
       // Trigger initial search after build only if there are no saved coordinates
       if (_selectedLatLng == null) {
@@ -100,8 +104,9 @@ class _AddressPickerMapState extends ConsumerState<AddressPickerMap> {
 
     try {
       debugPrint('Checking if location service is enabled...');
-      serviceEnabled = await Geolocator.isLocationServiceEnabled()
-          .timeout(const Duration(seconds: 3));
+      serviceEnabled = await Geolocator.isLocationServiceEnabled().timeout(
+        const Duration(seconds: 3),
+      );
       debugPrint('Location service enabled status: $serviceEnabled');
       if (!serviceEnabled) {
         debugPrint('Location services are disabled.');
@@ -128,59 +133,74 @@ class _AddressPickerMapState extends ConsumerState<AddressPickerMap> {
 
       try {
         debugPrint('Getting last known position in background...');
-        Geolocator.getLastKnownPosition().then((lastKnown) {
-          debugPrint('Last known position resolved: $lastKnown');
-          if (lastKnown != null && mounted && _driverLatLng == null) {
-            setState(() {
-              _driverLatLng = LatLng(lastKnown.latitude, lastKnown.longitude);
+        Geolocator.getLastKnownPosition()
+            .then((lastKnown) {
+              debugPrint('Last known position resolved: $lastKnown');
+              if (lastKnown != null && mounted && _driverLatLng == null) {
+                setState(() {
+                  _driverLatLng = LatLng(
+                    lastKnown.latitude,
+                    lastKnown.longitude,
+                  );
+                });
+                _recalculateRoute(force: true);
+              }
+            })
+            .catchError((e) {
+              debugPrint('Error getting last known position: $e');
             });
-            _recalculateRoute(force: true);
-          }
-        }).catchError((e) {
-          debugPrint('Error getting last known position: $e');
-        });
       } catch (e) {
         debugPrint('Error calling getLastKnownPosition: $e');
       }
 
       debugPrint('Getting current position in background...');
       Geolocator.getCurrentPosition(
-        locationSettings: AndroidSettings(
-          accuracy: LocationAccuracy.high,
-          forceLocationManager: true,
-        ),
-        timeLimit: const Duration(seconds: 4),
-      ).then((position) {
-        debugPrint('Current position resolved: $position');
-        if (mounted) {
-          setState(() {
-            _driverLatLng = LatLng(position.latitude, position.longitude);
+            locationSettings: AndroidSettings(
+              accuracy: LocationAccuracy.high,
+              forceLocationManager: true,
+            ),
+            timeLimit: const Duration(seconds: 4),
+          )
+          .then((position) {
+            debugPrint('Current position resolved: $position');
+            if (mounted) {
+              setState(() {
+                _driverLatLng = LatLng(position.latitude, position.longitude);
+              });
+              _recalculateRoute(force: true);
+            }
+          })
+          .catchError((e) {
+            debugPrint('Error getting current position in background: $e');
+
+            // Low accuracy fallback in background
+            debugPrint(
+              'Getting current position (low accuracy) in background...',
+            );
+            Geolocator.getCurrentPosition(
+                  locationSettings: AndroidSettings(
+                    accuracy: LocationAccuracy.low,
+                    forceLocationManager: true,
+                  ),
+                  timeLimit: const Duration(seconds: 3),
+                )
+                .then((lowPos) {
+                  debugPrint(
+                    'Current position (low accuracy) resolved: $lowPos',
+                  );
+                  if (mounted) {
+                    setState(() {
+                      _driverLatLng = LatLng(lowPos.latitude, lowPos.longitude);
+                    });
+                    _recalculateRoute(force: true);
+                  }
+                })
+                .catchError((err) {
+                  debugPrint(
+                    'Error getting low accuracy position in background: $err',
+                  );
+                });
           });
-          _recalculateRoute(force: true);
-        }
-      }).catchError((e) {
-        debugPrint('Error getting current position in background: $e');
-        
-        // Low accuracy fallback in background
-        debugPrint('Getting current position (low accuracy) in background...');
-        Geolocator.getCurrentPosition(
-          locationSettings: AndroidSettings(
-            accuracy: LocationAccuracy.low,
-            forceLocationManager: true,
-          ),
-          timeLimit: const Duration(seconds: 3),
-        ).then((lowPos) {
-          debugPrint('Current position (low accuracy) resolved: $lowPos');
-          if (mounted) {
-            setState(() {
-              _driverLatLng = LatLng(lowPos.latitude, lowPos.longitude);
-            });
-            _recalculateRoute(force: true);
-          }
-        }).catchError((err) {
-          debugPrint('Error getting low accuracy position in background: $err');
-        });
-      });
 
       debugPrint('Subscribing to position stream...');
       // Set up position stream
@@ -192,16 +212,19 @@ class _AddressPickerMapState extends ConsumerState<AddressPickerMap> {
         ),
       );
 
-      _positionStreamSubscription = positionStream.listen((Position position) {
-        debugPrint('Position stream update: $position');
-        if (!mounted) return;
-        setState(() {
-          _driverLatLng = LatLng(position.latitude, position.longitude);
-        });
-        _recalculateRoute();
-      }, onError: (e) {
-        debugPrint('Driver location stream error: $e');
-      });
+      _positionStreamSubscription = positionStream.listen(
+        (Position position) {
+          debugPrint('Position stream update: $position');
+          if (!mounted) return;
+          setState(() {
+            _driverLatLng = LatLng(position.latitude, position.longitude);
+          });
+          _recalculateRoute();
+        },
+        onError: (e) {
+          debugPrint('Driver location stream error: $e');
+        },
+      );
       debugPrint('Driver location stream subscribed.');
     } catch (e) {
       debugPrint('Driver location initialization error: $e');
@@ -291,7 +314,7 @@ class _AddressPickerMapState extends ConsumerState<AddressPickerMap> {
     });
     try {
       final geocodingService = ref.read(geocodingServiceProvider);
-      
+
       // Clean query and append local city context to ensure high geocoding accuracy
       String searchFor = query.trim();
       if (!searchFor.toLowerCase().contains('salta')) {
@@ -339,9 +362,11 @@ class _AddressPickerMapState extends ConsumerState<AddressPickerMap> {
 
   @override
   Widget build(BuildContext context) {
-    final initialCenter = _selectedLatLng ?? const LatLng(-24.789124, -65.411624);
-    
+    final initialCenter =
+        _selectedLatLng ?? const LatLng(-24.789124, -65.411624);
+
     return Scaffold(
+      primary: false,
       appBar: AppBar(
         title: const Text('Ubicar en el mapa'),
         backgroundColor: Colors.white,
@@ -352,7 +377,8 @@ class _AddressPickerMapState extends ConsumerState<AddressPickerMap> {
           onPressed: () => Navigator.of(context).pop(),
         ),
       ),
-      body: Stack(
+      body: SafeArea(
+        child: Stack(
         children: [
           FlutterMap(
             key: _mapKey,
@@ -379,7 +405,9 @@ class _AddressPickerMapState extends ConsumerState<AddressPickerMap> {
                     Polyline(
                       points: _estimatedRoute!.points,
                       strokeWidth: 4.0,
-                      color: _estimatedRoute!.isFallback ? Colors.grey : const Color(0xFF1565C0),
+                      color: _estimatedRoute!.isFallback
+                          ? Colors.grey
+                          : const Color(0xFF1565C0),
                       pattern: _estimatedRoute!.isFallback
                           ? StrokePattern.dashed(segments: const [10, 5])
                           : const StrokePattern.solid(),
@@ -426,16 +454,21 @@ class _AddressPickerMapState extends ConsumerState<AddressPickerMap> {
                       child: GestureDetector(
                         behavior: HitTestBehavior.opaque,
                         onPanUpdate: (details) {
-                          final mapRenderBox = _mapKey.currentContext?.findRenderObject() as RenderBox?;
+                          final mapRenderBox =
+                              _mapKey.currentContext?.findRenderObject()
+                                  as RenderBox?;
                           if (mapRenderBox == null) return;
-                          final localPoint = mapRenderBox.globalToLocal(details.globalPosition);
-                          final latLng = _mapController.camera.screenOffsetToLatLng(localPoint);
-                          
+                          final localPoint = mapRenderBox.globalToLocal(
+                            details.globalPosition,
+                          );
+                          final latLng = _mapController.camera
+                              .screenOffsetToLatLng(localPoint);
+
                           setState(() {
                             _selectedLatLng = latLng;
                             _isLocationModified = true;
                           });
-                          
+
                           _debouncedRecalculateRoute();
                         },
                         child: const Icon(
@@ -449,7 +482,7 @@ class _AddressPickerMapState extends ConsumerState<AddressPickerMap> {
               ),
             ],
           ),
-          
+
           // Search floating card at the top
           Positioned(
             top: 12,
@@ -472,7 +505,8 @@ class _AddressPickerMapState extends ConsumerState<AddressPickerMap> {
                           child: TextField(
                             controller: _searchController,
                             decoration: const InputDecoration(
-                              hintText: 'Buscar dirección (ej: San Martín 100, Salta)',
+                              hintText:
+                                  'Buscar dirección (ej: San Martín 100, Salta)',
                               border: InputBorder.none,
                             ),
                             onChanged: _onSearchChanged,
@@ -495,7 +529,10 @@ class _AddressPickerMapState extends ConsumerState<AddressPickerMap> {
                 if (_searchResults.isNotEmpty)
                   Card(
                     elevation: 4,
-                    margin: const EdgeInsets.symmetric(horizontal: 4, vertical: 4),
+                    margin: const EdgeInsets.symmetric(
+                      horizontal: 4,
+                      vertical: 4,
+                    ),
                     child: Container(
                       constraints: const BoxConstraints(maxHeight: 250),
                       child: ListView.builder(
@@ -534,7 +571,7 @@ class _AddressPickerMapState extends ConsumerState<AddressPickerMap> {
               ],
             ),
           ),
-          
+
           // Floating action buttons or confirmation bar at the bottom
           Positioned(
             bottom: 20,
@@ -545,7 +582,10 @@ class _AddressPickerMapState extends ConsumerState<AddressPickerMap> {
               children: [
                 // Show instructions to tap map
                 Container(
-                  padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 12,
+                    vertical: 6,
+                  ),
                   decoration: BoxDecoration(
                     color: Colors.black.withValues(alpha: 0.7),
                     borderRadius: BorderRadius.circular(20),
@@ -556,7 +596,7 @@ class _AddressPickerMapState extends ConsumerState<AddressPickerMap> {
                   ),
                 ),
                 const SizedBox(height: 12),
-                
+
                 // Confirm button card
                 Card(
                   elevation: 6,
@@ -573,8 +613,12 @@ class _AddressPickerMapState extends ConsumerState<AddressPickerMap> {
                           Row(
                             children: [
                               Icon(
-                                _isLocationModified ? Icons.edit_location_alt : Icons.my_location,
-                                color: _isLocationModified ? Colors.green : const Color(0xFF1565C0),
+                                _isLocationModified
+                                    ? Icons.edit_location_alt
+                                    : Icons.my_location,
+                                color: _isLocationModified
+                                    ? Colors.green
+                                    : const Color(0xFF1565C0),
                               ),
                               const SizedBox(width: 8),
                               Expanded(
@@ -583,7 +627,10 @@ class _AddressPickerMapState extends ConsumerState<AddressPickerMap> {
                                   children: [
                                     const Text(
                                       'Ubicación seleccionada',
-                                      style: TextStyle(fontSize: 15, fontWeight: FontWeight.bold),
+                                      style: TextStyle(
+                                        fontSize: 15,
+                                        fontWeight: FontWeight.bold,
+                                      ),
                                     ),
                                     const SizedBox(height: 4),
                                     Text(
@@ -592,8 +639,12 @@ class _AddressPickerMapState extends ConsumerState<AddressPickerMap> {
                                           : 'ℹ️ Ubicación sin cambios. Mostrando ruta para el repartidor.',
                                       style: TextStyle(
                                         fontSize: 12,
-                                        color: _isLocationModified ? Colors.green[800] : Colors.grey[600],
-                                        fontWeight: _isLocationModified ? FontWeight.bold : FontWeight.normal,
+                                        color: _isLocationModified
+                                            ? Colors.green[800]
+                                            : Colors.grey[600],
+                                        fontWeight: _isLocationModified
+                                            ? FontWeight.bold
+                                            : FontWeight.normal,
                                       ),
                                     ),
                                   ],
@@ -610,16 +661,25 @@ class _AddressPickerMapState extends ConsumerState<AddressPickerMap> {
                               decoration: BoxDecoration(
                                 color: const Color(0xFFE3F2FD),
                                 borderRadius: BorderRadius.circular(6),
-                                border: Border.all(color: const Color(0xFFBBDEFB)),
+                                border: Border.all(
+                                  color: const Color(0xFFBBDEFB),
+                                ),
                               ),
                               child: Row(
                                 children: [
-                                  const Icon(Icons.gps_fixed, size: 16, color: Color(0xFF1565C0)),
+                                  const Icon(
+                                    Icons.gps_fixed,
+                                    size: 16,
+                                    color: Color(0xFF1565C0),
+                                  ),
                                   const SizedBox(width: 8),
                                   Expanded(
                                     child: Text(
                                       'Esperando ubicación del GPS del repartidor...',
-                                      style: TextStyle(fontSize: 12, color: Colors.blue[900]),
+                                      style: TextStyle(
+                                        fontSize: 12,
+                                        color: Colors.blue[900],
+                                      ),
                                     ),
                                   ),
                                 ],
@@ -630,48 +690,87 @@ class _AddressPickerMapState extends ConsumerState<AddressPickerMap> {
                             const Divider(),
                             const SizedBox(height: 8),
                             Row(
-                              mainAxisAlignment: MainAxisAlignment.spaceBetween,
                               children: [
-                                Row(
-                                  children: [
-                                    Icon(
-                                      _estimatedRoute!.isFallback ? Icons.linear_scale : Icons.local_shipping,
-                                      color: _estimatedRoute!.isFallback ? Colors.amber : Colors.green,
-                                    ),
-                                    const SizedBox(width: 8),
-                                    Column(
-                                      crossAxisAlignment: CrossAxisAlignment.start,
-                                      children: [
-                                        Text(
-                                          _formatDistance(_estimatedRoute!.distance),
-                                          style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 15),
+                                Expanded(
+                                  child: Row(
+                                    children: [
+                                      Icon(
+                                        _estimatedRoute!.isFallback
+                                            ? Icons.linear_scale
+                                            : Icons.local_shipping,
+                                        color: _estimatedRoute!.isFallback
+                                            ? Colors.amber
+                                            : Colors.green,
+                                      ),
+                                      const SizedBox(width: 8),
+                                      Flexible(
+                                        child: Column(
+                                          crossAxisAlignment:
+                                              CrossAxisAlignment.start,
+                                          children: [
+                                            Text(
+                                              _formatDistance(
+                                                _estimatedRoute!.distance,
+                                              ),
+                                              style: const TextStyle(
+                                                fontWeight: FontWeight.bold,
+                                                fontSize: 15,
+                                              ),
+                                            ),
+                                            Text(
+                                              _estimatedRoute!.isFallback
+                                                  ? 'Distancia lineal'
+                                                  : 'Distancia de ruta',
+                                              maxLines: 1,
+                                              overflow: TextOverflow.ellipsis,
+                                              style: TextStyle(
+                                                fontSize: 12,
+                                                color: Colors.grey[600],
+                                              ),
+                                            ),
+                                          ],
                                         ),
-                                        Text(
-                                          _estimatedRoute!.isFallback ? 'Distancia lineal' : 'Distancia de ruta',
-                                          style: TextStyle(fontSize: 12, color: Colors.grey[600]),
-                                        ),
-                                      ],
-                                    ),
-                                  ],
+                                      ),
+                                    ],
+                                  ),
                                 ),
-                                Row(
-                                  children: [
-                                    const Icon(Icons.access_time, color: Colors.blue),
-                                    const SizedBox(width: 8),
-                                    Column(
-                                      crossAxisAlignment: CrossAxisAlignment.start,
-                                      children: [
-                                        Text(
-                                          _formatDuration(_estimatedRoute!.duration),
-                                          style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 15),
+                                const SizedBox(width: 12),
+                                Expanded(
+                                  child: Row(
+                                    children: [
+                                      const Icon(
+                                        Icons.access_time,
+                                        color: Colors.blue,
+                                      ),
+                                      const SizedBox(width: 8),
+                                      Flexible(
+                                        child: Column(
+                                          crossAxisAlignment:
+                                              CrossAxisAlignment.start,
+                                          children: [
+                                            Text(
+                                              _formatDuration(
+                                                _estimatedRoute!.duration,
+                                              ),
+                                              style: const TextStyle(
+                                                fontWeight: FontWeight.bold,
+                                                fontSize: 15,
+                                              ),
+                                            ),
+                                            Text(
+                                              'Tiempo est. de viaje',
+                                              maxLines: 1,
+                                              overflow: TextOverflow.ellipsis,
+                                              style: TextStyle(
+                                                fontSize: 12,
+                                                color: Colors.grey[600],
+                                              ),
+                                            ),
+                                          ],
                                         ),
-                                        Text(
-                                          'Tiempo est. de viaje',
-                                          style: TextStyle(fontSize: 12, color: Colors.grey[600]),
-                                        ),
-                                      ],
-                                    ),
-                                  ],
+                                      ),
+                                    ],
+                                  ),
                                 ),
                               ],
                             ),
@@ -682,16 +781,25 @@ class _AddressPickerMapState extends ConsumerState<AddressPickerMap> {
                                 decoration: BoxDecoration(
                                   color: Colors.amber.shade50,
                                   borderRadius: BorderRadius.circular(6),
-                                  border: Border.all(color: Colors.amber.shade200),
+                                  border: Border.all(
+                                    color: Colors.amber.shade200,
+                                  ),
                                 ),
                                 child: Row(
                                   children: [
-                                    Icon(Icons.warning_amber_rounded, size: 16, color: Colors.amber.shade800),
+                                    Icon(
+                                      Icons.warning_amber_rounded,
+                                      size: 16,
+                                      color: Colors.amber.shade800,
+                                    ),
                                     const SizedBox(width: 6),
                                     Expanded(
                                       child: Text(
                                         'Ruta de red no disponible (cálculo alternativo).',
-                                        style: TextStyle(fontSize: 11, color: Colors.amber.shade900),
+                                        style: TextStyle(
+                                          fontSize: 11,
+                                          color: Colors.amber.shade900,
+                                        ),
                                       ),
                                     ),
                                   ],
@@ -712,7 +820,10 @@ class _AddressPickerMapState extends ConsumerState<AddressPickerMap> {
                               Expanded(
                                 child: Text(
                                   'Ubicación no seleccionada. Por favor tocá el mapa o buscá una dirección.',
-                                  style: TextStyle(fontSize: 14, color: Colors.grey),
+                                  style: TextStyle(
+                                    fontSize: 14,
+                                    color: Colors.grey,
+                                  ),
                                 ),
                               ),
                             ],
@@ -730,7 +841,9 @@ class _AddressPickerMapState extends ConsumerState<AddressPickerMap> {
                                           _isSaving = true;
                                         });
                                         try {
-                                          await widget.onSave!(_selectedLatLng!);
+                                          await widget.onSave!(
+                                            _selectedLatLng!,
+                                          );
                                           if (mounted) {
                                             setState(() {
                                               _isLocationModified = false;
@@ -746,15 +859,21 @@ class _AddressPickerMapState extends ConsumerState<AddressPickerMap> {
                                           }
                                         }
                                       } else {
-                                        Navigator.of(context).pop(_selectedLatLng);
+                                        Navigator.of(
+                                          context,
+                                        ).pop(_selectedLatLng);
                                       }
                                     } else {
-                                      Navigator.of(context).pop(); // Just go back without saving
+                                      Navigator.of(
+                                        context,
+                                      ).pop(); // Just go back without saving
                                     }
                                   }
                                 },
                           style: ElevatedButton.styleFrom(
-                            backgroundColor: _isLocationModified ? Colors.green[700] : const Color(0xFF1565C0),
+                            backgroundColor: _isLocationModified
+                                ? Colors.green[700]
+                                : const Color(0xFF1565C0),
                             foregroundColor: Colors.white,
                             disabledBackgroundColor: Colors.grey[300],
                             disabledForegroundColor: Colors.grey[500],
@@ -769,12 +888,20 @@ class _AddressPickerMapState extends ConsumerState<AddressPickerMap> {
                                   height: 20,
                                   child: CircularProgressIndicator(
                                     strokeWidth: 2,
-                                    valueColor: AlwaysStoppedAnimation<Color>(Colors.white),
+                                    valueColor: AlwaysStoppedAnimation<Color>(
+                                      Colors.white,
+                                    ),
                                   ),
                                 )
                               : Text(
-                                  _isLocationModified ? 'Guardar Nueva Ubicación del Cliente' : 'Cerrar / Volver',
-                                  style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 16),
+                                  _isLocationModified
+                                      ? 'Guardar Ubicación'
+                                      : 'Cerrar / Volver',
+                                  textAlign: TextAlign.center,
+                                  style: const TextStyle(
+                                    fontWeight: FontWeight.bold,
+                                    fontSize: 16,
+                                  ),
                                 ),
                         ),
                       ],
@@ -786,6 +913,7 @@ class _AddressPickerMapState extends ConsumerState<AddressPickerMap> {
           ),
         ],
       ),
+    ),
     );
   }
 }

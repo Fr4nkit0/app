@@ -100,66 +100,75 @@ class _SaleStep1ScreenState extends ConsumerState<SaleStep1Screen> {
       ctaAction = draft.canProceedToStep3 ? _goToCobro : null;
     }
 
+    final bottomInset = MediaQuery.of(context).viewPadding.bottom;
+
     return Scaffold(
+      primary: false,
       backgroundColor: Colors.white,
-      body: SafeArea(
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            ScreenHeader(
-              title: 'Nueva Venta',
-              subtitle: 'Elegí el cliente para registrar la venta',
-              onBackPressed: Navigator.canPop(context)
-                  ? () => Navigator.of(context).pop()
-                  : null,
-            ),
-            const Padding(
-              padding: EdgeInsets.symmetric(horizontal: 16, vertical: 8),
-              child: CoreHorizontalStepper(
-                steps: ['Pedido', 'Cobro'],
-                stepDescriptions: ['Elegir productos', 'Registrar pago'],
-                layoutRow: true,
-                currentStep: 0,
+      body: Column(
+        children: [
+          Expanded(
+            child: SafeArea(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  ScreenHeader(
+                    title: 'Nueva Venta',
+                    subtitle: 'Elegí el cliente para registrar la venta',
+                    onBackPressed: Navigator.canPop(context)
+                        ? () => Navigator.of(context).pop()
+                        : null,
+                  ),
+                  const Padding(
+                    padding: EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+                    child: CoreHorizontalStepper(
+                      steps: ['Pedido', 'Cobro'],
+                      stepDescriptions: ['Elegir productos', 'Registrar pago'],
+                      layoutRow: true,
+                      currentStep: 0,
+                    ),
+                  ),
+                  const SizedBox(height: 12),
+                  // ── Mode-based content ─────────────────────────────────────
+                  Expanded(
+                    child: inSelectedMode
+                        ? _SelectedMode(
+                            customer: customer,
+                            onChangeCustomer: () {
+                              ref.read(saleDraftProvider.notifier).clearCustomer();
+                              setState(() {
+                                _query = '';
+                                _searchController.clear();
+                              });
+                            },
+                            onApplyHabitual: _onApplyHabitual,
+                          )
+                        : _SearchMode(
+                            controller: _searchController,
+                            query: _query,
+                            matchesFn: _matches,
+                            onQueryChanged: (q) => setState(() => _query = q),
+                            onSelectCustomer: (c) => ref
+                                .read(saleDraftProvider.notifier)
+                                .selectCustomer(c),
+                            onNewCustomer: () => Navigator.of(context).push(
+                              MaterialPageRoute(
+                                builder: (_) => const CreateCustomerScreen(),
+                              ),
+                            ),
+                          ),
+                  ),
+                ],
               ),
             ),
-            const SizedBox(height: 12),
-            // ── Mode-based content ─────────────────────────────────────
-            Expanded(
-              child: inSelectedMode
-                  ? _SelectedMode(
-                      customer: customer,
-                      onChangeCustomer: () {
-                        ref.read(saleDraftProvider.notifier).clearCustomer();
-                        setState(() {
-                          _query = '';
-                          _searchController.clear();
-                        });
-                      },
-                      onApplyHabitual: _onApplyHabitual,
-                    )
-                  : _SearchMode(
-                      controller: _searchController,
-                      query: _query,
-                      matchesFn: _matches,
-                      onQueryChanged: (q) => setState(() => _query = q),
-                      onSelectCustomer: (c) => ref
-                          .read(saleDraftProvider.notifier)
-                          .selectCustomer(c),
-                      onNewCustomer: () => Navigator.of(context).push(
-                        MaterialPageRoute(
-                          builder: (_) => const CreateCustomerScreen(),
-                        ),
-                      ),
-                    ),
-            ),
-          ],
-        ),
-      ),
-      // ── Single primary CTA ─────────────────────────────────────────────
-      bottomNavigationBar: _StickyFooter(
-        draft: draft,
-        label: ctaLabel,
-        onTap: ctaAction,
+          ),
+          _StickyFooter(
+            draft: draft,
+            label: ctaLabel,
+            onTap: ctaAction,
+          ),
+          SizedBox(height: bottomInset),
+        ],
       ),
     );
   }
