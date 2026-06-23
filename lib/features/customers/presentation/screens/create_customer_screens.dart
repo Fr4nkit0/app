@@ -101,14 +101,11 @@ class _CreateCustomerScreenState extends ConsumerState<CreateCustomerScreen> {
                     apartment: formState.apartment,
                     floor: formState.floor,
                     visualReference: formState.visualReference,
-                    latitude: formState.latitude,
-                    longitude: formState.longitude,
                     onStreetChanged: formNotifier.updateStreet,
                     onApartmentChanged: formNotifier.updateApartment,
                     onFloorChanged: formNotifier.updateFloor,
                     onVisualReferenceChanged:
                         formNotifier.updateVisualReference,
-                    onCoordinatesChanged: formNotifier.updateCoordinates,
                   ),
                   StepPreferenceView(
                     preferences: formState.preferences,
