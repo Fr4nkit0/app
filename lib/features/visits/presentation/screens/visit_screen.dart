@@ -568,9 +568,7 @@ class _VisitScreenState extends ConsumerState<VisitScreen> {
               const SizedBox(width: 10),
               Expanded(
                 child: Text(
-                  isDone
-                      ? 'Deuda pendiente'
-                      : 'Deuda pendiente (Tocar para pagar)',
+                  'Deuda pendiente',
                   style: TextStyle(
                     fontSize: 13,
                     fontWeight: FontWeight.w700,

@@ -86,8 +86,7 @@ class ProductQuantityRow extends StatelessWidget {
                     ),
                     const SizedBox(height: 3),
                     Text(
-                      '\$${product.price.toStringAsFixed(0)} c/u'
-                      '${hasQuantity ? '  ·  Subtotal: \$${(product.price * quantity).toStringAsFixed(0)}' : ''}',
+                      '\$${product.price.toStringAsFixed(0)} c/u',
                       style: TextStyle(
                         fontSize: 12,
                         fontWeight: FontWeight.w600,
@@ -97,18 +96,6 @@ class ProductQuantityRow extends StatelessWidget {
                         fontFeatures: tokens.tabularStyle.fontFeatures,
                       ),
                     ),
-                    // Show stock availability only when not null (REQ-S1-03a/b)
-                    if (product.available != null) ...[
-                      const SizedBox(height: 2),
-                      Text(
-                        'Disponible: ${product.available}',
-                        style: TextStyle(
-                          fontSize: 11,
-                          fontWeight: FontWeight.w500,
-                          color: cs.outline,
-                        ),
-                      ),
-                    ],
                   ],
                 ),
               ),

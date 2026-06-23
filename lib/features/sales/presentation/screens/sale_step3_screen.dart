@@ -22,95 +22,105 @@ class SaleStep3Screen extends ConsumerWidget {
   Widget build(BuildContext context, WidgetRef ref) {
     final draft = ref.watch(saleDraftProvider);
 
+    final bottomInset = MediaQuery.of(context).viewPadding.bottom;
+
     return Scaffold(
+      primary: false,
       backgroundColor: Colors.white,
-      body: SafeArea(
-        child: Column(
-          children: [
-            // Header: back + title
-            _Header(customerName: draft.customer?.name ?? ''),
-            // Scrollable content
-            Expanded(
-              child: SingleChildScrollView(
-                padding: const EdgeInsets.only(bottom: 24),
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    const Padding(
-                      padding: EdgeInsets.symmetric(
-                        horizontal: 16,
-                        vertical: 8,
-                      ),
-                      child: CoreHorizontalStepper(
-                        steps: ['Pedido', 'Cobro'],
-                        stepDescriptions: [
-                          'Elegir productos',
-                          'Registrar pago',
-                        ],
-                        layoutRow: true,
-                        currentStep: 1,
-                      ),
-                    ),
-                    // Previous debt chip (display-only, never mutates debtAmount)
-                    if ((draft.customer?.debtAmount ?? 0) > 0)
-                      DebtChip(
-                        amount: draft.customer!.debtAmount,
-                        margin: const EdgeInsets.fromLTRB(16, 8, 16, 0),
-                        padding: const EdgeInsets.symmetric(
-                          horizontal: 12,
-                          vertical: 8,
-                        ),
-                        borderRadius: BorderRadius.circular(10),
-                        backgroundColor: Theme.of(context)
-                            .extension<SalesTokens>()!
-                            .destructive
-                            .withValues(alpha: 0.08),
-                        borderColor: Theme.of(context)
-                            .extension<SalesTokens>()!
-                            .destructive
-                            .withValues(alpha: 0.3),
-                        borderWidth: 1.0,
-                        textColor: Theme.of(
-                          context,
-                        ).extension<SalesTokens>()!.destructive,
-                        fontSize: 13,
-                        fontWeight: FontWeight.w700,
-                        icon: Icons.warning_amber_rounded,
-                        iconSize: 16,
-                        iconColor: Theme.of(
-                          context,
-                        ).extension<SalesTokens>()!.destructive,
-                        prefixText: 'Deuda previa: \$',
-                      ),
-                    // Client + order summary card
-                    _ClientCard(draft: draft),
-                    const SizedBox(height: 20),
-                    // Payment method grid + mixed fields
-                    Padding(
-                      padding: const EdgeInsets.symmetric(horizontal: 16),
+      body: Column(
+        children: [
+          Expanded(
+            child: SafeArea(
+              child: Column(
+                children: [
+                  // Header: back + title
+                  _Header(customerName: draft.customer?.name ?? ''),
+                  // Scrollable content
+                  Expanded(
+                    child: SingleChildScrollView(
+                      padding: const EdgeInsets.only(bottom: 24),
                       child: Column(
                         crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
-                          _SectionLabel('FORMA DE PAGO'),
-                          const SizedBox(height: 10),
-                          _PaymentGrid(draft: draft),
-                          const SizedBox(height: 12),
-                          // Progressive-disclosure mixed amounts
-                          _MixedAmountsSection(draft: draft),
-                          // Live remaining indicator
-                          if (draft.paymentMethod == PaymentMethod.mixed)
-                            _RemainingIndicator(draft: draft),
+                          const Padding(
+                            padding: EdgeInsets.symmetric(
+                              horizontal: 16,
+                              vertical: 8,
+                            ),
+                            child: CoreHorizontalStepper(
+                              steps: ['Pedido', 'Cobro'],
+                              stepDescriptions: [
+                                'Elegir productos',
+                                'Registrar pago',
+                              ],
+                              layoutRow: true,
+                              currentStep: 1,
+                            ),
+                          ),
+                          // Previous debt chip (display-only, never mutates debtAmount)
+                          if ((draft.customer?.debtAmount ?? 0) > 0)
+                            DebtChip(
+                              amount: draft.customer!.debtAmount,
+                              margin: const EdgeInsets.fromLTRB(16, 8, 16, 0),
+                              padding: const EdgeInsets.symmetric(
+                                horizontal: 12,
+                                vertical: 8,
+                              ),
+                              borderRadius: BorderRadius.circular(10),
+                              backgroundColor: Theme.of(context)
+                                  .extension<SalesTokens>()!
+                                  .destructive
+                                  .withValues(alpha: 0.08),
+                              borderColor: Theme.of(context)
+                                  .extension<SalesTokens>()!
+                                  .destructive
+                                  .withValues(alpha: 0.3),
+                              borderWidth: 1.0,
+                              textColor: Theme.of(
+                                context,
+                              ).extension<SalesTokens>()!.destructive,
+                              fontSize: 13,
+                              fontWeight: FontWeight.w700,
+                              icon: Icons.warning_amber_rounded,
+                              iconSize: 16,
+                              iconColor: Theme.of(
+                                context,
+                              ).extension<SalesTokens>()!.destructive,
+                              prefixText: 'Deuda previa: \$',
+                            ),
+                          // Client + order summary card
+                          _ClientCard(draft: draft),
+                          const SizedBox(height: 20),
+                          // Payment method grid + mixed fields
+                          Padding(
+                            padding: const EdgeInsets.symmetric(horizontal: 16),
+                            child: Column(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: [
+                                _SectionLabel('FORMA DE PAGO'),
+                                const SizedBox(height: 10),
+                                _PaymentGrid(draft: draft),
+                                const SizedBox(height: 12),
+                                // Progressive-disclosure mixed amounts
+                                _MixedAmountsSection(draft: draft),
+                                // Live remaining indicator
+                                if (draft.paymentMethod == PaymentMethod.mixed)
+                                  _RemainingIndicator(draft: draft),
+                              ],
+                            ),
+                          ),
                         ],
                       ),
                     ),
-                  ],
-                ),
+                  ),
+                ],
               ),
             ),
-          ],
-        ),
+          ),
+          _Footer(draft: draft),
+          SizedBox(height: bottomInset),
+        ],
       ),
-      bottomNavigationBar: _Footer(draft: draft),
     );
   }
 }
@@ -679,6 +689,14 @@ class _ContainerReturnConfirmationDialogState
   void initState() {
     super.initState();
     _returns = Map<String, int>.from(widget.initialReturns);
+    // If the customer has no active balance of a container type,
+    // default its return value to 0 since they don't have containers to return yet.
+    for (final type in ['BIDON_20L', 'SIFON_2L']) {
+      final balance = widget.customerBalances[type] ?? 0;
+      if (balance == 0) {
+        _returns[type] = 0;
+      }
+    }
   }
 
   @override
@@ -690,7 +708,9 @@ class _ContainerReturnConfirmationDialogState
           .fold(0, (sum, item) => sum + item.quantity);
       if (delivered > 0) {
         containerTypes.add(type);
-        _returns[type] ??= delivered;
+        final balance = widget.customerBalances[type] ?? 0;
+        // Fallback default setup
+        _returns[type] ??= (balance > 0 ? delivered : 0);
       }
     }
 
@@ -717,7 +737,7 @@ class _ContainerReturnConfirmationDialogState
                   .fold(0, (sum, item) => sum + item.quantity);
               final returned = _returns[type] ?? delivered;
               final balance = widget.customerBalances[type] ?? 0;
-              final maxReturns = balance + delivered;
+              final maxReturns = balance;
               final label = type == 'BIDON_20L' ? 'Bidón 20L' : 'Sifón 2L';
 
               return Padding(
@@ -725,24 +745,12 @@ class _ContainerReturnConfirmationDialogState
                 child: Row(
                   children: [
                     Expanded(
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          Text(
-                            label,
-                            style: const TextStyle(
-                              fontWeight: FontWeight.bold,
-                              fontSize: 16,
-                            ),
-                          ),
-                          Text(
-                            'Entregados: $delivered',
-                            style: const TextStyle(
-                              color: Colors.grey,
-                              fontSize: 13,
-                            ),
-                          ),
-                        ],
+                      child: Text(
+                        label,
+                        style: const TextStyle(
+                          fontWeight: FontWeight.bold,
+                          fontSize: 16,
+                        ),
                       ),
                     ),
                     Row(

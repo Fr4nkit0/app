@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:url_launcher/url_launcher.dart';
 import 'package:app/core/utils/avatar_utils.dart';
 import 'package:app/core/utils/address_formatter.dart';
 import 'package:app/features/customers/domain/models/customer.dart';
@@ -208,16 +209,30 @@ class _CustomerProfileScreenState extends ConsumerState<CustomerProfileScreen> {
                   ),
                   const SizedBox(width: 8),
                   GestureDetector(
-                    onTap: () {
-                      ScaffoldMessenger.of(context).showSnackBar(
-                        SnackBar(
-                          content: Text('Llamando a ${customer.name}...'),
-                          duration: const Duration(seconds: 1),
-                        ),
+                    onTap: () async {
+                      final phone = customer.phone!.replaceAll(
+                        RegExp(r'[^\d]'),
+                        '',
                       );
+                      final uri = Uri.parse('https://wa.me/$phone');
+                      try {
+                        await launchUrl(
+                          uri,
+                          mode: LaunchMode.externalApplication,
+                        );
+                      } catch (_) {
+                        if (context.mounted) {
+                          ScaffoldMessenger.of(context).showSnackBar(
+                            const SnackBar(
+                              content: Text('No se pudo abrir WhatsApp'),
+                              duration: Duration(seconds: 2),
+                            ),
+                          );
+                        }
+                      }
                     },
                     child: const Text(
-                      'Llamar',
+                      'Contactar',
                       style: TextStyle(
                         color: Color(0xFF1565C0),
                         fontWeight: FontWeight.bold,
@@ -384,7 +399,7 @@ class _CustomerProfileScreenState extends ConsumerState<CustomerProfileScreen> {
                                   const SizedBox(height: 4),
                                   Text(
                                     balance > 0
-                                        ? 'Deuda: \$${balance.toStringAsFixed(0)} (Tocar para pagar)'
+                                        ? 'Deuda: \$${balance.toStringAsFixed(0)}'
                                         : (balance == 0
                                             ? 'Al día'
                                             : 'Saldo a favor: \$${(-balance).toStringAsFixed(0)}'),

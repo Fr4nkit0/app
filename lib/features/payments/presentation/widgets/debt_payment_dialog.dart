@@ -189,7 +189,7 @@ class _DebtPaymentDialogState extends State<DebtPaymentDialog> {
                 crossAxisCount: 2,
                 mainAxisSpacing: 10,
                 crossAxisSpacing: 10,
-                childAspectRatio: 1.6,
+                childAspectRatio: 1.3,
                 shrinkWrap: true,
                 physics: const NeverScrollableScrollPhysics(),
                 children: [
@@ -306,7 +306,7 @@ class _DebtPaymentDialogState extends State<DebtPaymentDialog> {
       onTap: () => _onMethodSelected(label),
       child: AnimatedContainer(
         duration: const Duration(milliseconds: 150),
-        padding: const EdgeInsets.all(14),
+        padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 10),
         decoration: BoxDecoration(
           color: isSelected ? primary : Colors.grey.shade50,
           borderRadius: BorderRadius.circular(12),
@@ -322,6 +322,8 @@ class _DebtPaymentDialogState extends State<DebtPaymentDialog> {
             const SizedBox(height: 4),
             Text(
               label,
+              maxLines: 1,
+              overflow: TextOverflow.ellipsis,
               style: TextStyle(
                 fontSize: 13,
                 fontWeight: FontWeight.w700,
