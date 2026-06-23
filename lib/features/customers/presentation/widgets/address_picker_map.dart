@@ -126,18 +126,22 @@ class _AddressPickerMapState extends ConsumerState<AddressPickerMap> {
         return;
       }
 
-      debugPrint('Getting last known position in background...');
-      Geolocator.getLastKnownPosition().then((lastKnown) {
-        debugPrint('Last known position resolved: $lastKnown');
-        if (lastKnown != null && mounted && _driverLatLng == null) {
-          setState(() {
-            _driverLatLng = LatLng(lastKnown.latitude, lastKnown.longitude);
-          });
-          _recalculateRoute(force: true);
-        }
-      }).catchError((e) {
-        debugPrint('Error getting last known position: $e');
-      });
+      try {
+        debugPrint('Getting last known position in background...');
+        Geolocator.getLastKnownPosition().then((lastKnown) {
+          debugPrint('Last known position resolved: $lastKnown');
+          if (lastKnown != null && mounted && _driverLatLng == null) {
+            setState(() {
+              _driverLatLng = LatLng(lastKnown.latitude, lastKnown.longitude);
+            });
+            _recalculateRoute(force: true);
+          }
+        }).catchError((e) {
+          debugPrint('Error getting last known position: $e');
+        });
+      } catch (e) {
+        debugPrint('Error calling getLastKnownPosition: $e');
+      }
 
       debugPrint('Getting current position in background...');
       Geolocator.getCurrentPosition(

@@ -35,6 +35,22 @@ class MockGeolocatorPlatform extends GeolocatorPlatform {
   }
 
   @override
+  Future<Position?> getLastKnownPosition({bool forceLocationManager = false}) async {
+    return Position(
+      latitude: -24.789000,
+      longitude: -65.411000,
+      timestamp: DateTime.now(),
+      accuracy: 1.0,
+      altitude: 1.0,
+      heading: 1.0,
+      speed: 1.0,
+      speedAccuracy: 1.0,
+      altitudeAccuracy: 1.0,
+      headingAccuracy: 1.0,
+    );
+  }
+
+  @override
   Stream<Position> getPositionStream({LocationSettings? locationSettings}) {
     return Stream.value(
       Position(

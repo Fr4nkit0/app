@@ -211,6 +211,7 @@ class StepAddressView extends StatelessWidget {
                   shape: RoundedRectangleBorder(
                     borderRadius: BorderRadius.circular(8),
                   ),
+                  minimumSize: const Size(0, 44),
                 ),
               ),
             ],
