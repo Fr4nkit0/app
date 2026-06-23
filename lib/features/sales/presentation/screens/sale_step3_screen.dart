@@ -689,6 +689,14 @@ class _ContainerReturnConfirmationDialogState
   void initState() {
     super.initState();
     _returns = Map<String, int>.from(widget.initialReturns);
+    // If the customer has no active balance of a container type,
+    // default its return value to 0 since they don't have containers to return yet.
+    for (final type in ['BIDON_20L', 'SIFON_2L']) {
+      final balance = widget.customerBalances[type] ?? 0;
+      if (balance == 0) {
+        _returns[type] = 0;
+      }
+    }
   }
 
   @override
@@ -700,7 +708,9 @@ class _ContainerReturnConfirmationDialogState
           .fold(0, (sum, item) => sum + item.quantity);
       if (delivered > 0) {
         containerTypes.add(type);
-        _returns[type] ??= delivered;
+        final balance = widget.customerBalances[type] ?? 0;
+        // Fallback default setup
+        _returns[type] ??= (balance > 0 ? delivered : 0);
       }
     }
 
@@ -727,7 +737,7 @@ class _ContainerReturnConfirmationDialogState
                   .fold(0, (sum, item) => sum + item.quantity);
               final returned = _returns[type] ?? delivered;
               final balance = widget.customerBalances[type] ?? 0;
-              final maxReturns = balance + delivered;
+              final maxReturns = balance;
               final label = type == 'BIDON_20L' ? 'Bidón 20L' : 'Sifón 2L';
 
               return Padding(
@@ -735,24 +745,12 @@ class _ContainerReturnConfirmationDialogState
                 child: Row(
                   children: [
                     Expanded(
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          Text(
-                            label,
-                            style: const TextStyle(
-                              fontWeight: FontWeight.bold,
-                              fontSize: 16,
-                            ),
-                          ),
-                          Text(
-                            'Entregados: $delivered',
-                            style: const TextStyle(
-                              color: Colors.grey,
-                              fontSize: 13,
-                            ),
-                          ),
-                        ],
+                      child: Text(
+                        label,
+                        style: const TextStyle(
+                          fontWeight: FontWeight.bold,
+                          fontSize: 16,
+                        ),
                       ),
                     ),
                     Row(
