@@ -78,6 +78,9 @@ class _VisitScreenState extends ConsumerState<VisitScreen> {
       );
     }
 
+    final balanceAsync = ref.watch(customerBalanceProvider(stop.customer.id));
+    final balance = balanceAsync.value ?? stop.customer.debtAmount;
+
     final isDone = stop.status != StopStatus.pending;
     final salesAsync = ref.watch(stopSalesProvider(widget.stopId));
     final visitMovementsAsync = ref.watch(
@@ -167,8 +170,8 @@ class _VisitScreenState extends ConsumerState<VisitScreen> {
                         const SizedBox(height: 20),
 
                         // Custom banners based on state
-                        if (stop.customer.debtAmount > 0)
-                          _buildDebtBanner(stop.customer.debtAmount, stop),
+                        if (balance > 0)
+                          _buildDebtBanner(balance, stop),
                         const SizedBox(height: 12),
                         _buildCustodyBanner(stop),
                         const SizedBox(height: 24),
@@ -395,26 +398,6 @@ class _VisitScreenState extends ConsumerState<VisitScreen> {
               ),
             ],
           ),
-          if (stop.customer.addresses.isNotEmpty &&
-              stop.customer.addresses.first.latitude != null &&
-              stop.customer.addresses.first.longitude != null) ...[
-            const SizedBox(height: 12),
-            Row(
-              children: [
-                const SizedBox(width: 32),
-                const Icon(Icons.check_circle, color: Colors.green, size: 14),
-                const SizedBox(width: 8),
-                Text(
-                  'Coordenadas: ${stop.customer.addresses.first.latitude!.toStringAsFixed(6)}, ${stop.customer.addresses.first.longitude!.toStringAsFixed(6)}',
-                  style: const TextStyle(
-                    fontSize: 12,
-                    color: Colors.green,
-                    fontWeight: FontWeight.w500,
-                  ),
-                ),
-              ],
-            ),
-          ],
           if (stop.customer.phone != null) ...[
             const SizedBox(height: 12),
             Row(
@@ -571,15 +554,15 @@ class _VisitScreenState extends ConsumerState<VisitScreen> {
           decoration: BoxDecoration(
             borderRadius: BorderRadius.circular(16),
             border: Border.all(
-              color: const Color(0xFFFCA5A5).withValues(alpha: 0.5),
-              width: 1,
+              color: const Color(0xFFFEE2E2),
+              width: 1.5,
             ),
           ),
           child: Row(
             children: [
               const Icon(
                 Icons.warning_amber_rounded,
-                color: Color(0xFFDC2626),
+                color: Color(0xFFEF4444),
                 size: 20,
               ),
               const SizedBox(width: 10),
@@ -588,10 +571,10 @@ class _VisitScreenState extends ConsumerState<VisitScreen> {
                   isDone
                       ? 'Deuda pendiente'
                       : 'Deuda pendiente (Tocar para pagar)',
-                  style: const TextStyle(
+                  style: TextStyle(
                     fontSize: 13,
                     fontWeight: FontWeight.w700,
-                    color: Color(0xFF991B1B),
+                    color: Colors.red.shade700,
                   ),
                 ),
               ),
@@ -600,14 +583,14 @@ class _VisitScreenState extends ConsumerState<VisitScreen> {
                 style: const TextStyle(
                   fontSize: 15,
                   fontWeight: FontWeight.w900,
-                  color: Color(0xFFDC2626),
+                  color: Color(0xFFEF4444),
                 ),
               ),
               if (!isDone) ...[
                 const SizedBox(width: 6),
                 const Icon(
                   Icons.chevron_right_rounded,
-                  color: Color(0xFFDC2626),
+                  color: Color(0xFFEF4444),
                   size: 20,
                 ),
               ],

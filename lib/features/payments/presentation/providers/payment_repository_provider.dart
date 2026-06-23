@@ -11,3 +11,8 @@ final registerPaymentUseCaseProvider = Provider<RegisterPaymentUseCase>(
   (ref) =>
       RegisterPaymentUseCase(paymentRepo: ref.watch(paymentRepositoryProvider)),
 );
+
+final customerBalanceProvider = StreamProvider.family<double, String>((ref, customerId) {
+  return ref.watch(paymentRepositoryProvider).watchCustomerBalance(customerId);
+});
+
