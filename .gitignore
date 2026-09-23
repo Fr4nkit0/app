@@ -50,3 +50,6 @@ app.*.map.json
 .atl
 
 .openspec/*
+
+# uso local — tickets writing-plans
+/plans
