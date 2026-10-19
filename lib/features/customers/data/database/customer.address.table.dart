@@ -14,6 +14,7 @@ class CustomerAddressTable extends Table with Timestamps {
   late final customerId = text().clientDefault(() => uuid.v4())();
   late final latitude = real().nullable()();
   late final longitude = real().nullable()();
+  late final neighborhood = text().nullable()();
 
   @override
   Set<Column<Object>> get primaryKey => {addressId};

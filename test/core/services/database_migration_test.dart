@@ -142,4 +142,42 @@ void main() {
       expect(customersAfter.any((c) => c.name == 'John Doe'), isTrue);
     });
   });
+
+  group('Database Schema Migration V4 -> V5', () {
+    late AppDatabase db;
+
+    setUp(() {
+      db = AppDatabase(NativeDatabase.memory());
+    });
+
+    tearDown(() async {
+      await db.close();
+    });
+
+    test('Migration adds neighborhood column to customer_addresses and preserves data', () async {
+      final customerCompanion = CustomerTableCompanion.insert(
+        customerId: const drift.Value('cust-456'),
+        name: 'Jane Smith',
+        phone: const drift.Value('87654321'),
+      );
+      await db.into(db.customerTable).insert(customerCompanion);
+
+      await db.customStatement(
+        "INSERT INTO customer_addresses (address_id, customer_id, street, is_primary) "
+        "VALUES ('addr-456', 'cust-456', 'Calle Falsa 123', 1)"
+      );
+
+      final migrator = db.migration;
+      final m = db.createMigrator();
+      await migrator.onUpgrade(m, 4, 5);
+
+      final results = await db.customSelect("SELECT * FROM customer_addresses WHERE address_id = 'addr-456'").get();
+      expect(results.length, 1);
+      final row = results.first;
+      expect(row.read<String?>('street'), 'Calle Falsa 123');
+      expect(row.data.containsKey('neighborhood'), isTrue);
+      expect(row.read<String?>('neighborhood'), isNull);
+    });
+  });
 }
+

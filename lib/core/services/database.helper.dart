@@ -47,7 +47,7 @@ class AppDatabase extends _$AppDatabase {
   AppDatabase([QueryExecutor? executor]) : super(executor ?? _openConnection());
 
   @override
-  int get schemaVersion => 4;
+  int get schemaVersion => 6;
 
   @override
   MigrationStrategy get migration => MigrationStrategy(
@@ -73,6 +73,30 @@ class AppDatabase extends _$AppDatabase {
         }
         if (!columnNames.contains('longitude')) {
           await m.addColumn(customerAddressTable, customerAddressTable.longitude);
+        }
+      }
+      if (from < 5) {
+        final columns = await customSelect("PRAGMA table_info(customer_addresses)").get();
+        final columnNames = columns.map((row) => row.read<String>('name')).toList();
+        if (!columnNames.contains('neighborhood')) {
+          await m.addColumn(customerAddressTable, customerAddressTable.neighborhood);
+        }
+      }
+      if (from < 6) {
+        final tables = <TableInfo<Table, dynamic>>[
+          customerTable, customerAddressTable, customerPreferenceTable,
+          routeTable, routeStopTable, routeInventoryTable, productTable,
+          visitTable, saleTable, saleItemTable, paymentTable,
+          customerAccountEntryTable, customerBalanceTable,
+          containerMovementTable, customerContainerBalanceTable,
+          routeInventoryLoadTable, auditLogTable
+        ];
+        for (final table in tables) {
+          final columns = await customSelect("PRAGMA table_info(${table.actualTableName})").get();
+          final columnNames = columns.map((row) => row.read<String>('name')).toList();
+          if (!columnNames.contains('server_id')) {
+            await m.addColumn(table, (table as dynamic).serverId);
+          }
         }
       }
     },

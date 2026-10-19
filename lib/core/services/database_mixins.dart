@@ -7,4 +7,5 @@ mixin Timestamps on Table {
   late final createdAt = dateTime().withDefault(currentDateAndTime)();
   late final lastModifiedDate = dateTime().withDefault(currentDateAndTime)();
   late final enabled = boolean().withDefault(const Constant(true))();
+  late final serverId = integer().nullable()();
 }
