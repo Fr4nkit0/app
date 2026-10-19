@@ -1,5 +1,7 @@
 import 'package:flutter/material.dart';
+import 'package:app/core/theme/marilin_tokens.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:app/core/theme/marilin_tokens.dart';
 import 'package:url_launcher/url_launcher.dart';
 import 'package:app/core/utils/avatar_utils.dart';
 import 'package:app/core/utils/address_formatter.dart';
@@ -129,7 +131,7 @@ class _CustomerProfileScreenState extends ConsumerState<CustomerProfileScreen> {
             context,
           ).push(MaterialPageRoute(builder: (_) => const SaleStep1Screen()));
         },
-        backgroundColor: const Color(0xFF1565C0),
+        backgroundColor: MarilinColors.brandBlue,
         foregroundColor: Colors.white,
         icon: const Icon(Icons.point_of_sale_outlined),
         label: const Text(
@@ -151,7 +153,7 @@ class _CustomerProfileScreenState extends ConsumerState<CustomerProfileScreen> {
             width: 90,
             height: 90,
             decoration: const BoxDecoration(
-              color: Color(0xFF1565C0),
+              color: MarilinColors.brandBlue,
               shape: BoxShape.circle,
             ),
             alignment: Alignment.center,
@@ -178,10 +180,10 @@ class _CustomerProfileScreenState extends ConsumerState<CustomerProfileScreen> {
             Container(
               padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
               decoration: BoxDecoration(
-                color: const Color(0xFF1565C0).withValues(alpha: 0.05),
+                color: MarilinColors.brandBlue.withValues(alpha: 0.05),
                 borderRadius: BorderRadius.circular(30),
                 border: Border.all(
-                  color: const Color(0xFF1565C0).withValues(alpha: 0.15),
+                  color: MarilinColors.brandBlue.withValues(alpha: 0.15),
                 ),
               ),
               child: Row(
@@ -205,7 +207,7 @@ class _CustomerProfileScreenState extends ConsumerState<CustomerProfileScreen> {
                   Container(
                     height: 14,
                     width: 1,
-                    color: const Color(0xFF1565C0).withValues(alpha: 0.2),
+                    color: MarilinColors.brandBlue.withValues(alpha: 0.2),
                   ),
                   const SizedBox(width: 8),
                   GestureDetector(
@@ -234,7 +236,7 @@ class _CustomerProfileScreenState extends ConsumerState<CustomerProfileScreen> {
                     child: const Text(
                       'Contactar',
                       style: TextStyle(
-                        color: Color(0xFF1565C0),
+                        color: MarilinColors.brandBlue,
                         fontWeight: FontWeight.bold,
                         fontSize: 14,
                       ),
@@ -452,7 +454,7 @@ class _CustomerProfileScreenState extends ConsumerState<CustomerProfileScreen> {
                                       Icon(
                                         Icons.inventory_2_outlined,
                                         size: 16,
-                                        color: Color(0xFF1565C0),
+                                        color: MarilinColors.brandBlue,
                                       ),
                                     ],
                                   ),
@@ -555,7 +557,7 @@ class _CustomerProfileScreenState extends ConsumerState<CustomerProfileScreen> {
                     border: Border(
                       bottom: BorderSide(
                         color: isSelected
-                            ? const Color(0xFF1565C0)
+                            ? MarilinColors.brandBlue
                             : Colors.transparent,
                         width: 3.0,
                       ),
@@ -570,7 +572,7 @@ class _CustomerProfileScreenState extends ConsumerState<CustomerProfileScreen> {
                           ? FontWeight.w700
                           : FontWeight.w500,
                       color: isSelected
-                          ? const Color(0xFF1565C0)
+                          ? MarilinColors.brandBlue
                           : Colors.grey.shade500,
                     ),
                   ),
@@ -652,7 +654,7 @@ class _CustomerProfileScreenState extends ConsumerState<CustomerProfileScreen> {
               children: [
                 Icon(
                   Icons.schedule_outlined,
-                  color: Color(0xFF1565C0),
+                  color: MarilinColors.brandBlue,
                   size: 20,
                 ),
                 SizedBox(width: 8),
@@ -677,7 +679,7 @@ class _CustomerProfileScreenState extends ConsumerState<CustomerProfileScreen> {
                       width: 8,
                       height: 8,
                       decoration: const BoxDecoration(
-                        color: Color(0xFF1565C0),
+                        color: MarilinColors.brandBlue,
                         shape: BoxShape.circle,
                       ),
                     ),
@@ -790,7 +792,7 @@ class _CustomerProfileScreenState extends ConsumerState<CustomerProfileScreen> {
                   children: [
                     Icon(
                       Icons.location_on_outlined,
-                      color: Color(0xFF1565C0),
+                      color: MarilinColors.brandBlue,
                       size: 20,
                     ),
                     SizedBox(width: 8),
@@ -809,6 +811,7 @@ class _CustomerProfileScreenState extends ConsumerState<CustomerProfileScreen> {
                   Text(
                     AddressFormatter.format(
                       street: addr.street,
+                      neighborhood: addr.neighborhood,
                       floor: addr.floor,
                       apartment: addr.apartment,
                       visualReference: addr.visualReference,
@@ -846,7 +849,9 @@ class _CustomerProfileScreenState extends ConsumerState<CustomerProfileScreen> {
                             builder: (context) => AddressPickerMap(
                               initialLatitude: addr.latitude,
                               initialLongitude: addr.longitude,
-                              initialSearchQuery: addr.street,
+                              initialSearchQuery: (addr.neighborhood != null && addr.neighborhood!.trim().isNotEmpty)
+                                  ? '${addr.street}, ${addr.neighborhood}, Salta'
+                                  : '${addr.street}, Salta',
                               onSave: (latLng) async {
                                 await _updateCoordinates(
                                   context,
@@ -867,8 +872,8 @@ class _CustomerProfileScreenState extends ConsumerState<CustomerProfileScreen> {
                             : 'Ubicar en Mapa',
                       ),
                       style: OutlinedButton.styleFrom(
-                        foregroundColor: const Color(0xFF1565C0),
-                        side: const BorderSide(color: Color(0xFF1565C0)),
+                        foregroundColor: MarilinColors.brandBlue,
+                        side: const BorderSide(color: MarilinColors.brandBlue),
                         shape: RoundedRectangleBorder(
                           borderRadius: BorderRadius.circular(10),
                         ),
@@ -901,7 +906,7 @@ class _CustomerProfileScreenState extends ConsumerState<CustomerProfileScreen> {
                   children: [
                     Icon(
                       Icons.person_outline_rounded,
-                      color: Color(0xFF1565C0),
+                      color: MarilinColors.brandBlue,
                       size: 20,
                     ),
                     SizedBox(width: 8),
@@ -984,7 +989,7 @@ class _CustomerProfileScreenState extends ConsumerState<CustomerProfileScreen> {
     required int count,
   }) {
     final hasStock = count > 0;
-    final color = hasStock ? const Color(0xFF1565C0) : Colors.grey.shade400;
+    final color = hasStock ? MarilinColors.brandBlue : Colors.grey.shade400;
 
     return Row(
       children: [
@@ -992,7 +997,7 @@ class _CustomerProfileScreenState extends ConsumerState<CustomerProfileScreen> {
           padding: const EdgeInsets.all(4),
           decoration: BoxDecoration(
             color: hasStock
-                ? const Color(0xFF1565C0).withValues(alpha: 0.08)
+                ? MarilinColors.brandBlue.withValues(alpha: 0.08)
                 : Colors.grey.shade100,
             shape: BoxShape.circle,
           ),
@@ -1153,7 +1158,7 @@ class _ProfileContainerReturnDialogState
                                 }
                               : null,
                           icon: const Icon(Icons.add_circle_outline),
-                          color: const Color(0xFF1565C0),
+                          color: MarilinColors.brandBlue,
                         ),
                       ],
                     ),
@@ -1202,7 +1207,7 @@ class _ProfileContainerReturnDialogState
             }
           },
           style: FilledButton.styleFrom(
-            backgroundColor: const Color(0xFF1565C0),
+            backgroundColor: MarilinColors.brandBlue,
           ),
           child: const Text('Guardar'),
         ),

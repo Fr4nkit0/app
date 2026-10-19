@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:app/core/theme/marilin_tokens.dart';
 
 class StepIdentityView extends StatelessWidget {
   final String name;
@@ -20,7 +21,7 @@ class StepIdentityView extends StatelessWidget {
   );
   static const _focusBorder = OutlineInputBorder(
     borderRadius: BorderRadius.all(Radius.circular(12)),
-    borderSide: BorderSide(color: Color(0xFF1565C0), width: 2),
+    borderSide: BorderSide(color: MarilinColors.brandBlue, width: 2),
   );
   static const _errorBorder = OutlineInputBorder(
     borderRadius: BorderRadius.all(Radius.circular(12)),

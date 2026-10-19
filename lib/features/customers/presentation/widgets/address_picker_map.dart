@@ -1,4 +1,5 @@
 import 'dart:async';
+import 'package:app/core/theme/marilin_tokens.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_map/flutter_map.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
@@ -6,6 +7,7 @@ import 'package:latlong2/latlong.dart';
 import 'package:geolocator/geolocator.dart';
 import 'package:app/features/customers/data/services/geocoding_service.dart';
 import 'package:app/features/customers/data/services/routing_service.dart';
+import 'package:app/core/network/dio_client.dart';
 
 class AddressPickerMap extends ConsumerStatefulWidget {
   final double? initialLatitude;
@@ -47,6 +49,9 @@ class _AddressPickerMapState extends ConsumerState<AddressPickerMap> {
   bool _isLocationModified = false;
   bool _isSaving = false;
 
+  String? _token;
+  String? _baseUrl;
+
   @override
   void initState() {
     super.initState();
@@ -69,6 +74,19 @@ class _AddressPickerMapState extends ConsumerState<AddressPickerMap> {
     }
 
     _initDriverLocationTracking();
+    _initNetworkInfo();
+  }
+
+  Future<void> _initNetworkInfo() async {
+    final dio = ref.read(dioProvider);
+    _baseUrl = dio.options.baseUrl;
+    final storage = ref.read(secureStorageProvider);
+    final token = await storage.read(key: 'auth_token');
+    if (mounted) {
+      setState(() {
+        _token = token;
+      });
+    }
   }
 
   @override
@@ -395,10 +413,14 @@ class _AddressPickerMapState extends ConsumerState<AddressPickerMap> {
               },
             ),
             children: [
-              TileLayer(
-                urlTemplate: 'https://tile.openstreetmap.org/{z}/{x}/{y}.png',
-                userAgentPackageName: 'com.marilin.app',
-              ),
+              if (_baseUrl != null)
+                TileLayer(
+                  urlTemplate: '$_baseUrl/map/tiles/{z}/{x}/{y}.png',
+                  userAgentPackageName: 'com.marilin.app',
+                  tileProvider: NetworkTileProvider(
+                    headers: _token != null ? {'Authorization': 'Bearer $_token'} : {},
+                  ),
+                ),
               if (_estimatedRoute != null)
                 PolylineLayer(
                   polylines: [
@@ -407,7 +429,7 @@ class _AddressPickerMapState extends ConsumerState<AddressPickerMap> {
                       strokeWidth: 4.0,
                       color: _estimatedRoute!.isFallback
                           ? Colors.grey
-                          : const Color(0xFF1565C0),
+                          : MarilinColors.brandBlue,
                       pattern: _estimatedRoute!.isFallback
                           ? StrokePattern.dashed(segments: const [10, 5])
                           : const StrokePattern.solid(),
@@ -618,7 +640,7 @@ class _AddressPickerMapState extends ConsumerState<AddressPickerMap> {
                                     : Icons.my_location,
                                 color: _isLocationModified
                                     ? Colors.green
-                                    : const Color(0xFF1565C0),
+                                    : MarilinColors.brandBlue,
                               ),
                               const SizedBox(width: 8),
                               Expanded(
@@ -670,7 +692,7 @@ class _AddressPickerMapState extends ConsumerState<AddressPickerMap> {
                                   const Icon(
                                     Icons.gps_fixed,
                                     size: 16,
-                                    color: Color(0xFF1565C0),
+                                    color: MarilinColors.brandBlue,
                                   ),
                                   const SizedBox(width: 8),
                                   Expanded(
@@ -873,7 +895,7 @@ class _AddressPickerMapState extends ConsumerState<AddressPickerMap> {
                           style: ElevatedButton.styleFrom(
                             backgroundColor: _isLocationModified
                                 ? Colors.green[700]
-                                : const Color(0xFF1565C0),
+                                : MarilinColors.brandBlue,
                             foregroundColor: Colors.white,
                             disabledBackgroundColor: Colors.grey[300],
                             disabledForegroundColor: Colors.grey[500],

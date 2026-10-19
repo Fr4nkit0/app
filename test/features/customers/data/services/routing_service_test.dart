@@ -1,7 +1,5 @@
-import 'dart:convert';
+import 'package:dio/dio.dart';
 import 'package:flutter_test/flutter_test.dart';
-import 'package:http/http.dart' as http;
-import 'package:http/testing.dart';
 import 'package:latlong2/latlong.dart';
 import 'package:app/features/customers/data/services/routing_service.dart';
 
@@ -27,17 +25,24 @@ void main() {
         ]
       };
 
-      final mockClient = MockClient((request) async {
-        expect(request.url.scheme, 'https');
-        expect(request.url.host, 'router.project-osrm.org');
-        expect(request.url.path, '/route/v1/driving/-65.411624,-24.789124;-65.405,-24.795');
-        expect(request.url.queryParameters['geometries'], 'geojson');
-        expect(request.url.queryParameters['overview'], 'full');
+      final dio = Dio();
+      dio.interceptors.add(InterceptorsWrapper(
+        onRequest: (options, handler) {
+          expect(options.path, '/map/route');
+          expect(options.queryParameters['origin_lat'], start.latitude);
+          expect(options.queryParameters['origin_lng'], start.longitude);
+          expect(options.queryParameters['destination_lat'], end.latitude);
+          expect(options.queryParameters['destination_lng'], end.longitude);
 
-        return http.Response(json.encode(mockResponse), 200);
-      });
+          return handler.resolve(Response(
+            requestOptions: options,
+            statusCode: 200,
+            data: {'data': mockResponse},
+          ));
+        },
+      ));
 
-      final service = RoutingService(client: mockClient);
+      final service = RoutingService(dio);
       final route = await service.getRoute(start, end);
 
       expect(route.isFallback, isFalse);
@@ -52,11 +57,18 @@ void main() {
     });
 
     test('should fallback to straight line calculation on HTTP error', () async {
-      final mockClient = MockClient((request) async {
-        return http.Response('Rate limit exceeded', 429);
-      });
+      final dio = Dio();
+      dio.interceptors.add(InterceptorsWrapper(
+        onRequest: (options, handler) {
+          return handler.resolve(Response(
+            requestOptions: options,
+            statusCode: 429,
+            data: 'Rate limit exceeded',
+          ));
+        },
+      ));
 
-      final service = RoutingService(client: mockClient);
+      final service = RoutingService(dio);
       final route = await service.getRoute(start, end);
 
       expect(route.isFallback, isTrue);
@@ -69,11 +81,17 @@ void main() {
     });
 
     test('should fallback to straight line calculation on exception or timeout', () async {
-      final mockClient = MockClient((request) async {
-        throw Exception('Network connection timed out');
-      });
+      final dio = Dio();
+      dio.interceptors.add(InterceptorsWrapper(
+        onRequest: (options, handler) {
+          return handler.reject(DioException(
+            requestOptions: options,
+            error: 'Network connection timed out',
+          ));
+        },
+      ));
 
-      final service = RoutingService(client: mockClient);
+      final service = RoutingService(dio);
       final route = await service.getRoute(start, end);
 
       expect(route.isFallback, isTrue);

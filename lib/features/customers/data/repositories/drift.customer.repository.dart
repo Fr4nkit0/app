@@ -1,4 +1,5 @@
 import 'package:app/core/utils/resource.dart';
+import 'package:app/core/utils/string_utils.dart';
 import 'package:app/features/customers/data/repositories/customer.repository.dart';
 import 'package:app/features/customers/domain/models/customer.dart';
 import 'package:app/features/customers/domain/models/customer.address.dart';
@@ -39,6 +40,7 @@ class DriftCustomerRepository implements CustomerRepository {
                   isPrimary: Value(address.isPrimary),
                   latitude: Value(address.latitude),
                   longitude: Value(address.longitude),
+                  neighborhood: Value(address.neighborhood),
                 ),
               );
         }
@@ -101,6 +103,7 @@ class DriftCustomerRepository implements CustomerRepository {
                   isPrimary: Value(address.isPrimary),
                   latitude: Value(address.latitude),
                   longitude: Value(address.longitude),
+                  neighborhood: Value(address.neighborhood),
                 ),
               );
         }
@@ -188,6 +191,7 @@ class DriftCustomerRepository implements CustomerRepository {
                 isPrimary: a.isPrimary,
                 latitude: a.latitude,
                 longitude: a.longitude,
+                neighborhood: a.neighborhood,
               ),
             )
             .toList(),
@@ -268,6 +272,7 @@ class DriftCustomerRepository implements CustomerRepository {
                 isPrimary: a.isPrimary,
                 latitude: a.latitude,
                 longitude: a.longitude,
+                neighborhood: a.neighborhood,
               ),
             )
             .toList(),
@@ -285,20 +290,8 @@ class DriftCustomerRepository implements CustomerRepository {
     }).toList();
   }
 
-  @override
-  Future<List<Customer>> searchCustomers({
-    required String query,
-    required int page,
-    required int pageSize,
-  }) async {
-    final offset = page * pageSize;
-    final pattern = '%$query%';
-
-    final customerRows =
-        await (db.select(db.customerTable)
-              ..where((t) => t.name.like(pattern))
-              ..limit(pageSize, offset: offset))
-            .get();
+  Future<List<Customer>> _getAllCustomers() async {
+    final customerRows = await db.select(db.customerTable).get();
 
     if (customerRows.isEmpty) return [];
 
@@ -349,6 +342,7 @@ class DriftCustomerRepository implements CustomerRepository {
                 isPrimary: a.isPrimary,
                 latitude: a.latitude,
                 longitude: a.longitude,
+                neighborhood: a.neighborhood,
               ),
             )
             .toList(),
@@ -364,6 +358,38 @@ class DriftCustomerRepository implements CustomerRepository {
             .toList(),
       );
     }).toList();
+  }
+
+  @override
+  Future<List<Customer>> searchCustomers({
+    required String query,
+    required int page,
+    required int pageSize,
+  }) async {
+    final allCustomers = await _getAllCustomers();
+    if (query.isEmpty) {
+      final start = page * pageSize;
+      if (start >= allCustomers.length) return [];
+      final end = (start + pageSize) < allCustomers.length
+          ? (start + pageSize)
+          : allCustomers.length;
+      return allCustomers.sublist(start, end);
+    }
+
+    final filtered = allCustomers.where((customer) {
+      final addressesStr = customer.addresses
+          .map((a) => '${a.street ?? ''} ${a.neighborhood ?? ''}')
+          .join(' ');
+      final target = '${customer.name} ${customer.phone ?? ''} $addressesStr';
+      return StringUtils.fuzzyMatch(query, target);
+    }).toList();
+
+    final start = page * pageSize;
+    if (start >= filtered.length) return [];
+    final end = (start + pageSize) < filtered.length
+        ? (start + pageSize)
+        : filtered.length;
+    return filtered.sublist(start, end);
   }
 
   @override
@@ -436,6 +462,7 @@ class DriftCustomerRepository implements CustomerRepository {
               isPrimary: addressData.isPrimary,
               latitude: addressData.latitude,
               longitude: addressData.longitude,
+              neighborhood: addressData.neighborhood,
             ),
           );
         }

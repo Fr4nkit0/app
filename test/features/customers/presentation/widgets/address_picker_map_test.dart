@@ -1,4 +1,5 @@
 import 'dart:async';
+import 'package:dio/dio.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
@@ -69,9 +70,14 @@ class MockGeolocatorPlatform extends GeolocatorPlatform {
   }
 }
 
+class FakeDio implements Dio {
+  @override
+  dynamic noSuchMethod(Invocation invocation) => super.noSuchMethod(invocation);
+}
+
 class FakeRoutingService extends RoutingService {
   final RoutingRoute result;
-  FakeRoutingService(this.result);
+  FakeRoutingService(this.result) : super(FakeDio());
 
   @override
   Future<RoutingRoute> getRoute(LatLng start, LatLng end) async {
@@ -95,13 +101,25 @@ void main() {
 
   group('AddressPickerMap Widget Tests', () {
     testWidgets('renders search bar and instructions', (WidgetTester tester) async {
+      final fallbackRoute = RoutingRoute(
+        distance: 500.0,
+        duration: 60.0,
+        points: [
+          LatLng(-24.789000, -65.411000),
+          LatLng(-24.789124, -65.411624),
+        ],
+        isFallback: true,
+      );
+
       await tester.pumpWidget(
         wrapWithScope(
           const AddressPickerMap(
             initialLatitude: -24.789124,
             initialLongitude: -65.411624,
           ),
-          [],
+          [
+            routingServiceProvider.overrideWithValue(FakeRoutingService(fallbackRoute)),
+          ],
         ),
       );
 

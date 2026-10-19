@@ -58,6 +58,10 @@ class CustomerForm extends Notifier<CustomerFormState> {
     state = state.copyWith(street: street, errorMessage: null);
   }
 
+  void updateNeighborhood(String neighborhood) {
+    state = state.copyWith(neighborhood: neighborhood, errorMessage: null);
+  }
+
   void updateApartment(String apartment) {
     state = state.copyWith(apartment: apartment);
   }
@@ -144,6 +148,7 @@ class CustomerForm extends Notifier<CustomerFormState> {
           CustomerAddress(
             id: addressId,
             street: state.street,
+            neighborhood: state.neighborhood.isEmpty ? null : state.neighborhood,
             apartment: state.apartment.isEmpty ? null : state.apartment,
             floor: state.floor.isEmpty ? null : state.floor,
             visualReference: state.visualReference.isEmpty

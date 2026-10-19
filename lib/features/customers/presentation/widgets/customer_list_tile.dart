@@ -1,5 +1,7 @@
 import 'package:flutter/material.dart';
+import 'package:app/core/theme/marilin_tokens.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:app/core/theme/marilin_tokens.dart';
 import 'package:url_launcher/url_launcher.dart';
 import 'package:latlong2/latlong.dart';
 import 'package:app/core/widgets/debt_chip.dart';
@@ -36,6 +38,7 @@ class CustomerListTile extends ConsumerWidget {
     if (addr == null) return '';
     return AddressFormatter.format(
       street: addr.street,
+      neighborhood: addr.neighborhood,
       floor: addr.floor,
       apartment: addr.apartment,
       visualReference: addr.visualReference,
@@ -44,7 +47,7 @@ class CustomerListTile extends ConsumerWidget {
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
-    const blue = Color(0xFF1565C0);
+    const blue = MarilinColors.brandBlue;
     final initials = AvatarUtils.getInitials(customer.name);
     final avatarColors = AvatarUtils.getColors(
       customer.name,
@@ -270,7 +273,9 @@ class CustomerListTile extends ConsumerWidget {
                                       builder: (context) => AddressPickerMap(
                                         initialLatitude: addr.latitude,
                                         initialLongitude: addr.longitude,
-                                        initialSearchQuery: addr.street,
+                                        initialSearchQuery: (addr.neighborhood != null && addr.neighborhood!.trim().isNotEmpty)
+                                            ? '${addr.street}, ${addr.neighborhood}, Salta'
+                                            : '${addr.street}, Salta',
                                         onSave: (latLng) async {
                                           final repository =
                                               ref.read(customerRepositoryProvider);

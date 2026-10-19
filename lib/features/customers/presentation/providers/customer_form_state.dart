@@ -11,6 +11,7 @@ abstract class CustomerFormState with _$CustomerFormState {
     @Default('') String name,
     @Default('') String phone,
     @Default('') String street,
+    @Default('') String neighborhood,
     @Default('') String apartment,
     @Default('') String floor,
     @Default('') String visualReference,
@@ -26,7 +27,7 @@ abstract class CustomerFormState with _$CustomerFormState {
 
   bool get isIdentityValid => name.isNotEmpty;
 
-  bool get isAddressValid => street.isNotEmpty;
+  bool get isAddressValid => street.isNotEmpty && neighborhood.isNotEmpty;
 
   bool get isPreferenceValid => preferences.isNotEmpty;
 
