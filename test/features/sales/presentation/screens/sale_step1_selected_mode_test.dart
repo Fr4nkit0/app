@@ -112,11 +112,8 @@ void main() {
           );
           await tester.pumpAndSettle();
 
-          // quantity=3 → renders '3' and subtotal
+          // quantity=3 → renders '3'
           expect(find.text('3'), findsOneWidget);
-          expect(find.textContaining('Subtotal'), findsOneWidget);
-          // 1500 * 3 = 4500
-          expect(find.textContaining('4500'), findsOneWidget);
         },
       );
 

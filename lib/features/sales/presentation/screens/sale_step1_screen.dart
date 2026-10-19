@@ -1,8 +1,10 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:app/core/theme/marilin_tokens.dart';
 import 'package:app/core/theme/sales_tokens.dart';
 import 'package:app/core/widgets/screen_header.dart';
 import 'package:app/core/widgets/core_search_bar.dart';
+import 'package:app/core/utils/string_utils.dart';
 import 'package:app/features/customers/domain/models/customer.dart';
 import 'package:app/features/customers/presentation/providers/customer_count_provider.dart';
 import 'package:app/features/customers/presentation/screens/create_customer_screens.dart';
@@ -38,12 +40,11 @@ class _SaleStep1ScreenState extends ConsumerState<SaleStep1Screen> {
 
   bool _matches(Customer c, String query) {
     if (query.isEmpty) return true;
-    final q = query.toLowerCase().trim();
-    if (c.name.toLowerCase().contains(q)) return true;
-    if (c.phone != null && c.phone!.toLowerCase().contains(q)) return true;
-    return c.addresses.any(
-      (a) => a.street != null && a.street!.toLowerCase().contains(q),
-    );
+    final addressesStr = c.addresses
+        .map((a) => '${a.street ?? ''} ${a.neighborhood ?? ''}')
+        .join(' ');
+    final target = '${c.name} ${c.phone ?? ''} $addressesStr';
+    return StringUtils.fuzzyMatch(query, target);
   }
 
   // ─── Habitual order apply ──────────────────────────────────────────────────
@@ -104,7 +105,7 @@ class _SaleStep1ScreenState extends ConsumerState<SaleStep1Screen> {
 
     return Scaffold(
       primary: false,
-      backgroundColor: Colors.white,
+      backgroundColor: MarilinColors.scaffoldMuted,
       body: Column(
         children: [
           Expanded(

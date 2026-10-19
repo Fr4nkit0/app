@@ -86,22 +86,7 @@ void main() {
       expect(decrementCalled, 1);
     });
 
-    testWidgets('shows subtotal text when quantity > 0', (tester) async {
-      final product = _makeProduct(price: 1000);
-      await tester.pumpWidget(
-        _wrap(
-          ProductQuantityRow(
-            product: product,
-            quantity: 3,
-            onIncrement: () {},
-            onDecrement: () {},
-          ),
-        ),
-      );
-      // Subtotal = 1000 * 3 = 3000
-      expect(find.textContaining('Subtotal'), findsOneWidget);
-      expect(find.textContaining('3000'), findsOneWidget);
-    });
+    // Subtotal test removed as ProductQuantityRow no longer displays subtotal
 
     testWidgets('decrement button is disabled when quantity is 0', (
       tester,
