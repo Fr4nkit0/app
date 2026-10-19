@@ -1,11 +1,14 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:app/core/theme/marilin_tokens.dart';
 import 'package:app/core/widgets/empty_state.dart';
 import 'package:app/features/route/domain/models/route_stop.dart';
 import 'package:app/features/route/domain/models/stop_status.dart';
 import 'package:app/features/route/presentation/providers/route_repository_provider.dart';
 import 'package:app/features/visits/presentation/screens/visit_screen.dart';
 import 'package:app/features/route/presentation/widgets/route_stop_card.dart';
+import 'package:app/features/auth/auth_controller.dart';
+import 'package:app/core/utils/avatar_utils.dart';
 
 class RouteDayScreen extends ConsumerStatefulWidget {
   const RouteDayScreen({super.key});
@@ -49,7 +52,6 @@ class _RouteDayScreenState extends ConsumerState<RouteDayScreen> {
     final allStopsAsync = ref.watch(routeAllStopsProvider);
 
     return Scaffold(
-      backgroundColor: Colors.white,
       body: SafeArea(
         child: stopsAsync.when(
           data: (stops) {
@@ -63,11 +65,13 @@ class _RouteDayScreenState extends ConsumerState<RouteDayScreen> {
                 SliverToBoxAdapter(child: _RouteHeader(stops: allStops)),
                 SliverToBoxAdapter(child: _ProgressSection(stops: allStops)),
                 if (allStops.isEmpty)
-                  const SliverFillRemaining(
+                  SliverFillRemaining(
                     child: EmptyState(
                       icon: Icons.route_outlined,
                       title: 'Sin paradas',
-                      message: 'No hay visitas programadas para hoy.',
+                      message:
+                          'No hay visitas cargadas para hoy. '
+                          'Cuando la ruta esté disponible, va a aparecer acá.',
                     ),
                   )
                 else ...[
@@ -103,7 +107,7 @@ class _RouteDayScreenState extends ConsumerState<RouteDayScreen> {
                                 child: CircularProgressIndicator(
                                   strokeWidth: 2.5,
                                   valueColor: AlwaysStoppedAnimation<Color>(
-                                    Color(0xFF1565C0),
+                                    MarilinColors.brandBlue,
                                   ),
                                 ),
                               ),
@@ -137,13 +141,21 @@ class _RouteDayScreenState extends ConsumerState<RouteDayScreen> {
 
 // ─── Header con saludo + fecha ────────────────────────────────────────────────
 
-class _RouteHeader extends StatelessWidget {
+class _RouteHeader extends ConsumerWidget {
   const _RouteHeader({required this.stops});
 
   final List<RouteStop> stops;
 
   @override
-  Widget build(BuildContext context) {
+  Widget build(BuildContext context, WidgetRef ref) {
+    final auth = ref.watch(authControllerProvider);
+    final displayName = auth.displayName;
+    final firstName = displayName?.trim().split(RegExp(r'\s+')).first;
+    final greeting = (firstName != null && firstName.isNotEmpty)
+        ? '¡Hola, $firstName!'
+        : '¡Hola!';
+    final initials = AvatarUtils.getInitials(displayName ?? 'Repartidor');
+
     final now = DateTime.now();
     const months = [
       '',
@@ -180,10 +192,10 @@ class _RouteHeader extends StatelessWidget {
           Container(
             padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
             decoration: BoxDecoration(
-              color: const Color(0xFF1565C0).withValues(alpha: 0.06),
+              color: MarilinColors.brandBlue.withValues(alpha: 0.06),
               borderRadius: BorderRadius.circular(20),
               border: Border.all(
-                color: const Color(0xFF1565C0).withValues(alpha: 0.15),
+                color: MarilinColors.brandBlue.withValues(alpha: 0.15),
                 width: 1,
               ),
             ),
@@ -193,13 +205,13 @@ class _RouteHeader extends StatelessWidget {
                 const Icon(
                   Icons.calendar_month_outlined,
                   size: 13,
-                  color: Color(0xFF1565C0),
+                  color: MarilinColors.brandBlue,
                 ),
                 const SizedBox(width: 4),
                 Text(
                   '${days[now.weekday]}, ${now.day} de ${months[now.month]}',
                   style: const TextStyle(
-                    color: Color(0xFF1565C0),
+                    color: MarilinColors.brandBlue,
                     fontSize: 11,
                     fontWeight: FontWeight.w800,
                     letterSpacing: 0.2,
@@ -221,23 +233,23 @@ class _RouteHeader extends StatelessWidget {
                     height: 54,
                     decoration: BoxDecoration(
                       gradient: const LinearGradient(
-                        colors: [Color(0xFF1565C0), Color(0xFF1E88E5)],
+                        colors: [MarilinColors.brandBlue, Color(0xFF1E88E5)],
                         begin: Alignment.topLeft,
                         end: Alignment.bottomRight,
                       ),
                       shape: BoxShape.circle,
                       boxShadow: [
                         BoxShadow(
-                          color: const Color(0xFF1565C0).withValues(alpha: 0.2),
+                          color: MarilinColors.brandBlue.withValues(alpha: 0.2),
                           blurRadius: 8,
                           offset: const Offset(0, 3),
                         ),
                       ],
                     ),
                     alignment: Alignment.center,
-                    child: const Text(
-                      'AF',
-                      style: TextStyle(
+                    child: Text(
+                      initials,
+                      style: const TextStyle(
                         color: Colors.white,
                         fontWeight: FontWeight.w900,
                         fontSize: 16,
@@ -268,11 +280,11 @@ class _RouteHeader extends StatelessWidget {
                   mainAxisSize: MainAxisSize.min,
                   children: [
                     Text(
-                      '¡Hola Alberto!',
+                      greeting,
                       style: Theme.of(context).textTheme.headlineMedium
                           ?.copyWith(
                             fontWeight: FontWeight.w900,
-                            color: const Color(0xFF0D1B3E),
+                            color: MarilinColors.brandNavy,
                             fontSize: 26,
                           ),
                     ),
@@ -330,7 +342,7 @@ class _ProgressSection extends StatelessWidget {
           border: Border.all(color: const Color(0xFFE5E7EB), width: 1.5),
           boxShadow: [
             BoxShadow(
-              color: const Color(0xFF1565C0).withValues(alpha: 0.04),
+              color: MarilinColors.brandBlue.withValues(alpha: 0.04),
               blurRadius: 20,
               offset: const Offset(0, 8),
             ),
@@ -353,7 +365,7 @@ class _ProgressSection extends StatelessWidget {
                 Text(
                   '${(progress * 100).toInt()}% completado',
                   style: const TextStyle(
-                    color: Color(0xFF1565C0),
+                    color: MarilinColors.brandBlue,
                     fontWeight: FontWeight.w900,
                     fontSize: 13,
                   ),
@@ -367,7 +379,7 @@ class _ProgressSection extends StatelessWidget {
                 value: progress,
                 minHeight: 8,
                 backgroundColor: const Color(0xFFE5E7EB),
-                valueColor: const AlwaysStoppedAnimation(Color(0xFF1565C0)),
+                valueColor: AlwaysStoppedAnimation(MarilinColors.brandBlue),
               ),
             ),
             const SizedBox(height: 16),
@@ -378,7 +390,7 @@ class _ProgressSection extends StatelessWidget {
                     title: 'Total',
                     value: '$total',
                     icon: Icons.inventory_2_outlined,
-                    iconColor: const Color(0xFF1565C0),
+                    iconColor: MarilinColors.brandBlue,
                     bgColor: const Color(0xFFE3F2FD),
                   ),
                 ),

@@ -8,6 +8,9 @@ import 'package:app/features/route/presentation/screens/route_day_screen.dart';
 import 'package:app/features/sales/presentation/providers/sale_draft_provider.dart';
 import 'package:app/features/sales/presentation/screens/sale_step1_screen.dart';
 
+import 'package:app/features/auth/auth_controller.dart';
+import 'package:app/features/auth/login_screen.dart';
+
 void main() {
   runApp(const ProviderScope(child: MarilinApp()));
 }
@@ -21,8 +24,29 @@ class MarilinApp extends StatelessWidget {
       title: 'Marilin',
       debugShowCheckedModeBanner: false,
       theme: AppTheme.lightTheme,
-      home: const _RootShell(),
+      home: const AuthWrapper(),
     );
+  }
+}
+
+class AuthWrapper extends ConsumerWidget {
+  const AuthWrapper({super.key});
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final authState = ref.watch(authControllerProvider);
+    
+    if (authState.isLoading) {
+      return const Scaffold(
+        body: Center(child: CircularProgressIndicator()),
+      );
+    }
+    
+    if (authState.isAuthenticated) {
+      return const _RootShell();
+    } else {
+      return const LoginScreen();
+    }
   }
 }
 
