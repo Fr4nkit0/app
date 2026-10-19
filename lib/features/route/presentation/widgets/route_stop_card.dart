@@ -14,6 +14,7 @@ import 'package:app/features/route/domain/models/stop_status.dart';
 import 'package:app/features/customers/presentation/providers/customer_count_provider.dart';
 import 'package:app/features/customers/presentation/providers/customer_repository_provider.dart';
 import 'package:app/features/customers/presentation/widgets/address_picker_map.dart';
+import 'package:app/core/theme/marilin_tokens.dart';
 import 'package:latlong2/latlong.dart';
 
 class RouteStopCard extends ConsumerWidget {
@@ -88,7 +89,7 @@ class RouteStopCard extends ConsumerWidget {
                           ? const Color(0xFF10B981)
                           : isAbsent
                           ? const Color(0xFFEF4444)
-                          : const Color(0xFF1565C0),
+                          : MarilinColors.brandBlue,
                       width: 2.5,
                     ),
                   ),
@@ -109,7 +110,7 @@ class RouteStopCard extends ConsumerWidget {
                           width: 8,
                           height: 8,
                           decoration: const BoxDecoration(
-                            color: Color(0xFF1565C0),
+                            color: MarilinColors.brandBlue,
                             shape: BoxShape.circle,
                           ),
                         ),
@@ -200,6 +201,7 @@ class RouteStopCard extends ConsumerWidget {
                                           stop.customer.addresses.isNotEmpty
                                               ? AddressFormatter.format(
                                                   street: stop.customer.addresses.first.street,
+                                                  neighborhood: stop.customer.addresses.first.neighborhood,
                                                   floor: stop.customer.addresses.first.floor,
                                                   apartment: stop.customer.addresses.first.apartment,
                                                   visualReference: stop.customer.addresses.first.visualReference,
@@ -361,7 +363,9 @@ class RouteStopCard extends ConsumerWidget {
                                               builder: (context) => AddressPickerMap(
                                                 initialLatitude: addr.latitude,
                                                 initialLongitude: addr.longitude,
-                                                initialSearchQuery: addr.street,
+                                                initialSearchQuery: (addr.neighborhood != null && addr.neighborhood!.trim().isNotEmpty)
+                                                    ? '${addr.street}, ${addr.neighborhood}, Salta'
+                                                    : '${addr.street}, Salta',
                                                 onSave: (latLng) async {
                                                   final repository = ref.read(customerRepositoryProvider);
                                                   final updateResult = await repository.updateAddressCoordinates(
@@ -422,12 +426,12 @@ class RouteStopCard extends ConsumerWidget {
         ? Colors.grey.shade400
         : isAbsent
         ? Colors.red.shade300
-        : const Color(0xFF1565C0);
+        : MarilinColors.brandBlue;
     final bg = isDone
         ? Colors.grey.shade100
         : isAbsent
         ? const Color(0xFFFFEBEE)
-        : const Color(0xFF1565C0).withValues(alpha: 0.08);
+        : MarilinColors.brandBlue.withValues(alpha: 0.08);
 
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
@@ -452,7 +456,7 @@ class RouteStopCard extends ConsumerWidget {
   //     padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
   //     decoration: BoxDecoration(
   //       color: isSale
-  //           ? const Color(0xFF1565C0).withValues(alpha: 0.08)
+  //           ? MarilinColors.brandBlue.withValues(alpha: 0.08)
   //           : const Color(0xFF9E9E9E).withValues(alpha: 0.08),
   //       borderRadius: BorderRadius.circular(8),
   //     ),
@@ -461,7 +465,7 @@ class RouteStopCard extends ConsumerWidget {
   //       style: TextStyle(
   //         fontSize: 11,
   //         fontWeight: FontWeight.w700,
-  //         color: isSale ? const Color(0xFF1565C0) : const Color(0xFF616161),
+  //         color: isSale ? MarilinColors.brandBlue : const Color(0xFF616161),
   //       ),
   //     ),
   //   );

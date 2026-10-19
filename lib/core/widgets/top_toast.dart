@@ -1,5 +1,6 @@
 import 'dart:async';
 import 'package:flutter/material.dart';
+import 'package:app/core/theme/marilin_tokens.dart';
 
 class TopToast {
   static void show(
@@ -61,7 +62,7 @@ class TopToast {
       context,
       message: message,
       icon: Icons.info_outline_rounded,
-      color: const Color(0xFF1565C0), // Premium blue
+      color: MarilinColors.brandBlue, // Premium blue
     );
   }
 }

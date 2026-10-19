@@ -1,5 +1,7 @@
 import 'package:flutter/material.dart';
+import 'package:app/core/theme/marilin_tokens.dart';
 import 'package:flutter/services.dart';
+import 'package:app/core/theme/marilin_tokens.dart';
 import 'package:app/core/theme/sales_tokens.dart';
 
 /// Result returned by [DebtPaymentDialog].
@@ -86,7 +88,7 @@ class _DebtPaymentDialogState extends State<DebtPaymentDialog> {
   Widget _buildRemainingIndicator() {
     final isCovered = _remaining.abs() <= 0.01;
     final isOverpaid = _remaining < -0.01;
-    final primary = const Color(0xFF1565C0);
+    final primary = MarilinColors.brandBlue;
 
     if (isOverpaid) {
       return Padding(
@@ -300,7 +302,7 @@ class _DebtPaymentDialogState extends State<DebtPaymentDialog> {
 
   Widget _buildPaymentOption({required String label, required String icon}) {
     final isSelected = _selectedMethod == label;
-    final primary = const Color(0xFF1565C0);
+    final primary = MarilinColors.brandBlue;
 
     return GestureDetector(
       onTap: () => _onMethodSelected(label),
@@ -389,7 +391,7 @@ class _AmountField extends StatelessWidget {
         ),
         focusedBorder: OutlineInputBorder(
           borderRadius: BorderRadius.circular(10),
-          borderSide: const BorderSide(color: Color(0xFF1565C0), width: 1.5),
+          borderSide: const BorderSide(color: MarilinColors.brandBlue, width: 1.5),
         ),
       ),
     );

@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:app/core/theme/marilin_tokens.dart';
 
 class AvatarColors {
   final Color background;
@@ -25,7 +26,7 @@ abstract final class AvatarUtils {
   /// Calculates a deterministic, visually pleasing pastel color from a string seed.
   static Color getPastelColor(String seed) {
     if (seed.trim().isEmpty) {
-      return const Color(0xFF1565C0);
+      return MarilinColors.brandBlue;
     }
     var hash = 0;
     for (var i = 0; i < seed.length; i++) {
@@ -41,7 +42,7 @@ abstract final class AvatarUtils {
     bool selected = false,
     Color? baseColor,
   }) {
-    const defaultColor = Color(0xFF1565C0);
+    const defaultColor = MarilinColors.brandBlue;
     final targetColor = baseColor ?? defaultColor;
     if (selected) {
       return const AvatarColors(

@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:app/core/theme/marilin_tokens.dart';
 
 class CoreHorizontalStepper extends StatelessWidget {
   const CoreHorizontalStepper({
@@ -24,7 +25,7 @@ class CoreHorizontalStepper extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final effectiveActiveColor = activeColor ?? const Color(0xFF1565C0);
+    final effectiveActiveColor = activeColor ?? MarilinColors.brandBlue;
     final effectiveInactiveColor = inactiveColor ?? const Color(0xFFE5E7EB);
 
     return Row(
