@@ -198,7 +198,7 @@ void main() {
           routeStopId: 'stop-1',
           customerId: 'cust-1',
           visitType: VisitType.visit,
-          outcome: 'absent',
+          outcomeId: 2,
           arrivedAt: DateTime(2026, 1, 1, 10),
         ),
       );
@@ -207,7 +207,7 @@ void main() {
       expect(change.entity, PendingEntity.visit);
       expect(change.entityId, 'visit-1');
       expect(change.action, PendingAction.insert);
-      expect(change.payload?['outcome'], 'absent');
+      expect(change.payload?['outcomeId'], 2);
     });
   });
 

@@ -5,6 +5,7 @@ import 'package:app/features/sync/data/repositories/pending_change.repository.da
 import 'package:app/features/sync/domain/models/pending_change.dart';
 import 'package:app/features/visits/data/repositories/visit.repository.dart';
 import 'package:app/features/visits/domain/models/visit.dart';
+import 'package:app/features/visits/domain/models/visit_outcome.dart';
 import 'package:app/features/visits/domain/models/visit_type.dart';
 
 class DriftVisitRepository implements VisitRepository {
@@ -26,7 +27,7 @@ class DriftVisitRepository implements VisitRepository {
               routeStopId: v.routeStopId,
               customerId: v.customerId,
               visitType: v.visitType.name,
-              outcome: Value(v.outcome),
+              outcomeId: Value(v.outcomeId),
               arrived_at: v.arrivedAt,
               observations: Value(v.observations),
               amountCollected: Value(v.amountCollected),
@@ -42,7 +43,7 @@ class DriftVisitRepository implements VisitRepository {
           'routeStopId': v.routeStopId,
           'customerId': v.customerId,
           'visitType': v.visitType.name,
-          'outcome': v.outcome,
+          'outcomeId': v.outcomeId,
           'arrivedAt': v.arrivedAt.toIso8601String(),
           'observations': v.observations,
           'amountCollected': v.amountCollected,
@@ -60,6 +61,33 @@ class DriftVisitRepository implements VisitRepository {
         .map((rows) => rows.map(_rowToVisit).toList());
   }
 
+  @override
+  Stream<List<VisitOutcome>> watchOutcomes() {
+    return (_db.select(_db.visitOutcomeTable)
+          ..orderBy([(t) => OrderingTerm.asc(t.id)]))
+        .watch()
+        .map(
+          (rows) => [
+            for (final r in rows)
+              VisitOutcome(
+                id: r.id,
+                name: r.name,
+                triggersReschedule: r.triggersReschedule,
+              ),
+          ],
+        );
+  }
+
+  @override
+  Future<int?> findDeliveredOutcomeId() async {
+    final row = await (_db.select(_db.visitOutcomeTable)
+          ..where((t) => t.triggersReschedule.equals(false))
+          ..orderBy([(t) => OrderingTerm.asc(t.id)])
+          ..limit(1))
+        .getSingleOrNull();
+    return row?.id;
+  }
+
   Visit _rowToVisit(VisitTableData row) => Visit(
     visitId: row.visitId,
     routeStopId: row.routeStopId,
@@ -68,7 +96,7 @@ class DriftVisitRepository implements VisitRepository {
       (e) => e.name == row.visitType,
       orElse: () => VisitType.visit,
     ),
-    outcome: row.outcome,
+    outcomeId: row.outcomeId,
     arrivedAt: row.arrived_at,
     observations: row.observations,
     amountCollected: row.amountCollected,

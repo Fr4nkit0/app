@@ -218,11 +218,12 @@ class RouteStopCard extends ConsumerWidget {
                                     ),
                                   ),
                                   // Time bubble
-                                  _buildTimeBubble(
-                                    stop.scheduledAt,
-                                    isDone: isDone,
-                                    isAbsent: isAbsent,
-                                  ),
+                                  if (stop.hasScheduledTime)
+                                    _buildTimeBubble(
+                                      stop.scheduledAt,
+                                      isDone: isDone,
+                                      isAbsent: isAbsent,
+                                    ),
                                 ],
                               ),
                               const SizedBox(height: 12),

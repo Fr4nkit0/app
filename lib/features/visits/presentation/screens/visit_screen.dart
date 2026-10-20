@@ -15,7 +15,9 @@ import 'package:app/features/sales/presentation/screens/sale_step1_screen.dart';
 import 'package:app/features/sales/domain/models/sale.dart';
 import 'package:app/features/sales/domain/models/payment_method.dart';
 import 'package:app/features/sales/presentation/providers/sale_repository_provider.dart';
+import 'package:app/features/visits/domain/models/visit_outcome.dart';
 import 'package:app/features/visits/domain/models/visit_type.dart';
+import 'package:app/features/visits/presentation/providers/visit_repository_provider.dart';
 import 'package:app/features/visits/presentation/providers/complete_visit_usecase_provider.dart';
 import 'package:app/features/inventory/presentation/providers/inventory_repository_provider.dart';
 import 'package:uuid/uuid.dart';
@@ -61,10 +63,12 @@ class VisitScreen extends ConsumerStatefulWidget {
 
 class _VisitScreenState extends ConsumerState<VisitScreen> {
   bool _isSaleSelected = false;
-  String? _soloVisitResult; // null initially so they have to select one!
+  VisitOutcome? _selectedOutcome; // null initially so they have to select one!
   int _rescheduleDayOffset = 1; // 1 = Mañana, 2 = Siguiente día hábil
   String _rescheduleTimeSlot = 'Mañana (09:00 - 12:00)';
   final TextEditingController _noteController = TextEditingController();
+
+  bool get _isRescheduleSelected => _selectedOutcome?.triggersReschedule ?? false;
 
   @override
   void dispose() {
@@ -105,8 +109,9 @@ class _VisitScreenState extends ConsumerState<VisitScreen> {
           orElse: () => false,
         );
 
-        if ((hasReturns || hasPayments) && _soloVisitResult == 'absent') {
-          _soloVisitResult = null;
+        if ((hasReturns || hasPayments) &&
+            _isRescheduleSelected) {
+          _selectedOutcome = null;
         }
 
         return Scaffold(
@@ -253,7 +258,7 @@ class _VisitScreenState extends ConsumerState<VisitScreen> {
                   isDone: isDone,
                   hasSales: hasSales,
                   isSaleSelected: _isSaleSelected,
-                  soloVisitResult: _soloVisitResult,
+                  hasSoloResult: _selectedOutcome != null,
                   onBackToRoute: () => Navigator.of(context).pop(),
                   onPrimaryPressed: () => _onVisitFooterPrimary(
                     stop,
@@ -448,14 +453,9 @@ class _VisitScreenState extends ConsumerState<VisitScreen> {
       return;
     }
 
-    StopStatus nextStatus = StopStatus.done;
-    if (!hasSales) {
-      if (_soloVisitResult == 'absent' && !hasReturns) {
-        nextStatus = StopStatus.absent;
-      } else if (_soloVisitResult == 'refused') {
-        nextStatus = hasReturns ? StopStatus.done : StopStatus.absent;
-      }
-    }
+    final outcome = _selectedOutcome;
+    final triggersReschedule = !hasSales && (outcome?.triggersReschedule ?? false);
+    final nextStatus = triggersReschedule ? StopStatus.absent : StopStatus.done;
 
     late final String toastMessage;
     late final IconData toastIcon;
@@ -465,18 +465,14 @@ class _VisitScreenState extends ConsumerState<VisitScreen> {
       toastMessage = 'Visita finalizada - Venta registrada';
       toastIcon = Icons.check_circle_rounded;
       toastColor = MarilinColors.success;
-    } else if (_soloVisitResult == 'absent') {
-      toastMessage = 'Visita finalizada - Cliente Ausente';
-      toastIcon = Icons.person_off_outlined;
-      toastColor = const Color(0xFFEF4444);
-    } else if (_soloVisitResult == 'refused') {
-      toastMessage = 'Visita finalizada - Compra rechazada';
-      toastIcon = Icons.block_flipped;
-      toastColor = const Color(0xFFF59E0B);
-    } else {
-      toastMessage = 'Visita reprogramada con éxito';
+    } else if (triggersReschedule) {
+      toastMessage = 'Visita finalizada - ${outcome!.name}';
       toastIcon = Icons.calendar_today_outlined;
       toastColor = MarilinColors.brandBlue;
+    } else {
+      toastMessage = 'Visita finalizada - ${outcome?.name ?? 'Sin resultado'}';
+      toastIcon = Icons.check_circle_rounded;
+      toastColor = MarilinColors.success;
     }
 
     if (!mounted) return;
@@ -493,18 +489,13 @@ class _VisitScreenState extends ConsumerState<VisitScreen> {
 
     final visitType =
         _isSaleSelected ? VisitType.sale : VisitType.visit;
-    final outcome = _soloVisitResult == 'absent'
-        ? 'absent'
-        : _soloVisitResult == 'refused'
-            ? 'refused'
-            : 'successful';
 
     await ref.read(completeVisitUseCaseProvider).execute(
           stopId: stop.id,
           customerId: stop.customer.id,
           visitType: visitType,
           nextStatus: nextStatus,
-          outcome: outcome,
+          outcomeId: hasSales ? null : outcome?.id,
           observations:
               _noteController.text.isNotEmpty ? _noteController.text : null,
         );
@@ -521,29 +512,34 @@ class _VisitScreenState extends ConsumerState<VisitScreen> {
           title: 'Resultado',
           subtitle: 'Motivo si no hubo venta',
         ),
-        // Toggle Buttons for Results
-        Row(
-          children: [
-            _buildResultButton(
-              'Ausente',
-              'absent',
-              Icons.person_off_outlined,
-              isEnabled: !hasReturns && !hasPayments,
-            ),
-            const SizedBox(width: 8),
-            _buildResultButton('No quiso', 'refused', Icons.block_flipped),
-            const SizedBox(width: 8),
-            _buildResultButton(
-              'Reprogramar',
-              'reschedule',
-              Icons.calendar_today_outlined,
-            ),
-          ],
+        // Toggle Buttons for Results (catalog driven)
+        Consumer(
+          builder: (context, ref, _) {
+            final outcomes = ref.watch(visitOutcomesProvider).value ?? const [];
+            if (outcomes.isEmpty) {
+              return Text(
+                'No hay resultados disponibles. Sincronizá la ruta.',
+                style: TextStyle(fontSize: 13, color: Colors.grey.shade600),
+              );
+            }
+            return Wrap(
+              spacing: 8,
+              runSpacing: 8,
+              children: [
+                for (final outcome in outcomes)
+                  _buildResultButton(
+                    outcome,
+                    isEnabled: !(outcome.triggersReschedule &&
+                        (hasReturns || hasPayments)),
+                  ),
+              ],
+            );
+          },
         ),
         const SizedBox(height: 20),
 
         // Reschedule Form Wheel
-        if (_soloVisitResult == 'reschedule') ...[
+        if (_isRescheduleSelected) ...[
           Text(
             'SELECCIONAR NUEVO DÍA',
             style: TextStyle(
@@ -563,7 +559,7 @@ class _VisitScreenState extends ConsumerState<VisitScreen> {
         TextField(
           controller: _noteController,
           decoration: InputDecoration(
-            labelText: _soloVisitResult == 'reschedule'
+            labelText: _isRescheduleSelected
                 ? 'Nota de reprogramación (opcional)'
                 : 'Observaciones de la visita (opcional)',
             hintText: 'Ej: No tenía plata / Dejar el lunes sin falta...',
@@ -572,7 +568,7 @@ class _VisitScreenState extends ConsumerState<VisitScreen> {
           maxLines: 2,
         ),
 
-        if (_soloVisitResult == 'reschedule') ...[
+        if (_isRescheduleSelected) ...[
           const SizedBox(height: 12),
           Container(
             padding: const EdgeInsets.all(12),
@@ -607,15 +603,18 @@ class _VisitScreenState extends ConsumerState<VisitScreen> {
   }
 
   Widget _buildResultButton(
-    String label,
-    String value,
-    IconData icon, {
+    VisitOutcome outcome, {
     bool isEnabled = true,
   }) {
-    final isSelected = _soloVisitResult == value;
+    final label = outcome.name;
+    final icon = outcome.triggersReschedule
+        ? Icons.calendar_today_outlined
+        : Icons.check_circle_outline;
+    final isSelected = _selectedOutcome?.id == outcome.id;
     final activeColor = MarilinColors.brandBlue;
 
-    return Expanded(
+    return SizedBox(
+      width: 112,
       child: OutlinedButton(
         style: OutlinedButton.styleFrom(
           backgroundColor: !isEnabled
@@ -638,7 +637,7 @@ class _VisitScreenState extends ConsumerState<VisitScreen> {
           ),
         ),
         onPressed: isEnabled
-            ? () => setState(() => _soloVisitResult = value)
+            ? () => setState(() => _selectedOutcome = outcome)
             : null,
         child: Column(
           children: [

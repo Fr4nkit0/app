@@ -10,6 +10,7 @@ import 'package:app/features/route/domain/models/stop_status.dart';
 import 'package:app/features/visits/data/repositories/drift_visit.repository.dart';
 import 'package:app/features/visits/data/repositories/visit.repository.dart';
 import 'package:app/features/visits/domain/models/visit.dart';
+import 'package:app/features/visits/domain/models/visit_outcome.dart';
 import 'package:app/features/visits/domain/models/visit_type.dart';
 import 'package:app/features/visits/domain/usecases/complete_visit.usecase.dart';
 
@@ -22,6 +23,12 @@ class FakeFailingVisitRepository implements VisitRepository {
   Future<void> recordVisit(Visit visit) async {
     throw Exception('Simulated recordVisit failure');
   }
+
+  @override
+  Stream<List<VisitOutcome>> watchOutcomes() => const Stream.empty();
+
+  @override
+  Future<int?> findDeliveredOutcomeId() async => null;
 
   @override
   Stream<List<Visit>> watchVisitsForStop(String routeStopId) =>
@@ -73,13 +80,38 @@ void main() {
   // ───────────────────────────────────────────────────────────────
 
   group('execute — success (F2a)', () {
+    test('without an outcome it records the catalog delivered outcome', () async {
+      await db.into(db.visitOutcomeTable).insert(
+            VisitOutcomeTableCompanion.insert(
+              id: const drift.Value(2),
+              name: 'Absent',
+              triggersReschedule: const drift.Value(true),
+            ),
+          );
+      await db.into(db.visitOutcomeTable).insert(
+            VisitOutcomeTableCompanion.insert(
+              id: const drift.Value(3),
+              name: 'Delivered',
+            ),
+          );
+
+      await sut.execute(
+        stopId: 'stop-test-1',
+        customerId: 'mock-customer-1',
+        visitType: VisitType.sale,
+        nextStatus: StopStatus.done,
+      );
+
+      expect((await db.select(db.visitTable).getSingle()).outcomeId, 3);
+    });
+
     test('returns Resource.success(null) when both steps succeed', () async {
       final result = await sut.execute(
         stopId: 'stop-test-1',
         customerId: 'mock-customer-1',
         visitType: VisitType.sale,
         nextStatus: StopStatus.done,
-        outcome: 'successful',
+        outcomeId: 1,
       );
 
       expect(result, isA<Success<void>>());
@@ -91,7 +123,7 @@ void main() {
         customerId: 'mock-customer-1',
         visitType: VisitType.sale,
         nextStatus: StopStatus.done,
-        outcome: 'successful',
+        outcomeId: 1,
       );
 
       final visits = await db.select(db.visitTable).get();
@@ -99,7 +131,7 @@ void main() {
       expect(visits.first.routeStopId, 'stop-test-1');
       expect(visits.first.customerId, 'mock-customer-1');
       expect(visits.first.visitType, 'sale');
-      expect(visits.first.outcome, 'successful');
+      expect(visits.first.outcomeId, 1);
     });
 
     test('RouteStopTable has status=done and visitedAt set', () async {
@@ -108,7 +140,7 @@ void main() {
         customerId: 'mock-customer-1',
         visitType: VisitType.sale,
         nextStatus: StopStatus.done,
-        outcome: 'successful',
+        outcomeId: 1,
       );
 
       final row = await (db.select(
@@ -124,7 +156,7 @@ void main() {
         customerId: 'mock-customer-1',
         visitType: VisitType.visit,
         nextStatus: StopStatus.absent,
-        outcome: 'absent',
+        outcomeId: 2,
         observations: 'Client not at home',
       );
 
@@ -150,7 +182,7 @@ void main() {
         customerId: 'mock-customer-1',
         visitType: VisitType.sale,
         nextStatus: StopStatus.done,
-        outcome: 'successful',
+        outcomeId: 1,
       );
 
       expect(result, isA<Error<void>>());
@@ -170,7 +202,7 @@ void main() {
           customerId: 'mock-customer-1',
           visitType: VisitType.sale,
           nextStatus: StopStatus.done,
-          outcome: 'successful',
+          outcomeId: 1,
         );
 
         // markStop must NOT have been called.

@@ -8,7 +8,7 @@ class VisitStickyFooter extends StatelessWidget {
     required this.isDone,
     required this.hasSales,
     required this.isSaleSelected,
-    required this.soloVisitResult,
+    required this.hasSoloResult,
     required this.onBackToRoute,
     required this.onPrimaryPressed,
   });
@@ -16,12 +16,12 @@ class VisitStickyFooter extends StatelessWidget {
   final bool isDone;
   final bool hasSales;
   final bool isSaleSelected;
-  final String? soloVisitResult;
+  final bool hasSoloResult;
   final VoidCallback onBackToRoute;
   final VoidCallback? onPrimaryPressed;
 
   bool get _needsSoloResult =>
-      !hasSales && !isSaleSelected && soloVisitResult == null;
+      !hasSales && !isSaleSelected && !hasSoloResult;
 
   String get _primaryLabel {
     if (hasSales) return 'Cerrar Visita';
