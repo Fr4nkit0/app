@@ -5,18 +5,55 @@ import 'package:app/features/customers/domain/models/customer.dart';
 import 'package:app/features/customers/domain/models/customer.address.dart';
 import 'package:app/features/customers/domain/models/customer.preference.dart';
 import 'package:app/core/services/database.helper.dart';
+import 'package:app/features/sync/data/repositories/pending_change.repository.dart';
+import 'package:app/features/sync/domain/models/pending_change.dart';
 import 'package:drift/drift.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 class DriftCustomerRepository implements CustomerRepository {
   final AppDatabase db;
+  final PendingChangeRepository _queue;
 
-  DriftCustomerRepository(this.db);
+  DriftCustomerRepository(this.db) : _queue = DriftPendingChangeRepository(db);
+
+  static Map<String, dynamic> _payload(Customer customer) => {
+    'customerId': customer.id,
+    'name': customer.name,
+    'phone': customer.phone,
+    'addresses': [
+      for (final a in customer.addresses)
+        {
+          'addressId': a.id,
+          'street': a.street,
+          'apartment': a.apartment,
+          'floor': a.floor,
+          'visualReference': a.visualReference,
+          'isPrimary': a.isPrimary,
+          'latitude': a.latitude,
+          'longitude': a.longitude,
+          'neighborhood': a.neighborhood,
+        },
+    ],
+    'preferences': [
+      for (final p in customer.preferences)
+        {
+          'preferenceId': p.id,
+          'dayOfWeek': p.dayOfWeek,
+          'timeWindowStart': p.timeWindowStart,
+          'timeWindowEnd': p.timeWindowEnd,
+        },
+    ],
+  };
 
   @override
   Future<Resource<void>> saveCustomer(Customer customer) async {
     try {
       return await db.transaction(() async {
+        final existed =
+            await (db.select(db.customerTable)
+                  ..where((t) => t.customerId.equals(customer.id)))
+                .getSingleOrNull() !=
+            null;
         await db
             .into(db.customerTable)
             .insertOnConflictUpdate(
@@ -24,6 +61,7 @@ class DriftCustomerRepository implements CustomerRepository {
                 customerId: Value(customer.id),
                 name: customer.name,
                 phone: Value(customer.phone),
+                lastModifiedDate: Value(DateTime.now()),
               ),
             );
         for (final address in customer.addresses) {
@@ -57,6 +95,12 @@ class DriftCustomerRepository implements CustomerRepository {
                 ),
               );
         }
+        await _queue.enqueue(
+          entity: PendingEntity.customer,
+          entityId: customer.id,
+          action: existed ? PendingAction.update : PendingAction.insert,
+          payload: _payload(customer),
+        );
         return const Resource.success(null);
       });
     } catch (e) {
@@ -83,6 +127,7 @@ class DriftCustomerRepository implements CustomerRepository {
                 customerId: Value(customer.id),
                 name: customer.name,
                 phone: Value(customer.phone),
+                lastModifiedDate: Value(DateTime.now()),
               ),
             );
 
@@ -124,6 +169,12 @@ class DriftCustomerRepository implements CustomerRepository {
                 ),
               );
         }
+        await _queue.enqueue(
+          entity: PendingEntity.customer,
+          entityId: customer.id,
+          action: PendingAction.update,
+          payload: _payload(customer),
+        );
         return const Resource.success(null);
       });
     } catch (e) {
@@ -144,6 +195,11 @@ class DriftCustomerRepository implements CustomerRepository {
         await (db.delete(
           db.customerTable,
         )..where((t) => t.customerId.equals(customerId))).go();
+        await _queue.enqueue(
+          entity: PendingEntity.customer,
+          entityId: customerId,
+          action: PendingAction.delete,
+        );
         return const Resource.success(null);
       });
     } catch (e) {
@@ -492,18 +548,43 @@ class DriftCustomerRepository implements CustomerRepository {
     double longitude,
   ) async {
     try {
-      final updatedRows = await (db.update(db.customerAddressTable)
-            ..where((t) => t.addressId.equals(addressId)))
-          .write(
-        CustomerAddressTableCompanion(
-          latitude: Value(latitude),
-          longitude: Value(longitude),
-        ),
-      );
-      if (updatedRows == 0) {
-        return Resource.error(Exception('Address not found'));
-      }
-      return const Resource.success(null);
+      return await db.transaction(() async {
+        final address =
+            await (db.select(db.customerAddressTable)
+                  ..where((t) => t.addressId.equals(addressId)))
+                .getSingleOrNull();
+        if (address == null) {
+          return Resource<void>.error(Exception('Address not found'));
+        }
+
+        await (db.update(
+          db.customerAddressTable,
+        )..where((t) => t.addressId.equals(addressId))).write(
+          CustomerAddressTableCompanion(
+            latitude: Value(latitude),
+            longitude: Value(longitude),
+            lastModifiedDate: Value(DateTime.now()),
+          ),
+        );
+
+        final customerId = address.customerId;
+        await _queue.enqueue(
+          entity: PendingEntity.customer,
+          entityId: customerId,
+          action: PendingAction.update,
+          payload: {
+            'customerId': customerId,
+            'addresses': [
+              {
+                'addressId': addressId,
+                'latitude': latitude,
+                'longitude': longitude,
+              },
+            ],
+          },
+        );
+        return const Resource<void>.success(null);
+      });
     } catch (e) {
       return Resource.error(e is Exception ? e : Exception(e.toString()));
     }

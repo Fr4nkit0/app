@@ -6,11 +6,16 @@ import 'package:app/features/customers/domain/models/customer.address.dart';
 import 'package:app/features/route/data/repositories/repositories/route.repository.dart';
 import 'package:app/features/route/domain/models/route_stop.dart';
 import 'package:app/features/route/domain/models/stop_status.dart';
+import 'package:app/features/sync/data/repositories/pending_change.repository.dart';
+import 'package:app/features/sync/domain/models/pending_change.dart';
 
 class DriftRouteRepository implements RouteRepository {
-  DriftRouteRepository(this._db);
+  DriftRouteRepository(AppDatabase db)
+    : _db = db,
+      _queue = DriftPendingChangeRepository(db);
 
   final AppDatabase _db;
+  final PendingChangeRepository _queue;
 
   @override
   Stream<List<RouteStop>> watchDayStops() {
@@ -100,16 +105,35 @@ class DriftRouteRepository implements RouteRepository {
 
   @override
   Future<void> markStop(String id, StopStatus status) async {
-    await (_db.update(
-      _db.routeStopTable,
-    )..where((t) => t.routeStopId.equals(id))).write(
-      RouteStopTableCompanion(
-        status: Value(status.name),
-        visitedAt: status == StopStatus.pending
-            ? const Value.absent()
-            : Value(DateTime.now()),
-      ),
-    );
+    final now = DateTime.now();
+    await _db.transaction(() async {
+      final updated =
+          await (_db.update(
+            _db.routeStopTable,
+          )..where((t) => t.routeStopId.equals(id))).write(
+            RouteStopTableCompanion(
+              status: Value(status.name),
+              visitedAt: status == StopStatus.pending
+                  ? const Value.absent()
+                  : Value(now),
+              lastModifiedDate: Value(now),
+            ),
+          );
+      if (updated == 0) return;
+
+      await _queue.enqueue(
+        entity: PendingEntity.routeStop,
+        entityId: id,
+        action: PendingAction.update,
+        payload: {
+          'routeStopId': id,
+          'status': status.name,
+          'visitedAt': status == StopStatus.pending
+              ? null
+              : now.toIso8601String(),
+        },
+      );
+    });
   }
 
   static String _dateOnly(DateTime d) =>

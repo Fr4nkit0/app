@@ -4,12 +4,21 @@ import 'package:dio/dio.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 import 'package:flutter_test/flutter_test.dart';
+import 'package:drift/native.dart';
+
+import 'package:app/core/services/database.helper.dart';
+import 'package:app/features/sync/data/repositories/pending_change.repository.dart';
+import 'package:app/features/sync/domain/models/pending_change.dart';
+import 'package:app/features/sync/presentation/providers/pending_change_repository_provider.dart';
 
 import '../../support/fake_http_adapter.dart';
 
 const _storage = FlutterSecureStorage();
 
-ProviderContainer _container(FakeHttpAdapter adapter) {
+ProviderContainer _container(
+  FakeHttpAdapter adapter, {
+  PendingChangeRepository? queue,
+}) {
   final dio = Dio(BaseOptions(baseUrl: 'https://api.example.test/api/v1'))
     ..httpClientAdapter = adapter;
   final container = ProviderContainer(
@@ -17,6 +26,7 @@ ProviderContainer _container(FakeHttpAdapter adapter) {
       dioProvider.overrideWithValue(dio),
       secureStorageProvider.overrideWithValue(_storage),
       deviceNameProvider.overrideWithValue('Test Phone'),
+      if (queue != null) pendingChangeRepositoryProvider.overrideWithValue(queue),
     ],
   );
   addTearDown(container.dispose);
@@ -240,6 +250,92 @@ void main() {
       final state = await _settled(container);
 
       expect(state.isAuthenticated, isFalse);
+    });
+  });
+
+  group('logout', () {
+    late AppDatabase db;
+    late DriftPendingChangeRepository queue;
+
+    setUp(() {
+      db = AppDatabase(NativeDatabase.memory());
+      queue = DriftPendingChangeRepository(db);
+    });
+
+    tearDown(() async => db.close());
+
+    Future<ProviderContainer> signedIn(FakeHttpAdapter adapter) async {
+      await _storage.write(key: 'auth_token', value: 'plain-text-token');
+      final container = _container(adapter, queue: queue);
+      await _settled(container);
+      return container;
+    }
+
+    test('is blocked while changes are pending and keeps the session', () async {
+      final adapter = FakeHttpAdapter((_) => FakeHttpAdapter.json(200, {}));
+      final container = await signedIn(adapter);
+      await queue.enqueue(
+        entity: PendingEntity.sale,
+        entityId: 'sale-1',
+        action: PendingAction.insert,
+      );
+      await queue.enqueue(
+        entity: PendingEntity.payment,
+        entityId: 'pay-1',
+        action: PendingAction.insert,
+      );
+
+      final result = await container
+          .read(authControllerProvider.notifier)
+          .logout();
+
+      expect(result, isA<LogoutBlocked>());
+      final blocked = result as LogoutBlocked;
+      expect(blocked.pendingCount, 2);
+      expect(blocked.message, contains('2'));
+      expect(blocked.message, contains('sincroniz'));
+      expect(adapter.requests, isEmpty);
+      expect(await _storage.read(key: 'auth_token'), 'plain-text-token');
+      expect(container.read(authControllerProvider).isAuthenticated, isTrue);
+    });
+
+    test('is allowed when the queue is empty and clears the session', () async {
+      final adapter = FakeHttpAdapter((_) => FakeHttpAdapter.json(200, {}));
+      final container = await signedIn(adapter);
+
+      final result = await container
+          .read(authControllerProvider.notifier)
+          .logout();
+
+      expect(result, isA<LoggedOut>());
+      expect(adapter.requests.single.path, '/auth/logout');
+      expect(await _storage.read(key: 'auth_token'), isNull);
+      expect(container.read(authControllerProvider).isAuthenticated, isFalse);
+    });
+
+    test('is allowed when every change was already sent or rejected', () async {
+      final container = await signedIn(
+        FakeHttpAdapter((_) => FakeHttpAdapter.json(200, {})),
+      );
+      await queue.enqueue(
+        entity: PendingEntity.sale,
+        entityId: 'sale-1',
+        action: PendingAction.insert,
+      );
+      await queue.enqueue(
+        entity: PendingEntity.payment,
+        entityId: 'pay-1',
+        action: PendingAction.insert,
+      );
+      final changes = await queue.getPending();
+      await queue.markSent([changes[0].id]);
+      await queue.markRejected(changes[1].id, 'invalid');
+
+      final result = await container
+          .read(authControllerProvider.notifier)
+          .logout();
+
+      expect(result, isA<LoggedOut>());
     });
   });
 }
