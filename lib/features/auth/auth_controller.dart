@@ -3,6 +3,7 @@ import 'dart:io';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:dio/dio.dart';
 import 'package:app/core/network/dio_client.dart';
+import 'package:app/features/sync/presentation/providers/pending_change_repository_provider.dart';
 
 const _authTokenKey = 'auth_token';
 const _authDisplayNameKey = 'auth_display_name';
@@ -25,6 +26,29 @@ class RememberedCredentials {
 
   final String? email;
   final bool remember;
+}
+
+sealed class LogoutResult {
+  const LogoutResult();
+}
+
+class LoggedOut extends LogoutResult {
+  const LoggedOut();
+}
+
+/// Logging out would strand changes that never reached the server.
+class LogoutBlocked extends LogoutResult {
+  const LogoutBlocked(this.pendingCount);
+
+  final int pendingCount;
+
+  String get message {
+    final changes = pendingCount == 1
+        ? '1 cambio sin sincronizar'
+        : '$pendingCount cambios sin sincronizar';
+    return 'Tenés $changes. Si cerrás sesión ahora se perderían. '
+        'Sincronizá antes de salir.';
+  }
 }
 
 class AuthState {
@@ -252,7 +276,13 @@ class AuthController extends Notifier<AuthState> {
     }
   }
 
-  Future<void> logout() async {
+  /// Closes the session unless local changes are still waiting to sync.
+  Future<LogoutResult> logout() async {
+    final pending = await ref
+        .read(pendingChangeRepositoryProvider)
+        .countPending();
+    if (pending > 0) return LogoutBlocked(pending);
+
     state = state.copyWith(isLoading: true);
     try {
       final dio = ref.read(dioProvider);
@@ -269,6 +299,7 @@ class AuthController extends Notifier<AuthState> {
         clearDisplayName: true,
       );
     }
+    return const LoggedOut();
   }
 }
 

@@ -10672,92 +10672,42 @@ class RouteInventoryLoadTableCompanion
   }
 }
 
-class $AuditLogTableTable extends AuditLogTable
-    with TableInfo<$AuditLogTableTable, AuditLogTableData> {
+class $PendingChangeTableTable extends PendingChangeTable
+    with TableInfo<$PendingChangeTableTable, PendingChangeTableData> {
   @override
   final GeneratedDatabase attachedDatabase;
   final String? _alias;
-  $AuditLogTableTable(this.attachedDatabase, [this._alias]);
-  static const VerificationMeta _createdAtMeta = const VerificationMeta(
-    'createdAt',
+  $PendingChangeTableTable(this.attachedDatabase, [this._alias]);
+  static const VerificationMeta _pendingChangeIdMeta = const VerificationMeta(
+    'pendingChangeId',
   );
   @override
-  late final GeneratedColumn<DateTime> createdAt = GeneratedColumn<DateTime>(
-    'created_at',
+  late final GeneratedColumn<int> pendingChangeId = GeneratedColumn<int>(
+    'pending_change_id',
     aliasedName,
     false,
-    type: DriftSqlType.dateTime,
-    requiredDuringInsert: false,
-    defaultValue: currentDateAndTime,
-  );
-  static const VerificationMeta _lastModifiedDateMeta = const VerificationMeta(
-    'lastModifiedDate',
-  );
-  @override
-  late final GeneratedColumn<DateTime> lastModifiedDate =
-      GeneratedColumn<DateTime>(
-        'last_modified_date',
-        aliasedName,
-        false,
-        type: DriftSqlType.dateTime,
-        requiredDuringInsert: false,
-        defaultValue: currentDateAndTime,
-      );
-  static const VerificationMeta _enabledMeta = const VerificationMeta(
-    'enabled',
-  );
-  @override
-  late final GeneratedColumn<bool> enabled = GeneratedColumn<bool>(
-    'enabled',
-    aliasedName,
-    false,
-    type: DriftSqlType.bool,
-    requiredDuringInsert: false,
-    defaultConstraints: GeneratedColumn.constraintIsAlways(
-      'CHECK ("enabled" IN (0, 1))',
-    ),
-    defaultValue: const Constant(true),
-  );
-  static const VerificationMeta _serverIdMeta = const VerificationMeta(
-    'serverId',
-  );
-  @override
-  late final GeneratedColumn<int> serverId = GeneratedColumn<int>(
-    'server_id',
-    aliasedName,
-    true,
+    hasAutoIncrement: true,
     type: DriftSqlType.int,
     requiredDuringInsert: false,
+    defaultConstraints: GeneratedColumn.constraintIsAlways(
+      'PRIMARY KEY AUTOINCREMENT',
+    ),
   );
-  static const VerificationMeta _auditLogIdMeta = const VerificationMeta(
-    'auditLogId',
-  );
+  static const VerificationMeta _entityMeta = const VerificationMeta('entity');
   @override
-  late final GeneratedColumn<String> auditLogId = GeneratedColumn<String>(
-    'audit_log_id',
-    aliasedName,
-    false,
-    type: DriftSqlType.string,
-    requiredDuringInsert: false,
-    clientDefault: () => uuid.v4(),
-  );
-  static const VerificationMeta _tableNameColumnMeta = const VerificationMeta(
-    'tableNameColumn',
-  );
-  @override
-  late final GeneratedColumn<String> tableNameColumn = GeneratedColumn<String>(
-    'table_name',
+  late final GeneratedColumn<String> entity = GeneratedColumn<String>(
+    'entity',
     aliasedName,
     false,
     type: DriftSqlType.string,
     requiredDuringInsert: true,
   );
-  static const VerificationMeta _recordIdMeta = const VerificationMeta(
-    'recordId',
+  static const VerificationMeta _entityIdMeta = const VerificationMeta(
+    'entityId',
   );
   @override
-  late final GeneratedColumn<String> recordId = GeneratedColumn<String>(
-    'record_id',
+  late final GeneratedColumn<String> entityId = GeneratedColumn<String>(
+    'entity_id',
     aliasedName,
     false,
     type: DriftSqlType.string,
@@ -10783,84 +10733,100 @@ class $AuditLogTableTable extends AuditLogTable
     type: DriftSqlType.string,
     requiredDuringInsert: false,
   );
+  static const VerificationMeta _statusMeta = const VerificationMeta('status');
+  @override
+  late final GeneratedColumn<String> status = GeneratedColumn<String>(
+    'status',
+    aliasedName,
+    false,
+    type: DriftSqlType.string,
+    requiredDuringInsert: false,
+    defaultValue: const Constant('pending'),
+  );
+  static const VerificationMeta _rejectionReasonMeta = const VerificationMeta(
+    'rejectionReason',
+  );
+  @override
+  late final GeneratedColumn<String> rejectionReason = GeneratedColumn<String>(
+    'rejection_reason',
+    aliasedName,
+    true,
+    type: DriftSqlType.string,
+    requiredDuringInsert: false,
+  );
+  static const VerificationMeta _createdAtMeta = const VerificationMeta(
+    'createdAt',
+  );
+  @override
+  late final GeneratedColumn<DateTime> createdAt = GeneratedColumn<DateTime>(
+    'created_at',
+    aliasedName,
+    false,
+    type: DriftSqlType.dateTime,
+    requiredDuringInsert: false,
+    defaultValue: currentDateAndTime,
+  );
+  static const VerificationMeta _lastModifiedDateMeta = const VerificationMeta(
+    'lastModifiedDate',
+  );
+  @override
+  late final GeneratedColumn<DateTime> lastModifiedDate =
+      GeneratedColumn<DateTime>(
+        'last_modified_date',
+        aliasedName,
+        false,
+        type: DriftSqlType.dateTime,
+        requiredDuringInsert: false,
+        defaultValue: currentDateAndTime,
+      );
   @override
   List<GeneratedColumn> get $columns => [
-    createdAt,
-    lastModifiedDate,
-    enabled,
-    serverId,
-    auditLogId,
-    tableNameColumn,
-    recordId,
+    pendingChangeId,
+    entity,
+    entityId,
     action,
     payload,
+    status,
+    rejectionReason,
+    createdAt,
+    lastModifiedDate,
   ];
   @override
   String get aliasedName => _alias ?? actualTableName;
   @override
   String get actualTableName => $name;
-  static const String $name = 'audit_logs';
+  static const String $name = 'pending_changes';
   @override
   VerificationContext validateIntegrity(
-    Insertable<AuditLogTableData> instance, {
+    Insertable<PendingChangeTableData> instance, {
     bool isInserting = false,
   }) {
     final context = VerificationContext();
     final data = instance.toColumns(true);
-    if (data.containsKey('created_at')) {
+    if (data.containsKey('pending_change_id')) {
       context.handle(
-        _createdAtMeta,
-        createdAt.isAcceptableOrUnknown(data['created_at']!, _createdAtMeta),
-      );
-    }
-    if (data.containsKey('last_modified_date')) {
-      context.handle(
-        _lastModifiedDateMeta,
-        lastModifiedDate.isAcceptableOrUnknown(
-          data['last_modified_date']!,
-          _lastModifiedDateMeta,
+        _pendingChangeIdMeta,
+        pendingChangeId.isAcceptableOrUnknown(
+          data['pending_change_id']!,
+          _pendingChangeIdMeta,
         ),
       );
     }
-    if (data.containsKey('enabled')) {
+    if (data.containsKey('entity')) {
       context.handle(
-        _enabledMeta,
-        enabled.isAcceptableOrUnknown(data['enabled']!, _enabledMeta),
-      );
-    }
-    if (data.containsKey('server_id')) {
-      context.handle(
-        _serverIdMeta,
-        serverId.isAcceptableOrUnknown(data['server_id']!, _serverIdMeta),
-      );
-    }
-    if (data.containsKey('audit_log_id')) {
-      context.handle(
-        _auditLogIdMeta,
-        auditLogId.isAcceptableOrUnknown(
-          data['audit_log_id']!,
-          _auditLogIdMeta,
-        ),
-      );
-    }
-    if (data.containsKey('table_name')) {
-      context.handle(
-        _tableNameColumnMeta,
-        tableNameColumn.isAcceptableOrUnknown(
-          data['table_name']!,
-          _tableNameColumnMeta,
-        ),
+        _entityMeta,
+        entity.isAcceptableOrUnknown(data['entity']!, _entityMeta),
       );
     } else if (isInserting) {
-      context.missing(_tableNameColumnMeta);
+      context.missing(_entityMeta);
     }
-    if (data.containsKey('record_id')) {
+    if (data.containsKey('entity_id')) {
       context.handle(
-        _recordIdMeta,
-        recordId.isAcceptableOrUnknown(data['record_id']!, _recordIdMeta),
+        _entityIdMeta,
+        entityId.isAcceptableOrUnknown(data['entity_id']!, _entityIdMeta),
       );
     } else if (isInserting) {
-      context.missing(_recordIdMeta);
+      context.missing(_entityIdMeta);
     }
     if (data.containsKey('action')) {
       context.handle(
@@ -10876,42 +10842,56 @@ class $AuditLogTableTable extends AuditLogTable
         payload.isAcceptableOrUnknown(data['payload']!, _payloadMeta),
       );
     }
+    if (data.containsKey('status')) {
+      context.handle(
+        _statusMeta,
+        status.isAcceptableOrUnknown(data['status']!, _statusMeta),
+      );
+    }
+    if (data.containsKey('rejection_reason')) {
+      context.handle(
+        _rejectionReasonMeta,
+        rejectionReason.isAcceptableOrUnknown(
+          data['rejection_reason']!,
+          _rejectionReasonMeta,
+        ),
+      );
+    }
+    if (data.containsKey('created_at')) {
+      context.handle(
+        _createdAtMeta,
+        createdAt.isAcceptableOrUnknown(data['created_at']!, _createdAtMeta),
+      );
+    }
+    if (data.containsKey('last_modified_date')) {
+      context.handle(
+        _lastModifiedDateMeta,
+        lastModifiedDate.isAcceptableOrUnknown(
+          data['last_modified_date']!,
+          _lastModifiedDateMeta,
+        ),
+      );
+    }
     return context;
   }
 
   @override
-  Set<GeneratedColumn> get $primaryKey => {auditLogId};
+  Set<GeneratedColumn> get $primaryKey => {pendingChangeId};
   @override
-  AuditLogTableData map(Map<String, dynamic> data, {String? tablePrefix}) {
+  PendingChangeTableData map(Map<String, dynamic> data, {String? tablePrefix}) {
     final effectivePrefix = tablePrefix != null ? '$tablePrefix.' : '';
-    return AuditLogTableData(
-      createdAt: attachedDatabase.typeMapping.read(
-        DriftSqlType.dateTime,
-        data['${effectivePrefix}created_at'],
-      )!,
-      lastModifiedDate: attachedDatabase.typeMapping.read(
-        DriftSqlType.dateTime,
-        data['${effectivePrefix}last_modified_date'],
-      )!,
-      enabled: attachedDatabase.typeMapping.read(
-        DriftSqlType.bool,
-        data['${effectivePrefix}enabled'],
-      )!,
-      serverId: attachedDatabase.typeMapping.read(
+    return PendingChangeTableData(
+      pendingChangeId: attachedDatabase.typeMapping.read(
         DriftSqlType.int,
-        data['${effectivePrefix}server_id'],
-      ),
-      auditLogId: attachedDatabase.typeMapping.read(
-        DriftSqlType.string,
-        data['${effectivePrefix}audit_log_id'],
+        data['${effectivePrefix}pending_change_id'],
       )!,
-      tableNameColumn: attachedDatabase.typeMapping.read(
+      entity: attachedDatabase.typeMapping.read(
         DriftSqlType.string,
-        data['${effectivePrefix}table_name'],
+        data['${effectivePrefix}entity'],
       )!,
-      recordId: attachedDatabase.typeMapping.read(
+      entityId: attachedDatabase.typeMapping.read(
         DriftSqlType.string,
-        data['${effectivePrefix}record_id'],
+        data['${effectivePrefix}entity_id'],
       )!,
       action: attachedDatabase.typeMapping.read(
         DriftSqlType.string,
@@ -10921,303 +10901,303 @@ class $AuditLogTableTable extends AuditLogTable
         DriftSqlType.string,
         data['${effectivePrefix}payload'],
       ),
+      status: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}status'],
+      )!,
+      rejectionReason: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}rejection_reason'],
+      ),
+      createdAt: attachedDatabase.typeMapping.read(
+        DriftSqlType.dateTime,
+        data['${effectivePrefix}created_at'],
+      )!,
+      lastModifiedDate: attachedDatabase.typeMapping.read(
+        DriftSqlType.dateTime,
+        data['${effectivePrefix}last_modified_date'],
+      )!,
     );
   }
 
   @override
-  $AuditLogTableTable createAlias(String alias) {
-    return $AuditLogTableTable(attachedDatabase, alias);
+  $PendingChangeTableTable createAlias(String alias) {
+    return $PendingChangeTableTable(attachedDatabase, alias);
   }
 }
 
-class AuditLogTableData extends DataClass
-    implements Insertable<AuditLogTableData> {
-  final DateTime createdAt;
-  final DateTime lastModifiedDate;
-  final bool enabled;
-  final int? serverId;
-  final String auditLogId;
-  final String tableNameColumn;
-  final String recordId;
+class PendingChangeTableData extends DataClass
+    implements Insertable<PendingChangeTableData> {
+  final int pendingChangeId;
+  final String entity;
+  final String entityId;
   final String action;
   final String? payload;
-  const AuditLogTableData({
-    required this.createdAt,
-    required this.lastModifiedDate,
-    required this.enabled,
-    this.serverId,
-    required this.auditLogId,
-    required this.tableNameColumn,
-    required this.recordId,
+  final String status;
+  final String? rejectionReason;
+  final DateTime createdAt;
+  final DateTime lastModifiedDate;
+  const PendingChangeTableData({
+    required this.pendingChangeId,
+    required this.entity,
+    required this.entityId,
     required this.action,
     this.payload,
+    required this.status,
+    this.rejectionReason,
+    required this.createdAt,
+    required this.lastModifiedDate,
   });
   @override
   Map<String, Expression> toColumns(bool nullToAbsent) {
     final map = <String, Expression>{};
-    map['created_at'] = Variable<DateTime>(createdAt);
-    map['last_modified_date'] = Variable<DateTime>(lastModifiedDate);
-    map['enabled'] = Variable<bool>(enabled);
-    if (!nullToAbsent || serverId != null) {
-      map['server_id'] = Variable<int>(serverId);
-    }
-    map['audit_log_id'] = Variable<String>(auditLogId);
-    map['table_name'] = Variable<String>(tableNameColumn);
-    map['record_id'] = Variable<String>(recordId);
+    map['pending_change_id'] = Variable<int>(pendingChangeId);
+    map['entity'] = Variable<String>(entity);
+    map['entity_id'] = Variable<String>(entityId);
     map['action'] = Variable<String>(action);
     if (!nullToAbsent || payload != null) {
       map['payload'] = Variable<String>(payload);
     }
+    map['status'] = Variable<String>(status);
+    if (!nullToAbsent || rejectionReason != null) {
+      map['rejection_reason'] = Variable<String>(rejectionReason);
+    }
+    map['created_at'] = Variable<DateTime>(createdAt);
+    map['last_modified_date'] = Variable<DateTime>(lastModifiedDate);
     return map;
   }
 
-  AuditLogTableCompanion toCompanion(bool nullToAbsent) {
-    return AuditLogTableCompanion(
-      createdAt: Value(createdAt),
-      lastModifiedDate: Value(lastModifiedDate),
-      enabled: Value(enabled),
-      serverId: serverId == null && nullToAbsent
-          ? const Value.absent()
-          : Value(serverId),
-      auditLogId: Value(auditLogId),
-      tableNameColumn: Value(tableNameColumn),
-      recordId: Value(recordId),
+  PendingChangeTableCompanion toCompanion(bool nullToAbsent) {
+    return PendingChangeTableCompanion(
+      pendingChangeId: Value(pendingChangeId),
+      entity: Value(entity),
+      entityId: Value(entityId),
       action: Value(action),
       payload: payload == null && nullToAbsent
           ? const Value.absent()
           : Value(payload),
+      status: Value(status),
+      rejectionReason: rejectionReason == null && nullToAbsent
+          ? const Value.absent()
+          : Value(rejectionReason),
+      createdAt: Value(createdAt),
+      lastModifiedDate: Value(lastModifiedDate),
     );
   }
 
-  factory AuditLogTableData.fromJson(
+  factory PendingChangeTableData.fromJson(
     Map<String, dynamic> json, {
     ValueSerializer? serializer,
   }) {
     serializer ??= driftRuntimeOptions.defaultSerializer;
-    return AuditLogTableData(
-      createdAt: serializer.fromJson<DateTime>(json['createdAt']),
-      lastModifiedDate: serializer.fromJson<DateTime>(json['lastModifiedDate']),
-      enabled: serializer.fromJson<bool>(json['enabled']),
-      serverId: serializer.fromJson<int?>(json['serverId']),
-      auditLogId: serializer.fromJson<String>(json['auditLogId']),
-      tableNameColumn: serializer.fromJson<String>(json['tableNameColumn']),
-      recordId: serializer.fromJson<String>(json['recordId']),
+    return PendingChangeTableData(
+      pendingChangeId: serializer.fromJson<int>(json['pendingChangeId']),
+      entity: serializer.fromJson<String>(json['entity']),
+      entityId: serializer.fromJson<String>(json['entityId']),
       action: serializer.fromJson<String>(json['action']),
       payload: serializer.fromJson<String?>(json['payload']),
+      status: serializer.fromJson<String>(json['status']),
+      rejectionReason: serializer.fromJson<String?>(json['rejectionReason']),
+      createdAt: serializer.fromJson<DateTime>(json['createdAt']),
+      lastModifiedDate: serializer.fromJson<DateTime>(json['lastModifiedDate']),
     );
   }
   @override
   Map<String, dynamic> toJson({ValueSerializer? serializer}) {
     serializer ??= driftRuntimeOptions.defaultSerializer;
     return <String, dynamic>{
-      'createdAt': serializer.toJson<DateTime>(createdAt),
-      'lastModifiedDate': serializer.toJson<DateTime>(lastModifiedDate),
-      'enabled': serializer.toJson<bool>(enabled),
-      'serverId': serializer.toJson<int?>(serverId),
-      'auditLogId': serializer.toJson<String>(auditLogId),
-      'tableNameColumn': serializer.toJson<String>(tableNameColumn),
-      'recordId': serializer.toJson<String>(recordId),
+      'pendingChangeId': serializer.toJson<int>(pendingChangeId),
+      'entity': serializer.toJson<String>(entity),
+      'entityId': serializer.toJson<String>(entityId),
       'action': serializer.toJson<String>(action),
       'payload': serializer.toJson<String?>(payload),
+      'status': serializer.toJson<String>(status),
+      'rejectionReason': serializer.toJson<String?>(rejectionReason),
+      'createdAt': serializer.toJson<DateTime>(createdAt),
+      'lastModifiedDate': serializer.toJson<DateTime>(lastModifiedDate),
     };
   }
 
-  AuditLogTableData copyWith({
-    DateTime? createdAt,
-    DateTime? lastModifiedDate,
-    bool? enabled,
-    Value<int?> serverId = const Value.absent(),
-    String? auditLogId,
-    String? tableNameColumn,
-    String? recordId,
+  PendingChangeTableData copyWith({
+    int? pendingChangeId,
+    String? entity,
+    String? entityId,
     String? action,
     Value<String?> payload = const Value.absent(),
-  }) => AuditLogTableData(
-    createdAt: createdAt ?? this.createdAt,
-    lastModifiedDate: lastModifiedDate ?? this.lastModifiedDate,
-    enabled: enabled ?? this.enabled,
-    serverId: serverId.present ? serverId.value : this.serverId,
-    auditLogId: auditLogId ?? this.auditLogId,
-    tableNameColumn: tableNameColumn ?? this.tableNameColumn,
-    recordId: recordId ?? this.recordId,
+    String? status,
+    Value<String?> rejectionReason = const Value.absent(),
+    DateTime? createdAt,
+    DateTime? lastModifiedDate,
+  }) => PendingChangeTableData(
+    pendingChangeId: pendingChangeId ?? this.pendingChangeId,
+    entity: entity ?? this.entity,
+    entityId: entityId ?? this.entityId,
     action: action ?? this.action,
     payload: payload.present ? payload.value : this.payload,
+    status: status ?? this.status,
+    rejectionReason: rejectionReason.present
+        ? rejectionReason.value
+        : this.rejectionReason,
+    createdAt: createdAt ?? this.createdAt,
+    lastModifiedDate: lastModifiedDate ?? this.lastModifiedDate,
   );
-  AuditLogTableData copyWithCompanion(AuditLogTableCompanion data) {
-    return AuditLogTableData(
+  PendingChangeTableData copyWithCompanion(PendingChangeTableCompanion data) {
+    return PendingChangeTableData(
+      pendingChangeId: data.pendingChangeId.present
+          ? data.pendingChangeId.value
+          : this.pendingChangeId,
+      entity: data.entity.present ? data.entity.value : this.entity,
+      entityId: data.entityId.present ? data.entityId.value : this.entityId,
+      action: data.action.present ? data.action.value : this.action,
+      payload: data.payload.present ? data.payload.value : this.payload,
+      status: data.status.present ? data.status.value : this.status,
+      rejectionReason: data.rejectionReason.present
+          ? data.rejectionReason.value
+          : this.rejectionReason,
       createdAt: data.createdAt.present ? data.createdAt.value : this.createdAt,
       lastModifiedDate: data.lastModifiedDate.present
           ? data.lastModifiedDate.value
           : this.lastModifiedDate,
-      enabled: data.enabled.present ? data.enabled.value : this.enabled,
-      serverId: data.serverId.present ? data.serverId.value : this.serverId,
-      auditLogId: data.auditLogId.present
-          ? data.auditLogId.value
-          : this.auditLogId,
-      tableNameColumn: data.tableNameColumn.present
-          ? data.tableNameColumn.value
-          : this.tableNameColumn,
-      recordId: data.recordId.present ? data.recordId.value : this.recordId,
-      action: data.action.present ? data.action.value : this.action,
-      payload: data.payload.present ? data.payload.value : this.payload,
     );
   }
 
   @override
   String toString() {
-    return (StringBuffer('AuditLogTableData(')
-          ..write('createdAt: $createdAt, ')
-          ..write('lastModifiedDate: $lastModifiedDate, ')
-          ..write('enabled: $enabled, ')
-          ..write('serverId: $serverId, ')
-          ..write('auditLogId: $auditLogId, ')
-          ..write('tableNameColumn: $tableNameColumn, ')
-          ..write('recordId: $recordId, ')
+    return (StringBuffer('PendingChangeTableData(')
+          ..write('pendingChangeId: $pendingChangeId, ')
+          ..write('entity: $entity, ')
+          ..write('entityId: $entityId, ')
           ..write('action: $action, ')
-          ..write('payload: $payload')
+          ..write('payload: $payload, ')
+          ..write('status: $status, ')
+          ..write('rejectionReason: $rejectionReason, ')
+          ..write('createdAt: $createdAt, ')
+          ..write('lastModifiedDate: $lastModifiedDate')
           ..write(')'))
         .toString();
   }
 
   @override
   int get hashCode => Object.hash(
-    createdAt,
-    lastModifiedDate,
-    enabled,
-    serverId,
-    auditLogId,
-    tableNameColumn,
-    recordId,
+    pendingChangeId,
+    entity,
+    entityId,
     action,
     payload,
+    status,
+    rejectionReason,
+    createdAt,
+    lastModifiedDate,
   );
   @override
   bool operator ==(Object other) =>
       identical(this, other) ||
-      (other is AuditLogTableData &&
-          other.createdAt == this.createdAt &&
-          other.lastModifiedDate == this.lastModifiedDate &&
-          other.enabled == this.enabled &&
-          other.serverId == this.serverId &&
-          other.auditLogId == this.auditLogId &&
-          other.tableNameColumn == this.tableNameColumn &&
-          other.recordId == this.recordId &&
+      (other is PendingChangeTableData &&
+          other.pendingChangeId == this.pendingChangeId &&
+          other.entity == this.entity &&
+          other.entityId == this.entityId &&
           other.action == this.action &&
-          other.payload == this.payload);
+          other.payload == this.payload &&
+          other.status == this.status &&
+          other.rejectionReason == this.rejectionReason &&
+          other.createdAt == this.createdAt &&
+          other.lastModifiedDate == this.lastModifiedDate);
 }
 
-class AuditLogTableCompanion extends UpdateCompanion<AuditLogTableData> {
-  final Value<DateTime> createdAt;
-  final Value<DateTime> lastModifiedDate;
-  final Value<bool> enabled;
-  final Value<int?> serverId;
-  final Value<String> auditLogId;
-  final Value<String> tableNameColumn;
-  final Value<String> recordId;
+class PendingChangeTableCompanion
+    extends UpdateCompanion<PendingChangeTableData> {
+  final Value<int> pendingChangeId;
+  final Value<String> entity;
+  final Value<String> entityId;
   final Value<String> action;
   final Value<String?> payload;
-  final Value<int> rowid;
-  const AuditLogTableCompanion({
-    this.createdAt = const Value.absent(),
-    this.lastModifiedDate = const Value.absent(),
-    this.enabled = const Value.absent(),
-    this.serverId = const Value.absent(),
-    this.auditLogId = const Value.absent(),
-    this.tableNameColumn = const Value.absent(),
-    this.recordId = const Value.absent(),
+  final Value<String> status;
+  final Value<String?> rejectionReason;
+  final Value<DateTime> createdAt;
+  final Value<DateTime> lastModifiedDate;
+  const PendingChangeTableCompanion({
+    this.pendingChangeId = const Value.absent(),
+    this.entity = const Value.absent(),
+    this.entityId = const Value.absent(),
     this.action = const Value.absent(),
     this.payload = const Value.absent(),
-    this.rowid = const Value.absent(),
-  });
-  AuditLogTableCompanion.insert({
+    this.status = const Value.absent(),
+    this.rejectionReason = const Value.absent(),
     this.createdAt = const Value.absent(),
     this.lastModifiedDate = const Value.absent(),
-    this.enabled = const Value.absent(),
-    this.serverId = const Value.absent(),
-    this.auditLogId = const Value.absent(),
-    required String tableNameColumn,
-    required String recordId,
+  });
+  PendingChangeTableCompanion.insert({
+    this.pendingChangeId = const Value.absent(),
+    required String entity,
+    required String entityId,
     required String action,
     this.payload = const Value.absent(),
-    this.rowid = const Value.absent(),
-  }) : tableNameColumn = Value(tableNameColumn),
-       recordId = Value(recordId),
+    this.status = const Value.absent(),
+    this.rejectionReason = const Value.absent(),
+    this.createdAt = const Value.absent(),
+    this.lastModifiedDate = const Value.absent(),
+  }) : entity = Value(entity),
+       entityId = Value(entityId),
        action = Value(action);
-  static Insertable<AuditLogTableData> custom({
-    Expression<DateTime>? createdAt,
-    Expression<DateTime>? lastModifiedDate,
-    Expression<bool>? enabled,
-    Expression<int>? serverId,
-    Expression<String>? auditLogId,
-    Expression<String>? tableNameColumn,
-    Expression<String>? recordId,
+  static Insertable<PendingChangeTableData> custom({
+    Expression<int>? pendingChangeId,
+    Expression<String>? entity,
+    Expression<String>? entityId,
     Expression<String>? action,
     Expression<String>? payload,
-    Expression<int>? rowid,
+    Expression<String>? status,
+    Expression<String>? rejectionReason,
+    Expression<DateTime>? createdAt,
+    Expression<DateTime>? lastModifiedDate,
   }) {
     return RawValuesInsertable({
-      if (createdAt != null) 'created_at': createdAt,
-      if (lastModifiedDate != null) 'last_modified_date': lastModifiedDate,
-      if (enabled != null) 'enabled': enabled,
-      if (serverId != null) 'server_id': serverId,
-      if (auditLogId != null) 'audit_log_id': auditLogId,
-      if (tableNameColumn != null) 'table_name': tableNameColumn,
-      if (recordId != null) 'record_id': recordId,
+      if (pendingChangeId != null) 'pending_change_id': pendingChangeId,
+      if (entity != null) 'entity': entity,
+      if (entityId != null) 'entity_id': entityId,
       if (action != null) 'action': action,
       if (payload != null) 'payload': payload,
-      if (rowid != null) 'rowid': rowid,
+      if (status != null) 'status': status,
+      if (rejectionReason != null) 'rejection_reason': rejectionReason,
+      if (createdAt != null) 'created_at': createdAt,
+      if (lastModifiedDate != null) 'last_modified_date': lastModifiedDate,
     });
   }
 
-  AuditLogTableCompanion copyWith({
-    Value<DateTime>? createdAt,
-    Value<DateTime>? lastModifiedDate,
-    Value<bool>? enabled,
-    Value<int?>? serverId,
-    Value<String>? auditLogId,
-    Value<String>? tableNameColumn,
-    Value<String>? recordId,
+  PendingChangeTableCompanion copyWith({
+    Value<int>? pendingChangeId,
+    Value<String>? entity,
+    Value<String>? entityId,
     Value<String>? action,
     Value<String?>? payload,
-    Value<int>? rowid,
+    Value<String>? status,
+    Value<String?>? rejectionReason,
+    Value<DateTime>? createdAt,
+    Value<DateTime>? lastModifiedDate,
   }) {
-    return AuditLogTableCompanion(
-      createdAt: createdAt ?? this.createdAt,
-      lastModifiedDate: lastModifiedDate ?? this.lastModifiedDate,
-      enabled: enabled ?? this.enabled,
-      serverId: serverId ?? this.serverId,
-      auditLogId: auditLogId ?? this.auditLogId,
-      tableNameColumn: tableNameColumn ?? this.tableNameColumn,
-      recordId: recordId ?? this.recordId,
+    return PendingChangeTableCompanion(
+      pendingChangeId: pendingChangeId ?? this.pendingChangeId,
+      entity: entity ?? this.entity,
+      entityId: entityId ?? this.entityId,
       action: action ?? this.action,
       payload: payload ?? this.payload,
-      rowid: rowid ?? this.rowid,
+      status: status ?? this.status,
+      rejectionReason: rejectionReason ?? this.rejectionReason,
+      createdAt: createdAt ?? this.createdAt,
+      lastModifiedDate: lastModifiedDate ?? this.lastModifiedDate,
     );
   }
 
   @override
   Map<String, Expression> toColumns(bool nullToAbsent) {
     final map = <String, Expression>{};
-    if (createdAt.present) {
-      map['created_at'] = Variable<DateTime>(createdAt.value);
+    if (pendingChangeId.present) {
+      map['pending_change_id'] = Variable<int>(pendingChangeId.value);
     }
-    if (lastModifiedDate.present) {
-      map['last_modified_date'] = Variable<DateTime>(lastModifiedDate.value);
+    if (entity.present) {
+      map['entity'] = Variable<String>(entity.value);
     }
-    if (enabled.present) {
-      map['enabled'] = Variable<bool>(enabled.value);
-    }
-    if (serverId.present) {
-      map['server_id'] = Variable<int>(serverId.value);
-    }
-    if (auditLogId.present) {
-      map['audit_log_id'] = Variable<String>(auditLogId.value);
-    }
-    if (tableNameColumn.present) {
-      map['table_name'] = Variable<String>(tableNameColumn.value);
-    }
-    if (recordId.present) {
-      map['record_id'] = Variable<String>(recordId.value);
+    if (entityId.present) {
+      map['entity_id'] = Variable<String>(entityId.value);
     }
     if (action.present) {
       map['action'] = Variable<String>(action.value);
@@ -11225,25 +11205,33 @@ class AuditLogTableCompanion extends UpdateCompanion<AuditLogTableData> {
     if (payload.present) {
       map['payload'] = Variable<String>(payload.value);
     }
-    if (rowid.present) {
-      map['rowid'] = Variable<int>(rowid.value);
+    if (status.present) {
+      map['status'] = Variable<String>(status.value);
+    }
+    if (rejectionReason.present) {
+      map['rejection_reason'] = Variable<String>(rejectionReason.value);
+    }
+    if (createdAt.present) {
+      map['created_at'] = Variable<DateTime>(createdAt.value);
+    }
+    if (lastModifiedDate.present) {
+      map['last_modified_date'] = Variable<DateTime>(lastModifiedDate.value);
     }
     return map;
   }
 
   @override
   String toString() {
-    return (StringBuffer('AuditLogTableCompanion(')
-          ..write('createdAt: $createdAt, ')
-          ..write('lastModifiedDate: $lastModifiedDate, ')
-          ..write('enabled: $enabled, ')
-          ..write('serverId: $serverId, ')
-          ..write('auditLogId: $auditLogId, ')
-          ..write('tableNameColumn: $tableNameColumn, ')
-          ..write('recordId: $recordId, ')
+    return (StringBuffer('PendingChangeTableCompanion(')
+          ..write('pendingChangeId: $pendingChangeId, ')
+          ..write('entity: $entity, ')
+          ..write('entityId: $entityId, ')
           ..write('action: $action, ')
           ..write('payload: $payload, ')
-          ..write('rowid: $rowid')
+          ..write('status: $status, ')
+          ..write('rejectionReason: $rejectionReason, ')
+          ..write('createdAt: $createdAt, ')
+          ..write('lastModifiedDate: $lastModifiedDate')
           ..write(')'))
         .toString();
   }
@@ -11276,7 +11264,8 @@ abstract class _$AppDatabase extends GeneratedDatabase {
       $CustomerContainerBalanceTableTable(this);
   late final $RouteInventoryLoadTableTable routeInventoryLoadTable =
       $RouteInventoryLoadTableTable(this);
-  late final $AuditLogTableTable auditLogTable = $AuditLogTableTable(this);
+  late final $PendingChangeTableTable pendingChangeTable =
+      $PendingChangeTableTable(this);
   @override
   Iterable<TableInfo<Table, Object?>> get allTables =>
       allSchemaEntities.whereType<TableInfo<Table, Object?>>();
@@ -11298,7 +11287,7 @@ abstract class _$AppDatabase extends GeneratedDatabase {
     containerMovementTable,
     customerContainerBalanceTable,
     routeInventoryLoadTable,
-    auditLogTable,
+    pendingChangeTable,
   ];
   @override
   StreamQueryUpdateRules get streamUpdateRules => const StreamQueryUpdateRules([
@@ -21587,74 +21576,52 @@ typedef $$RouteInventoryLoadTableTableProcessedTableManager =
       RouteInventoryLoadTableData,
       PrefetchHooks Function({bool routeId, bool productId})
     >;
-typedef $$AuditLogTableTableCreateCompanionBuilder =
-    AuditLogTableCompanion Function({
-      Value<DateTime> createdAt,
-      Value<DateTime> lastModifiedDate,
-      Value<bool> enabled,
-      Value<int?> serverId,
-      Value<String> auditLogId,
-      required String tableNameColumn,
-      required String recordId,
+typedef $$PendingChangeTableTableCreateCompanionBuilder =
+    PendingChangeTableCompanion Function({
+      Value<int> pendingChangeId,
+      required String entity,
+      required String entityId,
       required String action,
       Value<String?> payload,
-      Value<int> rowid,
-    });
-typedef $$AuditLogTableTableUpdateCompanionBuilder =
-    AuditLogTableCompanion Function({
+      Value<String> status,
+      Value<String?> rejectionReason,
       Value<DateTime> createdAt,
       Value<DateTime> lastModifiedDate,
-      Value<bool> enabled,
-      Value<int?> serverId,
-      Value<String> auditLogId,
-      Value<String> tableNameColumn,
-      Value<String> recordId,
+    });
+typedef $$PendingChangeTableTableUpdateCompanionBuilder =
+    PendingChangeTableCompanion Function({
+      Value<int> pendingChangeId,
+      Value<String> entity,
+      Value<String> entityId,
       Value<String> action,
       Value<String?> payload,
-      Value<int> rowid,
+      Value<String> status,
+      Value<String?> rejectionReason,
+      Value<DateTime> createdAt,
+      Value<DateTime> lastModifiedDate,
     });
 
-class $$AuditLogTableTableFilterComposer
-    extends Composer<_$AppDatabase, $AuditLogTableTable> {
-  $$AuditLogTableTableFilterComposer({
+class $$PendingChangeTableTableFilterComposer
+    extends Composer<_$AppDatabase, $PendingChangeTableTable> {
+  $$PendingChangeTableTableFilterComposer({
     required super.$db,
     required super.$table,
     super.joinBuilder,
     super.$addJoinBuilderToRootComposer,
     super.$removeJoinBuilderFromRootComposer,
   });
-  ColumnFilters<DateTime> get createdAt => $composableBuilder(
-    column: $table.createdAt,
+  ColumnFilters<int> get pendingChangeId => $composableBuilder(
+    column: $table.pendingChangeId,
     builder: (column) => ColumnFilters(column),
   );
 
-  ColumnFilters<DateTime> get lastModifiedDate => $composableBuilder(
-    column: $table.lastModifiedDate,
+  ColumnFilters<String> get entity => $composableBuilder(
+    column: $table.entity,
     builder: (column) => ColumnFilters(column),
   );
 
-  ColumnFilters<bool> get enabled => $composableBuilder(
-    column: $table.enabled,
-    builder: (column) => ColumnFilters(column),
-  );
-
-  ColumnFilters<int> get serverId => $composableBuilder(
-    column: $table.serverId,
-    builder: (column) => ColumnFilters(column),
-  );
-
-  ColumnFilters<String> get auditLogId => $composableBuilder(
-    column: $table.auditLogId,
-    builder: (column) => ColumnFilters(column),
-  );
-
-  ColumnFilters<String> get tableNameColumn => $composableBuilder(
-    column: $table.tableNameColumn,
-    builder: (column) => ColumnFilters(column),
-  );
-
-  ColumnFilters<String> get recordId => $composableBuilder(
-    column: $table.recordId,
+  ColumnFilters<String> get entityId => $composableBuilder(
+    column: $table.entityId,
     builder: (column) => ColumnFilters(column),
   );
 
@@ -21667,49 +21634,49 @@ class $$AuditLogTableTableFilterComposer
     column: $table.payload,
     builder: (column) => ColumnFilters(column),
   );
+
+  ColumnFilters<String> get status => $composableBuilder(
+    column: $table.status,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get rejectionReason => $composableBuilder(
+    column: $table.rejectionReason,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<DateTime> get createdAt => $composableBuilder(
+    column: $table.createdAt,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<DateTime> get lastModifiedDate => $composableBuilder(
+    column: $table.lastModifiedDate,
+    builder: (column) => ColumnFilters(column),
+  );
 }
 
-class $$AuditLogTableTableOrderingComposer
-    extends Composer<_$AppDatabase, $AuditLogTableTable> {
-  $$AuditLogTableTableOrderingComposer({
+class $$PendingChangeTableTableOrderingComposer
+    extends Composer<_$AppDatabase, $PendingChangeTableTable> {
+  $$PendingChangeTableTableOrderingComposer({
     required super.$db,
     required super.$table,
     super.joinBuilder,
     super.$addJoinBuilderToRootComposer,
     super.$removeJoinBuilderFromRootComposer,
   });
-  ColumnOrderings<DateTime> get createdAt => $composableBuilder(
-    column: $table.createdAt,
+  ColumnOrderings<int> get pendingChangeId => $composableBuilder(
+    column: $table.pendingChangeId,
     builder: (column) => ColumnOrderings(column),
   );
 
-  ColumnOrderings<DateTime> get lastModifiedDate => $composableBuilder(
-    column: $table.lastModifiedDate,
+  ColumnOrderings<String> get entity => $composableBuilder(
+    column: $table.entity,
     builder: (column) => ColumnOrderings(column),
   );
 
-  ColumnOrderings<bool> get enabled => $composableBuilder(
-    column: $table.enabled,
-    builder: (column) => ColumnOrderings(column),
-  );
-
-  ColumnOrderings<int> get serverId => $composableBuilder(
-    column: $table.serverId,
-    builder: (column) => ColumnOrderings(column),
-  );
-
-  ColumnOrderings<String> get auditLogId => $composableBuilder(
-    column: $table.auditLogId,
-    builder: (column) => ColumnOrderings(column),
-  );
-
-  ColumnOrderings<String> get tableNameColumn => $composableBuilder(
-    column: $table.tableNameColumn,
-    builder: (column) => ColumnOrderings(column),
-  );
-
-  ColumnOrderings<String> get recordId => $composableBuilder(
-    column: $table.recordId,
+  ColumnOrderings<String> get entityId => $composableBuilder(
+    column: $table.entityId,
     builder: (column) => ColumnOrderings(column),
   );
 
@@ -21722,17 +21689,62 @@ class $$AuditLogTableTableOrderingComposer
     column: $table.payload,
     builder: (column) => ColumnOrderings(column),
   );
+
+  ColumnOrderings<String> get status => $composableBuilder(
+    column: $table.status,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<String> get rejectionReason => $composableBuilder(
+    column: $table.rejectionReason,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<DateTime> get createdAt => $composableBuilder(
+    column: $table.createdAt,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<DateTime> get lastModifiedDate => $composableBuilder(
+    column: $table.lastModifiedDate,
+    builder: (column) => ColumnOrderings(column),
+  );
 }
 
-class $$AuditLogTableTableAnnotationComposer
-    extends Composer<_$AppDatabase, $AuditLogTableTable> {
-  $$AuditLogTableTableAnnotationComposer({
+class $$PendingChangeTableTableAnnotationComposer
+    extends Composer<_$AppDatabase, $PendingChangeTableTable> {
+  $$PendingChangeTableTableAnnotationComposer({
     required super.$db,
     required super.$table,
     super.joinBuilder,
     super.$addJoinBuilderToRootComposer,
     super.$removeJoinBuilderFromRootComposer,
   });
+  GeneratedColumn<int> get pendingChangeId => $composableBuilder(
+    column: $table.pendingChangeId,
+    builder: (column) => column,
+  );
+
+  GeneratedColumn<String> get entity =>
+      $composableBuilder(column: $table.entity, builder: (column) => column);
+
+  GeneratedColumn<String> get entityId =>
+      $composableBuilder(column: $table.entityId, builder: (column) => column);
+
+  GeneratedColumn<String> get action =>
+      $composableBuilder(column: $table.action, builder: (column) => column);
+
+  GeneratedColumn<String> get payload =>
+      $composableBuilder(column: $table.payload, builder: (column) => column);
+
+  GeneratedColumn<String> get status =>
+      $composableBuilder(column: $table.status, builder: (column) => column);
+
+  GeneratedColumn<String> get rejectionReason => $composableBuilder(
+    column: $table.rejectionReason,
+    builder: (column) => column,
+  );
+
   GeneratedColumn<DateTime> get createdAt =>
       $composableBuilder(column: $table.createdAt, builder: (column) => column);
 
@@ -21740,113 +21752,89 @@ class $$AuditLogTableTableAnnotationComposer
     column: $table.lastModifiedDate,
     builder: (column) => column,
   );
-
-  GeneratedColumn<bool> get enabled =>
-      $composableBuilder(column: $table.enabled, builder: (column) => column);
-
-  GeneratedColumn<int> get serverId =>
-      $composableBuilder(column: $table.serverId, builder: (column) => column);
-
-  GeneratedColumn<String> get auditLogId => $composableBuilder(
-    column: $table.auditLogId,
-    builder: (column) => column,
-  );
-
-  GeneratedColumn<String> get tableNameColumn => $composableBuilder(
-    column: $table.tableNameColumn,
-    builder: (column) => column,
-  );
-
-  GeneratedColumn<String> get recordId =>
-      $composableBuilder(column: $table.recordId, builder: (column) => column);
-
-  GeneratedColumn<String> get action =>
-      $composableBuilder(column: $table.action, builder: (column) => column);
-
-  GeneratedColumn<String> get payload =>
-      $composableBuilder(column: $table.payload, builder: (column) => column);
 }
 
-class $$AuditLogTableTableTableManager
+class $$PendingChangeTableTableTableManager
     extends
         RootTableManager<
           _$AppDatabase,
-          $AuditLogTableTable,
-          AuditLogTableData,
-          $$AuditLogTableTableFilterComposer,
-          $$AuditLogTableTableOrderingComposer,
-          $$AuditLogTableTableAnnotationComposer,
-          $$AuditLogTableTableCreateCompanionBuilder,
-          $$AuditLogTableTableUpdateCompanionBuilder,
+          $PendingChangeTableTable,
+          PendingChangeTableData,
+          $$PendingChangeTableTableFilterComposer,
+          $$PendingChangeTableTableOrderingComposer,
+          $$PendingChangeTableTableAnnotationComposer,
+          $$PendingChangeTableTableCreateCompanionBuilder,
+          $$PendingChangeTableTableUpdateCompanionBuilder,
           (
-            AuditLogTableData,
+            PendingChangeTableData,
             BaseReferences<
               _$AppDatabase,
-              $AuditLogTableTable,
-              AuditLogTableData
+              $PendingChangeTableTable,
+              PendingChangeTableData
             >,
           ),
-          AuditLogTableData,
+          PendingChangeTableData,
           PrefetchHooks Function()
         > {
-  $$AuditLogTableTableTableManager(_$AppDatabase db, $AuditLogTableTable table)
-    : super(
+  $$PendingChangeTableTableTableManager(
+    _$AppDatabase db,
+    $PendingChangeTableTable table,
+  ) : super(
         TableManagerState(
           db: db,
           table: table,
           createFilteringComposer: () =>
-              $$AuditLogTableTableFilterComposer($db: db, $table: table),
+              $$PendingChangeTableTableFilterComposer($db: db, $table: table),
           createOrderingComposer: () =>
-              $$AuditLogTableTableOrderingComposer($db: db, $table: table),
+              $$PendingChangeTableTableOrderingComposer($db: db, $table: table),
           createComputedFieldComposer: () =>
-              $$AuditLogTableTableAnnotationComposer($db: db, $table: table),
+              $$PendingChangeTableTableAnnotationComposer(
+                $db: db,
+                $table: table,
+              ),
           updateCompanionCallback:
               ({
-                Value<DateTime> createdAt = const Value.absent(),
-                Value<DateTime> lastModifiedDate = const Value.absent(),
-                Value<bool> enabled = const Value.absent(),
-                Value<int?> serverId = const Value.absent(),
-                Value<String> auditLogId = const Value.absent(),
-                Value<String> tableNameColumn = const Value.absent(),
-                Value<String> recordId = const Value.absent(),
+                Value<int> pendingChangeId = const Value.absent(),
+                Value<String> entity = const Value.absent(),
+                Value<String> entityId = const Value.absent(),
                 Value<String> action = const Value.absent(),
                 Value<String?> payload = const Value.absent(),
-                Value<int> rowid = const Value.absent(),
-              }) => AuditLogTableCompanion(
-                createdAt: createdAt,
-                lastModifiedDate: lastModifiedDate,
-                enabled: enabled,
-                serverId: serverId,
-                auditLogId: auditLogId,
-                tableNameColumn: tableNameColumn,
-                recordId: recordId,
+                Value<String> status = const Value.absent(),
+                Value<String?> rejectionReason = const Value.absent(),
+                Value<DateTime> createdAt = const Value.absent(),
+                Value<DateTime> lastModifiedDate = const Value.absent(),
+              }) => PendingChangeTableCompanion(
+                pendingChangeId: pendingChangeId,
+                entity: entity,
+                entityId: entityId,
                 action: action,
                 payload: payload,
-                rowid: rowid,
+                status: status,
+                rejectionReason: rejectionReason,
+                createdAt: createdAt,
+                lastModifiedDate: lastModifiedDate,
               ),
           createCompanionCallback:
               ({
-                Value<DateTime> createdAt = const Value.absent(),
-                Value<DateTime> lastModifiedDate = const Value.absent(),
-                Value<bool> enabled = const Value.absent(),
-                Value<int?> serverId = const Value.absent(),
-                Value<String> auditLogId = const Value.absent(),
-                required String tableNameColumn,
-                required String recordId,
+                Value<int> pendingChangeId = const Value.absent(),
+                required String entity,
+                required String entityId,
                 required String action,
                 Value<String?> payload = const Value.absent(),
-                Value<int> rowid = const Value.absent(),
-              }) => AuditLogTableCompanion.insert(
-                createdAt: createdAt,
-                lastModifiedDate: lastModifiedDate,
-                enabled: enabled,
-                serverId: serverId,
-                auditLogId: auditLogId,
-                tableNameColumn: tableNameColumn,
-                recordId: recordId,
+                Value<String> status = const Value.absent(),
+                Value<String?> rejectionReason = const Value.absent(),
+                Value<DateTime> createdAt = const Value.absent(),
+                Value<DateTime> lastModifiedDate = const Value.absent(),
+              }) => PendingChangeTableCompanion.insert(
+                pendingChangeId: pendingChangeId,
+                entity: entity,
+                entityId: entityId,
                 action: action,
                 payload: payload,
-                rowid: rowid,
+                status: status,
+                rejectionReason: rejectionReason,
+                createdAt: createdAt,
+                lastModifiedDate: lastModifiedDate,
               ),
           withReferenceMapper: (p0) => p0
               .map((e) => (e.readTable(table), BaseReferences(db, table, e)))
@@ -21856,21 +21844,25 @@ class $$AuditLogTableTableTableManager
       );
 }
 
-typedef $$AuditLogTableTableProcessedTableManager =
+typedef $$PendingChangeTableTableProcessedTableManager =
     ProcessedTableManager<
       _$AppDatabase,
-      $AuditLogTableTable,
-      AuditLogTableData,
-      $$AuditLogTableTableFilterComposer,
-      $$AuditLogTableTableOrderingComposer,
-      $$AuditLogTableTableAnnotationComposer,
-      $$AuditLogTableTableCreateCompanionBuilder,
-      $$AuditLogTableTableUpdateCompanionBuilder,
+      $PendingChangeTableTable,
+      PendingChangeTableData,
+      $$PendingChangeTableTableFilterComposer,
+      $$PendingChangeTableTableOrderingComposer,
+      $$PendingChangeTableTableAnnotationComposer,
+      $$PendingChangeTableTableCreateCompanionBuilder,
+      $$PendingChangeTableTableUpdateCompanionBuilder,
       (
-        AuditLogTableData,
-        BaseReferences<_$AppDatabase, $AuditLogTableTable, AuditLogTableData>,
+        PendingChangeTableData,
+        BaseReferences<
+          _$AppDatabase,
+          $PendingChangeTableTable,
+          PendingChangeTableData
+        >,
       ),
-      AuditLogTableData,
+      PendingChangeTableData,
       PrefetchHooks Function()
     >;
 
@@ -21925,6 +21917,6 @@ class $AppDatabaseManager {
         _db,
         _db.routeInventoryLoadTable,
       );
-  $$AuditLogTableTableTableManager get auditLogTable =>
-      $$AuditLogTableTableTableManager(_db, _db.auditLogTable);
+  $$PendingChangeTableTableTableManager get pendingChangeTable =>
+      $$PendingChangeTableTableTableManager(_db, _db.pendingChangeTable);
 }

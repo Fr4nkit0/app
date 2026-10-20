@@ -8,11 +8,16 @@ import 'package:app/features/sales/data/repositories/sale.repository.dart';
 import 'package:app/features/sales/domain/models/payment_method.dart';
 import 'package:app/features/sales/domain/models/sale.dart';
 import 'package:app/features/sales/domain/models/sale_item.dart';
+import 'package:app/features/sync/data/repositories/pending_change.repository.dart';
+import 'package:app/features/sync/domain/models/pending_change.dart';
 
 class DriftSaleRepository implements SaleRepository {
-  DriftSaleRepository(this._db);
+  DriftSaleRepository(AppDatabase db)
+    : _db = db,
+      _queue = DriftPendingChangeRepository(db);
 
   final AppDatabase _db;
+  final PendingChangeRepository _queue;
 
   @override
   Stream<List<Sale>> watchAllSales() {
@@ -159,10 +164,36 @@ class DriftSaleRepository implements SaleRepository {
               CustomerBalanceTableCompanion(
                 currentBalance: Value(newBalance),
                 lastEntryId: Value(entryId),
+                lastModifiedDate: Value(DateTime.now()),
               ),
             );
           }
         }
+
+        await _queue.enqueue(
+          entity: PendingEntity.sale,
+          entityId: sale.id,
+          action: PendingAction.insert,
+          payload: {
+            'saleId': sale.id,
+            'customerId': sale.customer.id,
+            'total': sale.total,
+            'paymentMethod': sale.paymentMethod.name,
+            'cashAmount': sale.cashAmount,
+            'transferAmount': sale.transferAmount,
+            'visitId': sale.visitId,
+            'date': sale.date.toIso8601String(),
+            'items': [
+              for (final item in sale.items)
+                {
+                  'productId': item.product.id,
+                  'quantity': item.quantity,
+                  'unitPrice': item.product.price,
+                  'subtotal': item.subtotal,
+                },
+            ],
+          },
+        );
       });
 
       return const Resource.success(null);

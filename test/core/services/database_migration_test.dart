@@ -121,20 +121,19 @@ void main() {
       final loads = await db.select(db.routeInventoryLoadTable).get();
       expect(loads.length, 1);
 
-      // AuditLogTable
+      // PendingChangeTable
       await db
-          .into(db.auditLogTable)
+          .into(db.pendingChangeTable)
           .insert(
-            AuditLogTableCompanion.insert(
-              auditLogId: const drift.Value('log-1'),
-              tableNameColumn: 'sales',
-              recordId: 'sale-1',
-              action: 'INSERT',
+            PendingChangeTableCompanion.insert(
+              entity: 'sale',
+              entityId: 'sale-1',
+              action: 'insert',
               payload: const drift.Value('{}'),
             ),
           );
-      final logs = await db.select(db.auditLogTable).get();
-      expect(logs.length, 1);
+      final pending = await db.select(db.pendingChangeTable).get();
+      expect(pending.length, 1);
 
       // 4. Verify existing customer data is preserved after migration
       final customersAfter = await db.select(db.customerTable).get();
@@ -185,5 +184,65 @@ void main() {
         expect(row.read<String?>('neighborhood'), isNull);
       },
     );
+  });
+
+  group('Database Schema Migration V6 -> V7', () {
+    late AppDatabase db;
+
+    setUp(() async {
+      db = AppDatabase(NativeDatabase.memory());
+      // Rebuild the v6 shape: audit_logs instead of pending_changes.
+      await db.customStatement('DROP TABLE pending_changes');
+      await db.customStatement('''
+        CREATE TABLE audit_logs (
+          audit_log_id TEXT NOT NULL PRIMARY KEY,
+          table_name TEXT NOT NULL,
+          record_id TEXT NOT NULL,
+          action TEXT NOT NULL,
+          payload TEXT NULL,
+          created_at INTEGER NOT NULL DEFAULT (strftime('%s','now')),
+          last_modified_date INTEGER NOT NULL DEFAULT (strftime('%s','now')),
+          enabled INTEGER NOT NULL DEFAULT 1,
+          server_id INTEGER NULL
+        )
+      ''');
+    });
+
+    tearDown(() async {
+      await db.close();
+    });
+
+    test('moves unsynced audit rows into the queue and drops audit_logs', () async {
+      await db.customStatement(
+        "INSERT INTO audit_logs (audit_log_id, table_name, record_id, action, payload, created_at, enabled) VALUES "
+        "('l1', 'payments', 'pay-1', 'INSERT', '{\"amount\":5}', 100, 1), "
+        "('l2', 'container_movements', 'mov-1', 'INSERT', '{}', 200, 1), "
+        "('l3', 'payments', 'pay-old', 'INSERT', '{}', 50, 0)",
+      );
+
+      await db.migration.onUpgrade(db.createMigrator(), 6, 7);
+
+      final queue = await db.select(db.pendingChangeTable).get();
+      expect(queue.map((r) => (r.entity, r.entityId, r.action, r.status)), [
+        ('payment', 'pay-1', 'insert', 'pending'),
+        ('container_movement', 'mov-1', 'insert', 'pending'),
+      ]);
+      expect(queue.first.payload, '{"amount":5}');
+
+      final legacy = await db
+          .customSelect(
+            "SELECT name FROM sqlite_master WHERE name = 'audit_logs'",
+          )
+          .get();
+      expect(legacy, isEmpty);
+    });
+
+    test('upgrading a database without audit_logs just creates the queue', () async {
+      await db.customStatement('DROP TABLE audit_logs');
+
+      await db.migration.onUpgrade(db.createMigrator(), 6, 7);
+
+      expect(await db.select(db.pendingChangeTable).get(), isEmpty);
+    });
   });
 }

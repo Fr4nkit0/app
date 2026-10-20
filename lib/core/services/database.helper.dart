@@ -15,7 +15,7 @@ import 'package:app/features/sales/data/database/sales.table.dart';
 import 'package:app/features/sales/data/database/sale.item.dart';
 import 'package:app/features/payments/data/database/payment.table.dart';
 import 'package:app/features/inventory/data/database/container.table.dart';
-import 'package:app/features/sync/data/database/audit_log.table.dart';
+import 'package:app/features/sync/data/database/pending_change.table.dart';
 
 import 'database_mixins.dart';
 
@@ -39,14 +39,14 @@ part 'database.helper.g.dart';
     ContainerMovementTable,
     CustomerContainerBalanceTable,
     RouteInventoryLoadTable,
-    AuditLogTable,
+    PendingChangeTable,
   ],
 )
 class AppDatabase extends _$AppDatabase {
   AppDatabase([QueryExecutor? executor]) : super(executor ?? _openConnection());
 
   @override
-  int get schemaVersion => 6;
+  int get schemaVersion => 7;
 
   @override
   MigrationStrategy get migration => MigrationStrategy(
@@ -61,7 +61,6 @@ class AppDatabase extends _$AppDatabase {
         await m.createTable(containerMovementTable);
         await m.createTable(customerContainerBalanceTable);
         await m.createTable(routeInventoryLoadTable);
-        await m.createTable(auditLogTable);
       }
       if (from < 4) {
         final columns = await customSelect("PRAGMA table_info(customer_addresses)").get();
@@ -87,7 +86,7 @@ class AppDatabase extends _$AppDatabase {
           visitTable, saleTable, saleItemTable, paymentTable,
           customerAccountEntryTable, customerBalanceTable,
           containerMovementTable, customerContainerBalanceTable,
-          routeInventoryLoadTable, auditLogTable
+          routeInventoryLoadTable,
         ];
         for (final table in tables) {
           final columns = await customSelect("PRAGMA table_info(${table.actualTableName})").get();
@@ -97,8 +96,35 @@ class AppDatabase extends _$AppDatabase {
           }
         }
       }
+      if (from < 7) {
+        await m.createTable(pendingChangeTable);
+        await _replaceAuditLogsWithPendingChanges();
+      }
     },
   );
+
+  /// Moves unsynced audit rows into the pending queue and drops the old table.
+  Future<void> _replaceAuditLogsWithPendingChanges() async {
+    final legacy = await customSelect(
+      "SELECT name FROM sqlite_master WHERE type = 'table' AND name = 'audit_logs'",
+    ).get();
+    if (legacy.isEmpty) return;
+
+    await customStatement('''
+      INSERT INTO pending_changes
+        (entity, entity_id, action, payload, status, created_at, last_modified_date)
+      SELECT
+        CASE table_name
+          WHEN 'payments' THEN 'payment'
+          ELSE 'container_movement'
+        END,
+        record_id, lower(action), payload, 'pending', created_at, last_modified_date
+      FROM audit_logs
+      WHERE enabled = 1 AND table_name IN ('payments', 'container_movements')
+      ORDER BY created_at, rowid
+    ''');
+    await customStatement('DROP TABLE audit_logs');
+  }
 
   static QueryExecutor _openConnection() {
     return driftDatabase(
