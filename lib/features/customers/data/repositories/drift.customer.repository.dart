@@ -79,6 +79,7 @@ class DriftCustomerRepository implements CustomerRepository {
                   latitude: Value(address.latitude),
                   longitude: Value(address.longitude),
                   neighborhood: Value(address.neighborhood),
+                  lastModifiedDate: Value(DateTime.now()),
                 ),
               );
         }
@@ -92,6 +93,7 @@ class DriftCustomerRepository implements CustomerRepository {
                   dayOfWeek: Value(pref.dayOfWeek),
                   timeWindowStart: pref.timeWindowStart,
                   timeWindowEnd: Value(pref.timeWindowEnd),
+                  lastModifiedDate: Value(DateTime.now()),
                 ),
               );
         }

@@ -6,6 +6,7 @@ import 'package:app/core/services/database.helper.dart';
 import 'package:app/features/customers/data/repositories/drift.customer.repository.dart';
 import 'package:app/features/customers/domain/models/customer.dart';
 import 'package:app/features/customers/domain/models/customer.address.dart';
+import 'package:app/features/customers/domain/models/customer.preference.dart';
 import 'package:app/features/inventory/data/repositories/inventory.repository.dart';
 import 'package:app/features/products/domain/models/product.dart';
 import 'package:app/features/route/data/repositories/repositories/drift_route_repository.dart';
@@ -69,6 +70,31 @@ void main() {
 
       final actions = (await queue.getPending()).map((c) => c.action);
       expect(actions, [PendingAction.insert, PendingAction.update]);
+    });
+
+    test('re-saving a customer stamps its address and preference', () async {
+      final customer = Customer(
+        id: 'cust-1',
+        name: 'Carlos Gomez',
+        addresses: [CustomerAddress(id: 'addr-1', street: 'Av. Belgrano 1200')],
+        preferences: [
+          CustomerPreference(id: 'pref-1', dayOfWeek: 1, timeWindowStart: '08:00'),
+        ],
+      );
+      await sut.saveCustomer(customer);
+      await db.update(db.customerAddressTable).write(
+        CustomerAddressTableCompanion(lastModifiedDate: drift.Value(longAgo)),
+      );
+      await db.update(db.customerPreferenceTable).write(
+        CustomerPreferenceTableCompanion(lastModifiedDate: drift.Value(longAgo)),
+      );
+
+      await sut.saveCustomer(customer);
+
+      final address = await db.select(db.customerAddressTable).getSingle();
+      final pref = await db.select(db.customerPreferenceTable).getSingle();
+      expect(address.lastModifiedDate.isAfter(longAgo), isTrue);
+      expect(pref.lastModifiedDate.isAfter(longAgo), isTrue);
     });
 
     test('editing a customer queues an update with the new data', () async {
