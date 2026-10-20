@@ -16,6 +16,11 @@ import 'package:app/features/sales/data/database/sale.item.dart';
 import 'package:app/features/payments/data/database/payment.table.dart';
 import 'package:app/features/inventory/data/database/container.table.dart';
 import 'package:app/features/sync/data/database/pending_change.table.dart';
+import 'package:app/features/sync/data/database/sync_state.table.dart';
+import 'package:app/features/customers/data/database/customer.agreement.table.dart';
+import 'package:app/features/inventory/data/database/container_type.table.dart';
+import 'package:app/features/payments/data/database/payment_method.table.dart';
+import 'package:app/features/visits/data/database/visit_outcome.table.dart';
 
 import 'database_mixins.dart';
 
@@ -40,13 +45,18 @@ part 'database.helper.g.dart';
     CustomerContainerBalanceTable,
     RouteInventoryLoadTable,
     PendingChangeTable,
+    ContainerTypeTable,
+    PaymentMethodTable,
+    VisitOutcomeTable,
+    CustomerAgreementTable,
+    SyncStateTable,
   ],
 )
 class AppDatabase extends _$AppDatabase {
   AppDatabase([QueryExecutor? executor]) : super(executor ?? _openConnection());
 
   @override
-  int get schemaVersion => 7;
+  int get schemaVersion => 8;
 
   @override
   MigrationStrategy get migration => MigrationStrategy(
@@ -100,8 +110,34 @@ class AppDatabase extends _$AppDatabase {
         await m.createTable(pendingChangeTable);
         await _replaceAuditLogsWithPendingChanges();
       }
+      if (from < 8) {
+        await m.createTable(containerTypeTable);
+        await m.createTable(paymentMethodTable);
+        await m.createTable(visitOutcomeTable);
+        await m.createTable(customerAgreementTable);
+        await m.createTable(syncStateTable);
+        await _addColumnIfMissing(m, routeTable, routeTable.status);
+        await _addColumnIfMissing(m, routeStopTable, routeStopTable.scheduledTime);
+        await _addColumnIfMissing(m, routeStopTable, routeStopTable.rescheduledFromStopId);
+        await _addColumnIfMissing(m, visitTable, visitTable.outcomeId);
+        final visitColumns = await customSelect('PRAGMA table_info(visits)').get();
+        if (visitColumns.any((row) => row.read<String>('name') == 'outcome')) {
+          await customStatement('ALTER TABLE visits DROP COLUMN outcome');
+        }
+      }
     },
   );
+
+  Future<void> _addColumnIfMissing(
+    Migrator m,
+    TableInfo<Table, dynamic> table,
+    GeneratedColumn column,
+  ) async {
+    final columns = await customSelect('PRAGMA table_info(${table.actualTableName})').get();
+    if (!columns.any((row) => row.read<String>('name') == column.name)) {
+      await m.addColumn(table, column);
+    }
+  }
 
   /// Moves unsynced audit rows into the pending queue and drops the old table.
   Future<void> _replaceAuditLogsWithPendingChanges() async {

@@ -7,11 +7,15 @@ class RouteStop {
   final StopStatus status;
   final DateTime scheduledAt;
 
+  /// False when the server gave the stop no scheduled time.
+  final bool hasScheduledTime;
+
   const RouteStop({
     required this.id,
     required this.customer,
     required this.status,
     required this.scheduledAt,
+    this.hasScheduledTime = true,
   });
 
   RouteStop copyWith({StopStatus? status}) => RouteStop(
@@ -19,5 +23,6 @@ class RouteStop {
     customer: customer,
     status: status ?? this.status,
     scheduledAt: scheduledAt,
+    hasScheduledTime: hasScheduledTime,
   );
 }

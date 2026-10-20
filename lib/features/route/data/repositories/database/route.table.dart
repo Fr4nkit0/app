@@ -13,6 +13,7 @@ class RouteTable extends Table with Timestamps {
   // late final created_at = text().nullable()();
   late final last_modified = text().nullable()();
   late final available = text().nullable()();
+  late final status = text().nullable()();
 
   @override
   Set<Column<Object>> get primaryKey => {routeId};

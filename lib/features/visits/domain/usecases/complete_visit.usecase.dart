@@ -22,7 +22,7 @@ class CompleteVisitUseCase {
     required String customerId,
     required VisitType visitType,
     required StopStatus nextStatus,
-    required String outcome,
+    int? outcomeId,
     String? observations,
   }) async {
     try {
@@ -33,7 +33,7 @@ class CompleteVisitUseCase {
           routeStopId: stopId,
           customerId: customerId,
           visitType: visitType,
-          outcome: outcome,
+          outcomeId: outcomeId,
           arrivedAt: DateTime.now(),
           observations: observations,
         ),

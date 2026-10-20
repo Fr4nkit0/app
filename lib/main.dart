@@ -10,6 +10,7 @@ import 'package:app/features/sales/presentation/screens/sale_step1_screen.dart';
 
 import 'package:app/features/auth/auth_controller.dart';
 import 'package:app/features/auth/login_screen.dart';
+import 'package:app/features/sync/sync_service.dart';
 
 void main() {
   runApp(const ProviderScope(child: MarilinApp()));
@@ -61,6 +62,22 @@ class _RootShell extends ConsumerStatefulWidget {
 
 class _RootShellState extends ConsumerState<_RootShell> {
   int _selectedIndex = 0;
+
+  @override
+  void initState() {
+    super.initState();
+    _bootstrapDay();
+  }
+
+  /// Downloads the day on first login and whenever the local route is not
+  /// today's. Offline failures are ignored: the local data keeps working.
+  Future<void> _bootstrapDay() async {
+    try {
+      await ref.read(syncServiceProvider).bootstrapIfNeeded();
+    } catch (e) {
+      debugPrint('Bootstrap skipped: $e');
+    }
+  }
 
   void _onTabChanged(int index) {
     // Resetear el draft de venta al salir del tab Venta (index 2)

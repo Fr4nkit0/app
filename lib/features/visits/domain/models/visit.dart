@@ -5,7 +5,7 @@ class Visit {
   final String routeStopId;
   final String customerId;
   final VisitType visitType;
-  final String outcome;
+  final int? outcomeId;
   final DateTime arrivedAt;
   final String? observations;
   final double amountCollected;
@@ -15,7 +15,7 @@ class Visit {
     required this.routeStopId,
     required this.customerId,
     required this.visitType,
-    required this.outcome,
+    this.outcomeId,
     required this.arrivedAt,
     this.observations,
     this.amountCollected = 0,

@@ -87,6 +87,7 @@ class DriftRouteRepository implements RouteRepository {
             ),
             status: _statusFromDb(stopRow.status),
             scheduledAt: stopRow.scheduledAt,
+            hasScheduledTime: stopRow.scheduledTime != null,
           ),
         );
       }
