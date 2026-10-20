@@ -36,7 +36,12 @@ class DriftRouteRepository implements RouteRepository {
           _db.routeStopTable.customerId,
         ),
       ),
-    ])..where(_db.routeTable.route_date.equals(todayStr));
+    ])..where(
+        _db.routeTable.route_date.equals(todayStr) &
+            _db.routeTable.enabled.equals(true) &
+            _db.routeStopTable.enabled.equals(true) &
+            _db.customerTable.enabled.equals(true),
+      );
 
     return q.watch().asyncMap((rows) async {
       final stops = <RouteStop>[];
@@ -51,7 +56,8 @@ class DriftRouteRepository implements RouteRepository {
             await (_db.select(_db.customerAddressTable)..where(
                   (t) =>
                       t.customerId.equals(custRow.customerId) &
-                      t.isPrimary.equals(true),
+                      t.isPrimary.equals(true) &
+                      t.enabled.equals(true),
                 ))
                 .getSingleOrNull();
 

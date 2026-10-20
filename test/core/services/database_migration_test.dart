@@ -245,4 +245,37 @@ void main() {
       expect(await db.select(db.pendingChangeTable).get(), isEmpty);
     });
   });
+
+  group('Database Schema Migration V8 -> V9', () {
+    late AppDatabase db;
+
+    setUp(() async {
+      db = AppDatabase(NativeDatabase.memory());
+      // Rebuild the v8 shape: catalogs without the enabled flag.
+      for (final table in ['container_types', 'payment_methods', 'visit_outcomes']) {
+        await db.customStatement('ALTER TABLE $table DROP COLUMN enabled');
+      }
+      await db.customStatement(
+        "INSERT INTO visit_outcomes (id, name, triggers_reschedule) VALUES (3, 'Absent', 1)",
+      );
+      await db.customStatement(
+        "INSERT INTO payment_methods (id, code, name) VALUES (5, 'CASH', 'Cash')",
+      );
+      await db.customStatement(
+        "INSERT INTO container_types (id, code) VALUES (1, 'BIDON_20L')",
+      );
+    });
+
+    tearDown(() async {
+      await db.close();
+    });
+
+    test('adds the enabled flag to catalogs and keeps existing rows enabled', () async {
+      await db.migration.onUpgrade(db.createMigrator(), 8, 9);
+
+      expect((await db.select(db.visitOutcomeTable).getSingle()).enabled, isTrue);
+      expect((await db.select(db.paymentMethodTable).getSingle()).enabled, isTrue);
+      expect((await db.select(db.containerTypeTable).getSingle()).enabled, isTrue);
+    });
+  });
 }

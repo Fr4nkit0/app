@@ -8,6 +8,7 @@ class ContainerTypeTable extends Table {
   late final id = integer()();
   late final code = text()();
   late final description = text().nullable()();
+  late final enabled = boolean().withDefault(const Constant(true))();
 
   @override
   Set<Column<Object>> get primaryKey => {id};

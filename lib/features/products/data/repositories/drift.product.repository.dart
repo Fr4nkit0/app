@@ -10,7 +10,9 @@ class DriftProductRepository implements ProductRepository {
 
   @override
   Stream<List<Product>> watchAllProducts() {
-    return db.select(db.productTable).watch().map((rows) {
+    return (db.select(db.productTable)..where((t) => t.enabled.equals(true)))
+        .watch()
+        .map((rows) {
       return rows.map((row) {
         return Product(
           id: row.productId,

@@ -278,4 +278,14 @@ void main() {
         .getSingle();
     expect(beto.name, 'Beto');
   });
+
+  test('rows without an enabled flag stay enabled', () async {
+    await service.bootstrap();
+
+    final customers = await db.select(db.customerTable).get();
+    expect(customers.every((c) => c.enabled), isTrue);
+    expect((await db.select(db.visitOutcomeTable).getSingle()).enabled, isTrue);
+    expect((await db.select(db.paymentMethodTable).getSingle()).enabled, isTrue);
+    expect((await db.select(db.routeStopTable).get()).every((s) => s.enabled), isTrue);
+  });
 }

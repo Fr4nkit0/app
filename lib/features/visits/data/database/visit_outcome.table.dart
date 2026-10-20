@@ -9,6 +9,7 @@ class VisitOutcomeTable extends Table {
   late final name = text()();
   late final triggersReschedule =
       boolean().withDefault(const Constant(false))();
+  late final enabled = boolean().withDefault(const Constant(true))();
 
   @override
   Set<Column<Object>> get primaryKey => {id};
