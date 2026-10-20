@@ -13,7 +13,7 @@ Future<void> seedTestCustomers(AppDatabase db) async {
       addressId: 'mock-addr-1',
       street: 'Av. San Martín 1300',
       prefId: 'mock-pref-1',
-      dayOfWeek: 1, // Lunes
+      dayOfWeek: 1, // Monday
       start: '08:00',
       end: '12:00',
     ),
@@ -24,7 +24,7 @@ Future<void> seedTestCustomers(AppDatabase db) async {
       addressId: 'mock-addr-2',
       street: 'mza 517 C',
       prefId: 'mock-pref-2',
-      dayOfWeek: 2, // Martes
+      dayOfWeek: 2, // Tuesday
       start: '14:00',
       end: '18:00',
     ),
@@ -35,7 +35,7 @@ Future<void> seedTestCustomers(AppDatabase db) async {
       addressId: 'mock-addr-3',
       street: 'mza 77 A',
       prefId: 'mock-pref-3',
-      dayOfWeek: 3, // Miércoles
+      dayOfWeek: 3, // Wednesday
       start: '09:00',
       end: '13:00',
     ),
@@ -46,7 +46,7 @@ Future<void> seedTestCustomers(AppDatabase db) async {
       addressId: 'mock-addr-4',
       street: 'mza 912 D',
       prefId: 'mock-pref-4',
-      dayOfWeek: 4, // Jueves
+      dayOfWeek: 4, // Thursday
       start: '15:00',
       end: '19:00',
     ),
