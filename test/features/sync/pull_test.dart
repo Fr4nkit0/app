@@ -226,6 +226,38 @@ void main() {
     expect(added.sequence, 3);
   });
 
+  test('applies an address shaped like the server, with an integer floor and decimal strings', () async {
+    pages = [
+      _page({
+        'customer_addresses': [
+          {
+            'id': 111,
+            'customer_id': 11,
+            'street': 'Belgrano 500',
+            'apartment': 'B',
+            'floor': 3,
+            'latitude': '-34.6037000',
+            'longitude': '-58.3816000',
+            'visual_reference': null,
+            'neighborhood': null,
+            'is_primary': true,
+            'enabled': true,
+          },
+        ],
+      }),
+    ];
+    final before = await storedCursor();
+
+    await service.pull();
+
+    final address = await (db.select(db.customerAddressTable)
+          ..where((t) => t.serverId.equals(111)))
+        .getSingle();
+    expect(address.floor, '3');
+    expect(address.latitude, closeTo(-34.6037, 1e-6));
+    expect(await storedCursor(), isNot(before));
+  });
+
   test('a disabled record disappears from lists and selectors without being deleted', () async {
     pages = [
       _page({

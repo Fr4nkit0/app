@@ -576,7 +576,8 @@ class SyncService {
       customerId: Value(customerId),
       street: Value(a['street'] as String?),
       apartment: Value(a['apartment'] as String?),
-      floor: Value(a['floor'] as String?),
+      // The server stores the floor as an integer column.
+      floor: Value(a['floor']?.toString()),
       visualReference: Value(a['visual_reference'] as String?),
       isPrimary: Value(a['is_primary'] == true),
       latitude: Value(_toNullableDouble(a['latitude'])),
