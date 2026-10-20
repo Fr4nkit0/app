@@ -25,7 +25,7 @@ void main() {
       await db.into(db.customerTable).insert(customerCompanion);
 
       final customersBefore = await db.select(db.customerTable).get();
-      expect(customersBefore.length, 5);
+      expect(customersBefore.length, 1);
       expect(customersBefore.any((c) => c.name == 'John Doe'), isTrue);
 
       // 2. Perform migration
@@ -138,7 +138,7 @@ void main() {
 
       // 4. Verify existing customer data is preserved after migration
       final customersAfter = await db.select(db.customerTable).get();
-      expect(customersAfter.length, 5);
+      expect(customersAfter.length, 1);
       expect(customersAfter.any((c) => c.name == 'John Doe'), isTrue);
     });
   });
@@ -154,30 +154,36 @@ void main() {
       await db.close();
     });
 
-    test('Migration adds neighborhood column to customer_addresses and preserves data', () async {
-      final customerCompanion = CustomerTableCompanion.insert(
-        customerId: const drift.Value('cust-456'),
-        name: 'Jane Smith',
-        phone: const drift.Value('87654321'),
-      );
-      await db.into(db.customerTable).insert(customerCompanion);
+    test(
+      'Migration adds neighborhood column to customer_addresses and preserves data',
+      () async {
+        final customerCompanion = CustomerTableCompanion.insert(
+          customerId: const drift.Value('cust-456'),
+          name: 'Jane Smith',
+          phone: const drift.Value('87654321'),
+        );
+        await db.into(db.customerTable).insert(customerCompanion);
 
-      await db.customStatement(
-        "INSERT INTO customer_addresses (address_id, customer_id, street, is_primary) "
-        "VALUES ('addr-456', 'cust-456', 'Calle Falsa 123', 1)"
-      );
+        await db.customStatement(
+          "INSERT INTO customer_addresses (address_id, customer_id, street, is_primary) "
+          "VALUES ('addr-456', 'cust-456', 'Calle Falsa 123', 1)",
+        );
 
-      final migrator = db.migration;
-      final m = db.createMigrator();
-      await migrator.onUpgrade(m, 4, 5);
+        final migrator = db.migration;
+        final m = db.createMigrator();
+        await migrator.onUpgrade(m, 4, 5);
 
-      final results = await db.customSelect("SELECT * FROM customer_addresses WHERE address_id = 'addr-456'").get();
-      expect(results.length, 1);
-      final row = results.first;
-      expect(row.read<String?>('street'), 'Calle Falsa 123');
-      expect(row.data.containsKey('neighborhood'), isTrue);
-      expect(row.read<String?>('neighborhood'), isNull);
-    });
+        final results = await db
+            .customSelect(
+              "SELECT * FROM customer_addresses WHERE address_id = 'addr-456'",
+            )
+            .get();
+        expect(results.length, 1);
+        final row = results.first;
+        expect(row.read<String?>('street'), 'Calle Falsa 123');
+        expect(row.data.containsKey('neighborhood'), isTrue);
+        expect(row.read<String?>('neighborhood'), isNull);
+      },
+    );
   });
 }
-

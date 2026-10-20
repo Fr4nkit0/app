@@ -1,3 +1,4 @@
+import '../../../../support/seed_customers.dart';
 import 'package:drift/native.dart';
 import 'package:drift/drift.dart' as drift;
 import 'package:flutter_test/flutter_test.dart';
@@ -20,10 +21,9 @@ void main() {
   setUp(() async {
     db = AppDatabase(NativeDatabase.memory());
     sut = DriftRouteRepository(db);
-    // NativeDatabase.memory() triggers onCreate → seedDatabase inserts:
-    //   - mock-customer-1..4 (always in test mode)
-    //   - mock-addr-1..4 with isPrimary=true for each customer (always)
-    // The !FLUTTER_TEST-gated block (routes, stops, visits, sales…) is SKIPPED.
+    // A fresh database is empty; seed mock-customer-1..4 with a primary
+    // address each (mock-addr-1..4) explicitly.
+    await seedTestCustomers(db);
   });
 
   tearDown(() async {
