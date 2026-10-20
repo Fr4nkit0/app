@@ -3,6 +3,7 @@ import 'package:app/core/theme/marilin_tokens.dart';
 import 'package:app/core/utils/avatar_utils.dart';
 import 'package:app/features/history/domain/models/history_entry.dart';
 import 'package:app/features/history/domain/models/history_entry_type.dart';
+import 'package:app/features/sync/domain/models/pending_change.dart';
 
 String _formatArsAmount(double amount) {
   final rounded = amount.round();
@@ -30,10 +31,10 @@ class HistoryEntryTile extends StatelessWidget {
     final timeStr =
         '${entry.date.hour.toString().padLeft(2, '0')}:${entry.date.minute.toString().padLeft(2, '0')}';
     final avatarColors = AvatarUtils.getColors(
-      entry.customer.name,
-      baseColor: AvatarUtils.getPastelColor(entry.customer.name),
+      entry.customerName,
+      baseColor: AvatarUtils.getPastelColor(entry.customerName),
     );
-    final initials = AvatarUtils.getInitials(entry.customer.name);
+    final initials = AvatarUtils.getInitials(entry.customerName);
     final showAmount = entry.amount != null &&
         (entry.type == HistoryEntryType.sale ||
             entry.type == HistoryEntryType.payment);
@@ -69,7 +70,7 @@ class HistoryEntryTile extends StatelessWidget {
                     children: [
                       Expanded(
                         child: Text(
-                          entry.customer.name,
+                          entry.customerName,
                           maxLines: 2,
                           overflow: TextOverflow.ellipsis,
                           style: TextStyle(
@@ -102,7 +103,7 @@ class HistoryEntryTile extends StatelessWidget {
                   ),
                   if (entry.description.trim().isNotEmpty &&
                       entry.description.trim().toLowerCase() !=
-                          entry.customer.name.toLowerCase()) ...[
+                          entry.customerName.toLowerCase()) ...[
                     const SizedBox(height: 2),
                     Text(
                       entry.description,
@@ -115,37 +116,16 @@ class HistoryEntryTile extends StatelessWidget {
                       ),
                     ),
                   ],
-                  if (entry.tags.isNotEmpty) ...[
-                    const SizedBox(height: 8),
-                    Wrap(
-                      spacing: 6,
-                      runSpacing: 4,
-                      children: entry.tags.map((tag) {
-                        final isMixto = tag.toLowerCase() == 'mixto';
-                        return Container(
-                          padding: const EdgeInsets.symmetric(
-                            horizontal: 8,
-                            vertical: 3,
-                          ),
-                          decoration: BoxDecoration(
-                            color: isMixto
-                                ? tokens.success.withValues(alpha: 0.12)
-                                : tokens.brandBlue.withValues(alpha: 0.1),
-                            borderRadius: BorderRadius.circular(6),
-                          ),
-                          child: Text(
-                            tag,
-                            style: TextStyle(
-                              fontSize: 10.5,
-                              fontWeight: FontWeight.w800,
-                              color: isMixto
-                                  ? tokens.success
-                                  : tokens.brandBlue,
-                              letterSpacing: 0.2,
-                            ),
-                          ),
-                        );
-                      }).toList(),
+                  if (entry.status == PendingStatus.rejected &&
+                      entry.rejectionReason != null) ...[
+                    const SizedBox(height: 6),
+                    Text(
+                      'Motivo: ${entry.rejectionReason}',
+                      style: TextStyle(
+                        fontSize: 12,
+                        fontWeight: FontWeight.w700,
+                        color: tokens.destructive,
+                      ),
                     ),
                   ],
                 ],
@@ -180,7 +160,7 @@ class HistoryEntryTile extends StatelessWidget {
                     ),
                   ),
                 const SizedBox(height: 8),
-                _SyncBadge(isSynced: entry.isSynced, tokens: tokens),
+                _StatusBadge(status: entry.status, tokens: tokens),
               ],
             ),
           ],
@@ -190,47 +170,51 @@ class HistoryEntryTile extends StatelessWidget {
   }
 }
 
-class _SyncBadge extends StatelessWidget {
-  const _SyncBadge({required this.isSynced, required this.tokens});
+class _StatusBadge extends StatelessWidget {
+  const _StatusBadge({required this.status, required this.tokens});
 
-  final bool isSynced;
+  final PendingStatus status;
   final MarilinTokens tokens;
 
   @override
   Widget build(BuildContext context) {
-    if (isSynced) {
-      return Tooltip(
-        message: 'Sincronizado',
-        child: Icon(
-          Icons.check_circle_rounded,
-          size: 20,
-          color: tokens.success,
-        ),
-      );
-    }
-    return Tooltip(
-      message: 'Pendiente de subir',
-      child: Container(
-        padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
-        decoration: BoxDecoration(
-          color: tokens.accent.withValues(alpha: 0.12),
-          borderRadius: BorderRadius.circular(6),
-        ),
-        child: Row(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            Icon(Icons.cloud_upload_outlined, size: 14, color: tokens.accent),
-            const SizedBox(width: 3),
-            Text(
-              'Cola',
-              style: TextStyle(
-                fontSize: 10,
-                fontWeight: FontWeight.w800,
-                color: tokens.accent,
-              ),
+    final (label, icon, color) = switch (status) {
+      PendingStatus.pending => (
+        'Pendiente',
+        Icons.cloud_upload_outlined,
+        tokens.accent,
+      ),
+      PendingStatus.sent => (
+        'Enviado',
+        Icons.check_circle_rounded,
+        tokens.success,
+      ),
+      PendingStatus.rejected => (
+        'Rechazado',
+        Icons.error_outline_rounded,
+        tokens.destructive,
+      ),
+    };
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+      decoration: BoxDecoration(
+        color: color.withValues(alpha: 0.12),
+        borderRadius: BorderRadius.circular(6),
+      ),
+      child: Row(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Icon(icon, size: 14, color: color),
+          const SizedBox(width: 3),
+          Text(
+            label,
+            style: TextStyle(
+              fontSize: 10,
+              fontWeight: FontWeight.w800,
+              color: color,
             ),
-          ],
-        ),
+          ),
+        ],
       ),
     );
   }
@@ -281,6 +265,20 @@ class _HistoryEntryVisual {
           iconColor: tokens.brandBlue,
           iconBackground: tokens.brandBlue.withValues(alpha: 0.1),
           typeLabel: 'Entrega',
+        );
+      case HistoryEntryType.customer:
+        return _HistoryEntryVisual(
+          icon: Icons.person_outline_rounded,
+          iconColor: tokens.brandBlue,
+          iconBackground: tokens.brandBlue.withValues(alpha: 0.1),
+          typeLabel: 'Cliente',
+        );
+      case HistoryEntryType.routeStop:
+        return _HistoryEntryVisual(
+          icon: Icons.schedule_rounded,
+          iconColor: tokens.brandBlue,
+          iconBackground: tokens.brandBlue.withValues(alpha: 0.1),
+          typeLabel: 'Parada',
         );
     }
   }

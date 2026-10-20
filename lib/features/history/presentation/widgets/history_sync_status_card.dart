@@ -1,23 +1,52 @@
 import 'package:flutter/material.dart';
-import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:app/core/theme/marilin_tokens.dart';
-import 'package:app/features/history/presentation/providers/history_sync_provider.dart';
-class HistorySyncStatusCard extends ConsumerWidget {
-  const HistorySyncStatusCard({super.key, required this.pendingFromEntries});
+import 'package:app/features/sync/domain/models/sync_status.dart';
 
-  final int pendingFromEntries;
+/// Shows how the last real sync cycle ended and what is left in the queue.
+class HistorySyncStatusCard extends StatelessWidget {
+  const HistorySyncStatusCard({
+    super.key,
+    required this.status,
+    required this.isRunning,
+    required this.onSync,
+  });
+
+  final SyncStatus status;
+  final bool isRunning;
+  final VoidCallback onSync;
+
+  static String _time(DateTime t) =>
+      '${t.hour.toString().padLeft(2, '0')}:${t.minute.toString().padLeft(2, '0')}';
+
+  static String _count(int n, String singular, String plural) =>
+      '$n ${n == 1 ? singular : plural}';
+
+  String get _title {
+    if (isRunning) return 'Sincronizando…';
+    final at = status.lastCycleAt;
+    if (at == null || status.lastResult == null) {
+      return 'Todavía no se sincronizó';
+    }
+    return switch (status.lastResult!) {
+      SyncCycleResult.success => 'Sincronizado a las ${_time(at)}',
+      SyncCycleResult.failure => 'Falló a las ${_time(at)}',
+    };
+  }
 
   @override
-  Widget build(BuildContext context, WidgetRef ref) {
-    final syncState = ref.watch(historySyncProvider);
+  Widget build(BuildContext context) {
     final tokens = MarilinTokens.of(context);
-
-    final isCompleted = syncState.isCompleted && pendingFromEntries == 0;
-    final isSyncing = syncState.isSyncing;
-    final pending = pendingFromEntries > 0
-        ? pendingFromEntries
-        : syncState.pendingCount;
-    final accent = isCompleted ? tokens.success : tokens.brandBlue;
+    final failed = !isRunning && status.lastResult == SyncCycleResult.failure;
+    final upToDate = !isRunning &&
+        status.lastResult == SyncCycleResult.success &&
+        status.pendingCount == 0 &&
+        status.rejectedCount == 0;
+    final accent = failed
+        ? tokens.destructive
+        : upToDate
+        ? tokens.success
+        : tokens.brandBlue;
+    final error = status.lastError;
 
     return Material(
       color: tokens.surface,
@@ -28,17 +57,19 @@ class HistorySyncStatusCard extends ConsumerWidget {
       ),
       clipBehavior: Clip.antiAlias,
       child: InkWell(
-        onTap: isSyncing
-            ? null
-            : () => ref.read(historySyncProvider.notifier).startSync(),
+        onTap: isRunning ? null : onSync,
         child: Padding(
           padding: const EdgeInsets.all(14),
           child: Row(
             children: [
               _SyncIconBadge(
-                isSyncing: isSyncing,
-                isCompleted: isCompleted,
-                tokens: tokens,
+                isSyncing: isRunning,
+                icon: failed
+                    ? Icons.cloud_off_rounded
+                    : upToDate
+                    ? Icons.cloud_done_rounded
+                    : Icons.sync_rounded,
+                color: accent,
               ),
               const SizedBox(width: 12),
               Expanded(
@@ -46,11 +77,7 @@ class HistorySyncStatusCard extends ConsumerWidget {
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
                     Text(
-                      isCompleted
-                          ? 'Registros al día en el dispositivo'
-                          : isSyncing
-                              ? 'Actualizando cola local…'
-                              : 'Pendientes de subir',
+                      _title,
                       style: TextStyle(
                         fontSize: 14,
                         fontWeight: FontWeight.w800,
@@ -59,17 +86,29 @@ class HistorySyncStatusCard extends ConsumerWidget {
                     ),
                     const SizedBox(height: 2),
                     Text(
-                      isCompleted
-                          ? 'La sincronización con el servidor depende de la red'
-                          : '$pending registro${pending == 1 ? '' : 's'} en cola',
+                      '${_count(status.pendingCount, 'pendiente', 'pendientes')}'
+                      ' · '
+                      '${_count(status.rejectedCount, 'rechazado', 'rechazados')}',
                       style: tokens.subtitle.copyWith(fontSize: 12),
                     ),
-                    if (isSyncing) ...[
+                    if (failed && error != null && error.trim().isNotEmpty) ...[
+                      const SizedBox(height: 2),
+                      Text(
+                        error,
+                        maxLines: 2,
+                        overflow: TextOverflow.ellipsis,
+                        style: TextStyle(
+                          fontSize: 12,
+                          fontWeight: FontWeight.w600,
+                          color: tokens.destructive,
+                        ),
+                      ),
+                    ],
+                    if (isRunning) ...[
                       const SizedBox(height: 10),
                       ClipRRect(
                         borderRadius: BorderRadius.circular(4),
                         child: LinearProgressIndicator(
-                          value: syncState.progress,
                           minHeight: 6,
                           backgroundColor: tokens.border,
                           valueColor: AlwaysStoppedAnimation<Color>(accent),
@@ -79,7 +118,7 @@ class HistorySyncStatusCard extends ConsumerWidget {
                   ],
                 ),
               ),
-              if (!isSyncing && !isCompleted)
+              if (!isRunning)
                 Icon(Icons.refresh_rounded, color: tokens.brandBlue, size: 22),
             ],
           ),
@@ -92,13 +131,13 @@ class HistorySyncStatusCard extends ConsumerWidget {
 class _SyncIconBadge extends StatefulWidget {
   const _SyncIconBadge({
     required this.isSyncing,
-    required this.isCompleted,
-    required this.tokens,
+    required this.icon,
+    required this.color,
   });
 
   final bool isSyncing;
-  final bool isCompleted;
-  final MarilinTokens tokens;
+  final IconData icon;
+  final Color color;
 
   @override
   State<_SyncIconBadge> createState() => _SyncIconBadgeState();
@@ -137,22 +176,15 @@ class _SyncIconBadgeState extends State<_SyncIconBadge>
 
   @override
   Widget build(BuildContext context) {
-    final bg = widget.isCompleted
-        ? widget.tokens.success.withValues(alpha: 0.15)
-        : widget.tokens.brandBlue.withValues(alpha: 0.12);
-    final fg = widget.isCompleted
-        ? widget.tokens.success
-        : widget.tokens.brandBlue;
-    final icon = widget.isCompleted
-        ? Icons.cloud_done_rounded
-        : Icons.sync_rounded;
-
-    final child = Icon(icon, color: fg, size: 22);
+    final child = Icon(widget.icon, color: widget.color, size: 22);
 
     return Container(
       width: 44,
       height: 44,
-      decoration: BoxDecoration(color: bg, shape: BoxShape.circle),
+      decoration: BoxDecoration(
+        color: widget.color.withValues(alpha: 0.12),
+        shape: BoxShape.circle,
+      ),
       alignment: Alignment.center,
       child: widget.isSyncing
           ? RotationTransition(turns: _controller, child: child)
