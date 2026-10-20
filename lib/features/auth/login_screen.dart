@@ -36,9 +36,6 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
       if (saved.email != null) {
         _emailController.text = saved.email!;
       }
-      if (saved.password != null) {
-        _passwordController.text = saved.password!;
-      }
       _credentialsLoaded = true;
     });
   }
@@ -186,14 +183,14 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
                       contentPadding: EdgeInsets.zero,
                       controlAffinity: ListTileControlAffinity.leading,
                       title: Text(
-                        'Recordar correo y contraseña',
+                        'Recordarme',
                         style: theme.textTheme.bodyMedium?.copyWith(
                           fontWeight: FontWeight.w600,
                           color: tokens.brandNavy,
                         ),
                       ),
                       subtitle: Text(
-                        'Se guardan de forma segura en este dispositivo',
+                        'Solo se guarda tu correo en este dispositivo',
                         style: theme.textTheme.bodySmall?.copyWith(
                           color: tokens.textMuted,
                         ),

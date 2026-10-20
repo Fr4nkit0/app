@@ -18,7 +18,6 @@ import 'package:app/features/inventory/data/database/container.table.dart';
 import 'package:app/features/sync/data/database/audit_log.table.dart';
 
 import 'database_mixins.dart';
-import 'database_seed.dart';
 
 part 'database.helper.g.dart';
 
@@ -53,7 +52,6 @@ class AppDatabase extends _$AppDatabase {
   MigrationStrategy get migration => MigrationStrategy(
     onCreate: (m) async {
       await m.createAll();
-      await seedDatabase(this);
     },
     onUpgrade: (m, from, to) async {
       if (from < 3) {
@@ -98,13 +96,6 @@ class AppDatabase extends _$AppDatabase {
             await m.addColumn(table, (table as dynamic).serverId);
           }
         }
-      }
-    },
-    beforeOpen: (details) async {
-      if (details.wasCreated) return;
-      final existing = await (select(customerTable)..limit(1)).get();
-      if (existing.isEmpty) {
-        await seedDatabase(this);
       }
     },
   );

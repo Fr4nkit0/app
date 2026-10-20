@@ -2,16 +2,27 @@ import 'package:dio/dio.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 
+import '../config/app_config.dart';
+
 final secureStorageProvider = Provider<FlutterSecureStorage>((ref) {
   return const FlutterSecureStorage();
 });
 
+/// Server base URL. Overridable in tests; defaults to the build-time value.
+final apiBaseUrlProvider = Provider<String>((ref) => apiBaseUrl);
+
 final dioProvider = Provider<Dio>((ref) {
-  // We use the exact Local LAN IP of the host machine so it works seamlessly 
-  // on Android Emulators, iOS Simulators, Physical Devices, and Linux Desktop.
+  final baseUrl = ref.watch(apiBaseUrlProvider);
+  if (baseUrl.isEmpty) {
+    throw StateError(
+      'API_BASE_URL is not set. Run with '
+      '--dart-define=API_BASE_URL=https://<host>/api/v1',
+    );
+  }
+
   final dio = Dio(
     BaseOptions(
-      baseUrl: 'http://192.168.100.3/api/v1',
+      baseUrl: baseUrl,
       headers: {
         'Accept': 'application/json',
       },
