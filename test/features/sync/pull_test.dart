@@ -258,6 +258,25 @@ void main() {
     expect(await storedCursor(), isNot(before));
   });
 
+  test('a free-text floor on the device survives a server address without floor', () async {
+    await (db.update(db.customerAddressTable)..where((t) => t.serverId.equals(111)))
+        .write(const CustomerAddressTableCompanion(floor: Value('PB')));
+    pages = [
+      _page({
+        'customer_addresses': [
+          {'id': 111, 'customer_id': 11, 'street': 'Belgrano 500', 'floor': null, 'is_primary': true, 'enabled': true},
+        ],
+      }),
+    ];
+
+    await service.pull();
+
+    final address = await (db.select(db.customerAddressTable)
+          ..where((t) => t.serverId.equals(111)))
+        .getSingle();
+    expect(address.floor, 'PB');
+  });
+
   test('a disabled record disappears from lists and selectors without being deleted', () async {
     pages = [
       _page({

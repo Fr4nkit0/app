@@ -576,8 +576,12 @@ class SyncService {
       customerId: Value(customerId),
       street: Value(a['street'] as String?),
       apartment: Value(a['apartment'] as String?),
-      // The server stores the floor as an integer column.
-      floor: Value(a['floor']?.toString()),
+      // The server stores the floor as an integer column, so a free-text floor
+      // ("PB") comes back as null; keep the device's value until the server
+      // can store text.
+      floor: a['floor'] == null && _isFreeTextFloor(existing?.floor)
+          ? const Value.absent()
+          : Value(a['floor']?.toString()),
       visualReference: Value(a['visual_reference'] as String?),
       isPrimary: Value(a['is_primary'] == true),
       latitude: Value(_toNullableDouble(a['latitude'])),
@@ -594,6 +598,9 @@ class SyncService {
         .write(keepLocal ? CustomerAddressTableCompanion(serverId: Value(serverId)) : fields);
     return existing.addressId;
   }
+
+  static bool _isFreeTextFloor(String? floor) =>
+      floor != null && floor.trim().isNotEmpty && int.tryParse(floor.trim()) == null;
 
   Future<CustomerAddressTableData?> _unlinkedPrimaryAddress(String customerId) async =>
       (await (_db.select(_db.customerAddressTable)
