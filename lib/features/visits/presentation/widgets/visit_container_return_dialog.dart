@@ -49,7 +49,7 @@ class _StandaloneContainerReturnDialogState
             const SizedBox(height: 16),
             ...['BIDON_20L', 'SIFON_2L'].map((type) {
               final returned = _returns[type] ?? 0;
-              final label = type == 'BIDON_20L' ? 'Bidón 20L' : 'Sifón 2L';
+              final label = type == 'BIDON_20L' ? 'Bidón 20L' : 'Sifón 1.5L';
               final balance = balances
                   .firstWhere(
                     (b) => b.containerType == type,

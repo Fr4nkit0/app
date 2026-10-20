@@ -100,21 +100,7 @@ class VisitCustodyBanner extends ConsumerWidget {
                           ),
                         ),
                         const SizedBox(height: 8),
-                        Row(
-                          children: [
-                            VisitContainerBadge(
-                              icon: Icons.water_drop_outlined,
-                              label: 'Bidón 20L',
-                              count: bidon,
-                            ),
-                            const SizedBox(width: 8),
-                            VisitContainerBadge(
-                              icon: Icons.local_drink_outlined,
-                              label: 'Sifón 2L',
-                              count: sifon,
-                            ),
-                          ],
-                        ),
+                        VisitContainerBadges(bidon: bidon, sifon: sifon),
                       ],
                     ),
                   ),
@@ -132,6 +118,39 @@ class VisitCustodyBanner extends ConsumerWidget {
       },
       loading: () => const SizedBox.shrink(),
       error: (_, __) => const SizedBox.shrink(),
+    );
+  }
+}
+
+/// Containers the customer holds; the badges wrap to a second line when the
+/// row is too narrow for both.
+class VisitContainerBadges extends StatelessWidget {
+  const VisitContainerBadges({
+    super.key,
+    required this.bidon,
+    required this.sifon,
+  });
+
+  final int bidon;
+  final int sifon;
+
+  @override
+  Widget build(BuildContext context) {
+    return Wrap(
+      spacing: 8,
+      runSpacing: 8,
+      children: [
+        VisitContainerBadge(
+          icon: Icons.water_drop_outlined,
+          label: 'Bidón 20L',
+          count: bidon,
+        ),
+        VisitContainerBadge(
+          icon: Icons.local_drink_outlined,
+          label: 'Sifón 1.5L',
+          count: sifon,
+        ),
+      ],
     );
   }
 }
@@ -173,12 +192,17 @@ class VisitContainerBadge extends StatelessWidget {
         children: [
           Icon(icon, size: 14, color: textColor),
           const SizedBox(width: 6),
-          Text(
-            '$label: ',
-            style: TextStyle(
-              fontSize: 11,
-              fontWeight: FontWeight.w600,
-              color: textColor,
+          // The label gives way first so the count always stays visible.
+          Flexible(
+            child: Text(
+              '$label: ',
+              maxLines: 1,
+              overflow: TextOverflow.ellipsis,
+              style: TextStyle(
+                fontSize: 11,
+                fontWeight: FontWeight.w600,
+                color: textColor,
+              ),
             ),
           ),
           Text(

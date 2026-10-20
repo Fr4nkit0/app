@@ -738,7 +738,7 @@ class _ContainerReturnConfirmationDialogState
               final returned = _returns[type] ?? delivered;
               final balance = widget.customerBalances[type] ?? 0;
               final maxReturns = balance;
-              final label = type == 'BIDON_20L' ? 'Bidón 20L' : 'Sifón 2L';
+              final label = type == 'BIDON_20L' ? 'Bidón 20L' : 'Sifón 1.5L';
 
               return Padding(
                 padding: const EdgeInsets.symmetric(vertical: 8.0),
