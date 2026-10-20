@@ -563,11 +563,15 @@ class SyncService {
     return existing.customerId;
   }
 
+  /// An address created on the street has no server id yet; the server's
+  /// primary address of the same customer is that one, so it gets linked
+  /// instead of duplicated.
   Future<String> _upsertAddress(Json a, String customerId, bool keepLocal) async {
     final serverId = a['id'] as int;
     final existing = await (_db.select(_db.customerAddressTable)
-          ..where((t) => t.serverId.equals(serverId)))
-        .getSingleOrNull();
+              ..where((t) => t.serverId.equals(serverId)))
+            .getSingleOrNull() ??
+        (a['is_primary'] == true ? await _unlinkedPrimaryAddress(customerId) : null);
     final fields = CustomerAddressTableCompanion(
       customerId: Value(customerId),
       street: Value(a['street'] as String?),
@@ -584,13 +588,21 @@ class SyncService {
     if (existing == null) {
       return (await _db.into(_db.customerAddressTable).insertReturning(fields)).addressId;
     }
-    if (!keepLocal) {
-      await (_db.update(_db.customerAddressTable)
-            ..where((t) => t.addressId.equals(existing.addressId)))
-          .write(fields);
-    }
+    await (_db.update(_db.customerAddressTable)
+          ..where((t) => t.addressId.equals(existing.addressId)))
+        .write(keepLocal ? CustomerAddressTableCompanion(serverId: Value(serverId)) : fields);
     return existing.addressId;
   }
+
+  Future<CustomerAddressTableData?> _unlinkedPrimaryAddress(String customerId) async =>
+      (await (_db.select(_db.customerAddressTable)
+                ..where((t) =>
+                    t.customerId.equals(customerId) &
+                    t.serverId.isNull() &
+                    t.isPrimary.equals(true))
+                ..limit(1))
+              .get())
+          .firstOrNull;
 
   Future<void> _upsertPreference(Json p, String customerId, bool keepLocal) async {
     final serverId = p['id'] as int;

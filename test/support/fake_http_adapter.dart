@@ -1,9 +1,10 @@
+import 'dart:async';
 import 'dart:convert';
 import 'dart:typed_data';
 
 import 'package:dio/dio.dart';
 
-typedef FakeHandler = ResponseBody Function(RequestOptions options);
+typedef FakeHandler = FutureOr<ResponseBody> Function(RequestOptions options);
 
 /// Dio adapter that answers from memory and records every request.
 class FakeHttpAdapter implements HttpClientAdapter {

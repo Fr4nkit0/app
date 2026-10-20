@@ -344,6 +344,25 @@ void main() {
     expect(await storedCursor(), '2026-10-19T12:59:55+00:00');
   });
 
+  test('a new server address is added next to addresses already linked to the server', () async {
+    pages = [
+      _page({
+        'customer_addresses': [
+          {'id': 112, 'customer_id': 11, 'street': 'Mitre 900', 'is_primary': true, 'enabled': true},
+        ],
+      }),
+    ];
+
+    await service.pull();
+
+    final ana = await customer(11);
+    final addresses = await (db.select(db.customerAddressTable)
+          ..where((t) => t.customerId.equals(ana.customerId)))
+        .get();
+    expect(addresses.map((a) => a.serverId).toSet(), {111, 112});
+    expect(addresses.firstWhere((a) => a.serverId == 111).street, 'Belgrano 340');
+  });
+
   test('a cut halfway through the pages keeps the previous cursor and the retry applies everything', () async {
     pages = [
       _page(

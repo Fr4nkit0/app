@@ -10,7 +10,7 @@ import 'package:app/features/sales/presentation/screens/sale_step1_screen.dart';
 
 import 'package:app/features/auth/auth_controller.dart';
 import 'package:app/features/auth/login_screen.dart';
-import 'package:app/features/sync/sync_service.dart';
+import 'package:app/features/sync/presentation/widgets/sync_triggers_host.dart';
 
 void main() {
   runApp(const ProviderScope(child: MarilinApp()));
@@ -36,13 +36,11 @@ class AuthWrapper extends ConsumerWidget {
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final authState = ref.watch(authControllerProvider);
-    
+
     if (authState.isLoading) {
-      return const Scaffold(
-        body: Center(child: CircularProgressIndicator()),
-      );
+      return const Scaffold(body: Center(child: CircularProgressIndicator()));
     }
-    
+
     if (authState.isAuthenticated) {
       return const _RootShell();
     } else {
@@ -63,22 +61,6 @@ class _RootShell extends ConsumerStatefulWidget {
 class _RootShellState extends ConsumerState<_RootShell> {
   int _selectedIndex = 0;
 
-  @override
-  void initState() {
-    super.initState();
-    _bootstrapDay();
-  }
-
-  /// Downloads the day on first login and whenever the local route is not
-  /// today's. Offline failures are ignored: the local data keeps working.
-  Future<void> _bootstrapDay() async {
-    try {
-      await ref.read(syncServiceProvider).bootstrapIfNeeded();
-    } catch (e) {
-      debugPrint('Bootstrap skipped: $e');
-    }
-  }
-
   void _onTabChanged(int index) {
     // Resetear el draft de venta al salir del tab Venta (index 2)
     if (_selectedIndex == 2 && index != 2) {
@@ -91,47 +73,51 @@ class _RootShellState extends ConsumerState<_RootShell> {
   Widget build(BuildContext context) {
     final customerCount = ref.watch(customerCountProvider);
 
-    return Scaffold(
-      body: IndexedStack(
-        index: _selectedIndex,
-        children: const [
-          RouteDayScreen(),
-          CustomerListScreen(),
-          SaleStep1Screen(),
-          HistoryScreen(),
-        ],
-      ),
-      bottomNavigationBar: NavigationBar(
-        selectedIndex: _selectedIndex,
-        onDestinationSelected: _onTabChanged,
-        destinations: [
-          const NavigationDestination(
-            icon: Icon(Icons.route_outlined),
-            selectedIcon: Icon(Icons.route),
-            label: 'Ruta',
-          ),
-          NavigationDestination(
-            icon: _BadgedIcon(
-              icon: const Icon(Icons.people_outline),
-              count: customerCount.value ?? 0,
+    // The sync cycle (push, then bootstrap or pull) runs on open, on return
+    // to the foreground, when connectivity comes back and periodically.
+    return SyncTriggersHost(
+      child: Scaffold(
+        body: IndexedStack(
+          index: _selectedIndex,
+          children: const [
+            RouteDayScreen(),
+            CustomerListScreen(),
+            SaleStep1Screen(),
+            HistoryScreen(),
+          ],
+        ),
+        bottomNavigationBar: NavigationBar(
+          selectedIndex: _selectedIndex,
+          onDestinationSelected: _onTabChanged,
+          destinations: [
+            const NavigationDestination(
+              icon: Icon(Icons.route_outlined),
+              selectedIcon: Icon(Icons.route),
+              label: 'Ruta',
             ),
-            selectedIcon: _BadgedIcon(
-              icon: const Icon(Icons.people),
-              count: customerCount.value ?? 0,
+            NavigationDestination(
+              icon: _BadgedIcon(
+                icon: const Icon(Icons.people_outline),
+                count: customerCount.value ?? 0,
+              ),
+              selectedIcon: _BadgedIcon(
+                icon: const Icon(Icons.people),
+                count: customerCount.value ?? 0,
+              ),
+              label: 'Clientes',
             ),
-            label: 'Clientes',
-          ),
-          const NavigationDestination(
-            icon: Icon(Icons.point_of_sale_outlined),
-            selectedIcon: Icon(Icons.point_of_sale),
-            label: 'Venta',
-          ),
-          const NavigationDestination(
-            icon: Icon(Icons.history_outlined),
-            selectedIcon: Icon(Icons.history),
-            label: 'Historial',
-          ),
-        ],
+            const NavigationDestination(
+              icon: Icon(Icons.point_of_sale_outlined),
+              selectedIcon: Icon(Icons.point_of_sale),
+              label: 'Venta',
+            ),
+            const NavigationDestination(
+              icon: Icon(Icons.history_outlined),
+              selectedIcon: Icon(Icons.history),
+              label: 'Historial',
+            ),
+          ],
+        ),
       ),
     );
   }
