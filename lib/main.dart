@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:app/core/theme/app.theme.dart';
@@ -10,10 +12,21 @@ import 'package:app/features/sales/presentation/screens/sale_step1_screen.dart';
 
 import 'package:app/features/auth/auth_controller.dart';
 import 'package:app/features/auth/login_screen.dart';
+import 'package:app/features/sync/background/background_sync_task.dart';
 import 'package:app/features/sync/presentation/widgets/sync_triggers_host.dart';
 
 void main() {
-  runApp(const ProviderScope(child: MarilinApp()));
+  WidgetsFlutterBinding.ensureInitialized();
+  // Best effort: a device that refuses background work still syncs while
+  // the app is open.
+  unawaited(scheduleBackgroundSync().catchError((Object _) {}));
+  runApp(
+    ProviderScope(
+      // The app and the background job share the cross-isolate cycle lease.
+      overrides: [leasedSyncEngineOverride(owner: foregroundLeaseOwner)],
+      child: const MarilinApp(),
+    ),
+  );
 }
 
 class MarilinApp extends StatelessWidget {
