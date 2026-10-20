@@ -278,4 +278,58 @@ void main() {
         .getSingle();
     expect(beto.name, 'Beto');
   });
+
+  test('stores the server balance plus the sales and payments not yet sent', () async {
+    await service.bootstrap();
+    final queue = DriftPendingChangeRepository(db);
+    for (final (id, total) in [('sale-pending', 300.0), ('sale-sent', 50.0)]) {
+      await db.into(db.saleTable).insert(
+            SaleTableCompanion.insert(
+              saleId: Value(id),
+              customerId: 'cust-uuid-11',
+              totalAmount: total,
+              paymentMethod: 'credit',
+              quantity: 0,
+              shipping_amount: 0,
+            ),
+          );
+      await queue.enqueue(
+        entity: PendingEntity.sale,
+        entityId: id,
+        action: PendingAction.insert,
+      );
+    }
+    // Already sent: the server balance includes it.
+    await queue.markSent([(await queue.getPending()).last.id]);
+    await db.into(db.paymentTable).insert(
+          PaymentTableCompanion.insert(
+            paymentId: const Value('pay-pending'),
+            customerId: 'cust-uuid-11',
+            amount: 100,
+            paymentMethod: 'EFECTIVO',
+          ),
+        );
+    await queue.enqueue(
+      entity: PendingEntity.payment,
+      entityId: 'pay-pending',
+      action: PendingAction.insert,
+    );
+
+    await service.bootstrap();
+
+    final balance = await (db.select(db.customerBalanceTable)
+          ..where((t) => t.customerId.equals('cust-uuid-11')))
+        .getSingle();
+    expect(balance.currentBalance, 1500.5 + 300 - 100);
+  });
+
+  test('rows without an enabled flag stay enabled', () async {
+    await service.bootstrap();
+
+    final customers = await db.select(db.customerTable).get();
+    expect(customers.every((c) => c.enabled), isTrue);
+    expect((await db.select(db.visitOutcomeTable).getSingle()).enabled, isTrue);
+    expect((await db.select(db.paymentMethodTable).getSingle()).enabled, isTrue);
+    expect((await db.select(db.routeStopTable).get()).every((s) => s.enabled), isTrue);
+  });
 }

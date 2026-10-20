@@ -50,4 +50,19 @@ void main() {
       'Bidón',
     ); // Mapping description to unitLabel? Let's check Product model
   });
+
+  test('watchProductsFor uses the list price when the customer has no agreement', () async {
+    await db.into(db.productTable).insert(
+          ProductTableCompanion.insert(
+            productId: const drift.Value('prod-1'),
+            name: 'Bidón 20L',
+            price: 800.0,
+          ),
+        );
+
+    final products = await sut.watchProductsFor('cust-1').first;
+
+    expect(products.single.price, 800.0);
+    expect(products.single.agreementId, isNull);
+  });
 }

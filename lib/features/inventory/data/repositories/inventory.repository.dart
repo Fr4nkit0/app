@@ -160,7 +160,7 @@ class DriftInventoryRepository implements InventoryRepository {
   Future<List<RouteInventoryLoad>> getRouteLoads(String routeId) async {
     final rows =
         await (_db.select(_db.routeInventoryLoadTable)
-              ..where((t) => t.routeId.equals(routeId))
+              ..where((t) => t.routeId.equals(routeId) & t.enabled.equals(true))
               ..orderBy([(t) => OrderingTerm.asc(t.loadedAt)]))
             .get();
     return rows.map(_rowToLoad).toList();

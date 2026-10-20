@@ -4829,8 +4829,23 @@ class $VisitOutcomeTableTable extends VisitOutcomeTable
     ),
     defaultValue: const Constant(false),
   );
+  static const VerificationMeta _enabledMeta = const VerificationMeta(
+    'enabled',
+  );
   @override
-  List<GeneratedColumn> get $columns => [id, name, triggersReschedule];
+  late final GeneratedColumn<bool> enabled = GeneratedColumn<bool>(
+    'enabled',
+    aliasedName,
+    false,
+    type: DriftSqlType.bool,
+    requiredDuringInsert: false,
+    defaultConstraints: GeneratedColumn.constraintIsAlways(
+      'CHECK ("enabled" IN (0, 1))',
+    ),
+    defaultValue: const Constant(true),
+  );
+  @override
+  List<GeneratedColumn> get $columns => [id, name, triggersReschedule, enabled];
   @override
   String get aliasedName => _alias ?? actualTableName;
   @override
@@ -4863,6 +4878,12 @@ class $VisitOutcomeTableTable extends VisitOutcomeTable
         ),
       );
     }
+    if (data.containsKey('enabled')) {
+      context.handle(
+        _enabledMeta,
+        enabled.isAcceptableOrUnknown(data['enabled']!, _enabledMeta),
+      );
+    }
     return context;
   }
 
@@ -4884,6 +4905,10 @@ class $VisitOutcomeTableTable extends VisitOutcomeTable
         DriftSqlType.bool,
         data['${effectivePrefix}triggers_reschedule'],
       )!,
+      enabled: attachedDatabase.typeMapping.read(
+        DriftSqlType.bool,
+        data['${effectivePrefix}enabled'],
+      )!,
     );
   }
 
@@ -4898,10 +4923,12 @@ class VisitOutcomeTableData extends DataClass
   final int id;
   final String name;
   final bool triggersReschedule;
+  final bool enabled;
   const VisitOutcomeTableData({
     required this.id,
     required this.name,
     required this.triggersReschedule,
+    required this.enabled,
   });
   @override
   Map<String, Expression> toColumns(bool nullToAbsent) {
@@ -4909,6 +4936,7 @@ class VisitOutcomeTableData extends DataClass
     map['id'] = Variable<int>(id);
     map['name'] = Variable<String>(name);
     map['triggers_reschedule'] = Variable<bool>(triggersReschedule);
+    map['enabled'] = Variable<bool>(enabled);
     return map;
   }
 
@@ -4917,6 +4945,7 @@ class VisitOutcomeTableData extends DataClass
       id: Value(id),
       name: Value(name),
       triggersReschedule: Value(triggersReschedule),
+      enabled: Value(enabled),
     );
   }
 
@@ -4929,6 +4958,7 @@ class VisitOutcomeTableData extends DataClass
       id: serializer.fromJson<int>(json['id']),
       name: serializer.fromJson<String>(json['name']),
       triggersReschedule: serializer.fromJson<bool>(json['triggersReschedule']),
+      enabled: serializer.fromJson<bool>(json['enabled']),
     );
   }
   @override
@@ -4938,6 +4968,7 @@ class VisitOutcomeTableData extends DataClass
       'id': serializer.toJson<int>(id),
       'name': serializer.toJson<String>(name),
       'triggersReschedule': serializer.toJson<bool>(triggersReschedule),
+      'enabled': serializer.toJson<bool>(enabled),
     };
   }
 
@@ -4945,10 +4976,12 @@ class VisitOutcomeTableData extends DataClass
     int? id,
     String? name,
     bool? triggersReschedule,
+    bool? enabled,
   }) => VisitOutcomeTableData(
     id: id ?? this.id,
     name: name ?? this.name,
     triggersReschedule: triggersReschedule ?? this.triggersReschedule,
+    enabled: enabled ?? this.enabled,
   );
   VisitOutcomeTableData copyWithCompanion(VisitOutcomeTableCompanion data) {
     return VisitOutcomeTableData(
@@ -4957,6 +4990,7 @@ class VisitOutcomeTableData extends DataClass
       triggersReschedule: data.triggersReschedule.present
           ? data.triggersReschedule.value
           : this.triggersReschedule,
+      enabled: data.enabled.present ? data.enabled.value : this.enabled,
     );
   }
 
@@ -4965,20 +4999,22 @@ class VisitOutcomeTableData extends DataClass
     return (StringBuffer('VisitOutcomeTableData(')
           ..write('id: $id, ')
           ..write('name: $name, ')
-          ..write('triggersReschedule: $triggersReschedule')
+          ..write('triggersReschedule: $triggersReschedule, ')
+          ..write('enabled: $enabled')
           ..write(')'))
         .toString();
   }
 
   @override
-  int get hashCode => Object.hash(id, name, triggersReschedule);
+  int get hashCode => Object.hash(id, name, triggersReschedule, enabled);
   @override
   bool operator ==(Object other) =>
       identical(this, other) ||
       (other is VisitOutcomeTableData &&
           other.id == this.id &&
           other.name == this.name &&
-          other.triggersReschedule == this.triggersReschedule);
+          other.triggersReschedule == this.triggersReschedule &&
+          other.enabled == this.enabled);
 }
 
 class VisitOutcomeTableCompanion
@@ -4986,25 +5022,30 @@ class VisitOutcomeTableCompanion
   final Value<int> id;
   final Value<String> name;
   final Value<bool> triggersReschedule;
+  final Value<bool> enabled;
   const VisitOutcomeTableCompanion({
     this.id = const Value.absent(),
     this.name = const Value.absent(),
     this.triggersReschedule = const Value.absent(),
+    this.enabled = const Value.absent(),
   });
   VisitOutcomeTableCompanion.insert({
     this.id = const Value.absent(),
     required String name,
     this.triggersReschedule = const Value.absent(),
+    this.enabled = const Value.absent(),
   }) : name = Value(name);
   static Insertable<VisitOutcomeTableData> custom({
     Expression<int>? id,
     Expression<String>? name,
     Expression<bool>? triggersReschedule,
+    Expression<bool>? enabled,
   }) {
     return RawValuesInsertable({
       if (id != null) 'id': id,
       if (name != null) 'name': name,
       if (triggersReschedule != null) 'triggers_reschedule': triggersReschedule,
+      if (enabled != null) 'enabled': enabled,
     });
   }
 
@@ -5012,11 +5053,13 @@ class VisitOutcomeTableCompanion
     Value<int>? id,
     Value<String>? name,
     Value<bool>? triggersReschedule,
+    Value<bool>? enabled,
   }) {
     return VisitOutcomeTableCompanion(
       id: id ?? this.id,
       name: name ?? this.name,
       triggersReschedule: triggersReschedule ?? this.triggersReschedule,
+      enabled: enabled ?? this.enabled,
     );
   }
 
@@ -5032,6 +5075,9 @@ class VisitOutcomeTableCompanion
     if (triggersReschedule.present) {
       map['triggers_reschedule'] = Variable<bool>(triggersReschedule.value);
     }
+    if (enabled.present) {
+      map['enabled'] = Variable<bool>(enabled.value);
+    }
     return map;
   }
 
@@ -5040,7 +5086,8 @@ class VisitOutcomeTableCompanion
     return (StringBuffer('VisitOutcomeTableCompanion(')
           ..write('id: $id, ')
           ..write('name: $name, ')
-          ..write('triggersReschedule: $triggersReschedule')
+          ..write('triggersReschedule: $triggersReschedule, ')
+          ..write('enabled: $enabled')
           ..write(')'))
         .toString();
   }
@@ -6748,6 +6795,17 @@ class $SaleItemTableTable extends SaleItemTable
     type: DriftSqlType.double,
     requiredDuringInsert: true,
   );
+  static const VerificationMeta _agreementServerIdMeta = const VerificationMeta(
+    'agreementServerId',
+  );
+  @override
+  late final GeneratedColumn<int> agreementServerId = GeneratedColumn<int>(
+    'agreement_server_id',
+    aliasedName,
+    true,
+    type: DriftSqlType.int,
+    requiredDuringInsert: false,
+  );
   @override
   List<GeneratedColumn> get $columns => [
     createdAt,
@@ -6760,6 +6818,7 @@ class $SaleItemTableTable extends SaleItemTable
     quantity,
     unitPrice,
     subtotal,
+    agreementServerId,
   ];
   @override
   String get aliasedName => _alias ?? actualTableName;
@@ -6849,6 +6908,15 @@ class $SaleItemTableTable extends SaleItemTable
     } else if (isInserting) {
       context.missing(_subtotalMeta);
     }
+    if (data.containsKey('agreement_server_id')) {
+      context.handle(
+        _agreementServerIdMeta,
+        agreementServerId.isAcceptableOrUnknown(
+          data['agreement_server_id']!,
+          _agreementServerIdMeta,
+        ),
+      );
+    }
     return context;
   }
 
@@ -6898,6 +6966,10 @@ class $SaleItemTableTable extends SaleItemTable
         DriftSqlType.double,
         data['${effectivePrefix}subtotal'],
       )!,
+      agreementServerId: attachedDatabase.typeMapping.read(
+        DriftSqlType.int,
+        data['${effectivePrefix}agreement_server_id'],
+      ),
     );
   }
 
@@ -6919,6 +6991,10 @@ class SaleItemTableData extends DataClass
   final int quantity;
   final double unitPrice;
   final double subtotal;
+
+  /// Server id of the customer agreement that set [unitPrice]; null for
+  /// the list price.
+  final int? agreementServerId;
   const SaleItemTableData({
     required this.createdAt,
     required this.lastModifiedDate,
@@ -6930,6 +7006,7 @@ class SaleItemTableData extends DataClass
     required this.quantity,
     required this.unitPrice,
     required this.subtotal,
+    this.agreementServerId,
   });
   @override
   Map<String, Expression> toColumns(bool nullToAbsent) {
@@ -6946,6 +7023,9 @@ class SaleItemTableData extends DataClass
     map['quantity'] = Variable<int>(quantity);
     map['unit_price'] = Variable<double>(unitPrice);
     map['subtotal'] = Variable<double>(subtotal);
+    if (!nullToAbsent || agreementServerId != null) {
+      map['agreement_server_id'] = Variable<int>(agreementServerId);
+    }
     return map;
   }
 
@@ -6963,6 +7043,9 @@ class SaleItemTableData extends DataClass
       quantity: Value(quantity),
       unitPrice: Value(unitPrice),
       subtotal: Value(subtotal),
+      agreementServerId: agreementServerId == null && nullToAbsent
+          ? const Value.absent()
+          : Value(agreementServerId),
     );
   }
 
@@ -6982,6 +7065,7 @@ class SaleItemTableData extends DataClass
       quantity: serializer.fromJson<int>(json['quantity']),
       unitPrice: serializer.fromJson<double>(json['unitPrice']),
       subtotal: serializer.fromJson<double>(json['subtotal']),
+      agreementServerId: serializer.fromJson<int?>(json['agreementServerId']),
     );
   }
   @override
@@ -6998,6 +7082,7 @@ class SaleItemTableData extends DataClass
       'quantity': serializer.toJson<int>(quantity),
       'unitPrice': serializer.toJson<double>(unitPrice),
       'subtotal': serializer.toJson<double>(subtotal),
+      'agreementServerId': serializer.toJson<int?>(agreementServerId),
     };
   }
 
@@ -7012,6 +7097,7 @@ class SaleItemTableData extends DataClass
     int? quantity,
     double? unitPrice,
     double? subtotal,
+    Value<int?> agreementServerId = const Value.absent(),
   }) => SaleItemTableData(
     createdAt: createdAt ?? this.createdAt,
     lastModifiedDate: lastModifiedDate ?? this.lastModifiedDate,
@@ -7023,6 +7109,9 @@ class SaleItemTableData extends DataClass
     quantity: quantity ?? this.quantity,
     unitPrice: unitPrice ?? this.unitPrice,
     subtotal: subtotal ?? this.subtotal,
+    agreementServerId: agreementServerId.present
+        ? agreementServerId.value
+        : this.agreementServerId,
   );
   SaleItemTableData copyWithCompanion(SaleItemTableCompanion data) {
     return SaleItemTableData(
@@ -7040,6 +7129,9 @@ class SaleItemTableData extends DataClass
       quantity: data.quantity.present ? data.quantity.value : this.quantity,
       unitPrice: data.unitPrice.present ? data.unitPrice.value : this.unitPrice,
       subtotal: data.subtotal.present ? data.subtotal.value : this.subtotal,
+      agreementServerId: data.agreementServerId.present
+          ? data.agreementServerId.value
+          : this.agreementServerId,
     );
   }
 
@@ -7055,7 +7147,8 @@ class SaleItemTableData extends DataClass
           ..write('productId: $productId, ')
           ..write('quantity: $quantity, ')
           ..write('unitPrice: $unitPrice, ')
-          ..write('subtotal: $subtotal')
+          ..write('subtotal: $subtotal, ')
+          ..write('agreementServerId: $agreementServerId')
           ..write(')'))
         .toString();
   }
@@ -7072,6 +7165,7 @@ class SaleItemTableData extends DataClass
     quantity,
     unitPrice,
     subtotal,
+    agreementServerId,
   );
   @override
   bool operator ==(Object other) =>
@@ -7086,7 +7180,8 @@ class SaleItemTableData extends DataClass
           other.productId == this.productId &&
           other.quantity == this.quantity &&
           other.unitPrice == this.unitPrice &&
-          other.subtotal == this.subtotal);
+          other.subtotal == this.subtotal &&
+          other.agreementServerId == this.agreementServerId);
 }
 
 class SaleItemTableCompanion extends UpdateCompanion<SaleItemTableData> {
@@ -7100,6 +7195,7 @@ class SaleItemTableCompanion extends UpdateCompanion<SaleItemTableData> {
   final Value<int> quantity;
   final Value<double> unitPrice;
   final Value<double> subtotal;
+  final Value<int?> agreementServerId;
   final Value<int> rowid;
   const SaleItemTableCompanion({
     this.createdAt = const Value.absent(),
@@ -7112,6 +7208,7 @@ class SaleItemTableCompanion extends UpdateCompanion<SaleItemTableData> {
     this.quantity = const Value.absent(),
     this.unitPrice = const Value.absent(),
     this.subtotal = const Value.absent(),
+    this.agreementServerId = const Value.absent(),
     this.rowid = const Value.absent(),
   });
   SaleItemTableCompanion.insert({
@@ -7125,6 +7222,7 @@ class SaleItemTableCompanion extends UpdateCompanion<SaleItemTableData> {
     required int quantity,
     required double unitPrice,
     required double subtotal,
+    this.agreementServerId = const Value.absent(),
     this.rowid = const Value.absent(),
   }) : saleId = Value(saleId),
        productId = Value(productId),
@@ -7142,6 +7240,7 @@ class SaleItemTableCompanion extends UpdateCompanion<SaleItemTableData> {
     Expression<int>? quantity,
     Expression<double>? unitPrice,
     Expression<double>? subtotal,
+    Expression<int>? agreementServerId,
     Expression<int>? rowid,
   }) {
     return RawValuesInsertable({
@@ -7155,6 +7254,7 @@ class SaleItemTableCompanion extends UpdateCompanion<SaleItemTableData> {
       if (quantity != null) 'quantity': quantity,
       if (unitPrice != null) 'unit_price': unitPrice,
       if (subtotal != null) 'subtotal': subtotal,
+      if (agreementServerId != null) 'agreement_server_id': agreementServerId,
       if (rowid != null) 'rowid': rowid,
     });
   }
@@ -7170,6 +7270,7 @@ class SaleItemTableCompanion extends UpdateCompanion<SaleItemTableData> {
     Value<int>? quantity,
     Value<double>? unitPrice,
     Value<double>? subtotal,
+    Value<int?>? agreementServerId,
     Value<int>? rowid,
   }) {
     return SaleItemTableCompanion(
@@ -7183,6 +7284,7 @@ class SaleItemTableCompanion extends UpdateCompanion<SaleItemTableData> {
       quantity: quantity ?? this.quantity,
       unitPrice: unitPrice ?? this.unitPrice,
       subtotal: subtotal ?? this.subtotal,
+      agreementServerId: agreementServerId ?? this.agreementServerId,
       rowid: rowid ?? this.rowid,
     );
   }
@@ -7220,6 +7322,9 @@ class SaleItemTableCompanion extends UpdateCompanion<SaleItemTableData> {
     if (subtotal.present) {
       map['subtotal'] = Variable<double>(subtotal.value);
     }
+    if (agreementServerId.present) {
+      map['agreement_server_id'] = Variable<int>(agreementServerId.value);
+    }
     if (rowid.present) {
       map['rowid'] = Variable<int>(rowid.value);
     }
@@ -7239,6 +7344,7 @@ class SaleItemTableCompanion extends UpdateCompanion<SaleItemTableData> {
           ..write('quantity: $quantity, ')
           ..write('unitPrice: $unitPrice, ')
           ..write('subtotal: $subtotal, ')
+          ..write('agreementServerId: $agreementServerId, ')
           ..write('rowid: $rowid')
           ..write(')'))
         .toString();
@@ -11700,8 +11806,23 @@ class $ContainerTypeTableTable extends ContainerTypeTable
     type: DriftSqlType.string,
     requiredDuringInsert: false,
   );
+  static const VerificationMeta _enabledMeta = const VerificationMeta(
+    'enabled',
+  );
   @override
-  List<GeneratedColumn> get $columns => [id, code, description];
+  late final GeneratedColumn<bool> enabled = GeneratedColumn<bool>(
+    'enabled',
+    aliasedName,
+    false,
+    type: DriftSqlType.bool,
+    requiredDuringInsert: false,
+    defaultConstraints: GeneratedColumn.constraintIsAlways(
+      'CHECK ("enabled" IN (0, 1))',
+    ),
+    defaultValue: const Constant(true),
+  );
+  @override
+  List<GeneratedColumn> get $columns => [id, code, description, enabled];
   @override
   String get aliasedName => _alias ?? actualTableName;
   @override
@@ -11734,6 +11855,12 @@ class $ContainerTypeTableTable extends ContainerTypeTable
         ),
       );
     }
+    if (data.containsKey('enabled')) {
+      context.handle(
+        _enabledMeta,
+        enabled.isAcceptableOrUnknown(data['enabled']!, _enabledMeta),
+      );
+    }
     return context;
   }
 
@@ -11755,6 +11882,10 @@ class $ContainerTypeTableTable extends ContainerTypeTable
         DriftSqlType.string,
         data['${effectivePrefix}description'],
       ),
+      enabled: attachedDatabase.typeMapping.read(
+        DriftSqlType.bool,
+        data['${effectivePrefix}enabled'],
+      )!,
     );
   }
 
@@ -11769,10 +11900,12 @@ class ContainerTypeTableData extends DataClass
   final int id;
   final String code;
   final String? description;
+  final bool enabled;
   const ContainerTypeTableData({
     required this.id,
     required this.code,
     this.description,
+    required this.enabled,
   });
   @override
   Map<String, Expression> toColumns(bool nullToAbsent) {
@@ -11782,6 +11915,7 @@ class ContainerTypeTableData extends DataClass
     if (!nullToAbsent || description != null) {
       map['description'] = Variable<String>(description);
     }
+    map['enabled'] = Variable<bool>(enabled);
     return map;
   }
 
@@ -11792,6 +11926,7 @@ class ContainerTypeTableData extends DataClass
       description: description == null && nullToAbsent
           ? const Value.absent()
           : Value(description),
+      enabled: Value(enabled),
     );
   }
 
@@ -11804,6 +11939,7 @@ class ContainerTypeTableData extends DataClass
       id: serializer.fromJson<int>(json['id']),
       code: serializer.fromJson<String>(json['code']),
       description: serializer.fromJson<String?>(json['description']),
+      enabled: serializer.fromJson<bool>(json['enabled']),
     );
   }
   @override
@@ -11813,6 +11949,7 @@ class ContainerTypeTableData extends DataClass
       'id': serializer.toJson<int>(id),
       'code': serializer.toJson<String>(code),
       'description': serializer.toJson<String?>(description),
+      'enabled': serializer.toJson<bool>(enabled),
     };
   }
 
@@ -11820,10 +11957,12 @@ class ContainerTypeTableData extends DataClass
     int? id,
     String? code,
     Value<String?> description = const Value.absent(),
+    bool? enabled,
   }) => ContainerTypeTableData(
     id: id ?? this.id,
     code: code ?? this.code,
     description: description.present ? description.value : this.description,
+    enabled: enabled ?? this.enabled,
   );
   ContainerTypeTableData copyWithCompanion(ContainerTypeTableCompanion data) {
     return ContainerTypeTableData(
@@ -11832,6 +11971,7 @@ class ContainerTypeTableData extends DataClass
       description: data.description.present
           ? data.description.value
           : this.description,
+      enabled: data.enabled.present ? data.enabled.value : this.enabled,
     );
   }
 
@@ -11840,20 +11980,22 @@ class ContainerTypeTableData extends DataClass
     return (StringBuffer('ContainerTypeTableData(')
           ..write('id: $id, ')
           ..write('code: $code, ')
-          ..write('description: $description')
+          ..write('description: $description, ')
+          ..write('enabled: $enabled')
           ..write(')'))
         .toString();
   }
 
   @override
-  int get hashCode => Object.hash(id, code, description);
+  int get hashCode => Object.hash(id, code, description, enabled);
   @override
   bool operator ==(Object other) =>
       identical(this, other) ||
       (other is ContainerTypeTableData &&
           other.id == this.id &&
           other.code == this.code &&
-          other.description == this.description);
+          other.description == this.description &&
+          other.enabled == this.enabled);
 }
 
 class ContainerTypeTableCompanion
@@ -11861,25 +12003,30 @@ class ContainerTypeTableCompanion
   final Value<int> id;
   final Value<String> code;
   final Value<String?> description;
+  final Value<bool> enabled;
   const ContainerTypeTableCompanion({
     this.id = const Value.absent(),
     this.code = const Value.absent(),
     this.description = const Value.absent(),
+    this.enabled = const Value.absent(),
   });
   ContainerTypeTableCompanion.insert({
     this.id = const Value.absent(),
     required String code,
     this.description = const Value.absent(),
+    this.enabled = const Value.absent(),
   }) : code = Value(code);
   static Insertable<ContainerTypeTableData> custom({
     Expression<int>? id,
     Expression<String>? code,
     Expression<String>? description,
+    Expression<bool>? enabled,
   }) {
     return RawValuesInsertable({
       if (id != null) 'id': id,
       if (code != null) 'code': code,
       if (description != null) 'description': description,
+      if (enabled != null) 'enabled': enabled,
     });
   }
 
@@ -11887,11 +12034,13 @@ class ContainerTypeTableCompanion
     Value<int>? id,
     Value<String>? code,
     Value<String?>? description,
+    Value<bool>? enabled,
   }) {
     return ContainerTypeTableCompanion(
       id: id ?? this.id,
       code: code ?? this.code,
       description: description ?? this.description,
+      enabled: enabled ?? this.enabled,
     );
   }
 
@@ -11907,6 +12056,9 @@ class ContainerTypeTableCompanion
     if (description.present) {
       map['description'] = Variable<String>(description.value);
     }
+    if (enabled.present) {
+      map['enabled'] = Variable<bool>(enabled.value);
+    }
     return map;
   }
 
@@ -11915,7 +12067,8 @@ class ContainerTypeTableCompanion
     return (StringBuffer('ContainerTypeTableCompanion(')
           ..write('id: $id, ')
           ..write('code: $code, ')
-          ..write('description: $description')
+          ..write('description: $description, ')
+          ..write('enabled: $enabled')
           ..write(')'))
         .toString();
   }
@@ -11954,8 +12107,23 @@ class $PaymentMethodTableTable extends PaymentMethodTable
     type: DriftSqlType.string,
     requiredDuringInsert: true,
   );
+  static const VerificationMeta _enabledMeta = const VerificationMeta(
+    'enabled',
+  );
   @override
-  List<GeneratedColumn> get $columns => [id, code, name];
+  late final GeneratedColumn<bool> enabled = GeneratedColumn<bool>(
+    'enabled',
+    aliasedName,
+    false,
+    type: DriftSqlType.bool,
+    requiredDuringInsert: false,
+    defaultConstraints: GeneratedColumn.constraintIsAlways(
+      'CHECK ("enabled" IN (0, 1))',
+    ),
+    defaultValue: const Constant(true),
+  );
+  @override
+  List<GeneratedColumn> get $columns => [id, code, name, enabled];
   @override
   String get aliasedName => _alias ?? actualTableName;
   @override
@@ -11987,6 +12155,12 @@ class $PaymentMethodTableTable extends PaymentMethodTable
     } else if (isInserting) {
       context.missing(_nameMeta);
     }
+    if (data.containsKey('enabled')) {
+      context.handle(
+        _enabledMeta,
+        enabled.isAcceptableOrUnknown(data['enabled']!, _enabledMeta),
+      );
+    }
     return context;
   }
 
@@ -12008,6 +12182,10 @@ class $PaymentMethodTableTable extends PaymentMethodTable
         DriftSqlType.string,
         data['${effectivePrefix}name'],
       )!,
+      enabled: attachedDatabase.typeMapping.read(
+        DriftSqlType.bool,
+        data['${effectivePrefix}enabled'],
+      )!,
     );
   }
 
@@ -12022,10 +12200,12 @@ class PaymentMethodTableData extends DataClass
   final int id;
   final String code;
   final String name;
+  final bool enabled;
   const PaymentMethodTableData({
     required this.id,
     required this.code,
     required this.name,
+    required this.enabled,
   });
   @override
   Map<String, Expression> toColumns(bool nullToAbsent) {
@@ -12033,6 +12213,7 @@ class PaymentMethodTableData extends DataClass
     map['id'] = Variable<int>(id);
     map['code'] = Variable<String>(code);
     map['name'] = Variable<String>(name);
+    map['enabled'] = Variable<bool>(enabled);
     return map;
   }
 
@@ -12041,6 +12222,7 @@ class PaymentMethodTableData extends DataClass
       id: Value(id),
       code: Value(code),
       name: Value(name),
+      enabled: Value(enabled),
     );
   }
 
@@ -12053,6 +12235,7 @@ class PaymentMethodTableData extends DataClass
       id: serializer.fromJson<int>(json['id']),
       code: serializer.fromJson<String>(json['code']),
       name: serializer.fromJson<String>(json['name']),
+      enabled: serializer.fromJson<bool>(json['enabled']),
     );
   }
   @override
@@ -12062,20 +12245,27 @@ class PaymentMethodTableData extends DataClass
       'id': serializer.toJson<int>(id),
       'code': serializer.toJson<String>(code),
       'name': serializer.toJson<String>(name),
+      'enabled': serializer.toJson<bool>(enabled),
     };
   }
 
-  PaymentMethodTableData copyWith({int? id, String? code, String? name}) =>
-      PaymentMethodTableData(
-        id: id ?? this.id,
-        code: code ?? this.code,
-        name: name ?? this.name,
-      );
+  PaymentMethodTableData copyWith({
+    int? id,
+    String? code,
+    String? name,
+    bool? enabled,
+  }) => PaymentMethodTableData(
+    id: id ?? this.id,
+    code: code ?? this.code,
+    name: name ?? this.name,
+    enabled: enabled ?? this.enabled,
+  );
   PaymentMethodTableData copyWithCompanion(PaymentMethodTableCompanion data) {
     return PaymentMethodTableData(
       id: data.id.present ? data.id.value : this.id,
       code: data.code.present ? data.code.value : this.code,
       name: data.name.present ? data.name.value : this.name,
+      enabled: data.enabled.present ? data.enabled.value : this.enabled,
     );
   }
 
@@ -12084,20 +12274,22 @@ class PaymentMethodTableData extends DataClass
     return (StringBuffer('PaymentMethodTableData(')
           ..write('id: $id, ')
           ..write('code: $code, ')
-          ..write('name: $name')
+          ..write('name: $name, ')
+          ..write('enabled: $enabled')
           ..write(')'))
         .toString();
   }
 
   @override
-  int get hashCode => Object.hash(id, code, name);
+  int get hashCode => Object.hash(id, code, name, enabled);
   @override
   bool operator ==(Object other) =>
       identical(this, other) ||
       (other is PaymentMethodTableData &&
           other.id == this.id &&
           other.code == this.code &&
-          other.name == this.name);
+          other.name == this.name &&
+          other.enabled == this.enabled);
 }
 
 class PaymentMethodTableCompanion
@@ -12105,26 +12297,31 @@ class PaymentMethodTableCompanion
   final Value<int> id;
   final Value<String> code;
   final Value<String> name;
+  final Value<bool> enabled;
   const PaymentMethodTableCompanion({
     this.id = const Value.absent(),
     this.code = const Value.absent(),
     this.name = const Value.absent(),
+    this.enabled = const Value.absent(),
   });
   PaymentMethodTableCompanion.insert({
     this.id = const Value.absent(),
     required String code,
     required String name,
+    this.enabled = const Value.absent(),
   }) : code = Value(code),
        name = Value(name);
   static Insertable<PaymentMethodTableData> custom({
     Expression<int>? id,
     Expression<String>? code,
     Expression<String>? name,
+    Expression<bool>? enabled,
   }) {
     return RawValuesInsertable({
       if (id != null) 'id': id,
       if (code != null) 'code': code,
       if (name != null) 'name': name,
+      if (enabled != null) 'enabled': enabled,
     });
   }
 
@@ -12132,11 +12329,13 @@ class PaymentMethodTableCompanion
     Value<int>? id,
     Value<String>? code,
     Value<String>? name,
+    Value<bool>? enabled,
   }) {
     return PaymentMethodTableCompanion(
       id: id ?? this.id,
       code: code ?? this.code,
       name: name ?? this.name,
+      enabled: enabled ?? this.enabled,
     );
   }
 
@@ -12152,6 +12351,9 @@ class PaymentMethodTableCompanion
     if (name.present) {
       map['name'] = Variable<String>(name.value);
     }
+    if (enabled.present) {
+      map['enabled'] = Variable<bool>(enabled.value);
+    }
     return map;
   }
 
@@ -12160,7 +12362,8 @@ class PaymentMethodTableCompanion
     return (StringBuffer('PaymentMethodTableCompanion(')
           ..write('id: $id, ')
           ..write('code: $code, ')
-          ..write('name: $name')
+          ..write('name: $name, ')
+          ..write('enabled: $enabled')
           ..write(')'))
         .toString();
   }
@@ -17959,12 +18162,14 @@ typedef $$VisitOutcomeTableTableCreateCompanionBuilder =
       Value<int> id,
       required String name,
       Value<bool> triggersReschedule,
+      Value<bool> enabled,
     });
 typedef $$VisitOutcomeTableTableUpdateCompanionBuilder =
     VisitOutcomeTableCompanion Function({
       Value<int> id,
       Value<String> name,
       Value<bool> triggersReschedule,
+      Value<bool> enabled,
     });
 
 final class $$VisitOutcomeTableTableReferences
@@ -18026,6 +18231,11 @@ class $$VisitOutcomeTableTableFilterComposer
     builder: (column) => ColumnFilters(column),
   );
 
+  ColumnFilters<bool> get enabled => $composableBuilder(
+    column: $table.enabled,
+    builder: (column) => ColumnFilters(column),
+  );
+
   Expression<bool> visitTableRefs(
     Expression<bool> Function($$VisitTableTableFilterComposer f) f,
   ) {
@@ -18075,6 +18285,11 @@ class $$VisitOutcomeTableTableOrderingComposer
     column: $table.triggersReschedule,
     builder: (column) => ColumnOrderings(column),
   );
+
+  ColumnOrderings<bool> get enabled => $composableBuilder(
+    column: $table.enabled,
+    builder: (column) => ColumnOrderings(column),
+  );
 }
 
 class $$VisitOutcomeTableTableAnnotationComposer
@@ -18096,6 +18311,9 @@ class $$VisitOutcomeTableTableAnnotationComposer
     column: $table.triggersReschedule,
     builder: (column) => column,
   );
+
+  GeneratedColumn<bool> get enabled =>
+      $composableBuilder(column: $table.enabled, builder: (column) => column);
 
   Expression<T> visitTableRefs<T extends Object>(
     Expression<T> Function($$VisitTableTableAnnotationComposer a) f,
@@ -18159,20 +18377,24 @@ class $$VisitOutcomeTableTableTableManager
                 Value<int> id = const Value.absent(),
                 Value<String> name = const Value.absent(),
                 Value<bool> triggersReschedule = const Value.absent(),
+                Value<bool> enabled = const Value.absent(),
               }) => VisitOutcomeTableCompanion(
                 id: id,
                 name: name,
                 triggersReschedule: triggersReschedule,
+                enabled: enabled,
               ),
           createCompanionCallback:
               ({
                 Value<int> id = const Value.absent(),
                 required String name,
                 Value<bool> triggersReschedule = const Value.absent(),
+                Value<bool> enabled = const Value.absent(),
               }) => VisitOutcomeTableCompanion.insert(
                 id: id,
                 name: name,
                 triggersReschedule: triggersReschedule,
+                enabled: enabled,
               ),
           withReferenceMapper: (p0) => p0
               .map(
@@ -19924,6 +20146,7 @@ typedef $$SaleItemTableTableCreateCompanionBuilder =
       required int quantity,
       required double unitPrice,
       required double subtotal,
+      Value<int?> agreementServerId,
       Value<int> rowid,
     });
 typedef $$SaleItemTableTableUpdateCompanionBuilder =
@@ -19938,6 +20161,7 @@ typedef $$SaleItemTableTableUpdateCompanionBuilder =
       Value<int> quantity,
       Value<double> unitPrice,
       Value<double> subtotal,
+      Value<int?> agreementServerId,
       Value<int> rowid,
     });
 
@@ -20041,6 +20265,11 @@ class $$SaleItemTableTableFilterComposer
     builder: (column) => ColumnFilters(column),
   );
 
+  ColumnFilters<int> get agreementServerId => $composableBuilder(
+    column: $table.agreementServerId,
+    builder: (column) => ColumnFilters(column),
+  );
+
   $$SaleTableTableFilterComposer get saleId {
     final $$SaleTableTableFilterComposer composer = $composerBuilder(
       composer: this,
@@ -20137,6 +20366,11 @@ class $$SaleItemTableTableOrderingComposer
     builder: (column) => ColumnOrderings(column),
   );
 
+  ColumnOrderings<int> get agreementServerId => $composableBuilder(
+    column: $table.agreementServerId,
+    builder: (column) => ColumnOrderings(column),
+  );
+
   $$SaleTableTableOrderingComposer get saleId {
     final $$SaleTableTableOrderingComposer composer = $composerBuilder(
       composer: this,
@@ -20220,6 +20454,11 @@ class $$SaleItemTableTableAnnotationComposer
 
   GeneratedColumn<double> get subtotal =>
       $composableBuilder(column: $table.subtotal, builder: (column) => column);
+
+  GeneratedColumn<int> get agreementServerId => $composableBuilder(
+    column: $table.agreementServerId,
+    builder: (column) => column,
+  );
 
   $$SaleTableTableAnnotationComposer get saleId {
     final $$SaleTableTableAnnotationComposer composer = $composerBuilder(
@@ -20306,6 +20545,7 @@ class $$SaleItemTableTableTableManager
                 Value<int> quantity = const Value.absent(),
                 Value<double> unitPrice = const Value.absent(),
                 Value<double> subtotal = const Value.absent(),
+                Value<int?> agreementServerId = const Value.absent(),
                 Value<int> rowid = const Value.absent(),
               }) => SaleItemTableCompanion(
                 createdAt: createdAt,
@@ -20318,6 +20558,7 @@ class $$SaleItemTableTableTableManager
                 quantity: quantity,
                 unitPrice: unitPrice,
                 subtotal: subtotal,
+                agreementServerId: agreementServerId,
                 rowid: rowid,
               ),
           createCompanionCallback:
@@ -20332,6 +20573,7 @@ class $$SaleItemTableTableTableManager
                 required int quantity,
                 required double unitPrice,
                 required double subtotal,
+                Value<int?> agreementServerId = const Value.absent(),
                 Value<int> rowid = const Value.absent(),
               }) => SaleItemTableCompanion.insert(
                 createdAt: createdAt,
@@ -20344,6 +20586,7 @@ class $$SaleItemTableTableTableManager
                 quantity: quantity,
                 unitPrice: unitPrice,
                 subtotal: subtotal,
+                agreementServerId: agreementServerId,
                 rowid: rowid,
               ),
           withReferenceMapper: (p0) => p0
@@ -24376,12 +24619,14 @@ typedef $$ContainerTypeTableTableCreateCompanionBuilder =
       Value<int> id,
       required String code,
       Value<String?> description,
+      Value<bool> enabled,
     });
 typedef $$ContainerTypeTableTableUpdateCompanionBuilder =
     ContainerTypeTableCompanion Function({
       Value<int> id,
       Value<String> code,
       Value<String?> description,
+      Value<bool> enabled,
     });
 
 class $$ContainerTypeTableTableFilterComposer
@@ -24405,6 +24650,11 @@ class $$ContainerTypeTableTableFilterComposer
 
   ColumnFilters<String> get description => $composableBuilder(
     column: $table.description,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<bool> get enabled => $composableBuilder(
+    column: $table.enabled,
     builder: (column) => ColumnFilters(column),
   );
 }
@@ -24432,6 +24682,11 @@ class $$ContainerTypeTableTableOrderingComposer
     column: $table.description,
     builder: (column) => ColumnOrderings(column),
   );
+
+  ColumnOrderings<bool> get enabled => $composableBuilder(
+    column: $table.enabled,
+    builder: (column) => ColumnOrderings(column),
+  );
 }
 
 class $$ContainerTypeTableTableAnnotationComposer
@@ -24453,6 +24708,9 @@ class $$ContainerTypeTableTableAnnotationComposer
     column: $table.description,
     builder: (column) => column,
   );
+
+  GeneratedColumn<bool> get enabled =>
+      $composableBuilder(column: $table.enabled, builder: (column) => column);
 }
 
 class $$ContainerTypeTableTableTableManager
@@ -24498,20 +24756,24 @@ class $$ContainerTypeTableTableTableManager
                 Value<int> id = const Value.absent(),
                 Value<String> code = const Value.absent(),
                 Value<String?> description = const Value.absent(),
+                Value<bool> enabled = const Value.absent(),
               }) => ContainerTypeTableCompanion(
                 id: id,
                 code: code,
                 description: description,
+                enabled: enabled,
               ),
           createCompanionCallback:
               ({
                 Value<int> id = const Value.absent(),
                 required String code,
                 Value<String?> description = const Value.absent(),
+                Value<bool> enabled = const Value.absent(),
               }) => ContainerTypeTableCompanion.insert(
                 id: id,
                 code: code,
                 description: description,
+                enabled: enabled,
               ),
           withReferenceMapper: (p0) => p0
               .map((e) => (e.readTable(table), BaseReferences(db, table, e)))
@@ -24547,12 +24809,14 @@ typedef $$PaymentMethodTableTableCreateCompanionBuilder =
       Value<int> id,
       required String code,
       required String name,
+      Value<bool> enabled,
     });
 typedef $$PaymentMethodTableTableUpdateCompanionBuilder =
     PaymentMethodTableCompanion Function({
       Value<int> id,
       Value<String> code,
       Value<String> name,
+      Value<bool> enabled,
     });
 
 class $$PaymentMethodTableTableFilterComposer
@@ -24576,6 +24840,11 @@ class $$PaymentMethodTableTableFilterComposer
 
   ColumnFilters<String> get name => $composableBuilder(
     column: $table.name,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<bool> get enabled => $composableBuilder(
+    column: $table.enabled,
     builder: (column) => ColumnFilters(column),
   );
 }
@@ -24603,6 +24872,11 @@ class $$PaymentMethodTableTableOrderingComposer
     column: $table.name,
     builder: (column) => ColumnOrderings(column),
   );
+
+  ColumnOrderings<bool> get enabled => $composableBuilder(
+    column: $table.enabled,
+    builder: (column) => ColumnOrderings(column),
+  );
 }
 
 class $$PaymentMethodTableTableAnnotationComposer
@@ -24622,6 +24896,9 @@ class $$PaymentMethodTableTableAnnotationComposer
 
   GeneratedColumn<String> get name =>
       $composableBuilder(column: $table.name, builder: (column) => column);
+
+  GeneratedColumn<bool> get enabled =>
+      $composableBuilder(column: $table.enabled, builder: (column) => column);
 }
 
 class $$PaymentMethodTableTableTableManager
@@ -24667,16 +24944,24 @@ class $$PaymentMethodTableTableTableManager
                 Value<int> id = const Value.absent(),
                 Value<String> code = const Value.absent(),
                 Value<String> name = const Value.absent(),
-              }) => PaymentMethodTableCompanion(id: id, code: code, name: name),
+                Value<bool> enabled = const Value.absent(),
+              }) => PaymentMethodTableCompanion(
+                id: id,
+                code: code,
+                name: name,
+                enabled: enabled,
+              ),
           createCompanionCallback:
               ({
                 Value<int> id = const Value.absent(),
                 required String code,
                 required String name,
+                Value<bool> enabled = const Value.absent(),
               }) => PaymentMethodTableCompanion.insert(
                 id: id,
                 code: code,
                 name: name,
+                enabled: enabled,
               ),
           withReferenceMapper: (p0) => p0
               .map((e) => (e.readTable(table), BaseReferences(db, table, e)))

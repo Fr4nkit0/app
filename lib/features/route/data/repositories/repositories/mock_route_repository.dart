@@ -30,6 +30,28 @@ class MockRouteRepository implements RouteRepository {
     }
   }
 
+  @override
+  Future<String> rescheduleStop(String stopId, DateTime at) async {
+    final idx = _stops.indexWhere((s) => s.id == stopId);
+    if (idx < 0) throw StateError('Unknown stop $stopId');
+    final original = _stops[idx];
+    final newId = '$stopId-r';
+    _stops[idx] = original.copyWith(status: StopStatus.rescheduled);
+    _stops.add(
+      RouteStop(
+        id: newId,
+        customer: original.customer,
+        status: StopStatus.pending,
+        scheduledAt: at,
+        rescheduledFromStopId: stopId,
+        rescheduledFromAt: original.scheduledAt,
+      ),
+    );
+    _sortStops(_stops);
+    _controller.add(List.of(_stops));
+    return newId;
+  }
+
   static final _customer1 = Customer(
     id: 'mock-1',
     name: 'José García',

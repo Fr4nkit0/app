@@ -10,14 +10,12 @@ class HistoryTodaySummary {
     this.visits = 0,
     this.payments = 0,
     this.deliveries = 0,
-    this.pendingSync = 0,
   });
 
   final int sales;
   final int visits;
   final int payments;
   final int deliveries;
-  final int pendingSync;
 
   int get totalActivity => sales + visits + payments + deliveries;
 }
@@ -80,10 +78,10 @@ class PaginatedHistoryNotifier extends Notifier<PaginatedHistoryState> {
     final q = state.searchQuery.trim().toLowerCase();
     if (q.isNotEmpty) {
       list = list.where((e) {
-        final name = e.customer.name.toLowerCase();
+        final name = e.customerName.toLowerCase();
         final desc = e.description.toLowerCase();
-        final tags = e.tags.join(' ').toLowerCase();
-        return name.contains(q) || desc.contains(q) || tags.contains(q);
+        final reason = (e.rejectionReason ?? '').toLowerCase();
+        return name.contains(q) || desc.contains(q) || reason.contains(q);
       });
     }
     return list.toList();
@@ -96,7 +94,6 @@ class PaginatedHistoryNotifier extends Notifier<PaginatedHistoryState> {
     var visits = 0;
     var payments = 0;
     var deliveries = 0;
-    var pendingSync = 0;
 
     for (final e in _allEntries) {
       final day = DateTime(e.date.year, e.date.month, e.date.day);
@@ -110,10 +107,10 @@ class PaginatedHistoryNotifier extends Notifier<PaginatedHistoryState> {
           payments++;
         case HistoryEntryType.delivery:
           deliveries++;
+        case HistoryEntryType.customer:
+        case HistoryEntryType.routeStop:
+          break;
       }
-    }
-    for (final e in _allEntries) {
-      if (!e.isSynced) pendingSync++;
     }
 
     return HistoryTodaySummary(
@@ -121,7 +118,6 @@ class PaginatedHistoryNotifier extends Notifier<PaginatedHistoryState> {
       visits: visits,
       payments: payments,
       deliveries: deliveries,
-      pendingSync: pendingSync,
     );
   }
 

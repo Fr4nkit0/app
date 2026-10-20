@@ -22,6 +22,10 @@ class SaleItemTable extends Table with Timestamps {
   late final unitPrice = real()();
   late final subtotal = real()();
 
+  /// Server id of the customer agreement that set [unitPrice]; null for
+  /// the list price.
+  late final agreementServerId = integer().nullable()();
+
   @override
   Set<Column<Object>> get primaryKey => {saleItemId};
 }

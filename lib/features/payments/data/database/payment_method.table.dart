@@ -8,6 +8,7 @@ class PaymentMethodTable extends Table {
   late final id = integer()();
   late final code = text()();
   late final name = text()();
+  late final enabled = boolean().withDefault(const Constant(true))();
 
   @override
   Set<Column<Object>> get primaryKey => {id};

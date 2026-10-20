@@ -293,7 +293,8 @@ class _SelectedMode extends ConsumerWidget {
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final tokens = Theme.of(context).extension<SalesTokens>()!;
-    final productsAsync = ref.watch(productListProvider);
+    // Priced for this customer: agreement in force, else list price.
+    final productsAsync = ref.watch(customerProductListProvider(customer.id));
 
     final draft = ref.watch(saleDraftProvider);
     final isFromRouteStop = draft.visitId != null;

@@ -64,6 +64,7 @@ class DriftVisitRepository implements VisitRepository {
   @override
   Stream<List<VisitOutcome>> watchOutcomes() {
     return (_db.select(_db.visitOutcomeTable)
+          ..where((t) => t.enabled.equals(true))
           ..orderBy([(t) => OrderingTerm.asc(t.id)]))
         .watch()
         .map(
@@ -81,7 +82,7 @@ class DriftVisitRepository implements VisitRepository {
   @override
   Future<int?> findDeliveredOutcomeId() async {
     final row = await (_db.select(_db.visitOutcomeTable)
-          ..where((t) => t.triggersReschedule.equals(false))
+          ..where((t) => t.triggersReschedule.equals(false) & t.enabled.equals(true))
           ..orderBy([(t) => OrderingTerm.asc(t.id)])
           ..limit(1))
         .getSingleOrNull();

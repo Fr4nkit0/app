@@ -277,21 +277,22 @@ class DriftCustomerRepository implements CustomerRepository {
     required int pageSize,
   }) async {
     final offset = page * pageSize;
-    final customerRows = await (db.select(
-      db.customerTable,
-    )..limit(pageSize, offset: offset)).get();
+    final customerRows = await (db.select(db.customerTable)
+          ..where((t) => t.enabled.equals(true))
+          ..limit(pageSize, offset: offset))
+        .get();
 
     if (customerRows.isEmpty) return [];
 
     final customerIds = customerRows.map((c) => c.customerId).toList();
 
-    final addresses = await (db.select(
-      db.customerAddressTable,
-    )..where((t) => t.customerId.isIn(customerIds))).get();
+    final addresses = await (db.select(db.customerAddressTable)
+          ..where((t) => t.customerId.isIn(customerIds) & t.enabled.equals(true)))
+        .get();
 
-    final preferences = await (db.select(
-      db.customerPreferenceTable,
-    )..where((t) => t.customerId.isIn(customerIds))).get();
+    final preferences = await (db.select(db.customerPreferenceTable)
+          ..where((t) => t.customerId.isIn(customerIds) & t.enabled.equals(true)))
+        .get();
 
     final balances = await (db.select(
       db.customerBalanceTable,
@@ -349,19 +350,21 @@ class DriftCustomerRepository implements CustomerRepository {
   }
 
   Future<List<Customer>> _getAllCustomers() async {
-    final customerRows = await db.select(db.customerTable).get();
+    final customerRows = await (db.select(
+      db.customerTable,
+    )..where((t) => t.enabled.equals(true))).get();
 
     if (customerRows.isEmpty) return [];
 
     final customerIds = customerRows.map((c) => c.customerId).toList();
 
-    final addresses = await (db.select(
-      db.customerAddressTable,
-    )..where((t) => t.customerId.isIn(customerIds))).get();
+    final addresses = await (db.select(db.customerAddressTable)
+          ..where((t) => t.customerId.isIn(customerIds) & t.enabled.equals(true)))
+        .get();
 
-    final preferences = await (db.select(
-      db.customerPreferenceTable,
-    )..where((t) => t.customerId.isIn(customerIds))).get();
+    final preferences = await (db.select(db.customerPreferenceTable)
+          ..where((t) => t.customerId.isIn(customerIds) & t.enabled.equals(true)))
+        .get();
 
     final balances = await (db.select(
       db.customerBalanceTable,
@@ -453,7 +456,9 @@ class DriftCustomerRepository implements CustomerRepository {
   @override
   Stream<int> watchCustomerCount() {
     final countExpr = db.customerTable.customerId.count();
-    return (db.selectOnly(db.customerTable)..addColumns([countExpr]))
+    return (db.selectOnly(db.customerTable)
+          ..addColumns([countExpr])
+          ..where(db.customerTable.enabled.equals(true)))
         .map((row) => row.read(countExpr) ?? 0)
         .watchSingle();
   }
@@ -464,14 +469,16 @@ class DriftCustomerRepository implements CustomerRepository {
       leftOuterJoin(
         db.customerAddressTable,
         db.customerAddressTable.customerId.equalsExp(
-          db.customerTable.customerId,
-        ),
+              db.customerTable.customerId,
+            ) &
+            db.customerAddressTable.enabled.equals(true),
       ),
       leftOuterJoin(
         db.customerPreferenceTable,
         db.customerPreferenceTable.customerId.equalsExp(
-          db.customerTable.customerId,
-        ),
+              db.customerTable.customerId,
+            ) &
+            db.customerPreferenceTable.enabled.equals(true),
       ),
       leftOuterJoin(
         db.customerBalanceTable,
@@ -479,7 +486,7 @@ class DriftCustomerRepository implements CustomerRepository {
           db.customerTable.customerId,
         ),
       ),
-    ]);
+    ])..where(db.customerTable.enabled.equals(true));
 
     return query.watch().map((rows) {
       final Map<String, Customer> customers = {};

@@ -78,7 +78,7 @@ class _CustomerProfileScreenState extends ConsumerState<CustomerProfileScreen> {
 
         final customerHistory = historyAsync.maybeWhen(
           data: (entries) =>
-              entries.where((e) => e.customer.id == customer.id).toList(),
+              entries.where((e) => e.customerId == customer.id).toList(),
           orElse: () => <HistoryEntry>[],
         );
 

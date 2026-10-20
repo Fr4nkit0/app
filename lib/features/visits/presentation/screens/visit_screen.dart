@@ -32,6 +32,8 @@ import 'package:app/features/visits/presentation/widgets/visit_mode_selector.dar
 import 'package:app/features/visits/presentation/widgets/visit_customer_card.dart';
 import 'package:app/features/visits/presentation/widgets/visit_debt_banner.dart';
 import 'package:app/features/visits/presentation/widgets/visit_custody_banner.dart';
+import 'package:app/features/visits/presentation/widgets/visit_reschedule_time_field.dart';
+import 'package:app/features/visits/domain/reschedule_time.dart';
 import 'package:app/features/payments/presentation/providers/payment_repository_provider.dart';
 
 final stopSalesProvider = StreamProvider.family<List<Sale>, String>((
@@ -64,8 +66,9 @@ class VisitScreen extends ConsumerStatefulWidget {
 class _VisitScreenState extends ConsumerState<VisitScreen> {
   bool _isSaleSelected = false;
   VisitOutcome? _selectedOutcome; // null initially so they have to select one!
-  int _rescheduleDayOffset = 1; // 1 = Mañana, 2 = Siguiente día hábil
-  String _rescheduleTimeSlot = 'Mañana (09:00 - 12:00)';
+  // Reschedules happen later the same day (ADR 0002).
+  TimeOfDay? _rescheduleTime;
+  RescheduleTimeError? _rescheduleError;
   final TextEditingController _noteController = TextEditingController();
 
   bool get _isRescheduleSelected => _selectedOutcome?.triggersReschedule ?? false;
@@ -457,6 +460,18 @@ class _VisitScreenState extends ConsumerState<VisitScreen> {
     final triggersReschedule = !hasSales && (outcome?.triggersReschedule ?? false);
     final nextStatus = triggersReschedule ? StopStatus.absent : StopStatus.done;
 
+    DateTime? rescheduleAt;
+    if (triggersReschedule) {
+      rescheduleAt = _rescheduleDateTime(DateTime.now());
+      final error = rescheduleAt == null
+          ? RescheduleTimeError.notLater
+          : checkRescheduleTime(now: DateTime.now(), at: rescheduleAt);
+      if (error != null) {
+        setState(() => _rescheduleError = error);
+        return;
+      }
+    }
+
     late final String toastMessage;
     late final IconData toastIcon;
     late final Color toastColor;
@@ -498,7 +513,32 @@ class _VisitScreenState extends ConsumerState<VisitScreen> {
           outcomeId: hasSales ? null : outcome?.id,
           observations:
               _noteController.text.isNotEmpty ? _noteController.text : null,
+          rescheduleAt: rescheduleAt,
         );
+  }
+
+  /// The chosen reschedule time on [now]'s day, or null when none is chosen.
+  DateTime? _rescheduleDateTime(DateTime now) {
+    final time = _rescheduleTime;
+    if (time == null) return null;
+    return DateTime(now.year, now.month, now.day, time.hour, time.minute);
+  }
+
+  Future<void> _pickRescheduleTime() async {
+    final now = DateTime.now();
+    final picked = await showTimePicker(
+      context: context,
+      initialTime:
+          _rescheduleTime ??
+          TimeOfDay.fromDateTime(now.add(const Duration(hours: 1))),
+      helpText: 'Hora de la nueva parada (hoy)',
+    );
+    if (picked == null || !mounted) return;
+    final at = DateTime(now.year, now.month, now.day, picked.hour, picked.minute);
+    setState(() {
+      _rescheduleTime = picked;
+      _rescheduleError = checkRescheduleTime(now: DateTime.now(), at: at);
+    });
   }
 
   Widget _buildSoloVisitSubSection({
@@ -540,18 +580,11 @@ class _VisitScreenState extends ConsumerState<VisitScreen> {
 
         // Reschedule Form Wheel
         if (_isRescheduleSelected) ...[
-          Text(
-            'SELECCIONAR NUEVO DÍA',
-            style: TextStyle(
-              fontSize: 11,
-              fontWeight: FontWeight.w700,
-              color: Colors.grey.shade500,
-            ),
+          VisitRescheduleTimeField(
+            selected: _rescheduleTime,
+            error: _rescheduleError,
+            onTap: _pickRescheduleTime,
           ),
-          const SizedBox(height: 8),
-          _buildQuickDateWheel(),
-          const SizedBox(height: 16),
-          _buildTimeSlotDropdown(),
         ],
 
         // Notes Text Field
@@ -586,7 +619,7 @@ class _VisitScreenState extends ConsumerState<VisitScreen> {
                 const SizedBox(width: 8),
                 Expanded(
                   child: Text(
-                    'Se agendará automáticamente una nueva parada en la fecha seleccionada.',
+                    'Se agregará una nueva parada a la ruta de hoy a la hora elegida.',
                     style: TextStyle(
                       fontSize: 11,
                       color: MarilinColors.brandBlue.withValues(alpha: 0.9),
@@ -665,87 +698,6 @@ class _VisitScreenState extends ConsumerState<VisitScreen> {
     );
   }
 
-  Widget _buildQuickDateWheel() {
-    final today = DateTime.now();
-    final tomorrow = today.add(const Duration(days: 1));
-    final inTwoDays = today.add(const Duration(days: 2));
-
-    String formatDayName(DateTime date) {
-      const days = [
-        '',
-        'Lunes',
-        'Martes',
-        'Miércoles',
-        'Jueves',
-        'Viernes',
-        'Sábado',
-        'Domingo',
-      ];
-      return days[date.weekday];
-    }
-
-    return Row(
-      children: [
-        _buildWheelChip('Mañana (${tomorrow.day})', 1),
-        const SizedBox(width: 8),
-        _buildWheelChip('${formatDayName(inTwoDays)} (${inTwoDays.day})', 2),
-      ],
-    );
-  }
-
-  Widget _buildWheelChip(String label, int offset) {
-    final isSelected = _rescheduleDayOffset == offset;
-    final activeColor = MarilinColors.brandBlue;
-
-    return Expanded(
-      child: ChoiceChip(
-        label: Center(
-          child: Text(
-            label,
-            style: TextStyle(
-              fontSize: 12,
-              fontWeight: FontWeight.bold,
-              color: isSelected ? Colors.white : const Color(0xFF4B5563),
-            ),
-          ),
-        ),
-        selected: isSelected,
-        onSelected: (val) {
-          if (val) setState(() => _rescheduleDayOffset = offset);
-        },
-        selectedColor: activeColor,
-        backgroundColor: Colors.white,
-        side: BorderSide(
-          color: isSelected ? activeColor : const Color(0xFFD1D5DB),
-        ),
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
-        showCheckmark: false,
-      ),
-    );
-  }
-
-  Widget _buildTimeSlotDropdown() {
-    final slots = [
-      'Mañana (09:00 - 12:00)',
-      'Mediodía (12:00 - 14:00)',
-      'Tarde (14:00 - 18:00)',
-    ];
-
-    return DropdownButtonFormField<String>(
-      value: _rescheduleTimeSlot,
-      decoration: const InputDecoration(
-        labelText: 'HORARIO ESTIMADO',
-        contentPadding: EdgeInsets.symmetric(horizontal: 14, vertical: 12),
-      ),
-      items: slots
-          .map((s) => DropdownMenuItem(value: s, child: Text(s)))
-          .toList(),
-      onChanged: (val) {
-        if (val != null) setState(() => _rescheduleTimeSlot = val);
-      },
-    );
-  }
-
   Widget _buildDoneStateBanner(StopStatus status) {
     final isDone = status == StopStatus.done;
     final color = isDone ? const Color(0xFF10B981) : const Color(0xFFEF4444);
@@ -770,6 +722,8 @@ class _VisitScreenState extends ConsumerState<VisitScreen> {
           Text(
             isDone
                 ? 'Parada completada con éxito'
+                : status == StopStatus.rescheduled
+                ? 'Visita reprogramada para hoy'
                 : 'Cliente ausente en esta visita',
             style: TextStyle(
               fontWeight: FontWeight.bold,

@@ -46,6 +46,30 @@ void main() {
       );
       expect(find.text('Soda 1.5L'), findsOneWidget);
       expect(find.textContaining('\$900'), findsOneWidget);
+      expect(find.textContaining('acuerdo'), findsNothing);
+    });
+
+    testWidgets('marks a price that comes from the customer agreement', (
+      tester,
+    ) async {
+      const product = Product(
+        id: 'p1',
+        name: 'Agua 20L',
+        unitLabel: 'bidón',
+        price: 1200,
+        agreementId: 31,
+      );
+      await tester.pumpWidget(
+        _wrap(
+          ProductQuantityRow(
+            product: product,
+            quantity: 0,
+            onIncrement: () {},
+            onDecrement: () {},
+          ),
+        ),
+      );
+      expect(find.text('\$1200 c/u · acuerdo'), findsOneWidget);
     });
 
     testWidgets('calls onIncrement when + button is tapped', (tester) async {
@@ -107,6 +131,26 @@ void main() {
       await tester.tap(find.byIcon(Icons.remove_rounded), warnIfMissed: false);
       await tester.pump();
       expect(decrementCalled, 0);
+    });
+  
+    testWidgets('a product without price shows it and cannot be incremented', (
+      tester,
+    ) async {
+      var incrementCalled = 0;
+      await tester.pumpWidget(
+        _wrap(
+          ProductQuantityRow(
+            product: _makeProduct(price: 0),
+            quantity: 0,
+            onIncrement: () => incrementCalled++,
+            onDecrement: () {},
+          ),
+        ),
+      );
+
+      expect(find.text('Sin precio'), findsOneWidget);
+      await tester.tap(find.byIcon(Icons.add_rounded));
+      expect(incrementCalled, 0);
     });
   });
 }

@@ -4,6 +4,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../core/network/dio_client.dart';
 import '../../core/services/database.helper.dart';
+import '../payments/data/repositories/customer_balance.store.dart';
 import 'domain/models/pending_change.dart';
 
 typedef Json = Map<String, dynamic>;
@@ -30,13 +31,15 @@ class _Unsent {
 /// bootstrap untouched.
 class SyncService {
   SyncService(this._dio, this._db, {DateTime Function()? today})
-    : _today = today ?? DateTime.now;
+    : _today = today ?? DateTime.now,
+      _balances = CustomerBalanceStore(_db);
 
   static const pullCursorKey = 'pull_cursor';
 
   final Dio _dio;
   final AppDatabase _db;
   final DateTime Function() _today;
+  final CustomerBalanceStore _balances;
 
   /// True on the first run (no cursor) or when no stored route is today's.
   Future<bool> needsBootstrap() async {
@@ -78,6 +81,262 @@ class SyncService {
             ),
           );
     });
+  }
+
+  /// Downloads every page changed since the stored cursor and applies them.
+  ///
+  /// All pages are fetched before anything is written, then applied in one
+  /// transaction together with the new cursor: a failure on any page leaves
+  /// the local data and the previous cursor untouched, so the next pull
+  /// repeats the same window.
+  Future<void> pull() async {
+    final cursor = await _storedCursor();
+    final rows = <String, List<Json>>{};
+    String? until;
+    String? nextCursor;
+
+    for (var page = 1; nextCursor == null; page++) {
+      final response = await _dio.get(
+        '/sync/pull',
+        queryParameters: {
+          'cursor': ?cursor,
+          'until': ?until,
+          'page': page,
+        },
+      );
+      final body = Map<String, dynamic>.from(response.data as Map);
+      final data = Map<String, dynamic>.from(body['data'] as Map);
+      final meta = Map<String, dynamic>.from(body['meta'] as Map);
+      for (final entry in data.entries) {
+        rows.putIfAbsent(entry.key, () => []).addAll(_list(entry.value));
+      }
+      until ??= meta['until'] as String;
+      if (meta['is_last_page'] == true) nextCursor = meta['cursor'] as String;
+    }
+
+    await _db.transaction(() async {
+      final unsent = await _loadUnsent();
+      await _storeCatalogs(rows);
+      for (final p in rows['products'] ?? const <Json>[]) {
+        await _upsertProduct(p);
+      }
+      for (final c in rows['customers'] ?? const <Json>[]) {
+        await _upsertCustomer(c, c['id'] as int, unsent);
+      }
+      for (final a in rows['customer_addresses'] ?? const <Json>[]) {
+        final customerId = await _localCustomerId(a['customer_id'] as int?);
+        if (customerId == null) continue;
+        await _upsertAddress(a, customerId, unsent.customers.contains(customerId));
+      }
+      for (final p in rows['customer_preferences'] ?? const <Json>[]) {
+        final customerId = await _localCustomerId(p['customer_id'] as int?);
+        if (customerId == null) continue;
+        await _upsertPreference(p, customerId, unsent.customers.contains(customerId));
+      }
+      for (final a in rows['customer_agreements'] ?? const <Json>[]) {
+        await _upsertAgreement(a);
+      }
+      await _replaceBalances(rows, unsent);
+      for (final r in rows['routes'] ?? const <Json>[]) {
+        await _storeRoute(r);
+      }
+      await _pullStops(rows['route_stops'] ?? const [], unsent);
+      for (final i in rows['route_inventories'] ?? const <Json>[]) {
+        await _upsertInventory(i, unsent);
+      }
+      await _saveCursor(nextCursor!);
+    });
+  }
+
+  Future<String?> _storedCursor() async => (await (_db.select(_db.syncStateTable)
+            ..where((t) => t.key.equals(pullCursorKey)))
+          .getSingleOrNull())
+      ?.value;
+
+  Future<void> _saveCursor(String value) =>
+      _db.into(_db.syncStateTable).insertOnConflictUpdate(
+            SyncStateTableCompanion.insert(key: pullCursorKey, value: value),
+          );
+
+  Future<String?> _localCustomerId(int? serverId) async => serverId == null
+      ? null
+      : (await (_db.select(_db.customerTable)
+                ..where((t) => t.serverId.equals(serverId)))
+              .getSingleOrNull())
+          ?.customerId;
+
+  Future<String?> _localProductId(int? serverId) async => serverId == null
+      ? null
+      : (await (_db.select(_db.productTable)
+                ..where((t) => t.serverId.equals(serverId)))
+              .getSingleOrNull())
+          ?.productId;
+
+  Future<String?> _localAddressId(int? serverId) async => serverId == null
+      ? null
+      : (await (_db.select(_db.customerAddressTable)
+                ..where((t) => t.serverId.equals(serverId)))
+              .getSingleOrNull())
+          ?.addressId;
+
+  Future<RouteTableData?> _localRoute(int? serverId) async => serverId == null
+      ? null
+      : await (_db.select(_db.routeTable)
+            ..where((t) => t.serverId.equals(serverId)))
+          .getSingleOrNull();
+
+  Future<String?> _localStopId(int? serverId) async => serverId == null
+      ? null
+      : (await (_db.select(_db.routeStopTable)
+                ..where((t) => t.serverId.equals(serverId)))
+              .getSingleOrNull())
+          ?.routeStopId;
+
+  /// The pull carries no price or truck stock: those keep their local values.
+  Future<void> _upsertProduct(Json p) async {
+    final serverId = p['id'] as int;
+    final existing = await _localProductId(serverId);
+    final fields = ProductTableCompanion(
+      name: Value(p['name'] as String),
+      description: Value(p['description'] as String?),
+      enabled: _enabled(p),
+      serverId: Value(serverId),
+    );
+    if (existing == null) {
+      await _db.into(_db.productTable).insert(fields.copyWith(price: const Value(0)));
+    } else {
+      await (_db.update(_db.productTable)..where((t) => t.productId.equals(existing)))
+          .write(fields);
+    }
+  }
+
+  Future<void> _upsertAgreement(Json a) async {
+    final customerId = await _localCustomerId(a['customer_id'] as int?);
+    final productId = await _localProductId(a['product_id'] as int?);
+    if (customerId == null || productId == null) return;
+    final serverId = a['id'] as int;
+    final fields = CustomerAgreementTableCompanion(
+      customerId: Value(customerId),
+      productId: Value(productId),
+      unitPrice: Value(_toDouble(a['unit_price'])),
+      validFrom: Value(_date(a['valid_from'] as String)),
+      validTo: Value(a['valid_to'] == null ? null : _date(a['valid_to'] as String)),
+      reason: Value(a['reason'] as String?),
+      serverId: Value(serverId),
+    );
+    final updated = await (_db.update(_db.customerAgreementTable)
+          ..where((t) => t.serverId.equals(serverId)))
+        .write(fields);
+    if (updated == 0) await _db.into(_db.customerAgreementTable).insert(fields);
+  }
+
+  /// Server balances replace local ones, plus the sales and minus the
+  /// payments the server has not received yet. Container balances keep the
+  /// local value while unsent changes are folded into it.
+  Future<void> _replaceBalances(Map<String, List<Json>> rows, _Unsent unsent) async {
+    for (final b in rows['customer_balances'] ?? const <Json>[]) {
+      final customerId = await _localCustomerId(b['customer_id'] as int?);
+      if (customerId == null) continue;
+      await _balances.replaceWithServer(
+        customerId,
+        _toDouble(b['current_balance']),
+        serverId: b['id'] as int,
+        enabled: _enabled(b),
+      );
+    }
+    final containerCodes = {
+      for (final c in await _db.select(_db.containerTypeTable).get()) c.id: c.code,
+    };
+    for (final b in rows['customer_container_balances'] ?? const <Json>[]) {
+      final customerId = await _localCustomerId(b['customer_id'] as int?);
+      final code = containerCodes[b['container_type_id'] as int];
+      if (customerId == null || code == null) continue;
+      if (unsent.balanceCustomers.contains(customerId)) continue;
+      await _db.into(_db.customerContainerBalanceTable).insertOnConflictUpdate(
+            CustomerContainerBalanceTableCompanion.insert(
+              customerId: customerId,
+              containerType: code,
+              quantity: Value((b['balance'] as num).toInt()),
+              enabled: _enabled(b),
+              serverId: Value(b['id'] as int),
+            ),
+          );
+    }
+  }
+
+  /// Stops already stored keep their sequence; new ones go to the end of
+  /// their route. A stop created by the app is matched by its client uuid.
+  Future<void> _pullStops(List<Json> stops, _Unsent unsent) async {
+    for (final s in stops) {
+      final route = await _localRoute(s['route_id'] as int?);
+      final customerId = await _localCustomerId(s['customer_id'] as int?);
+      if (route == null || customerId == null) continue;
+      final serverId = s['id'] as int;
+      final clientUuid = s['client_uuid'] as String?;
+      final existing = await (_db.select(_db.routeStopTable)
+            ..where((t) =>
+                t.serverId.equals(serverId) |
+                (clientUuid == null ? const Constant(false) : t.routeStopId.equals(clientUuid))))
+          .getSingleOrNull();
+      if (existing != null && unsent.stops.contains(existing.routeStopId)) continue;
+
+      final time = s['scheduled_time'] as String?;
+      final fields = RouteStopTableCompanion(
+        routeId: Value(route.routeId),
+        customerId: Value(customerId),
+        customerAddressId: Value(await _localAddressId(s['address_id'] as int?)),
+        status: Value(_stopStatus(s['status'] as String?)),
+        scheduledAt: Value(_scheduledAt(route.route_date, time)),
+        scheduledTime: Value(time),
+        rescheduledFromStopId: Value(await _localStopId(s['is_rescheduled_from'] as int?)),
+        enabled: _enabled(s),
+        serverId: Value(serverId),
+      );
+      if (existing != null) {
+        await (_db.update(_db.routeStopTable)
+              ..where((t) => t.routeStopId.equals(existing.routeStopId)))
+            .write(fields);
+        continue;
+      }
+      final maxSequence = _db.routeStopTable.sequence.max();
+      final last = await (_db.selectOnly(_db.routeStopTable)
+            ..addColumns([maxSequence])
+            ..where(_db.routeStopTable.routeId.equals(route.routeId)))
+          .map((r) => r.read(maxSequence))
+          .getSingle();
+      await _db.into(_db.routeStopTable).insert(
+            fields.copyWith(
+              routeStopId: clientUuid == null ? const Value.absent() : Value(clientUuid),
+              sequence: Value((last ?? 0) + 1),
+            ),
+          );
+    }
+  }
+
+  /// Truck stock follows today's route inventory unless unsent sales already
+  /// discounted it locally.
+  Future<void> _upsertInventory(Json i, _Unsent unsent) async {
+    final route = await _localRoute(i['route_id'] as int?);
+    final productId = await _localProductId(i['product_id'] as int?);
+    if (route == null || productId == null) return;
+    final serverId = i['id'] as int;
+    final quantity = _toDouble(i['current_quantity']).round();
+    final fields = RouteInventoryLoadTableCompanion(
+      routeId: Value(route.routeId),
+      productId: Value(productId),
+      quantity: Value(quantity),
+      enabled: _enabled(i),
+      serverId: Value(serverId),
+    );
+    final updated = await (_db.update(_db.routeInventoryLoadTable)
+          ..where((t) => t.serverId.equals(serverId)))
+        .write(fields);
+    if (updated == 0) await _db.into(_db.routeInventoryLoadTable).insert(fields);
+
+    if (route.route_date == _dateOnly(_today()) && !unsent.hasSales) {
+      await (_db.update(_db.productTable)..where((t) => t.productId.equals(productId)))
+          .write(ProductTableCompanion(stock: Value(quantity)));
+    }
   }
 
   Future<_Unsent> _loadUnsent() async {
@@ -137,6 +396,7 @@ class SyncService {
               id: Value(c['id'] as int),
               code: c['code'] as String,
               description: Value(c['description'] as String?),
+              enabled: _enabled(c),
             ),
           );
     }
@@ -146,6 +406,7 @@ class SyncService {
               id: Value(p['id'] as int),
               code: p['code'] as String,
               name: p['name'] as String,
+              enabled: _enabled(p),
             ),
           );
     }
@@ -155,6 +416,7 @@ class SyncService {
               id: Value(o['id'] as int),
               name: o['name'] as String,
               triggersReschedule: Value(o['triggers_reschedule'] == true),
+              enabled: _enabled(o),
             ),
           );
     }
@@ -246,17 +508,15 @@ class SyncService {
             );
       }
 
-      if (unsent.balanceCustomers.contains(localId)) continue;
-
       final balance = c['balance'] as Json?;
       if (balance != null) {
-        await _db.into(_db.customerBalanceTable).insertOnConflictUpdate(
-              CustomerBalanceTableCompanion.insert(
-                customerId: localId,
-                currentBalance: Value(_toDouble(balance['current_balance'])),
-              ),
-            );
+        await _balances.replaceWithServer(
+          localId,
+          _toDouble(balance['current_balance']),
+        );
       }
+
+      if (unsent.balanceCustomers.contains(localId)) continue;
 
       for (final b in _list(c['container_balances'])) {
         final code = containerCodes[b['container_type_id'] as int];
@@ -284,6 +544,7 @@ class SyncService {
     final fields = CustomerTableCompanion(
       name: Value(c['name'] as String),
       phone: Value(c['phone_number'] as String?),
+      enabled: _enabled(c),
       serverId: Value(serverId),
     );
     if (existing == null) {
@@ -302,33 +563,54 @@ class SyncService {
     return existing.customerId;
   }
 
+  /// An address created on the street has no server id yet; the server's
+  /// primary address of the same customer is that one, so it gets linked
+  /// instead of duplicated.
   Future<String> _upsertAddress(Json a, String customerId, bool keepLocal) async {
     final serverId = a['id'] as int;
     final existing = await (_db.select(_db.customerAddressTable)
-          ..where((t) => t.serverId.equals(serverId)))
-        .getSingleOrNull();
+              ..where((t) => t.serverId.equals(serverId)))
+            .getSingleOrNull() ??
+        (a['is_primary'] == true ? await _unlinkedPrimaryAddress(customerId) : null);
     final fields = CustomerAddressTableCompanion(
       customerId: Value(customerId),
       street: Value(a['street'] as String?),
       apartment: Value(a['apartment'] as String?),
-      floor: Value(a['floor'] as String?),
+      // The server stores the floor as an integer column, so a free-text floor
+      // ("PB") comes back as null; keep the device's value until the server
+      // can store text.
+      floor: a['floor'] == null && _isFreeTextFloor(existing?.floor)
+          ? const Value.absent()
+          : Value(a['floor']?.toString()),
       visualReference: Value(a['visual_reference'] as String?),
       isPrimary: Value(a['is_primary'] == true),
       latitude: Value(_toNullableDouble(a['latitude'])),
       longitude: Value(_toNullableDouble(a['longitude'])),
       neighborhood: Value(a['neighborhood'] as String?),
+      enabled: _enabled(a),
       serverId: Value(serverId),
     );
     if (existing == null) {
       return (await _db.into(_db.customerAddressTable).insertReturning(fields)).addressId;
     }
-    if (!keepLocal) {
-      await (_db.update(_db.customerAddressTable)
-            ..where((t) => t.addressId.equals(existing.addressId)))
-          .write(fields);
-    }
+    await (_db.update(_db.customerAddressTable)
+          ..where((t) => t.addressId.equals(existing.addressId)))
+        .write(keepLocal ? CustomerAddressTableCompanion(serverId: Value(serverId)) : fields);
     return existing.addressId;
   }
+
+  static bool _isFreeTextFloor(String? floor) =>
+      floor != null && floor.trim().isNotEmpty && int.tryParse(floor.trim()) == null;
+
+  Future<CustomerAddressTableData?> _unlinkedPrimaryAddress(String customerId) async =>
+      (await (_db.select(_db.customerAddressTable)
+                ..where((t) =>
+                    t.customerId.equals(customerId) &
+                    t.serverId.isNull() &
+                    t.isPrimary.equals(true))
+                ..limit(1))
+              .get())
+          .firstOrNull;
 
   Future<void> _upsertPreference(Json p, String customerId, bool keepLocal) async {
     final serverId = p['id'] as int;
@@ -340,6 +622,7 @@ class SyncService {
       dayOfWeek: Value(p['day_of_week'] as int),
       timeWindowStart: Value((p['time_window_start'] as String?) ?? '00:00:00'),
       timeWindowEnd: Value(p['time_window_end'] as String?),
+      enabled: _enabled(p),
       serverId: Value(serverId),
     );
     if (existing == null) {
@@ -360,6 +643,7 @@ class SyncService {
     final fields = RouteTableCompanion(
       route_date: Value(date),
       status: Value(r['status'] as String?),
+      enabled: _enabled(r),
       serverId: Value(serverId),
     );
     if (existing == null) {
@@ -453,7 +737,8 @@ class SyncService {
 
   static String _stopStatus(String? serverStatus) => switch (serverStatus) {
     'FINISHED' => 'done',
-    'CANCELLED' || 'RESCHEDULED' => 'absent',
+    'RESCHEDULED' => 'rescheduled',
+    'CANCELLED' => 'absent',
     _ => 'pending',
   };
 
@@ -464,8 +749,16 @@ class SyncService {
     return DateTime(day.year, day.month, day.day, parts[0], parts[1]);
   }
 
+  /// Server dates may arrive as full ISO timestamps; only the day matters.
+  static String _date(String value) => value.substring(0, 10);
+
   static String _dateOnly(DateTime d) =>
       '${d.year.toString().padLeft(4, '0')}-${d.month.toString().padLeft(2, '0')}-${d.day.toString().padLeft(2, '0')}';
+
+  /// Absent when the payload omits it, so the bootstrap keeps local flags.
+  static Value<bool> _enabled(Json row) => row.containsKey('enabled')
+      ? Value(row['enabled'] == true)
+      : const Value.absent();
 
   static List<Json> _list(Object? v) =>
       (v as List<dynamic>? ?? const []).map((e) => Map<String, dynamic>.from(e as Map)).toList();

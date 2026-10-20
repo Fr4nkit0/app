@@ -9,6 +9,7 @@ import 'package:app/features/visits/presentation/screens/visit_screen.dart';
 import 'package:app/features/route/presentation/widgets/route_stop_card.dart';
 import 'package:app/features/auth/auth_controller.dart';
 import 'package:app/core/utils/avatar_utils.dart';
+import 'package:app/features/sync/presentation/widgets/sync_status_button_container.dart';
 
 class RouteDayScreen extends ConsumerStatefulWidget {
   const RouteDayScreen({super.key});
@@ -144,6 +145,40 @@ class _RouteDayScreenState extends ConsumerState<RouteDayScreen> {
 class _RouteHeader extends ConsumerWidget {
   const _RouteHeader({required this.stops});
 
+  static Widget _dateBadge(String weekday, int day, String month) {
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+      decoration: BoxDecoration(
+        color: MarilinColors.brandBlue.withValues(alpha: 0.06),
+        borderRadius: BorderRadius.circular(20),
+        border: Border.all(
+          color: MarilinColors.brandBlue.withValues(alpha: 0.15),
+          width: 1,
+        ),
+      ),
+      child: Row(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          const Icon(
+            Icons.calendar_month_outlined,
+            size: 13,
+            color: MarilinColors.brandBlue,
+          ),
+          const SizedBox(width: 4),
+          Text(
+            '$weekday, $day de $month',
+            style: const TextStyle(
+              color: MarilinColors.brandBlue,
+              fontSize: 11,
+              fontWeight: FontWeight.w800,
+              letterSpacing: 0.2,
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
   final List<RouteStop> stops;
 
   @override
@@ -188,37 +223,14 @@ class _RouteHeader extends ConsumerWidget {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          // 1. Date Badge Row on top
-          Container(
-            padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
-            decoration: BoxDecoration(
-              color: MarilinColors.brandBlue.withValues(alpha: 0.06),
-              borderRadius: BorderRadius.circular(20),
-              border: Border.all(
-                color: MarilinColors.brandBlue.withValues(alpha: 0.15),
-                width: 1,
-              ),
-            ),
-            child: Row(
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                const Icon(
-                  Icons.calendar_month_outlined,
-                  size: 13,
-                  color: MarilinColors.brandBlue,
-                ),
-                const SizedBox(width: 4),
-                Text(
-                  '${days[now.weekday]}, ${now.day} de ${months[now.month]}',
-                  style: const TextStyle(
-                    color: MarilinColors.brandBlue,
-                    fontSize: 11,
-                    fontWeight: FontWeight.w800,
-                    letterSpacing: 0.2,
-                  ),
-                ),
-              ],
-            ),
+          // 1. Date badge and sync control on top
+          Row(
+            crossAxisAlignment: CrossAxisAlignment.center,
+            children: [
+              _dateBadge(days[now.weekday], now.day, months[now.month]),
+              const Spacer(),
+              const SyncStatusButtonContainer(),
+            ],
           ),
           const SizedBox(height: 14),
           // 2. Profile Row with perfectly centered Avatar and Greeting

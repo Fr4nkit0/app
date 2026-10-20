@@ -7,13 +7,14 @@ import 'package:app/core/widgets/core_search_bar.dart';
 import 'package:app/core/widgets/empty_state.dart';
 import 'package:app/core/widgets/screen_header.dart';
 import 'package:app/features/history/domain/models/history_entry.dart';
-import 'package:app/features/history/presentation/providers/history_sync_provider.dart';
 import 'package:app/features/history/presentation/providers/paginated_history_provider.dart';
 import 'package:app/features/history/presentation/widgets/history_date_utils.dart';
 import 'package:app/features/history/presentation/widgets/history_entry_tile.dart';
 import 'package:app/features/history/presentation/widgets/history_sync_status_card.dart';
 import 'package:app/features/history/presentation/widgets/history_today_summary_row.dart';
 import 'package:app/features/history/presentation/widgets/history_type_filter_bar.dart';
+import 'package:app/features/sync/domain/models/sync_status.dart';
+import 'package:app/features/sync/presentation/providers/sync_providers.dart';
 
 sealed class _HistoryListItem {}
 
@@ -83,6 +84,8 @@ class _HistoryScreenState extends ConsumerState<HistoryScreen> {
   @override
   Widget build(BuildContext context) {
     final paginatedState = ref.watch(paginatedHistoryProvider);
+    final syncStatus = ref.watch(syncStatusProvider).value ?? const SyncStatus();
+    final isSyncRunning = ref.watch(syncRunningProvider).value ?? false;
     final tokens = MarilinTokens.of(context);
     final listItems = _buildListItems(paginatedState.entries);
     final hasActiveFilters = paginatedState.searchQuery.trim().isNotEmpty ||
@@ -101,7 +104,9 @@ class _HistoryScreenState extends ConsumerState<HistoryScreen> {
             Padding(
               padding: const EdgeInsets.fromLTRB(16, 0, 16, 12),
               child: HistorySyncStatusCard(
-                pendingFromEntries: paginatedState.todaySummary.pendingSync,
+                status: syncStatus,
+                isRunning: isSyncRunning,
+                onSync: () => ref.read(syncEngineProvider).runCycle(),
               ),
             ),
             Padding(
@@ -149,7 +154,9 @@ class _HistoryScreenState extends ConsumerState<HistoryScreen> {
                   : RefreshIndicator(
                       onRefresh: () async {
                         ref.read(paginatedHistoryProvider.notifier).refresh();
-                        ref.read(historySyncProvider.notifier).startSync();
+                        if (!isSyncRunning) {
+                          await ref.read(syncEngineProvider).runCycle();
+                        }
                       },
                       color: tokens.brandBlue,
                       child: paginatedState.entries.isEmpty
