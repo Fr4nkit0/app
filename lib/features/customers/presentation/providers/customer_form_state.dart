@@ -1,5 +1,6 @@
 import 'package:freezed_annotation/freezed_annotation.dart';
 
+import 'package:app/features/customers/domain/models/customer.dart';
 import 'package:app/features/customers/domain/models/customer.preference.dart';
 
 part 'customer_form_state.freezed.dart';
@@ -18,6 +19,8 @@ abstract class CustomerFormState with _$CustomerFormState {
     @Default([]) List<CustomerPreference> preferences,
     @Default(false) bool isSubmitting,
     @Default(false) bool isSuccess,
+    /// The customer just saved, handed back to whoever opened the form.
+    Customer? createdCustomer,
     String? errorMessage,
     double? latitude,
     double? longitude,

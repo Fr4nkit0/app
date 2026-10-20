@@ -304,4 +304,29 @@ void main() {
       expect(line.agreementServerId, isNull);
     });
   });
+
+  group('Database Schema Migration V10 -> V11', () {
+    late AppDatabase db;
+
+    setUp(() async {
+      db = AppDatabase(NativeDatabase.memory());
+      // Rebuild the v10 shape: outcomes without their stable code.
+      await db.customStatement('ALTER TABLE visit_outcomes DROP COLUMN code');
+      await db.customStatement(
+        "INSERT INTO visit_outcomes (id, name, triggers_reschedule) VALUES (3, 'Ausente', 0)",
+      );
+    });
+
+    tearDown(() async {
+      await db.close();
+    });
+
+    test('adds the outcome code and keeps existing outcomes without one', () async {
+      await db.migration.onUpgrade(db.createMigrator(), 10, 11);
+
+      final outcome = await db.select(db.visitOutcomeTable).getSingle();
+      expect(outcome.name, 'Ausente');
+      expect(outcome.code, isNull);
+    });
+  });
 }

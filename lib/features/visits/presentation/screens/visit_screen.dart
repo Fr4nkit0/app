@@ -27,6 +27,7 @@ import 'package:app/features/payments/domain/models/payment.dart';
 import 'package:app/core/utils/resource.dart';
 import 'package:app/core/theme/marilin_tokens.dart';
 import 'package:app/features/visits/presentation/widgets/visit_section_header.dart';
+import 'package:app/features/visits/presentation/visit_outcome_display.dart';
 import 'package:app/features/visits/presentation/widgets/visit_sticky_footer.dart';
 import 'package:app/features/visits/presentation/widgets/visit_mode_selector.dart';
 import 'package:app/features/visits/presentation/widgets/visit_customer_card.dart';
@@ -562,16 +563,21 @@ class _VisitScreenState extends ConsumerState<VisitScreen> {
                 style: TextStyle(fontSize: 13, color: Colors.grey.shade600),
               );
             }
-            return Wrap(
-              spacing: 8,
-              runSpacing: 8,
+            return Row(
               children: [
-                for (final outcome in outcomes)
-                  _buildResultButton(
-                    outcome,
-                    isEnabled: !(outcome.triggersReschedule &&
-                        (hasReturns || hasPayments)),
+                for (final (index, outcome) in outcomes.indexed) ...[
+                  if (index > 0) const SizedBox(width: 8),
+                  Expanded(
+                    child: _buildResultButton(
+                      outcome,
+                      isEnabled: isVisitOutcomeEnabled(
+                        outcome,
+                        hasReturns: hasReturns,
+                        hasPayments: hasPayments,
+                      ),
+                    ),
                   ),
+                ],
               ],
             );
           },
@@ -640,14 +646,11 @@ class _VisitScreenState extends ConsumerState<VisitScreen> {
     bool isEnabled = true,
   }) {
     final label = outcome.name;
-    final icon = outcome.triggersReschedule
-        ? Icons.calendar_today_outlined
-        : Icons.check_circle_outline;
+    final icon = visitOutcomeIcon(outcome);
     final isSelected = _selectedOutcome?.id == outcome.id;
     final activeColor = MarilinColors.brandBlue;
 
     return SizedBox(
-      width: 112,
       child: OutlinedButton(
         style: OutlinedButton.styleFrom(
           backgroundColor: !isEnabled

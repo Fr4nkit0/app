@@ -414,6 +414,7 @@ class SyncService {
       await _db.into(_db.visitOutcomeTable).insertOnConflictUpdate(
             VisitOutcomeTableCompanion.insert(
               id: Value(o['id'] as int),
+              code: Value(o['code'] as String?),
               name: o['name'] as String,
               triggersReschedule: Value(o['triggers_reschedule'] == true),
               enabled: _enabled(o),

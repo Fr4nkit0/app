@@ -57,7 +57,8 @@ class CompleteVisitUseCase {
             routeStopId: stopId,
             customerId: customerId,
             visitType: visitType,
-            outcomeId: outcomeId ?? await _visitRepo.findDeliveredOutcomeId(),
+            // Outcomes explain a visit without sale; a sale carries none.
+            outcomeId: outcomeId,
             arrivedAt: now,
             observations: observations,
           ),
