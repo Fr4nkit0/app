@@ -303,7 +303,7 @@ void main() {
     expect(stops.firstWhere((s) => s.customer.name == 'Ana').customer.debtAmount, 250.75);
   });
 
-  test('keeps rows and balances that have unsent local changes', () async {
+  test('keeps rows with unsent local changes and adds unsent payments to the server balance', () async {
     final ana = await customer(11);
     await (db.update(db.customerTable)..where((t) => t.customerId.equals(ana.customerId)))
         .write(const CustomerTableCompanion(name: Value('Ana (edited)')));
@@ -340,7 +340,8 @@ void main() {
     await service.pull();
 
     expect((await customer(11)).name, 'Ana (edited)');
-    expect((await db.select(db.customerBalanceTable).getSingle()).currentBalance, 1500.5);
+    // Server balance 0.00 minus the pending payment of 100.
+    expect((await db.select(db.customerBalanceTable).getSingle()).currentBalance, -100);
     expect(await storedCursor(), '2026-10-19T12:59:55+00:00');
   });
 

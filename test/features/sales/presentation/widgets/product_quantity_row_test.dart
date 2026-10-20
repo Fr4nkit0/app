@@ -46,6 +46,30 @@ void main() {
       );
       expect(find.text('Soda 1.5L'), findsOneWidget);
       expect(find.textContaining('\$900'), findsOneWidget);
+      expect(find.textContaining('acuerdo'), findsNothing);
+    });
+
+    testWidgets('marks a price that comes from the customer agreement', (
+      tester,
+    ) async {
+      const product = Product(
+        id: 'p1',
+        name: 'Agua 20L',
+        unitLabel: 'bidón',
+        price: 1200,
+        agreementId: 31,
+      );
+      await tester.pumpWidget(
+        _wrap(
+          ProductQuantityRow(
+            product: product,
+            quantity: 0,
+            onIncrement: () {},
+            onDecrement: () {},
+          ),
+        ),
+      );
+      expect(find.text('\$1200 c/u · acuerdo'), findsOneWidget);
     });
 
     testWidgets('calls onIncrement when + button is tapped', (tester) async {

@@ -2,6 +2,7 @@ import 'package:drift/drift.dart';
 import 'package:uuid/uuid.dart';
 
 import 'package:app/core/services/database.helper.dart';
+import 'package:app/features/payments/data/repositories/customer_balance.store.dart';
 import 'package:app/features/payments/domain/models/customer_account_entry.dart';
 import 'package:app/features/payments/domain/models/payment.dart';
 import 'package:app/features/sync/data/repositories/pending_change.repository.dart';
@@ -21,10 +22,12 @@ abstract class PaymentRepository {
 class DriftPaymentRepository implements PaymentRepository {
   DriftPaymentRepository(AppDatabase db)
     : _db = db,
-      _queue = DriftPendingChangeRepository(db);
+      _queue = DriftPendingChangeRepository(db),
+      _balances = CustomerBalanceStore(db);
 
   final AppDatabase _db;
   final PendingChangeRepository _queue;
+  final CustomerBalanceStore _balances;
 
   @override
   Future<void> recordPayment(Payment payment) async {
@@ -101,34 +104,11 @@ class DriftPaymentRepository implements PaymentRepository {
           );
         }
 
-        final existing =
-            await (_db.select(_db.customerBalanceTable)
-                  ..where((t) => t.customerId.equals(customerId)))
-                .getSingleOrNull();
-
-        final newBalance = (existing?.currentBalance ?? 0.0) - totalAmount;
-
-        if (existing == null) {
-          await _db
-              .into(_db.customerBalanceTable)
-              .insert(
-                CustomerBalanceTableCompanion.insert(
-                  customerId: customerId,
-                  currentBalance: Value(newBalance),
-                  lastEntryId: Value(lastEntryId),
-                ),
-              );
-        } else {
-          await (_db.update(
-            _db.customerBalanceTable,
-          )..where((t) => t.customerId.equals(customerId))).write(
-            CustomerBalanceTableCompanion(
-              currentBalance: Value(newBalance),
-              lastEntryId: Value(lastEntryId),
-              lastModifiedDate: Value(DateTime.now()),
-            ),
-          );
-        }
+        await _balances.adjust(
+          customerId,
+          -totalAmount,
+          lastEntryId: lastEntryId,
+        );
       }
     });
   }

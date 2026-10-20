@@ -86,7 +86,9 @@ class ProductQuantityRow extends StatelessWidget {
                     ),
                     const SizedBox(height: 3),
                     Text(
-                      '\$${product.price.toStringAsFixed(0)} c/u',
+                      product.agreementId == null
+                          ? '\$${product.price.toStringAsFixed(0)} c/u'
+                          : '\$${product.price.toStringAsFixed(0)} c/u · acuerdo',
                       style: TextStyle(
                         fontSize: 12,
                         fontWeight: FontWeight.w600,

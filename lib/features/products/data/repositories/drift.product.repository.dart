@@ -1,6 +1,7 @@
 import 'package:app/features/products/data/repositories/product.repository.dart';
 import 'package:app/features/products/domain/models/product.dart';
 import 'package:app/core/services/database.helper.dart';
+import 'package:drift/drift.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 class DriftProductRepository implements ProductRepository {
@@ -8,23 +9,65 @@ class DriftProductRepository implements ProductRepository {
 
   DriftProductRepository(this.db);
 
+  SimpleSelectStatement<$ProductTableTable, ProductTableData> get _enabled =>
+      db.select(db.productTable)..where((t) => t.enabled.equals(true));
+
+  static Product _toProduct(ProductTableData row) => Product(
+    id: row.productId,
+    name: row.name,
+    unitLabel: row.description ?? '', // Using description as unitLabel mapping
+    price: row.price,
+    available: row.stock,
+  );
+
   @override
   Stream<List<Product>> watchAllProducts() {
-    return (db.select(db.productTable)..where((t) => t.enabled.equals(true)))
-        .watch()
-        .map((rows) {
-      return rows.map((row) {
-        return Product(
-          id: row.productId,
-          name: row.name,
-          unitLabel:
-              row.description ?? '', // Using description as unitLabel mapping
-          price: row.price,
-          available: row.stock,
-        );
-      }).toList();
+    return _enabled.watch().map((rows) => rows.map(_toProduct).toList());
+  }
+
+  @override
+  Stream<List<Product>> watchProductsFor(String customerId, {DateTime? day}) {
+    final agreements = db.select(db.customerAgreementTable)
+      ..where((t) => t.customerId.equals(customerId) & t.enabled.equals(true));
+    // Re-emits when either products or agreements change.
+    final changes = db.customSelect(
+      'SELECT 1',
+      readsFrom: {db.productTable, db.customerAgreementTable},
+    ).watch();
+    return changes.asyncMap((_) async {
+      final products = (await _enabled.get()).map(_toProduct);
+      final today = _dateOnly(day ?? DateTime.now());
+      // Server dates may come as full timestamps; only the day counts.
+      bool inForce(CustomerAgreementTableData a) =>
+          a.validFrom.substring(0, 10).compareTo(today) <= 0 &&
+          (a.validTo == null || a.validTo!.substring(0, 10).compareTo(today) >= 0);
+      final byProduct = <String, CustomerAgreementTableData>{};
+      for (final a in (await agreements.get()).where(inForce)) {
+        final current = byProduct[a.productId];
+        // Two overlapping agreements: the most recent one wins.
+        if (current == null || a.validFrom.compareTo(current.validFrom) > 0) {
+          byProduct[a.productId] = a;
+        }
+      }
+      return [
+        for (final p in products)
+          if (byProduct[p.id] case final a?)
+            Product(
+              id: p.id,
+              name: p.name,
+              unitLabel: p.unitLabel,
+              price: a.unitPrice,
+              available: p.available,
+              agreementId: a.serverId,
+            )
+          else
+            p,
+      ];
     });
   }
+
+  static String _dateOnly(DateTime d) =>
+      '${d.year.toString().padLeft(4, '0')}-${d.month.toString().padLeft(2, '0')}-${d.day.toString().padLeft(2, '0')}';
 }
 
 final driftProductRepositoryProvider = Provider<ProductRepository>((ref) {

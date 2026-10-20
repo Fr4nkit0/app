@@ -11,6 +11,7 @@ import 'package:app/features/customers/domain/models/customer.address.dart';
 import 'package:app/features/sync/data/repositories/pending_change.repository.dart';
 import 'package:app/features/sync/domain/models/pending_change.dart';
 import 'package:app/features/sync/domain/models/sync_status.dart';
+import 'package:app/features/sync/push/customer_pusher.dart';
 import 'package:app/features/sync/sync_engine.dart';
 import 'package:app/features/sync/sync_service.dart';
 
@@ -121,15 +122,17 @@ void main() {
   late AppDatabase db;
   late _FakeServer server;
   late SyncEngine engine;
+  late Dio dio;
+  late SyncService sync;
   late DriftCustomerRepository customers;
   late PendingChangeRepository queue;
 
   setUp(() async {
     db = AppDatabase(NativeDatabase.memory());
     server = _FakeServer();
-    final dio = Dio(BaseOptions(baseUrl: 'https://api.example.test'))
+    dio = Dio(BaseOptions(baseUrl: 'https://api.example.test'))
       ..httpClientAdapter = FakeHttpAdapter(server.handle);
-    final sync = SyncService(dio, db);
+    sync = SyncService(dio, db);
     engine = SyncEngine(dio: dio, db: db, sync: sync);
     customers = DriftCustomerRepository(db);
     queue = DriftPendingChangeRepository(db);
@@ -419,8 +422,14 @@ void main() {
       action: PendingAction.insert,
       payload: {'saleId': 'sale-1'},
     );
+    final customersOnly = SyncEngine(
+      dio: dio,
+      db: db,
+      sync: sync,
+      pushers: [CustomerPusher(db)],
+    );
 
-    final status = await engine.runCycle();
+    final status = await customersOnly.runCycle();
 
     expect(server.pushBodies, isEmpty);
     expect(status.pendingCount, 1);

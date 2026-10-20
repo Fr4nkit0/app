@@ -74,3 +74,11 @@ abstract class EntityPusher {
   /// Links the local record to the id the server assigned it.
   Future<void> applyAccepted(PushRecord record, int serverId);
 }
+
+/// A pusher whose local records already moved something the device shows
+/// (a customer balance), which a rejection has to take back.
+abstract interface class RejectionAware {
+  /// Called once per local record ([PendingChange.entityId]) whose queued
+  /// change was just rejected, on the device or by the server.
+  Future<void> applyRejected(String localId);
+}

@@ -113,7 +113,7 @@ class ContainerMovementPusher implements EntityPusher {
     final customer = await (_db.select(
       _db.customerTable,
     )..where((t) => t.customerId.equals(movement.customerId))).getSingleOrNull();
-    final visit = await _visit(movement.visitId);
+    final visit = await resolveVisit(_db, movement.visitId);
     return {
       ...reference(
         'customer',
@@ -124,23 +124,5 @@ class ContainerMovementPusher implements EntityPusher {
         ...reference('visit', serverId: visit.serverId, uuid: visit.visitId),
       'container_type_id': typeId,
     };
-  }
-
-  /// The visit screen links a movement to the stop being visited rather
-  /// than to the visit, which is recorded when the visit ends; resolve
-  /// either to the recorded visit, or travel without a link.
-  Future<VisitTableData?> _visit(String? id) async {
-    if (id == null) return null;
-    final direct = await (_db.select(
-      _db.visitTable,
-    )..where((t) => t.visitId.equals(id))).getSingleOrNull();
-    if (direct != null) return direct;
-    final ofStop =
-        await (_db.select(_db.visitTable)
-              ..where((t) => t.routeStopId.equals(id))
-              ..orderBy([(t) => OrderingTerm.desc(t.arrived_at)])
-              ..limit(1))
-            .get();
-    return ofStop.isEmpty ? null : ofStop.first;
   }
 }

@@ -16,8 +16,15 @@ class SaleDraft extends Notifier<SaleDraftState> {
     state = state.copyWith(customer: customer, visitId: visitId);
   }
 
+  /// Lines were priced for the previous customer's agreements, so they go
+  /// with it.
   void clearCustomer() {
-    state = state.copyWith(clearCustomer: true, clearRouteStopId: true);
+    state = state.copyWith(
+      clearCustomer: true,
+      clearRouteStopId: true,
+      items: const [],
+      returnedContainers: const {},
+    );
   }
 
   void setQuantity(SaleItem item, int quantity) {
@@ -105,10 +112,8 @@ class SaleDraft extends Notifier<SaleDraftState> {
         .read(registerSaleUseCaseProvider)
         .execute(sale, containerMovements: movements);
 
-    // TODO: when paymentMethod == credit, update customer.debtAmount by draft.total.
-    // Deferred: Customer is immutable without copyWith and CustomerRepository
-    // has no addDebt method in this iteration (decision #302). Do NOT touch
-    // lib/features/customers/ until the debt-sync feature is scoped.
+    // The customer balance moves with the sale and its settling payments
+    // (see CustomerBalanceStore); nothing to update here.
 
     state = const SaleDraftState();
   }

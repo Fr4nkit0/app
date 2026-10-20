@@ -6795,6 +6795,17 @@ class $SaleItemTableTable extends SaleItemTable
     type: DriftSqlType.double,
     requiredDuringInsert: true,
   );
+  static const VerificationMeta _agreementServerIdMeta = const VerificationMeta(
+    'agreementServerId',
+  );
+  @override
+  late final GeneratedColumn<int> agreementServerId = GeneratedColumn<int>(
+    'agreement_server_id',
+    aliasedName,
+    true,
+    type: DriftSqlType.int,
+    requiredDuringInsert: false,
+  );
   @override
   List<GeneratedColumn> get $columns => [
     createdAt,
@@ -6807,6 +6818,7 @@ class $SaleItemTableTable extends SaleItemTable
     quantity,
     unitPrice,
     subtotal,
+    agreementServerId,
   ];
   @override
   String get aliasedName => _alias ?? actualTableName;
@@ -6896,6 +6908,15 @@ class $SaleItemTableTable extends SaleItemTable
     } else if (isInserting) {
       context.missing(_subtotalMeta);
     }
+    if (data.containsKey('agreement_server_id')) {
+      context.handle(
+        _agreementServerIdMeta,
+        agreementServerId.isAcceptableOrUnknown(
+          data['agreement_server_id']!,
+          _agreementServerIdMeta,
+        ),
+      );
+    }
     return context;
   }
 
@@ -6945,6 +6966,10 @@ class $SaleItemTableTable extends SaleItemTable
         DriftSqlType.double,
         data['${effectivePrefix}subtotal'],
       )!,
+      agreementServerId: attachedDatabase.typeMapping.read(
+        DriftSqlType.int,
+        data['${effectivePrefix}agreement_server_id'],
+      ),
     );
   }
 
@@ -6966,6 +6991,10 @@ class SaleItemTableData extends DataClass
   final int quantity;
   final double unitPrice;
   final double subtotal;
+
+  /// Server id of the customer agreement that set [unitPrice]; null for
+  /// the list price.
+  final int? agreementServerId;
   const SaleItemTableData({
     required this.createdAt,
     required this.lastModifiedDate,
@@ -6977,6 +7006,7 @@ class SaleItemTableData extends DataClass
     required this.quantity,
     required this.unitPrice,
     required this.subtotal,
+    this.agreementServerId,
   });
   @override
   Map<String, Expression> toColumns(bool nullToAbsent) {
@@ -6993,6 +7023,9 @@ class SaleItemTableData extends DataClass
     map['quantity'] = Variable<int>(quantity);
     map['unit_price'] = Variable<double>(unitPrice);
     map['subtotal'] = Variable<double>(subtotal);
+    if (!nullToAbsent || agreementServerId != null) {
+      map['agreement_server_id'] = Variable<int>(agreementServerId);
+    }
     return map;
   }
 
@@ -7010,6 +7043,9 @@ class SaleItemTableData extends DataClass
       quantity: Value(quantity),
       unitPrice: Value(unitPrice),
       subtotal: Value(subtotal),
+      agreementServerId: agreementServerId == null && nullToAbsent
+          ? const Value.absent()
+          : Value(agreementServerId),
     );
   }
 
@@ -7029,6 +7065,7 @@ class SaleItemTableData extends DataClass
       quantity: serializer.fromJson<int>(json['quantity']),
       unitPrice: serializer.fromJson<double>(json['unitPrice']),
       subtotal: serializer.fromJson<double>(json['subtotal']),
+      agreementServerId: serializer.fromJson<int?>(json['agreementServerId']),
     );
   }
   @override
@@ -7045,6 +7082,7 @@ class SaleItemTableData extends DataClass
       'quantity': serializer.toJson<int>(quantity),
       'unitPrice': serializer.toJson<double>(unitPrice),
       'subtotal': serializer.toJson<double>(subtotal),
+      'agreementServerId': serializer.toJson<int?>(agreementServerId),
     };
   }
 
@@ -7059,6 +7097,7 @@ class SaleItemTableData extends DataClass
     int? quantity,
     double? unitPrice,
     double? subtotal,
+    Value<int?> agreementServerId = const Value.absent(),
   }) => SaleItemTableData(
     createdAt: createdAt ?? this.createdAt,
     lastModifiedDate: lastModifiedDate ?? this.lastModifiedDate,
@@ -7070,6 +7109,9 @@ class SaleItemTableData extends DataClass
     quantity: quantity ?? this.quantity,
     unitPrice: unitPrice ?? this.unitPrice,
     subtotal: subtotal ?? this.subtotal,
+    agreementServerId: agreementServerId.present
+        ? agreementServerId.value
+        : this.agreementServerId,
   );
   SaleItemTableData copyWithCompanion(SaleItemTableCompanion data) {
     return SaleItemTableData(
@@ -7087,6 +7129,9 @@ class SaleItemTableData extends DataClass
       quantity: data.quantity.present ? data.quantity.value : this.quantity,
       unitPrice: data.unitPrice.present ? data.unitPrice.value : this.unitPrice,
       subtotal: data.subtotal.present ? data.subtotal.value : this.subtotal,
+      agreementServerId: data.agreementServerId.present
+          ? data.agreementServerId.value
+          : this.agreementServerId,
     );
   }
 
@@ -7102,7 +7147,8 @@ class SaleItemTableData extends DataClass
           ..write('productId: $productId, ')
           ..write('quantity: $quantity, ')
           ..write('unitPrice: $unitPrice, ')
-          ..write('subtotal: $subtotal')
+          ..write('subtotal: $subtotal, ')
+          ..write('agreementServerId: $agreementServerId')
           ..write(')'))
         .toString();
   }
@@ -7119,6 +7165,7 @@ class SaleItemTableData extends DataClass
     quantity,
     unitPrice,
     subtotal,
+    agreementServerId,
   );
   @override
   bool operator ==(Object other) =>
@@ -7133,7 +7180,8 @@ class SaleItemTableData extends DataClass
           other.productId == this.productId &&
           other.quantity == this.quantity &&
           other.unitPrice == this.unitPrice &&
-          other.subtotal == this.subtotal);
+          other.subtotal == this.subtotal &&
+          other.agreementServerId == this.agreementServerId);
 }
 
 class SaleItemTableCompanion extends UpdateCompanion<SaleItemTableData> {
@@ -7147,6 +7195,7 @@ class SaleItemTableCompanion extends UpdateCompanion<SaleItemTableData> {
   final Value<int> quantity;
   final Value<double> unitPrice;
   final Value<double> subtotal;
+  final Value<int?> agreementServerId;
   final Value<int> rowid;
   const SaleItemTableCompanion({
     this.createdAt = const Value.absent(),
@@ -7159,6 +7208,7 @@ class SaleItemTableCompanion extends UpdateCompanion<SaleItemTableData> {
     this.quantity = const Value.absent(),
     this.unitPrice = const Value.absent(),
     this.subtotal = const Value.absent(),
+    this.agreementServerId = const Value.absent(),
     this.rowid = const Value.absent(),
   });
   SaleItemTableCompanion.insert({
@@ -7172,6 +7222,7 @@ class SaleItemTableCompanion extends UpdateCompanion<SaleItemTableData> {
     required int quantity,
     required double unitPrice,
     required double subtotal,
+    this.agreementServerId = const Value.absent(),
     this.rowid = const Value.absent(),
   }) : saleId = Value(saleId),
        productId = Value(productId),
@@ -7189,6 +7240,7 @@ class SaleItemTableCompanion extends UpdateCompanion<SaleItemTableData> {
     Expression<int>? quantity,
     Expression<double>? unitPrice,
     Expression<double>? subtotal,
+    Expression<int>? agreementServerId,
     Expression<int>? rowid,
   }) {
     return RawValuesInsertable({
@@ -7202,6 +7254,7 @@ class SaleItemTableCompanion extends UpdateCompanion<SaleItemTableData> {
       if (quantity != null) 'quantity': quantity,
       if (unitPrice != null) 'unit_price': unitPrice,
       if (subtotal != null) 'subtotal': subtotal,
+      if (agreementServerId != null) 'agreement_server_id': agreementServerId,
       if (rowid != null) 'rowid': rowid,
     });
   }
@@ -7217,6 +7270,7 @@ class SaleItemTableCompanion extends UpdateCompanion<SaleItemTableData> {
     Value<int>? quantity,
     Value<double>? unitPrice,
     Value<double>? subtotal,
+    Value<int?>? agreementServerId,
     Value<int>? rowid,
   }) {
     return SaleItemTableCompanion(
@@ -7230,6 +7284,7 @@ class SaleItemTableCompanion extends UpdateCompanion<SaleItemTableData> {
       quantity: quantity ?? this.quantity,
       unitPrice: unitPrice ?? this.unitPrice,
       subtotal: subtotal ?? this.subtotal,
+      agreementServerId: agreementServerId ?? this.agreementServerId,
       rowid: rowid ?? this.rowid,
     );
   }
@@ -7267,6 +7322,9 @@ class SaleItemTableCompanion extends UpdateCompanion<SaleItemTableData> {
     if (subtotal.present) {
       map['subtotal'] = Variable<double>(subtotal.value);
     }
+    if (agreementServerId.present) {
+      map['agreement_server_id'] = Variable<int>(agreementServerId.value);
+    }
     if (rowid.present) {
       map['rowid'] = Variable<int>(rowid.value);
     }
@@ -7286,6 +7344,7 @@ class SaleItemTableCompanion extends UpdateCompanion<SaleItemTableData> {
           ..write('quantity: $quantity, ')
           ..write('unitPrice: $unitPrice, ')
           ..write('subtotal: $subtotal, ')
+          ..write('agreementServerId: $agreementServerId, ')
           ..write('rowid: $rowid')
           ..write(')'))
         .toString();
@@ -20087,6 +20146,7 @@ typedef $$SaleItemTableTableCreateCompanionBuilder =
       required int quantity,
       required double unitPrice,
       required double subtotal,
+      Value<int?> agreementServerId,
       Value<int> rowid,
     });
 typedef $$SaleItemTableTableUpdateCompanionBuilder =
@@ -20101,6 +20161,7 @@ typedef $$SaleItemTableTableUpdateCompanionBuilder =
       Value<int> quantity,
       Value<double> unitPrice,
       Value<double> subtotal,
+      Value<int?> agreementServerId,
       Value<int> rowid,
     });
 
@@ -20204,6 +20265,11 @@ class $$SaleItemTableTableFilterComposer
     builder: (column) => ColumnFilters(column),
   );
 
+  ColumnFilters<int> get agreementServerId => $composableBuilder(
+    column: $table.agreementServerId,
+    builder: (column) => ColumnFilters(column),
+  );
+
   $$SaleTableTableFilterComposer get saleId {
     final $$SaleTableTableFilterComposer composer = $composerBuilder(
       composer: this,
@@ -20300,6 +20366,11 @@ class $$SaleItemTableTableOrderingComposer
     builder: (column) => ColumnOrderings(column),
   );
 
+  ColumnOrderings<int> get agreementServerId => $composableBuilder(
+    column: $table.agreementServerId,
+    builder: (column) => ColumnOrderings(column),
+  );
+
   $$SaleTableTableOrderingComposer get saleId {
     final $$SaleTableTableOrderingComposer composer = $composerBuilder(
       composer: this,
@@ -20383,6 +20454,11 @@ class $$SaleItemTableTableAnnotationComposer
 
   GeneratedColumn<double> get subtotal =>
       $composableBuilder(column: $table.subtotal, builder: (column) => column);
+
+  GeneratedColumn<int> get agreementServerId => $composableBuilder(
+    column: $table.agreementServerId,
+    builder: (column) => column,
+  );
 
   $$SaleTableTableAnnotationComposer get saleId {
     final $$SaleTableTableAnnotationComposer composer = $composerBuilder(
@@ -20469,6 +20545,7 @@ class $$SaleItemTableTableTableManager
                 Value<int> quantity = const Value.absent(),
                 Value<double> unitPrice = const Value.absent(),
                 Value<double> subtotal = const Value.absent(),
+                Value<int?> agreementServerId = const Value.absent(),
                 Value<int> rowid = const Value.absent(),
               }) => SaleItemTableCompanion(
                 createdAt: createdAt,
@@ -20481,6 +20558,7 @@ class $$SaleItemTableTableTableManager
                 quantity: quantity,
                 unitPrice: unitPrice,
                 subtotal: subtotal,
+                agreementServerId: agreementServerId,
                 rowid: rowid,
               ),
           createCompanionCallback:
@@ -20495,6 +20573,7 @@ class $$SaleItemTableTableTableManager
                 required int quantity,
                 required double unitPrice,
                 required double subtotal,
+                Value<int?> agreementServerId = const Value.absent(),
                 Value<int> rowid = const Value.absent(),
               }) => SaleItemTableCompanion.insert(
                 createdAt: createdAt,
@@ -20507,6 +20586,7 @@ class $$SaleItemTableTableTableManager
                 quantity: quantity,
                 unitPrice: unitPrice,
                 subtotal: subtotal,
+                agreementServerId: agreementServerId,
                 rowid: rowid,
               ),
           withReferenceMapper: (p0) => p0

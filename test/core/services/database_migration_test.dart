@@ -278,4 +278,30 @@ void main() {
       expect((await db.select(db.containerTypeTable).getSingle()).enabled, isTrue);
     });
   });
+
+  group('Database Schema Migration V9 -> V10', () {
+    late AppDatabase db;
+
+    setUp(() async {
+      db = AppDatabase(NativeDatabase.memory());
+      // Rebuild the v9 shape: sale lines without the agreement link.
+      await db.customStatement('ALTER TABLE sale_items DROP COLUMN agreement_server_id');
+      await db.customStatement(
+        "INSERT INTO sale_items (sale_item_id, sale_id, product_id, quantity, unit_price, subtotal) "
+        "VALUES ('si-1', 's-1', 'p-1', 2, 1500, 3000)",
+      );
+    });
+
+    tearDown(() async {
+      await db.close();
+    });
+
+    test('adds the agreement link to sale lines and keeps existing lines at list price', () async {
+      await db.migration.onUpgrade(db.createMigrator(), 9, 10);
+
+      final line = await db.select(db.saleItemTable).getSingle();
+      expect(line.unitPrice, 1500);
+      expect(line.agreementServerId, isNull);
+    });
+  });
 }

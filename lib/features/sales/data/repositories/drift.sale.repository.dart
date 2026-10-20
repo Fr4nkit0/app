@@ -3,6 +3,7 @@ import 'package:uuid/uuid.dart';
 import 'package:app/core/services/database.helper.dart';
 import 'package:app/core/utils/resource.dart';
 import 'package:app/features/customers/domain/models/customer.dart';
+import 'package:app/features/payments/data/repositories/customer_balance.store.dart';
 import 'package:app/features/products/domain/models/product.dart';
 import 'package:app/features/sales/data/repositories/sale.repository.dart';
 import 'package:app/features/sales/domain/models/payment_method.dart';
@@ -14,10 +15,12 @@ import 'package:app/features/sync/domain/models/pending_change.dart';
 class DriftSaleRepository implements SaleRepository {
   DriftSaleRepository(AppDatabase db)
     : _db = db,
-      _queue = DriftPendingChangeRepository(db);
+      _queue = DriftPendingChangeRepository(db),
+      _balances = CustomerBalanceStore(db);
 
   final AppDatabase _db;
   final PendingChangeRepository _queue;
+  final CustomerBalanceStore _balances;
 
   @override
   Stream<List<Sale>> watchAllSales() {
@@ -55,8 +58,10 @@ class DriftSaleRepository implements SaleRepository {
               id: pr.productId,
               name: pr.name,
               unitLabel: '',
-              price: pr.price,
+              // The price the sale was made at, not today's list price.
+              price: ir.unitPrice,
               available: pr.stock,
+              agreementId: ir.agreementServerId,
             ),
             quantity: ir.quantity,
           );
@@ -102,6 +107,7 @@ class DriftSaleRepository implements SaleRepository {
                 customerId: sale.customer.id,
                 totalAmount: sale.total,
                 paymentMethod: sale.paymentMethod.name,
+                saleDate: Value(sale.date),
                 quantity: 0,
                 shipping_amount: 0,
                 visitId: Value(sale.visitId),
@@ -120,55 +126,34 @@ class DriftSaleRepository implements SaleRepository {
                   quantity: item.quantity,
                   unitPrice: item.product.price,
                   subtotal: item.subtotal,
+                  agreementServerId: Value(item.product.agreementId),
                 ),
               );
         }
 
-        if (sale.paymentMethod == PaymentMethod.credit) {
-          final entryId = const Uuid().v4();
-          await _db
-              .into(_db.customerAccountEntryTable)
-              .insert(
-                CustomerAccountEntryTableCompanion.insert(
-                  customerAccountEntryId: Value(entryId),
-                  customerId: sale.customer.id,
-                  saleId: Value(sale.id),
-                  entryType: 'SALE',
-                  amount: sale.total,
-                  direction: 1,
-                  createdAt: Value(sale.date),
-                  description: const Value('Credit sale'),
-                ),
-              );
-
-          final existing = await (_db.select(_db.customerBalanceTable)
-                ..where((t) => t.customerId.equals(sale.customer.id)))
-              .getSingleOrNull();
-
-          final newBalance = (existing?.currentBalance ?? 0.0) + sale.total;
-
-          if (existing == null) {
-            await _db
-                .into(_db.customerBalanceTable)
-                .insert(
-                  CustomerBalanceTableCompanion.insert(
-                    customerId: sale.customer.id,
-                    currentBalance: Value(newBalance),
-                    lastEntryId: Value(entryId),
-                  ),
-                );
-          } else {
-            await (_db.update(_db.customerBalanceTable)
-                  ..where((t) => t.customerId.equals(sale.customer.id)))
-                .write(
-              CustomerBalanceTableCompanion(
-                currentBalance: Value(newBalance),
-                lastEntryId: Value(entryId),
-                lastModifiedDate: Value(DateTime.now()),
+        // The server books every sale on the customer's account; a sale
+        // paid on the spot is settled by the payments linked to it.
+        final entryId = const Uuid().v4();
+        final isCredit = sale.paymentMethod == PaymentMethod.credit;
+        await _db
+            .into(_db.customerAccountEntryTable)
+            .insert(
+              CustomerAccountEntryTableCompanion.insert(
+                customerAccountEntryId: Value(entryId),
+                customerId: sale.customer.id,
+                saleId: Value(sale.id),
+                entryType: 'SALE',
+                amount: sale.total,
+                direction: 1,
+                createdAt: Value(sale.date),
+                description: Value(isCredit ? 'Credit sale' : 'Sale'),
               ),
             );
-          }
-        }
+        await _balances.adjust(
+          sale.customer.id,
+          sale.total,
+          lastEntryId: entryId,
+        );
 
         await _queue.enqueue(
           entity: PendingEntity.sale,
@@ -189,6 +174,7 @@ class DriftSaleRepository implements SaleRepository {
                   'productId': item.product.id,
                   'quantity': item.quantity,
                   'unitPrice': item.product.price,
+                  'agreementId': item.product.agreementId,
                   'subtotal': item.subtotal,
                 },
             ],

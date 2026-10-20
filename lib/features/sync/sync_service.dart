@@ -4,6 +4,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../core/network/dio_client.dart';
 import '../../core/services/database.helper.dart';
+import '../payments/data/repositories/customer_balance.store.dart';
 import 'domain/models/pending_change.dart';
 
 typedef Json = Map<String, dynamic>;
@@ -30,13 +31,15 @@ class _Unsent {
 /// bootstrap untouched.
 class SyncService {
   SyncService(this._dio, this._db, {DateTime Function()? today})
-    : _today = today ?? DateTime.now;
+    : _today = today ?? DateTime.now,
+      _balances = CustomerBalanceStore(_db);
 
   static const pullCursorKey = 'pull_cursor';
 
   final Dio _dio;
   final AppDatabase _db;
   final DateTime Function() _today;
+  final CustomerBalanceStore _balances;
 
   /// True on the first run (no cursor) or when no stored route is today's.
   Future<bool> needsBootstrap() async {
@@ -227,20 +230,19 @@ class SyncService {
     if (updated == 0) await _db.into(_db.customerAgreementTable).insert(fields);
   }
 
-  /// Server balances replace local ones, except for customers whose unsent
-  /// sales, payments or movements are still folded into the local balance.
+  /// Server balances replace local ones, plus the sales and minus the
+  /// payments the server has not received yet. Container balances keep the
+  /// local value while unsent changes are folded into it.
   Future<void> _replaceBalances(Map<String, List<Json>> rows, _Unsent unsent) async {
     for (final b in rows['customer_balances'] ?? const <Json>[]) {
       final customerId = await _localCustomerId(b['customer_id'] as int?);
-      if (customerId == null || unsent.balanceCustomers.contains(customerId)) continue;
-      await _db.into(_db.customerBalanceTable).insertOnConflictUpdate(
-            CustomerBalanceTableCompanion.insert(
-              customerId: customerId,
-              currentBalance: Value(_toDouble(b['current_balance'])),
-              enabled: _enabled(b),
-              serverId: Value(b['id'] as int),
-            ),
-          );
+      if (customerId == null) continue;
+      await _balances.replaceWithServer(
+        customerId,
+        _toDouble(b['current_balance']),
+        serverId: b['id'] as int,
+        enabled: _enabled(b),
+      );
     }
     final containerCodes = {
       for (final c in await _db.select(_db.containerTypeTable).get()) c.id: c.code,
@@ -506,17 +508,15 @@ class SyncService {
             );
       }
 
-      if (unsent.balanceCustomers.contains(localId)) continue;
-
       final balance = c['balance'] as Json?;
       if (balance != null) {
-        await _db.into(_db.customerBalanceTable).insertOnConflictUpdate(
-              CustomerBalanceTableCompanion.insert(
-                customerId: localId,
-                currentBalance: Value(_toDouble(balance['current_balance'])),
-              ),
-            );
+        await _balances.replaceWithServer(
+          localId,
+          _toDouble(balance['current_balance']),
+        );
       }
+
+      if (unsent.balanceCustomers.contains(localId)) continue;
 
       for (final b in _list(c['container_balances'])) {
         final code = containerCodes[b['container_type_id'] as int];

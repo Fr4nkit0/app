@@ -5,12 +5,17 @@ class Product {
   final double price;
   final int? available;
 
+  /// Server id of the customer agreement that set [price]; null when
+  /// [price] is the list price.
+  final int? agreementId;
+
   const Product({
     required this.id,
     required this.name,
     required this.unitLabel,
     required this.price,
     this.available,
+    this.agreementId,
   });
 
   @override

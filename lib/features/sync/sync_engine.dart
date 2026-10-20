@@ -10,7 +10,9 @@ import 'domain/models/sync_status.dart';
 import 'push/container_movement_pusher.dart';
 import 'push/customer_pusher.dart';
 import 'push/entity_pusher.dart';
+import 'push/payment_pusher.dart';
 import 'push/route_stop_pusher.dart';
+import 'push/sale_pusher.dart';
 import 'push/visit_pusher.dart';
 import 'sync_service.dart';
 
@@ -43,6 +45,8 @@ class SyncEngine {
     RouteStopPusher(db),
     VisitPusher(db),
     ContainerMovementPusher(db),
+    SalePusher(db),
+    PaymentPusher(db),
   ];
 
   final Dio _dio;
@@ -98,6 +102,7 @@ class SyncEngine {
   Future<void> push() async {
     final pending = await _queue.getPending();
     if (pending.isEmpty) return;
+    final entityIdOf = {for (final c in pending) c.id: c.entityId};
 
     final plans = <EntityPusher, PushPlan>{};
     final body = <String, dynamic>{};
@@ -122,6 +127,11 @@ class SyncEngine {
           }
         }
         if (plan.settled.isNotEmpty) await _queue.markSent(plan.settled);
+      }
+      for (final MapEntry(key: pusher, value: plan) in plans.entries) {
+        await _applyRejected(pusher, [
+          for (final r in plan.rejections) ...r.changeIds,
+        ], entityIdOf);
       }
     });
     if (body.isEmpty) return;
@@ -159,6 +169,7 @@ class SyncEngine {
         for (final MapEntry(key: id, value: reason) in rejectedWith.entries) {
           await _queue.markRejected(id, reason);
         }
+        await _applyRejected(pusher, rejectedWith.keys, entityIdOf);
         final sent = [
           for (final id in accepted)
             if (!rejectedWith.containsKey(id) && !unanswered.contains(id)) id,
@@ -166,6 +177,20 @@ class SyncEngine {
         if (sent.isNotEmpty) await _queue.markSent(sent);
       }
     });
+  }
+
+  /// Lets [pusher] take back what its rejected local records moved, once
+  /// per local record.
+  Future<void> _applyRejected(
+    EntityPusher pusher,
+    Iterable<int> changeIds,
+    Map<int, String> entityIdOf,
+  ) async {
+    if (pusher is! RejectionAware) return;
+    final localIds = {for (final id in changeIds) ?entityIdOf[id]};
+    for (final localId in localIds) {
+      await (pusher as RejectionAware).applyRejected(localId);
+    }
   }
 
   Future<SyncStatus> status() => _statusQuery().getSingle();
