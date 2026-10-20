@@ -54,7 +54,8 @@ class _CreateCustomerScreenState extends ConsumerState<CreateCustomerScreen> {
     ) {
       if (next == true) {
         TopToast.showSuccess(context, 'Cliente guardado exitosamente');
-        Navigator.of(context).pop();
+        // Returns the new customer so a sale started here can go on with it.
+        Navigator.of(context).pop(ref.read(customerFormProvider).createdCustomer);
       }
     });
 

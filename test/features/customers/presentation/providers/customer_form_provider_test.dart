@@ -105,6 +105,9 @@ void main() {
       expect(fakeRepo.lastSavedCustomer!.name, 'Gaston');
       expect(fakeRepo.lastSavedCustomer!.addresses.first.street, 'San Martin 100');
       expect(fakeRepo.lastSavedCustomer!.addresses.first.neighborhood, 'Centro');
+      // The saved customer is handed back so the sale can select it right away.
+      expect(stateAfter.createdCustomer?.id, fakeRepo.lastSavedCustomer!.id);
+      expect(stateAfter.createdCustomer?.name, 'Gaston');
     });
   });
 }

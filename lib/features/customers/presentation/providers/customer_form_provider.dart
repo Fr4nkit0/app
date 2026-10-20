@@ -167,7 +167,11 @@ class CustomerForm extends Notifier<CustomerFormState> {
 
       switch (result) {
         case Success():
-          state = state.copyWith(isSubmitting: false, isSuccess: true);
+          state = state.copyWith(
+            isSubmitting: false,
+            isSuccess: true,
+            createdCustomer: customer,
+          );
         case Error(:final error):
           state = state.copyWith(
             isSubmitting: false,

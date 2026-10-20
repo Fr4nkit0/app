@@ -152,11 +152,21 @@ class _SaleStep1ScreenState extends ConsumerState<SaleStep1Screen> {
                             onSelectCustomer: (c) => ref
                                 .read(saleDraftProvider.notifier)
                                 .selectCustomer(c),
-                            onNewCustomer: () => Navigator.of(context).push(
-                              MaterialPageRoute(
-                                builder: (_) => const CreateCustomerScreen(),
-                              ),
-                            ),
+                            onNewCustomer: () async {
+                              final created = await Navigator.of(context)
+                                  .push<Customer>(
+                                MaterialPageRoute(
+                                  builder: (_) => const CreateCustomerScreen(),
+                                ),
+                              );
+                              // The new customer is selected so the sale goes
+                              // straight to picking products.
+                              if (created != null) {
+                                ref
+                                    .read(saleDraftProvider.notifier)
+                                    .selectCustomer(created);
+                              }
+                            },
                           ),
                   ),
                 ],
