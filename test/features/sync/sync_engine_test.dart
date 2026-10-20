@@ -414,10 +414,10 @@ void main() {
 
   test('queued changes of entities without a pusher stay pending', () async {
     await queue.enqueue(
-      entity: PendingEntity.visit,
-      entityId: 'v-1',
+      entity: PendingEntity.sale,
+      entityId: 'sale-1',
       action: PendingAction.insert,
-      payload: {'visitId': 'v-1'},
+      payload: {'saleId': 'sale-1'},
     );
 
     final status = await engine.runCycle();

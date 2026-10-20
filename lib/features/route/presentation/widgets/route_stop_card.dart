@@ -11,6 +11,7 @@ import 'package:app/core/widgets/product_chip.dart';
 import 'package:app/core/widgets/top_toast.dart';
 import 'package:app/features/route/domain/models/route_stop.dart';
 import 'package:app/features/route/domain/models/stop_status.dart';
+import 'package:app/features/route/presentation/widgets/stop_reschedule_label.dart';
 import 'package:app/features/customers/presentation/providers/customer_count_provider.dart';
 import 'package:app/features/customers/presentation/providers/customer_repository_provider.dart';
 import 'package:app/features/customers/presentation/widgets/address_picker_map.dart';
@@ -34,7 +35,9 @@ class RouteStopCard extends ConsumerWidget {
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final isDone = stop.status == StopStatus.done;
-    final isAbsent = stop.status == StopStatus.absent;
+    final isRescheduled = stop.status == StopStatus.rescheduled;
+    // A rescheduled stop is closed without a delivery, like an absent one.
+    final isAbsent = stop.status == StopStatus.absent || isRescheduled;
 
     // Timeline color coding
     final Color timelineColor = isDone
@@ -99,6 +102,12 @@ class RouteStopCard extends ConsumerWidget {
                           Icons.check_rounded,
                           size: 16,
                           color: Color(0xFF10B981),
+                        )
+                      : isRescheduled
+                      ? const Icon(
+                          Icons.event_repeat_rounded,
+                          size: 16,
+                          color: Color(0xFFEF4444),
                         )
                       : isAbsent
                       ? const Icon(
@@ -214,6 +223,7 @@ class RouteStopCard extends ConsumerWidget {
                                           maxLines: 1,
                                           overflow: TextOverflow.ellipsis,
                                         ),
+                                        StopRescheduleLabel(stop: stop),
                                       ],
                                     ),
                                   ),

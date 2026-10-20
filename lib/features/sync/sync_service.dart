@@ -729,7 +729,8 @@ class SyncService {
 
   static String _stopStatus(String? serverStatus) => switch (serverStatus) {
     'FINISHED' => 'done',
-    'CANCELLED' || 'RESCHEDULED' => 'absent',
+    'RESCHEDULED' => 'rescheduled',
+    'CANCELLED' => 'absent',
     _ => 'pending',
   };
 

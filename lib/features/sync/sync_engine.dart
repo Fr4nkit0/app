@@ -7,8 +7,11 @@ import '../../core/services/database.helper.dart';
 import 'data/repositories/pending_change.repository.dart';
 import 'domain/models/pending_change.dart';
 import 'domain/models/sync_status.dart';
+import 'push/container_movement_pusher.dart';
 import 'push/customer_pusher.dart';
 import 'push/entity_pusher.dart';
+import 'push/route_stop_pusher.dart';
+import 'push/visit_pusher.dart';
 import 'sync_service.dart';
 
 /// Runs the sync cycle: push every pending change in queue order, then
@@ -37,6 +40,9 @@ class SyncEngine {
   /// Entity pushers in the server's dependency order.
   static List<EntityPusher> defaultPushers(AppDatabase db) => [
     CustomerPusher(db),
+    RouteStopPusher(db),
+    VisitPusher(db),
+    ContainerMovementPusher(db),
   ];
 
   final Dio _dio;
@@ -115,6 +121,7 @@ class SyncEngine {
             await _queue.markRejected(id, rejection.reason);
           }
         }
+        if (plan.settled.isNotEmpty) await _queue.markSent(plan.settled);
       }
     });
     if (body.isEmpty) return;
@@ -128,22 +135,35 @@ class SyncEngine {
           for (final r in (data[pusher.wireKey] as List? ?? const []))
             (r as Map)['uuid']: Map<String, dynamic>.from(r),
         };
+        // A change settles only after every record built from it did.
+        final rejectedWith = <int, String>{};
+        final unanswered = <int>{};
+        final accepted = <int>{};
         for (final record in plan.records) {
           final result = results[record.uuid];
-          // No answer for this record: it stays pending for the next cycle.
-          if (result == null) continue;
-          if (result['status'] == 'accepted') {
+          if (result?['status'] == 'accepted') {
             // An accepted record that waits for review is still accepted.
-            await pusher.applyAccepted(record, result['server_id'] as int);
-            await _queue.markSent(record.changeIds);
-          } else if (result['status'] == 'rejected') {
+            await pusher.applyAccepted(record, result!['server_id'] as int);
+            accepted.addAll(record.changeIds);
+          } else if (result?['status'] == 'rejected') {
             final reason =
-                (result['error'] as String?) ?? 'Rejected by the server.';
+                (result!['error'] as String?) ?? 'Rejected by the server.';
             for (final id in record.changeIds) {
-              await _queue.markRejected(id, reason);
+              rejectedWith.putIfAbsent(id, () => reason);
             }
+          } else {
+            // No answer for this record: it stays pending for the next cycle.
+            unanswered.addAll(record.changeIds);
           }
         }
+        for (final MapEntry(key: id, value: reason) in rejectedWith.entries) {
+          await _queue.markRejected(id, reason);
+        }
+        final sent = [
+          for (final id in accepted)
+            if (!rejectedWith.containsKey(id) && !unanswered.contains(id)) id,
+        ];
+        if (sent.isNotEmpty) await _queue.markSent(sent);
       }
     });
   }
