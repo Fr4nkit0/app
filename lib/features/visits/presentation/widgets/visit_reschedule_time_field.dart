@@ -50,7 +50,7 @@ class VisitRescheduleTimeField extends StatelessWidget {
           style: TextStyle(
             fontSize: 14,
             fontWeight: FontWeight.w600,
-            color: time == null ? Colors.grey.shade500 : null,
+            color: time == null ? MarilinColors.textMuted : null,
           ),
         ),
       ),

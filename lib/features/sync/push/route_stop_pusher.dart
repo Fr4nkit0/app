@@ -13,9 +13,9 @@ import 'references.dart';
 class RouteStopPusher implements EntityPusher {
   RouteStopPusher(this._db);
 
-  static const deletedLocally = 'The stop no longer exists on the device.';
+  static const deletedLocally = 'La parada ya no existe en el dispositivo.';
   static const notRescheduled =
-      'Only stops rescheduled the same day are created by the app.';
+      'La app solo crea paradas reprogramadas para el mismo día.';
 
   final AppDatabase _db;
 

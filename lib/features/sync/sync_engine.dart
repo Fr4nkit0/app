@@ -157,7 +157,7 @@ class SyncEngine {
             accepted.addAll(record.changeIds);
           } else if (result?['status'] == 'rejected') {
             final reason =
-                (result!['error'] as String?) ?? 'Rejected by the server.';
+                (result!['error'] as String?) ?? 'Rechazado por el servidor.';
             for (final id in record.changeIds) {
               rejectedWith.putIfAbsent(id, () => reason);
             }
@@ -242,8 +242,8 @@ class SyncEngine {
 
   static String _describe(Object error) => switch (error) {
     DioException(type: DioExceptionType.badResponse, :final response) =>
-      'Server answered ${response?.statusCode}.',
-    DioException() => 'No connection to the server.',
+      'El servidor respondió ${response?.statusCode}.',
+    DioException() => 'Sin conexión con el servidor.',
     _ => error.toString(),
   };
 

@@ -15,10 +15,10 @@ import 'references.dart';
 class ContainerMovementPusher implements EntityPusher {
   ContainerMovementPusher(this._db);
 
-  static const missing = 'The container movement no longer exists.';
-  static const empty = 'The container movement has no quantity.';
+  static const missing = 'El movimiento de envases ya no existe.';
+  static const empty = 'El movimiento de envases no tiene cantidad.';
   static String unknownType(String code) =>
-      'Unknown container type $code; sync the catalog first.';
+      'Tipo de envase desconocido: $code. Sincronizá el catálogo primero.';
 
   final AppDatabase _db;
 

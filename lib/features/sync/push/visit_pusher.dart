@@ -9,7 +9,7 @@ import 'references.dart';
 class VisitPusher implements EntityPusher {
   VisitPusher(this._db);
 
-  static const missing = 'The visit no longer exists on the device.';
+  static const missing = 'La visita ya no existe en el dispositivo.';
 
   final AppDatabase _db;
 

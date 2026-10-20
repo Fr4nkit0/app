@@ -10,9 +10,9 @@ import 'references.dart';
 class PaymentPusher implements EntityPusher, RejectionAware {
   PaymentPusher(this._db) : _balances = CustomerBalanceStore(_db);
 
-  static const missing = 'The payment no longer exists on the device.';
+  static const missing = 'El pago ya no existe en el dispositivo.';
   static String unknownMethod(String method) =>
-      'Unknown payment method $method; sync the catalog first.';
+      'Medio de pago desconocido: $method. Sincronizá el catálogo primero.';
 
   /// Local payment methods by the server catalog code they stand for.
   static const _catalogCodes = {'EFECTIVO': 'CASH', 'TRANSFERENCIA': 'TRANSFER'};

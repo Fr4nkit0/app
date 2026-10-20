@@ -10,10 +10,10 @@ import 'references.dart';
 class SalePusher implements EntityPusher, RejectionAware {
   SalePusher(this._db) : _balances = CustomerBalanceStore(_db);
 
-  static const missing = 'The sale no longer exists on the device.';
-  static const empty = 'The sale has no lines.';
+  static const missing = 'La venta ya no existe en el dispositivo.';
+  static const empty = 'La venta no tiene productos.';
   static String unknownProduct(String name) =>
-      'Unknown product $name; sync the catalog first.';
+      'Producto desconocido: $name. Sincronizá el catálogo primero.';
 
   final AppDatabase _db;
   final CustomerBalanceStore _balances;

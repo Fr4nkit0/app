@@ -13,7 +13,7 @@ class CustomerPusher implements EntityPusher {
   CustomerPusher(this._db);
 
   static const deletionNotSynced =
-      'Deleting a customer is not synced with the server.';
+      'La baja de clientes no se sincroniza con el servidor.';
 
   final AppDatabase _db;
 

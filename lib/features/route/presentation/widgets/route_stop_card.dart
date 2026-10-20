@@ -107,7 +107,7 @@ class RouteStopCard extends ConsumerWidget {
                       ? const Icon(
                           Icons.event_repeat_rounded,
                           size: 16,
-                          color: Color(0xFFEF4444),
+                          color: MarilinColors.destructive,
                         )
                       : isAbsent
                       ? const Icon(
