@@ -86,7 +86,9 @@ class ProductQuantityRow extends StatelessWidget {
                     ),
                     const SizedBox(height: 3),
                     Text(
-                      product.agreementId == null
+                      !product.hasPrice
+                          ? 'Sin precio'
+                          : product.agreementId == null
                           ? '\$${product.price.toStringAsFixed(0)} c/u'
                           : '\$${product.price.toStringAsFixed(0)} c/u · acuerdo',
                       style: TextStyle(
@@ -107,7 +109,7 @@ class ProductQuantityRow extends StatelessWidget {
                 primary: primary,
                 cs: cs,
                 onDecrement: quantity > 0 ? onDecrement : null,
-                onIncrement: onIncrement,
+                onIncrement: product.hasPrice ? onIncrement : null,
               ),
             ],
           ),
@@ -130,7 +132,7 @@ class _QuantityStepper extends StatelessWidget {
   final Color primary;
   final ColorScheme cs;
   final VoidCallback? onDecrement;
-  final VoidCallback onIncrement;
+  final VoidCallback? onIncrement;
 
   @override
   Widget build(BuildContext context) {
@@ -159,7 +161,7 @@ class _QuantityStepper extends StatelessWidget {
         _Btn(
           icon: Icons.add_rounded,
           onTap: onIncrement,
-          active: true,
+          active: onIncrement != null,
           primary: primary,
           cs: cs,
         ),

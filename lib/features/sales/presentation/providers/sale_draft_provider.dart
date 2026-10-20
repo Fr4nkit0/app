@@ -28,6 +28,7 @@ class SaleDraft extends Notifier<SaleDraftState> {
   }
 
   void setQuantity(SaleItem item, int quantity) {
+    if (quantity > 0 && !item.product.hasPrice) return;
     List<SaleItem> newItems;
     if (quantity <= 0) {
       newItems = state.items

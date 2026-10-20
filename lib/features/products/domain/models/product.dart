@@ -18,6 +18,10 @@ class Product {
     this.agreementId,
   });
 
+  /// The server has no list price yet, so a product without agreement may
+  /// arrive at 0; such a product cannot be sold.
+  bool get hasPrice => price > 0;
+
   @override
   bool operator ==(Object other) =>
       identical(this, other) || other is Product && other.id == id;

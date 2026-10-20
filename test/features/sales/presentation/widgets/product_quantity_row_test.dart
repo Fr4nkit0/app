@@ -132,5 +132,25 @@ void main() {
       await tester.pump();
       expect(decrementCalled, 0);
     });
+  
+    testWidgets('a product without price shows it and cannot be incremented', (
+      tester,
+    ) async {
+      var incrementCalled = 0;
+      await tester.pumpWidget(
+        _wrap(
+          ProductQuantityRow(
+            product: _makeProduct(price: 0),
+            quantity: 0,
+            onIncrement: () => incrementCalled++,
+            onDecrement: () {},
+          ),
+        ),
+      );
+
+      expect(find.text('Sin precio'), findsOneWidget);
+      await tester.tap(find.byIcon(Icons.add_rounded));
+      expect(incrementCalled, 0);
+    });
   });
 }

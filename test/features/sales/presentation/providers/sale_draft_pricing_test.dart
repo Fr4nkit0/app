@@ -170,4 +170,13 @@ void main() {
 
     expect(container.read(saleDraftProvider).items, isEmpty);
   });
+
+  test('a product without agreement or list price cannot be added to the sale', () {
+    const unpriced = Product(id: 'p-0', name: 'Hielo', unitLabel: 'bolsa', price: 0);
+    container.read(saleDraftProvider.notifier)
+      ..selectCustomer(customer)
+      ..setQuantity(SaleItem(product: unpriced, quantity: 0), 1);
+
+    expect(container.read(saleDraftProvider).items, isEmpty);
+  });
 }
