@@ -72,21 +72,12 @@ class DriftVisitRepository implements VisitRepository {
             for (final r in rows)
               VisitOutcome(
                 id: r.id,
+                code: r.code,
                 name: r.name,
                 triggersReschedule: r.triggersReschedule,
               ),
           ],
         );
-  }
-
-  @override
-  Future<int?> findDeliveredOutcomeId() async {
-    final row = await (_db.select(_db.visitOutcomeTable)
-          ..where((t) => t.triggersReschedule.equals(false) & t.enabled.equals(true))
-          ..orderBy([(t) => OrderingTerm.asc(t.id)])
-          ..limit(1))
-        .getSingleOrNull();
-    return row?.id;
   }
 
   Visit _rowToVisit(VisitTableData row) => Visit(

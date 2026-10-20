@@ -89,7 +89,7 @@ Map<String, dynamic> _payload({String date = '2026-10-19'}) => {
       {'id': 5, 'code': 'CASH', 'name': 'Cash'},
     ],
     'visit_outcomes': [
-      {'id': 3, 'name': 'Absent', 'triggers_reschedule': true},
+      {'id': 3, 'code': 'reschedule', 'name': 'Reprogramar', 'triggers_reschedule': true},
     ],
     'server_time': '2026-10-19T12:00:00+00:00',
   },
@@ -156,6 +156,8 @@ void main() {
     expect((await db.select(db.paymentMethodTable).getSingle()).id, 5);
     final outcome = await db.select(db.visitOutcomeTable).getSingle();
     expect(outcome.id, 3);
+    expect(outcome.code, 'reschedule');
+    expect(outcome.name, 'Reprogramar');
     expect(outcome.triggersReschedule, isTrue);
 
     final products = await db.select(db.productTable).get();

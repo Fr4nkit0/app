@@ -4806,6 +4806,15 @@ class $VisitOutcomeTableTable extends VisitOutcomeTable
     type: DriftSqlType.int,
     requiredDuringInsert: false,
   );
+  static const VerificationMeta _codeMeta = const VerificationMeta('code');
+  @override
+  late final GeneratedColumn<String> code = GeneratedColumn<String>(
+    'code',
+    aliasedName,
+    true,
+    type: DriftSqlType.string,
+    requiredDuringInsert: false,
+  );
   static const VerificationMeta _nameMeta = const VerificationMeta('name');
   @override
   late final GeneratedColumn<String> name = GeneratedColumn<String>(
@@ -4845,7 +4854,13 @@ class $VisitOutcomeTableTable extends VisitOutcomeTable
     defaultValue: const Constant(true),
   );
   @override
-  List<GeneratedColumn> get $columns => [id, name, triggersReschedule, enabled];
+  List<GeneratedColumn> get $columns => [
+    id,
+    code,
+    name,
+    triggersReschedule,
+    enabled,
+  ];
   @override
   String get aliasedName => _alias ?? actualTableName;
   @override
@@ -4860,6 +4875,12 @@ class $VisitOutcomeTableTable extends VisitOutcomeTable
     final data = instance.toColumns(true);
     if (data.containsKey('id')) {
       context.handle(_idMeta, id.isAcceptableOrUnknown(data['id']!, _idMeta));
+    }
+    if (data.containsKey('code')) {
+      context.handle(
+        _codeMeta,
+        code.isAcceptableOrUnknown(data['code']!, _codeMeta),
+      );
     }
     if (data.containsKey('name')) {
       context.handle(
@@ -4897,6 +4918,10 @@ class $VisitOutcomeTableTable extends VisitOutcomeTable
         DriftSqlType.int,
         data['${effectivePrefix}id'],
       )!,
+      code: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}code'],
+      ),
       name: attachedDatabase.typeMapping.read(
         DriftSqlType.string,
         data['${effectivePrefix}name'],
@@ -4921,11 +4946,15 @@ class $VisitOutcomeTableTable extends VisitOutcomeTable
 class VisitOutcomeTableData extends DataClass
     implements Insertable<VisitOutcomeTableData> {
   final int id;
+
+  /// Stable server code (absent, refused, reschedule) that picks how it is shown.
+  final String? code;
   final String name;
   final bool triggersReschedule;
   final bool enabled;
   const VisitOutcomeTableData({
     required this.id,
+    this.code,
     required this.name,
     required this.triggersReschedule,
     required this.enabled,
@@ -4934,6 +4963,9 @@ class VisitOutcomeTableData extends DataClass
   Map<String, Expression> toColumns(bool nullToAbsent) {
     final map = <String, Expression>{};
     map['id'] = Variable<int>(id);
+    if (!nullToAbsent || code != null) {
+      map['code'] = Variable<String>(code);
+    }
     map['name'] = Variable<String>(name);
     map['triggers_reschedule'] = Variable<bool>(triggersReschedule);
     map['enabled'] = Variable<bool>(enabled);
@@ -4943,6 +4975,7 @@ class VisitOutcomeTableData extends DataClass
   VisitOutcomeTableCompanion toCompanion(bool nullToAbsent) {
     return VisitOutcomeTableCompanion(
       id: Value(id),
+      code: code == null && nullToAbsent ? const Value.absent() : Value(code),
       name: Value(name),
       triggersReschedule: Value(triggersReschedule),
       enabled: Value(enabled),
@@ -4956,6 +4989,7 @@ class VisitOutcomeTableData extends DataClass
     serializer ??= driftRuntimeOptions.defaultSerializer;
     return VisitOutcomeTableData(
       id: serializer.fromJson<int>(json['id']),
+      code: serializer.fromJson<String?>(json['code']),
       name: serializer.fromJson<String>(json['name']),
       triggersReschedule: serializer.fromJson<bool>(json['triggersReschedule']),
       enabled: serializer.fromJson<bool>(json['enabled']),
@@ -4966,6 +5000,7 @@ class VisitOutcomeTableData extends DataClass
     serializer ??= driftRuntimeOptions.defaultSerializer;
     return <String, dynamic>{
       'id': serializer.toJson<int>(id),
+      'code': serializer.toJson<String?>(code),
       'name': serializer.toJson<String>(name),
       'triggersReschedule': serializer.toJson<bool>(triggersReschedule),
       'enabled': serializer.toJson<bool>(enabled),
@@ -4974,11 +5009,13 @@ class VisitOutcomeTableData extends DataClass
 
   VisitOutcomeTableData copyWith({
     int? id,
+    Value<String?> code = const Value.absent(),
     String? name,
     bool? triggersReschedule,
     bool? enabled,
   }) => VisitOutcomeTableData(
     id: id ?? this.id,
+    code: code.present ? code.value : this.code,
     name: name ?? this.name,
     triggersReschedule: triggersReschedule ?? this.triggersReschedule,
     enabled: enabled ?? this.enabled,
@@ -4986,6 +5023,7 @@ class VisitOutcomeTableData extends DataClass
   VisitOutcomeTableData copyWithCompanion(VisitOutcomeTableCompanion data) {
     return VisitOutcomeTableData(
       id: data.id.present ? data.id.value : this.id,
+      code: data.code.present ? data.code.value : this.code,
       name: data.name.present ? data.name.value : this.name,
       triggersReschedule: data.triggersReschedule.present
           ? data.triggersReschedule.value
@@ -4998,6 +5036,7 @@ class VisitOutcomeTableData extends DataClass
   String toString() {
     return (StringBuffer('VisitOutcomeTableData(')
           ..write('id: $id, ')
+          ..write('code: $code, ')
           ..write('name: $name, ')
           ..write('triggersReschedule: $triggersReschedule, ')
           ..write('enabled: $enabled')
@@ -5006,12 +5045,13 @@ class VisitOutcomeTableData extends DataClass
   }
 
   @override
-  int get hashCode => Object.hash(id, name, triggersReschedule, enabled);
+  int get hashCode => Object.hash(id, code, name, triggersReschedule, enabled);
   @override
   bool operator ==(Object other) =>
       identical(this, other) ||
       (other is VisitOutcomeTableData &&
           other.id == this.id &&
+          other.code == this.code &&
           other.name == this.name &&
           other.triggersReschedule == this.triggersReschedule &&
           other.enabled == this.enabled);
@@ -5020,29 +5060,34 @@ class VisitOutcomeTableData extends DataClass
 class VisitOutcomeTableCompanion
     extends UpdateCompanion<VisitOutcomeTableData> {
   final Value<int> id;
+  final Value<String?> code;
   final Value<String> name;
   final Value<bool> triggersReschedule;
   final Value<bool> enabled;
   const VisitOutcomeTableCompanion({
     this.id = const Value.absent(),
+    this.code = const Value.absent(),
     this.name = const Value.absent(),
     this.triggersReschedule = const Value.absent(),
     this.enabled = const Value.absent(),
   });
   VisitOutcomeTableCompanion.insert({
     this.id = const Value.absent(),
+    this.code = const Value.absent(),
     required String name,
     this.triggersReschedule = const Value.absent(),
     this.enabled = const Value.absent(),
   }) : name = Value(name);
   static Insertable<VisitOutcomeTableData> custom({
     Expression<int>? id,
+    Expression<String>? code,
     Expression<String>? name,
     Expression<bool>? triggersReschedule,
     Expression<bool>? enabled,
   }) {
     return RawValuesInsertable({
       if (id != null) 'id': id,
+      if (code != null) 'code': code,
       if (name != null) 'name': name,
       if (triggersReschedule != null) 'triggers_reschedule': triggersReschedule,
       if (enabled != null) 'enabled': enabled,
@@ -5051,12 +5096,14 @@ class VisitOutcomeTableCompanion
 
   VisitOutcomeTableCompanion copyWith({
     Value<int>? id,
+    Value<String?>? code,
     Value<String>? name,
     Value<bool>? triggersReschedule,
     Value<bool>? enabled,
   }) {
     return VisitOutcomeTableCompanion(
       id: id ?? this.id,
+      code: code ?? this.code,
       name: name ?? this.name,
       triggersReschedule: triggersReschedule ?? this.triggersReschedule,
       enabled: enabled ?? this.enabled,
@@ -5068,6 +5115,9 @@ class VisitOutcomeTableCompanion
     final map = <String, Expression>{};
     if (id.present) {
       map['id'] = Variable<int>(id.value);
+    }
+    if (code.present) {
+      map['code'] = Variable<String>(code.value);
     }
     if (name.present) {
       map['name'] = Variable<String>(name.value);
@@ -5085,6 +5135,7 @@ class VisitOutcomeTableCompanion
   String toString() {
     return (StringBuffer('VisitOutcomeTableCompanion(')
           ..write('id: $id, ')
+          ..write('code: $code, ')
           ..write('name: $name, ')
           ..write('triggersReschedule: $triggersReschedule, ')
           ..write('enabled: $enabled')
@@ -18160,6 +18211,7 @@ typedef $$RouteInventoryTableTableProcessedTableManager =
 typedef $$VisitOutcomeTableTableCreateCompanionBuilder =
     VisitOutcomeTableCompanion Function({
       Value<int> id,
+      Value<String?> code,
       required String name,
       Value<bool> triggersReschedule,
       Value<bool> enabled,
@@ -18167,6 +18219,7 @@ typedef $$VisitOutcomeTableTableCreateCompanionBuilder =
 typedef $$VisitOutcomeTableTableUpdateCompanionBuilder =
     VisitOutcomeTableCompanion Function({
       Value<int> id,
+      Value<String?> code,
       Value<String> name,
       Value<bool> triggersReschedule,
       Value<bool> enabled,
@@ -18218,6 +18271,11 @@ class $$VisitOutcomeTableTableFilterComposer
   });
   ColumnFilters<int> get id => $composableBuilder(
     column: $table.id,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get code => $composableBuilder(
+    column: $table.code,
     builder: (column) => ColumnFilters(column),
   );
 
@@ -18276,6 +18334,11 @@ class $$VisitOutcomeTableTableOrderingComposer
     builder: (column) => ColumnOrderings(column),
   );
 
+  ColumnOrderings<String> get code => $composableBuilder(
+    column: $table.code,
+    builder: (column) => ColumnOrderings(column),
+  );
+
   ColumnOrderings<String> get name => $composableBuilder(
     column: $table.name,
     builder: (column) => ColumnOrderings(column),
@@ -18303,6 +18366,9 @@ class $$VisitOutcomeTableTableAnnotationComposer
   });
   GeneratedColumn<int> get id =>
       $composableBuilder(column: $table.id, builder: (column) => column);
+
+  GeneratedColumn<String> get code =>
+      $composableBuilder(column: $table.code, builder: (column) => column);
 
   GeneratedColumn<String> get name =>
       $composableBuilder(column: $table.name, builder: (column) => column);
@@ -18375,11 +18441,13 @@ class $$VisitOutcomeTableTableTableManager
           updateCompanionCallback:
               ({
                 Value<int> id = const Value.absent(),
+                Value<String?> code = const Value.absent(),
                 Value<String> name = const Value.absent(),
                 Value<bool> triggersReschedule = const Value.absent(),
                 Value<bool> enabled = const Value.absent(),
               }) => VisitOutcomeTableCompanion(
                 id: id,
+                code: code,
                 name: name,
                 triggersReschedule: triggersReschedule,
                 enabled: enabled,
@@ -18387,11 +18455,13 @@ class $$VisitOutcomeTableTableTableManager
           createCompanionCallback:
               ({
                 Value<int> id = const Value.absent(),
+                Value<String?> code = const Value.absent(),
                 required String name,
                 Value<bool> triggersReschedule = const Value.absent(),
                 Value<bool> enabled = const Value.absent(),
               }) => VisitOutcomeTableCompanion.insert(
                 id: id,
+                code: code,
                 name: name,
                 triggersReschedule: triggersReschedule,
                 enabled: enabled,

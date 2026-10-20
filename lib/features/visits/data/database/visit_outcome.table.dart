@@ -6,6 +6,8 @@ class VisitOutcomeTable extends Table {
   String get tableName => 'visit_outcomes';
 
   late final id = integer()();
+  /// Stable server code (absent, refused, reschedule) that picks how it is shown.
+  late final code = text().nullable()();
   late final name = text()();
   late final triggersReschedule =
       boolean().withDefault(const Constant(false))();
