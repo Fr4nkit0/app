@@ -228,4 +228,54 @@ void main() {
 
     expect((await db.select(db.routeStopTable).get()).length, 2);
   });
+
+  test('does not overwrite rows that have unsent local changes', () async {
+    await service.bootstrap();
+    final queue = DriftPendingChangeRepository(db);
+
+    await (db.update(db.customerTable)
+          ..where((t) => t.customerId.equals('cust-uuid-11')))
+        .write(const CustomerTableCompanion(name: Value('Ana (edited)')));
+    await queue.enqueue(
+      entity: PendingEntity.customer,
+      entityId: 'cust-uuid-11',
+      action: PendingAction.update,
+    );
+
+    final stop = await (db.select(db.routeStopTable)
+          ..where((t) => t.serverId.equals(71)))
+        .getSingle();
+    await (db.update(db.routeStopTable)
+          ..where((t) => t.routeStopId.equals(stop.routeStopId)))
+        .write(const RouteStopTableCompanion(status: Value('done')));
+    await db.into(db.visitTable).insert(
+          VisitTableCompanion.insert(
+            visitId: const Value('visit-1'),
+            routeStopId: stop.routeStopId,
+            customerId: stop.customerId,
+            visitType: 'visit',
+            arrived_at: DateTime(2026, 10, 19, 10),
+          ),
+        );
+    await queue.enqueue(
+      entity: PendingEntity.visit,
+      entityId: 'visit-1',
+      action: PendingAction.insert,
+    );
+
+    await service.bootstrap();
+
+    final ana = await (db.select(db.customerTable)
+          ..where((t) => t.customerId.equals('cust-uuid-11')))
+        .getSingle();
+    expect(ana.name, 'Ana (edited)');
+    final after = await (db.select(db.routeStopTable)
+          ..where((t) => t.routeStopId.equals(stop.routeStopId)))
+        .getSingle();
+    expect(after.status, 'done');
+    final beto = await (db.select(db.customerTable)
+          ..where((t) => t.customerId.equals('cust-uuid-12')))
+        .getSingle();
+    expect(beto.name, 'Beto');
+  });
 }

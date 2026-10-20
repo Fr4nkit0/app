@@ -33,7 +33,7 @@ class CompleteVisitUseCase {
           routeStopId: stopId,
           customerId: customerId,
           visitType: visitType,
-          outcomeId: outcomeId,
+          outcomeId: outcomeId ?? await _visitRepo.findDeliveredOutcomeId(),
           arrivedAt: DateTime.now(),
           observations: observations,
         ),

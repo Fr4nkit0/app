@@ -68,6 +68,8 @@ class _VisitScreenState extends ConsumerState<VisitScreen> {
   String _rescheduleTimeSlot = 'Mañana (09:00 - 12:00)';
   final TextEditingController _noteController = TextEditingController();
 
+  bool get _isRescheduleSelected => _selectedOutcome?.triggersReschedule ?? false;
+
   @override
   void dispose() {
     _noteController.dispose();
@@ -108,7 +110,7 @@ class _VisitScreenState extends ConsumerState<VisitScreen> {
         );
 
         if ((hasReturns || hasPayments) &&
-            (_selectedOutcome?.triggersReschedule ?? false)) {
+            _isRescheduleSelected) {
           _selectedOutcome = null;
         }
 
@@ -487,17 +489,13 @@ class _VisitScreenState extends ConsumerState<VisitScreen> {
 
     final visitType =
         _isSaleSelected ? VisitType.sale : VisitType.visit;
-    final outcomes = ref.read(visitOutcomesProvider).value ?? const [];
-    final outcomeId = hasSales
-        ? outcomes.where((o) => !o.triggersReschedule).firstOrNull?.id
-        : outcome?.id;
 
     await ref.read(completeVisitUseCaseProvider).execute(
           stopId: stop.id,
           customerId: stop.customer.id,
           visitType: visitType,
           nextStatus: nextStatus,
-          outcomeId: outcomeId,
+          outcomeId: hasSales ? null : outcome?.id,
           observations:
               _noteController.text.isNotEmpty ? _noteController.text : null,
         );
@@ -541,7 +539,7 @@ class _VisitScreenState extends ConsumerState<VisitScreen> {
         const SizedBox(height: 20),
 
         // Reschedule Form Wheel
-        if (_selectedOutcome?.triggersReschedule ?? false) ...[
+        if (_isRescheduleSelected) ...[
           Text(
             'SELECCIONAR NUEVO DÍA',
             style: TextStyle(
@@ -561,7 +559,7 @@ class _VisitScreenState extends ConsumerState<VisitScreen> {
         TextField(
           controller: _noteController,
           decoration: InputDecoration(
-            labelText: (_selectedOutcome?.triggersReschedule ?? false)
+            labelText: _isRescheduleSelected
                 ? 'Nota de reprogramación (opcional)'
                 : 'Observaciones de la visita (opcional)',
             hintText: 'Ej: No tenía plata / Dejar el lunes sin falta...',
@@ -570,7 +568,7 @@ class _VisitScreenState extends ConsumerState<VisitScreen> {
           maxLines: 2,
         ),
 
-        if (_selectedOutcome?.triggersReschedule ?? false) ...[
+        if (_isRescheduleSelected) ...[
           const SizedBox(height: 12),
           Container(
             padding: const EdgeInsets.all(12),

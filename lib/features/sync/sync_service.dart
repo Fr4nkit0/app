@@ -4,8 +4,25 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../core/network/dio_client.dart';
 import '../../core/services/database.helper.dart';
+import 'domain/models/pending_change.dart';
 
 typedef Json = Map<String, dynamic>;
+
+/// Local rows that still have unsent or rejected changes; the server copy
+/// must not overwrite them.
+class _Unsent {
+  const _Unsent({
+    required this.customers,
+    required this.stops,
+    required this.balanceCustomers,
+    required this.hasSales,
+  });
+
+  final Set<String> customers;
+  final Set<String> stops;
+  final Set<String> balanceCustomers;
+  final bool hasSales;
+}
 
 /// Downloads the driver's full day and stores it locally.
 ///
@@ -44,13 +61,14 @@ class SyncService {
     final data = Map<String, dynamic>.from(response.data['data'] as Map);
 
     await _db.transaction(() async {
+      final unsent = await _loadUnsent();
       await _storeCatalogs(data);
-      final productIds = await _storeProducts(data);
-      final customerIds = await _storeCustomers(data, productIds);
+      final productIds = await _storeProducts(data, unsent);
+      final (customerIds, addressIds) = await _storeCustomers(data, productIds, unsent);
       final route = data['route'] as Json?;
       if (route != null) {
         final routeId = await _storeRoute(route);
-        await _storeStops(routeId, _list(data['stops']), customerIds);
+        await _storeStops(routeId, _list(data['stops']), customerIds, addressIds, unsent);
         await _storeTruckInventory(routeId, _list(data['truck_inventory']), productIds);
       }
       await _db.into(_db.syncStateTable).insertOnConflictUpdate(
@@ -60,6 +78,56 @@ class SyncService {
             ),
           );
     });
+  }
+
+  Future<_Unsent> _loadUnsent() async {
+    final rows = await (_db.select(_db.pendingChangeTable)
+          ..where((t) => t.status.isIn([
+                PendingStatus.pending.wireName,
+                PendingStatus.rejected.wireName,
+              ])))
+        .get();
+    Set<String> ids(PendingEntity e) =>
+        {for (final r in rows) if (r.entity == e.wireName) r.entityId};
+
+    final visitIds = ids(PendingEntity.visit);
+    final stops = ids(PendingEntity.routeStop);
+    if (visitIds.isNotEmpty) {
+      final visits = await (_db.select(_db.visitTable)
+            ..where((t) => t.visitId.isIn(visitIds)))
+          .get();
+      stops.addAll(visits.map((v) => v.routeStopId));
+    }
+
+    final balanceCustomers = <String>{};
+    final saleIds = ids(PendingEntity.sale);
+    if (saleIds.isNotEmpty) {
+      final sales = await (_db.select(_db.saleTable)
+            ..where((t) => t.saleId.isIn(saleIds)))
+          .get();
+      balanceCustomers.addAll(sales.map((r) => r.customerId));
+    }
+    final paymentIds = ids(PendingEntity.payment);
+    if (paymentIds.isNotEmpty) {
+      final payments = await (_db.select(_db.paymentTable)
+            ..where((t) => t.paymentId.isIn(paymentIds)))
+          .get();
+      balanceCustomers.addAll(payments.map((r) => r.customerId));
+    }
+    final movementIds = ids(PendingEntity.containerMovement);
+    if (movementIds.isNotEmpty) {
+      final movements = await (_db.select(_db.containerMovementTable)
+            ..where((t) => t.containerMovementId.isIn(movementIds)))
+          .get();
+      balanceCustomers.addAll(movements.map((r) => r.customerId));
+    }
+
+    return _Unsent(
+      customers: ids(PendingEntity.customer),
+      stops: stops,
+      balanceCustomers: balanceCustomers,
+      hasSales: saleIds.isNotEmpty,
+    );
   }
 
   Future<void> _storeCatalogs(Json data) async {
@@ -93,7 +161,7 @@ class SyncService {
   }
 
   /// Returns local product ids keyed by server id.
-  Future<Map<int, String>> _storeProducts(Json data) async {
+  Future<Map<int, String>> _storeProducts(Json data, _Unsent unsent) async {
     final stockByProduct = <int, int>{
       for (final i in _list(data['truck_inventory']))
         i['product_id'] as int: _toDouble(i['current_quantity']).round(),
@@ -124,7 +192,7 @@ class SyncService {
             name: Value(p['name'] as String),
             description: Value(p['description'] as String?),
             price: p['price'] == null ? const Value.absent() : Value(_toDouble(p['price'])),
-            stock: Value(stock),
+            stock: unsent.hasSales ? const Value.absent() : Value(stock),
           ),
         );
         ids[serverId] = existing.productId;
@@ -133,29 +201,30 @@ class SyncService {
     return ids;
   }
 
-  /// Returns local customer ids keyed by server id.
-  Future<Map<int, String>> _storeCustomers(
+  /// Returns local customer and address ids, each keyed by server id.
+  Future<(Map<int, String>, Map<int, String>)> _storeCustomers(
     Json data,
     Map<int, String> productIds,
+    _Unsent unsent,
   ) async {
     final containerCodes = {
       for (final c in await _db.select(_db.containerTypeTable).get()) c.id: c.code,
     };
     final customerIds = <int, String>{};
+    final addressIds = <int, String>{};
 
     for (final c in _list(data['customers'])) {
       final serverId = c['id'] as int;
-      final localId = await _upsertCustomer(c, serverId);
+      final localId = await _upsertCustomer(c, serverId, unsent);
       customerIds[serverId] = localId;
+      final keepLocal = unsent.customers.contains(localId);
 
-      final addressIds = <int, String>{};
       for (final a in _list(c['addresses'])) {
-        addressIds[a['id'] as int] = await _upsertAddress(a, localId);
+        addressIds[a['id'] as int] = await _upsertAddress(a, localId, keepLocal);
       }
-      _addressIds.addAll(addressIds);
 
       for (final p in _list(c['preferences'])) {
-        await _upsertPreference(p, localId);
+        await _upsertPreference(p, localId, keepLocal);
       }
 
       await (_db.delete(_db.customerAgreementTable)
@@ -176,6 +245,8 @@ class SyncService {
               ),
             );
       }
+
+      if (unsent.balanceCustomers.contains(localId)) continue;
 
       final balance = c['balance'] as Json?;
       if (balance != null) {
@@ -199,12 +270,10 @@ class SyncService {
             );
       }
     }
-    return customerIds;
+    return (customerIds, addressIds);
   }
 
-  final Map<int, String> _addressIds = {};
-
-  Future<String> _upsertCustomer(Json c, int serverId) async {
+  Future<String> _upsertCustomer(Json c, int serverId, _Unsent unsent) async {
     final clientUuid = c['client_uuid'] as String?;
     final existing = await (_db.select(_db.customerTable)
           ..where((t) =>
@@ -225,13 +294,15 @@ class SyncService {
           );
       return row.customerId;
     }
-    await (_db.update(_db.customerTable)
-          ..where((t) => t.customerId.equals(existing.customerId)))
-        .write(fields);
+    if (!unsent.customers.contains(existing.customerId)) {
+      await (_db.update(_db.customerTable)
+            ..where((t) => t.customerId.equals(existing.customerId)))
+          .write(fields);
+    }
     return existing.customerId;
   }
 
-  Future<String> _upsertAddress(Json a, String customerId) async {
+  Future<String> _upsertAddress(Json a, String customerId, bool keepLocal) async {
     final serverId = a['id'] as int;
     final existing = await (_db.select(_db.customerAddressTable)
           ..where((t) => t.serverId.equals(serverId)))
@@ -251,13 +322,15 @@ class SyncService {
     if (existing == null) {
       return (await _db.into(_db.customerAddressTable).insertReturning(fields)).addressId;
     }
-    await (_db.update(_db.customerAddressTable)
-          ..where((t) => t.addressId.equals(existing.addressId)))
-        .write(fields);
+    if (!keepLocal) {
+      await (_db.update(_db.customerAddressTable)
+            ..where((t) => t.addressId.equals(existing.addressId)))
+          .write(fields);
+    }
     return existing.addressId;
   }
 
-  Future<void> _upsertPreference(Json p, String customerId) async {
+  Future<void> _upsertPreference(Json p, String customerId, bool keepLocal) async {
     final serverId = p['id'] as int;
     final existing = await (_db.select(_db.customerPreferenceTable)
           ..where((t) => t.serverId.equals(serverId)))
@@ -271,7 +344,7 @@ class SyncService {
     );
     if (existing == null) {
       await _db.into(_db.customerPreferenceTable).insert(fields);
-    } else {
+    } else if (!keepLocal) {
       await (_db.update(_db.customerPreferenceTable)
             ..where((t) => t.customerPreferenceId.equals(existing.customerPreferenceId)))
           .write(fields);
@@ -302,6 +375,8 @@ class SyncService {
     String routeId,
     List<Json> stops,
     Map<int, String> customerIds,
+    Map<int, String> addressIds,
+    _Unsent unsent,
   ) async {
     final route = await (_db.select(_db.routeTable)
           ..where((t) => t.routeId.equals(routeId)))
@@ -317,7 +392,7 @@ class SyncService {
       final fields = RouteStopTableCompanion(
         routeId: Value(routeId),
         customerId: Value(customerId),
-        customerAddressId: Value(_addressIds[s['address_id']]),
+        customerAddressId: Value(addressIds[s['address_id']]),
         sequence: Value(i + 1),
         status: Value(_stopStatus(s['status'] as String?)),
         scheduledAt: Value(_scheduledAt(route.route_date, time)),
@@ -331,9 +406,11 @@ class SyncService {
         stopIds[serverId] =
             (await _db.into(_db.routeStopTable).insertReturning(fields)).routeStopId;
       } else {
-        await (_db.update(_db.routeStopTable)
-              ..where((t) => t.routeStopId.equals(existing.routeStopId)))
-            .write(fields);
+        if (!unsent.stops.contains(existing.routeStopId)) {
+          await (_db.update(_db.routeStopTable)
+                ..where((t) => t.routeStopId.equals(existing.routeStopId)))
+              .write(fields);
+        }
         stopIds[serverId] = existing.routeStopId;
       }
     }

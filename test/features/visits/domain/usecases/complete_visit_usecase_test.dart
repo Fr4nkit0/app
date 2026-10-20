@@ -28,6 +28,9 @@ class FakeFailingVisitRepository implements VisitRepository {
   Stream<List<VisitOutcome>> watchOutcomes() => const Stream.empty();
 
   @override
+  Future<int?> findDeliveredOutcomeId() async => null;
+
+  @override
   Stream<List<Visit>> watchVisitsForStop(String routeStopId) =>
       const Stream.empty();
 }
@@ -77,6 +80,31 @@ void main() {
   // ───────────────────────────────────────────────────────────────
 
   group('execute — success (F2a)', () {
+    test('without an outcome it records the catalog delivered outcome', () async {
+      await db.into(db.visitOutcomeTable).insert(
+            VisitOutcomeTableCompanion.insert(
+              id: const drift.Value(2),
+              name: 'Absent',
+              triggersReschedule: const drift.Value(true),
+            ),
+          );
+      await db.into(db.visitOutcomeTable).insert(
+            VisitOutcomeTableCompanion.insert(
+              id: const drift.Value(3),
+              name: 'Delivered',
+            ),
+          );
+
+      await sut.execute(
+        stopId: 'stop-test-1',
+        customerId: 'mock-customer-1',
+        visitType: VisitType.sale,
+        nextStatus: StopStatus.done,
+      );
+
+      expect((await db.select(db.visitTable).getSingle()).outcomeId, 3);
+    });
+
     test('returns Resource.success(null) when both steps succeed', () async {
       final result = await sut.execute(
         stopId: 'stop-test-1',
