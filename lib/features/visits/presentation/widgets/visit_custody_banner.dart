@@ -122,8 +122,8 @@ class VisitCustodyBanner extends ConsumerWidget {
   }
 }
 
-/// Containers the customer holds; the badges wrap to a second line when the
-/// row is too narrow for both.
+/// Containers the customer holds, side by side; on a narrow row the labels
+/// shorten so both badges stay on one line.
 class VisitContainerBadges extends StatelessWidget {
   const VisitContainerBadges({
     super.key,
@@ -136,19 +136,22 @@ class VisitContainerBadges extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return Wrap(
-      spacing: 8,
-      runSpacing: 8,
+    return Row(
       children: [
-        VisitContainerBadge(
-          icon: Icons.water_drop_outlined,
-          label: 'Bidón 20L',
-          count: bidon,
+        Flexible(
+          child: VisitContainerBadge(
+            icon: Icons.water_drop_outlined,
+            label: 'Bidón 20L',
+            count: bidon,
+          ),
         ),
-        VisitContainerBadge(
-          icon: Icons.local_drink_outlined,
-          label: 'Sifón 1.5L',
-          count: sifon,
+        const SizedBox(width: 8),
+        Flexible(
+          child: VisitContainerBadge(
+            icon: Icons.local_drink_outlined,
+            label: 'Sifón 1.5L',
+            count: sifon,
+          ),
         ),
       ],
     );
@@ -177,7 +180,7 @@ class VisitContainerBadge extends StatelessWidget {
         hasStock ? MarilinColors.brandBlue : MarilinColors.textMuted;
 
     return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 6),
       decoration: BoxDecoration(
         color: bgColor,
         borderRadius: BorderRadius.circular(10),
@@ -191,7 +194,7 @@ class VisitContainerBadge extends StatelessWidget {
         mainAxisSize: MainAxisSize.min,
         children: [
           Icon(icon, size: 14, color: textColor),
-          const SizedBox(width: 6),
+          const SizedBox(width: 4),
           // The label gives way first so the count always stays visible.
           Flexible(
             child: Text(
