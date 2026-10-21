@@ -5,7 +5,7 @@ import 'package:dio/dio.dart';
 import 'package:app/core/network/dio_client.dart';
 import 'package:app/features/sync/presentation/providers/pending_change_repository_provider.dart';
 
-const _authTokenKey = 'auth_token';
+const _authTokenKey = authTokenKey;
 const _authDisplayNameKey = 'auth_display_name';
 const _authRememberKey = 'auth_remember_credentials';
 const _authSavedEmailKey = 'auth_saved_email';
@@ -90,6 +90,15 @@ class AuthState {
 class AuthController extends Notifier<AuthState> {
   @override
   AuthState build() {
+    // The API client already deleted the tokens; local data stays for the next login.
+    ref.listen(sessionExpiryProvider, (_, _) {
+      state = state.copyWith(
+        isAuthenticated: false,
+        isLoading: false,
+        clearDisplayName: true,
+        error: 'Tu sesión venció. Iniciá sesión de nuevo.',
+      );
+    });
     _checkAuth();
     return AuthState(isLoading: true);
   }
@@ -249,6 +258,13 @@ class AuthController extends Notifier<AuthState> {
       if (token != null) {
         final storage = ref.read(secureStorageProvider);
         await storage.write(key: _authTokenKey, value: token.toString());
+        final refreshToken = data['refresh_token'];
+        if (refreshToken != null) {
+          await storage.write(
+            key: authRefreshTokenKey,
+            value: refreshToken.toString(),
+          );
+        }
 
         final displayName = _parseDisplayName(data, email);
         if (displayName != null) {
@@ -302,6 +318,7 @@ class AuthController extends Notifier<AuthState> {
     } finally {
       final storage = ref.read(secureStorageProvider);
       await storage.delete(key: _authTokenKey);
+      await storage.delete(key: authRefreshTokenKey);
       await storage.delete(key: _authDisplayNameKey);
       state = state.copyWith(
         isAuthenticated: false,

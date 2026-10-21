@@ -48,6 +48,7 @@ FakeHttpAdapter _loginOk() => FakeHttpAdapter(
   (_) => FakeHttpAdapter.json(200, {
     'data': {
       'token': 'plain-text-token',
+      'refresh_token': 'plain-refresh-token',
       'user': {
         'id': 7,
         'name': 'Marcos Reparto',
@@ -260,6 +261,37 @@ void main() {
     });
   });
 
+  group('session', () {
+    test('login stores the refresh token next to the access token', () async {
+      final container = _container(_loginOk());
+      await _settled(container);
+
+      await container
+          .read(authControllerProvider.notifier)
+          .login('marcos@marilin.test', 'secret');
+
+      expect(
+        await _storage.read(key: 'auth_refresh_token'),
+        'plain-refresh-token',
+      );
+    });
+
+    test('an expired session goes back to the login with a message', () async {
+      FlutterSecureStorage.setMockInitialValues({'auth_token': 'stored-token'});
+      final container = _container(
+        FakeHttpAdapter((_) => throw StateError('no network expected')),
+      );
+      expect((await _settled(container)).isAuthenticated, isTrue);
+
+      container.read(sessionExpiryProvider.notifier).expire();
+      await Future<void>.delayed(Duration.zero);
+
+      final state = container.read(authControllerProvider);
+      expect(state.isAuthenticated, isFalse);
+      expect(state.error, 'Tu sesión venció. Iniciá sesión de nuevo.');
+    });
+  });
+
   group('logout', () {
     late AppDatabase db;
     late DriftPendingChangeRepository queue;
@@ -310,6 +342,10 @@ void main() {
     );
 
     test('is allowed when the queue is empty and clears the session', () async {
+      await _storage.write(
+        key: 'auth_refresh_token',
+        value: 'plain-refresh-token',
+      );
       final adapter = FakeHttpAdapter((_) => FakeHttpAdapter.json(200, {}));
       final container = await signedIn(adapter);
 
@@ -320,6 +356,7 @@ void main() {
       expect(result, isA<LoggedOut>());
       expect(adapter.requests.single.path, '/auth/logout');
       expect(await _storage.read(key: 'auth_token'), isNull);
+      expect(await _storage.read(key: 'auth_refresh_token'), isNull);
       expect(container.read(authControllerProvider).isAuthenticated, isFalse);
     });
 
