@@ -165,13 +165,17 @@ class _RouteHeader extends ConsumerWidget {
             color: MarilinColors.brandBlue,
           ),
           const SizedBox(width: 4),
-          Text(
-            '$weekday, $day de $month',
-            style: const TextStyle(
-              color: MarilinColors.brandBlue,
-              fontSize: 11,
-              fontWeight: FontWeight.w800,
-              letterSpacing: 0.2,
+          Flexible(
+            child: Text(
+              '$weekday, $day de $month',
+              maxLines: 1,
+              overflow: TextOverflow.ellipsis,
+              style: const TextStyle(
+                color: MarilinColors.brandBlue,
+                fontSize: 11,
+                fontWeight: FontWeight.w800,
+                letterSpacing: 0.2,
+              ),
             ),
           ),
         ],
@@ -224,12 +228,20 @@ class _RouteHeader extends ConsumerWidget {
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           // 1. Date badge and sync control on top
+          // Both chips shrink so long dates fit next to the sync status on narrow phones.
           Row(
             crossAxisAlignment: CrossAxisAlignment.center,
+            mainAxisAlignment: MainAxisAlignment.spaceBetween,
             children: [
-              _dateBadge(days[now.weekday], now.day, months[now.month]),
-              const Spacer(),
-              const SyncStatusButtonContainer(),
+              Flexible(
+                child: _dateBadge(
+                  days[now.weekday],
+                  now.day,
+                  months[now.month],
+                ),
+              ),
+              const SizedBox(width: 8),
+              const Flexible(child: SyncStatusButtonContainer()),
             ],
           ),
           const SizedBox(height: 14),

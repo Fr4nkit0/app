@@ -50,41 +50,62 @@ class SyncStatusButton extends StatelessWidget {
                   color: color,
                 ),
               const SizedBox(width: 4),
-              Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                mainAxisSize: MainAxisSize.min,
-                children: [
-                  Text(
-                    _headline(),
-                    style: TextStyle(
-                      color: color,
-                      fontSize: 11,
-                      fontWeight: FontWeight.w800,
+              // On narrow headers the texts shrink with an ellipsis instead of overflowing.
+              Flexible(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    Text(
+                      _headline(),
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                      style: TextStyle(
+                        color: color,
+                        fontSize: 11,
+                        fontWeight: FontWeight.w800,
+                      ),
                     ),
-                  ),
-                  Row(
-                    mainAxisSize: MainAxisSize.min,
-                    children: [
-                      Text(
-                        _count(status.pendingCount, 'pendiente', 'pendientes'),
-                        style: const TextStyle(
-                          color: MarilinColors.textMuted,
-                          fontSize: 10,
+                    Row(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        Flexible(
+                          child: Text(
+                            _count(
+                              status.pendingCount,
+                              'pendiente',
+                              'pendientes',
+                            ),
+                            maxLines: 1,
+                            overflow: TextOverflow.ellipsis,
+                            style: const TextStyle(
+                              color: MarilinColors.textMuted,
+                              fontSize: 10,
+                            ),
+                          ),
                         ),
-                      ),
-                      const SizedBox(width: 6),
-                      Text(
-                        _count(status.rejectedCount, 'rechazado', 'rechazados'),
-                        style: TextStyle(
-                          color: status.rejectedCount > 0
-                              ? MarilinColors.destructive
-                              : MarilinColors.textMuted,
-                          fontSize: 10,
+                        const SizedBox(width: 6),
+                        Flexible(
+                          child: Text(
+                            _count(
+                              status.rejectedCount,
+                              'rechazado',
+                              'rechazados',
+                            ),
+                            maxLines: 1,
+                            overflow: TextOverflow.ellipsis,
+                            style: TextStyle(
+                              color: status.rejectedCount > 0
+                                  ? MarilinColors.destructive
+                                  : MarilinColors.textMuted,
+                              fontSize: 10,
+                            ),
+                          ),
                         ),
-                      ),
-                    ],
-                  ),
-                ],
+                      ],
+                    ),
+                  ],
+                ),
               ),
             ],
           ),

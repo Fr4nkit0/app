@@ -22,6 +22,39 @@ void main() {
     ),
   );
 
+  testWidgets('shrinks without overflowing when the header is narrow', (
+    tester,
+  ) async {
+    await tester.pumpWidget(
+      MaterialApp(
+        home: Scaffold(
+          body: SizedBox(
+            width: 120,
+            child: Row(
+              children: [
+                Flexible(
+                  child: SyncStatusButton(
+                    status: SyncStatus(
+                      lastCycleAt: DateTime(2026, 10, 21, 10, 53),
+                      lastResult: SyncCycleResult.success,
+                      pendingCount: 12,
+                      rejectedCount: 3,
+                    ),
+                    isRunning: false,
+                    onPressed: () {},
+                  ),
+                ),
+              ],
+            ),
+          ),
+        ),
+      ),
+    );
+
+    expect(tester.takeException(), isNull);
+    expect(find.text('Sincronizado 10:53'), findsOneWidget);
+  });
+
   testWidgets('shows the last cycle, pending and rejected counts', (
     tester,
   ) async {
