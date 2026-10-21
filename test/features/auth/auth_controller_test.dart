@@ -361,6 +361,26 @@ void main() {
     });
 
     test(
+      'does not report an expired session after a voluntary logout',
+      () async {
+        late ProviderContainer container;
+        container = await signedIn(
+          FakeHttpAdapter((_) {
+            // The logout request found the session already dead on the server.
+            container.read(sessionExpiryProvider.notifier).expire();
+            return FakeHttpAdapter.json(401, {'message': 'Unauthenticated.'});
+          }),
+        );
+
+        await container.read(authControllerProvider.notifier).logout();
+
+        final state = container.read(authControllerProvider);
+        expect(state.isAuthenticated, isFalse);
+        expect(state.error, isNull);
+      },
+    );
+
+    test(
       'keeps the remembered credentials so the next login is one tap',
       () async {
         await _storage.write(key: 'auth_remember_credentials', value: 'true');

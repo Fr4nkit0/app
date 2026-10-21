@@ -320,10 +320,12 @@ class AuthController extends Notifier<AuthState> {
       await storage.delete(key: _authTokenKey);
       await storage.delete(key: authRefreshTokenKey);
       await storage.delete(key: _authDisplayNameKey);
+      // The driver chose to leave; a session that expired on the way out is not news.
       state = state.copyWith(
         isAuthenticated: false,
         isLoading: false,
         clearDisplayName: true,
+        clearError: true,
       );
     }
     return const LoggedOut();
