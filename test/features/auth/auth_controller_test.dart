@@ -26,7 +26,8 @@ ProviderContainer _container(
       dioProvider.overrideWithValue(dio),
       secureStorageProvider.overrideWithValue(_storage),
       deviceNameProvider.overrideWithValue('Test Phone'),
-      if (queue != null) pendingChangeRepositoryProvider.overrideWithValue(queue),
+      if (queue != null)
+        pendingChangeRepositoryProvider.overrideWithValue(queue),
     ],
   );
   addTearDown(container.dispose);
@@ -162,7 +163,7 @@ void main() {
   });
 
   group('remember me', () {
-    test('persists only the email, never the password', () async {
+    test('persists the email and the password in secure storage', () async {
       final container = _container(_loginOk());
       await _settled(container);
 
@@ -172,40 +173,46 @@ void main() {
 
       final all = await _storage.readAll();
       expect(all['auth_saved_email'], 'marcos@marilin.test');
-      expect(all.containsKey('auth_saved_password'), isFalse);
-      expect(all.values, isNot(contains('secret')));
+      expect(all['auth_saved_password'], 'secret');
 
       final remembered = await container
           .read(authControllerProvider.notifier)
           .loadRememberedCredentials();
       expect(remembered.remember, isTrue);
       expect(remembered.email, 'marcos@marilin.test');
+      expect(remembered.password, 'secret');
     });
 
-    test('forgets the email when remember me is off', () async {
-      FlutterSecureStorage.setMockInitialValues({
-        'auth_remember_credentials': 'true',
-        'auth_saved_email': 'old@marilin.test',
-      });
-      final container = _container(_loginOk());
-      await _settled(container);
+    test(
+      'forgets the email and the password when remember me is off',
+      () async {
+        FlutterSecureStorage.setMockInitialValues({
+          'auth_remember_credentials': 'true',
+          'auth_saved_email': 'old@marilin.test',
+          'auth_saved_password': 'old-secret',
+        });
+        final container = _container(_loginOk());
+        await _settled(container);
 
-      await container
-          .read(authControllerProvider.notifier)
-          .login('marcos@marilin.test', 'secret');
+        await container
+            .read(authControllerProvider.notifier)
+            .login('marcos@marilin.test', 'secret');
 
-      final remembered = await container
-          .read(authControllerProvider.notifier)
-          .loadRememberedCredentials();
-      expect(remembered.remember, isFalse);
-      expect(remembered.email, isNull);
-    });
+        final remembered = await container
+            .read(authControllerProvider.notifier)
+            .loadRememberedCredentials();
+        expect(remembered.remember, isFalse);
+        expect(remembered.email, isNull);
+        expect(remembered.password, isNull);
+        expect(await _storage.read(key: 'auth_saved_password'), isNull);
+      },
+    );
 
-    test('deletes a password saved by a previous install on startup', () async {
+    test('keeps the remembered password across restarts', () async {
       FlutterSecureStorage.setMockInitialValues({
         'auth_remember_credentials': 'true',
         'auth_saved_email': 'marcos@marilin.test',
-        'auth_saved_password': 'legacy-secret',
+        'auth_saved_password': 'secret',
       });
       final container = _container(
         FakeHttpAdapter((_) => throw StateError('no network expected')),
@@ -213,11 +220,11 @@ void main() {
 
       await _settled(container);
 
-      expect(await _storage.read(key: 'auth_saved_password'), isNull);
       final remembered = await container
           .read(authControllerProvider.notifier)
           .loadRememberedCredentials();
       expect(remembered.email, 'marcos@marilin.test');
+      expect(remembered.password, 'secret');
     });
   });
 
@@ -271,33 +278,36 @@ void main() {
       return container;
     }
 
-    test('is blocked while changes are pending and keeps the session', () async {
-      final adapter = FakeHttpAdapter((_) => FakeHttpAdapter.json(200, {}));
-      final container = await signedIn(adapter);
-      await queue.enqueue(
-        entity: PendingEntity.sale,
-        entityId: 'sale-1',
-        action: PendingAction.insert,
-      );
-      await queue.enqueue(
-        entity: PendingEntity.payment,
-        entityId: 'pay-1',
-        action: PendingAction.insert,
-      );
+    test(
+      'is blocked while changes are pending and keeps the session',
+      () async {
+        final adapter = FakeHttpAdapter((_) => FakeHttpAdapter.json(200, {}));
+        final container = await signedIn(adapter);
+        await queue.enqueue(
+          entity: PendingEntity.sale,
+          entityId: 'sale-1',
+          action: PendingAction.insert,
+        );
+        await queue.enqueue(
+          entity: PendingEntity.payment,
+          entityId: 'pay-1',
+          action: PendingAction.insert,
+        );
 
-      final result = await container
-          .read(authControllerProvider.notifier)
-          .logout();
+        final result = await container
+            .read(authControllerProvider.notifier)
+            .logout();
 
-      expect(result, isA<LogoutBlocked>());
-      final blocked = result as LogoutBlocked;
-      expect(blocked.pendingCount, 2);
-      expect(blocked.message, contains('2'));
-      expect(blocked.message, contains('sincroniz'));
-      expect(adapter.requests, isEmpty);
-      expect(await _storage.read(key: 'auth_token'), 'plain-text-token');
-      expect(container.read(authControllerProvider).isAuthenticated, isTrue);
-    });
+        expect(result, isA<LogoutBlocked>());
+        final blocked = result as LogoutBlocked;
+        expect(blocked.pendingCount, 2);
+        expect(blocked.message, contains('2'));
+        expect(blocked.message, contains('sincroniz'));
+        expect(adapter.requests, isEmpty);
+        expect(await _storage.read(key: 'auth_token'), 'plain-text-token');
+        expect(container.read(authControllerProvider).isAuthenticated, isTrue);
+      },
+    );
 
     test('is allowed when the queue is empty and clears the session', () async {
       final adapter = FakeHttpAdapter((_) => FakeHttpAdapter.json(200, {}));
@@ -312,6 +322,29 @@ void main() {
       expect(await _storage.read(key: 'auth_token'), isNull);
       expect(container.read(authControllerProvider).isAuthenticated, isFalse);
     });
+
+    test(
+      'keeps the remembered credentials so the next login is one tap',
+      () async {
+        await _storage.write(key: 'auth_remember_credentials', value: 'true');
+        await _storage.write(
+          key: 'auth_saved_email',
+          value: 'marcos@marilin.test',
+        );
+        await _storage.write(key: 'auth_saved_password', value: 'secret');
+        final container = await signedIn(
+          FakeHttpAdapter((_) => FakeHttpAdapter.json(200, {})),
+        );
+
+        await container.read(authControllerProvider.notifier).logout();
+
+        final remembered = await container
+            .read(authControllerProvider.notifier)
+            .loadRememberedCredentials();
+        expect(remembered.email, 'marcos@marilin.test');
+        expect(remembered.password, 'secret');
+      },
+    );
 
     test('is allowed when every change was already sent or rejected', () async {
       final container = await signedIn(

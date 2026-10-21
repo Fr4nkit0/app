@@ -36,6 +36,9 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
       if (saved.email != null) {
         _emailController.text = saved.email!;
       }
+      if (saved.password != null) {
+        _passwordController.text = saved.password!;
+      }
       _credentialsLoaded = true;
     });
   }
@@ -56,7 +59,9 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
   Future<void> _onLogin() async {
     if (!_formKey.currentState!.validate()) return;
     FocusScope.of(context).unfocus();
-    await ref.read(authControllerProvider.notifier).login(
+    await ref
+        .read(authControllerProvider.notifier)
+        .login(
           _emailController.text.trim(),
           _passwordController.text,
           rememberCredentials: _rememberCredentials,
@@ -72,9 +77,7 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
     if (!_credentialsLoaded) {
       return Scaffold(
         backgroundColor: tokens.scaffoldMuted,
-        body: Center(
-          child: CircularProgressIndicator(color: tokens.brandBlue),
-        ),
+        body: Center(child: CircularProgressIndicator(color: tokens.brandBlue)),
       );
     }
 
@@ -154,7 +157,9 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
                               ? 'Mostrar contraseña'
                               : 'Ocultar contraseña',
                           onPressed: () {
-                            setState(() => _obscurePassword = !_obscurePassword);
+                            setState(
+                              () => _obscurePassword = !_obscurePassword,
+                            );
                           },
                           icon: Icon(
                             _obscurePassword
@@ -252,9 +257,7 @@ class _LoginErrorBanner extends StatelessWidget {
         decoration: BoxDecoration(
           color: tokens.destructive.withValues(alpha: 0.07),
           borderRadius: BorderRadius.circular(12),
-          border: Border.all(
-            color: tokens.destructive.withValues(alpha: 0.35),
-          ),
+          border: Border.all(color: tokens.destructive.withValues(alpha: 0.35)),
         ),
         child: Row(
           crossAxisAlignment: CrossAxisAlignment.start,
