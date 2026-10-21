@@ -46,6 +46,21 @@ void main() {
     expect(remember.value, isTrue);
   });
 
+  testWidgets('remember me is a plain checkbox with no helper text', (
+    tester,
+  ) async {
+    FlutterSecureStorage.setMockInitialValues({});
+
+    await tester.pumpWidget(_app());
+    await tester.pumpAndSettle();
+
+    final remember = tester.widget<CheckboxListTile>(
+      find.byType(CheckboxListTile),
+    );
+    expect(find.text('Recordarme'), findsOneWidget);
+    expect(remember.subtitle, isNull);
+  });
+
   testWidgets('starts with empty fields on a fresh install', (tester) async {
     FlutterSecureStorage.setMockInitialValues({});
 

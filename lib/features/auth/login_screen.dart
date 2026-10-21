@@ -194,12 +194,6 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
                           color: tokens.brandNavy,
                         ),
                       ),
-                      subtitle: Text(
-                        'Solo se guarda tu correo en este dispositivo',
-                        style: theme.textTheme.bodySmall?.copyWith(
-                          color: tokens.textMuted,
-                        ),
-                      ),
                     ),
                     const SizedBox(height: 20),
                     SizedBox(
