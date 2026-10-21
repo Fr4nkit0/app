@@ -25,13 +25,13 @@ Widget _app() {
 void main() {
   TestWidgetsFlutterBinding.ensureInitialized();
 
-  testWidgets('prefills only the email when remember me was on', (
+  testWidgets('prefills email and password when remember me was on', (
     tester,
   ) async {
     FlutterSecureStorage.setMockInitialValues({
       'auth_remember_credentials': 'true',
       'auth_saved_email': 'marcos@marilin.test',
-      'auth_saved_password': 'legacy-secret',
+      'auth_saved_password': 'secret',
     });
 
     await tester.pumpWidget(_app());
@@ -41,8 +41,9 @@ void main() {
         .widgetList<TextField>(find.byType(TextField))
         .toList();
     expect(fields[0].controller!.text, 'marcos@marilin.test');
-    expect(fields[1].controller!.text, isEmpty);
-    expect(find.text('Recordarme'), findsOneWidget);
+    expect(fields[1].controller!.text, 'secret');
+    final remember = tester.widget<Checkbox>(find.byType(Checkbox));
+    expect(remember.value, isTrue);
   });
 
   testWidgets('starts with empty fields on a fresh install', (tester) async {

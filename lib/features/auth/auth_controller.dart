@@ -5,12 +5,11 @@ import 'package:dio/dio.dart';
 import 'package:app/core/network/dio_client.dart';
 import 'package:app/features/sync/presentation/providers/pending_change_repository_provider.dart';
 
-const _authTokenKey = 'auth_token';
+const _authTokenKey = authTokenKey;
 const _authDisplayNameKey = 'auth_display_name';
 const _authRememberKey = 'auth_remember_credentials';
 const _authSavedEmailKey = 'auth_saved_email';
-// Legacy key: earlier versions stored the password. It is only ever deleted.
-const _legacySavedPasswordKey = 'auth_saved_password';
+const _authSavedPasswordKey = 'auth_saved_password';
 const _deviceNameMaxLength = 100;
 
 /// Name sent at login so the server can label this device's access token.
@@ -21,10 +20,17 @@ final deviceNameProvider = Provider<String>((ref) {
       : name.substring(0, _deviceNameMaxLength);
 });
 
+/// Credentials kept in secure storage (Keystore / Keychain) when the driver
+/// checks "Recordarme", so the next login is a single tap.
 class RememberedCredentials {
-  const RememberedCredentials({this.email, this.remember = false});
+  const RememberedCredentials({
+    this.email,
+    this.password,
+    this.remember = false,
+  });
 
   final String? email;
+  final String? password;
   final bool remember;
 }
 
@@ -76,8 +82,7 @@ class AuthState {
       isLoading: isLoading ?? this.isLoading,
       isAuthenticated: isAuthenticated ?? this.isAuthenticated,
       error: clearError ? null : (error ?? this.error),
-      displayName:
-          clearDisplayName ? null : (displayName ?? this.displayName),
+      displayName: clearDisplayName ? null : (displayName ?? this.displayName),
     );
   }
 }
@@ -85,13 +90,21 @@ class AuthState {
 class AuthController extends Notifier<AuthState> {
   @override
   AuthState build() {
+    // The API client already deleted the tokens; local data stays for the next login.
+    ref.listen(sessionExpiryProvider, (_, _) {
+      state = state.copyWith(
+        isAuthenticated: false,
+        isLoading: false,
+        clearDisplayName: true,
+        error: 'Tu sesión venció. Iniciá sesión de nuevo.',
+      );
+    });
     _checkAuth();
     return AuthState(isLoading: true);
   }
 
   Future<void> _checkAuth() async {
     final storage = ref.read(secureStorageProvider);
-    await storage.delete(key: _legacySavedPasswordKey);
     final token = await storage.read(key: _authTokenKey);
     final displayName = await storage.read(key: _authDisplayNameKey);
 
@@ -116,8 +129,11 @@ class AuthController extends Notifier<AuthState> {
     if (!remember) {
       return const RememberedCredentials(remember: false);
     }
-    final email = await storage.read(key: _authSavedEmailKey);
-    return RememberedCredentials(email: email, remember: true);
+    return RememberedCredentials(
+      email: await storage.read(key: _authSavedEmailKey),
+      password: await storage.read(key: _authSavedPasswordKey),
+      remember: true,
+    );
   }
 
   Future<void> clearLoginError() async {
@@ -196,18 +212,20 @@ class AuthController extends Notifier<AuthState> {
     return 'No pudimos iniciar sesión. Intentá de nuevo.';
   }
 
-  Future<void> _persistRememberedEmail({
+  Future<void> _persistRememberedCredentials({
     required String email,
+    required String password,
     required bool remember,
   }) async {
     final storage = ref.read(secureStorageProvider);
-    await storage.delete(key: _legacySavedPasswordKey);
     if (remember) {
       await storage.write(key: _authRememberKey, value: 'true');
       await storage.write(key: _authSavedEmailKey, value: email);
+      await storage.write(key: _authSavedPasswordKey, value: password);
     } else {
       await storage.write(key: _authRememberKey, value: 'false');
       await storage.delete(key: _authSavedEmailKey);
+      await storage.delete(key: _authSavedPasswordKey);
     }
   }
 
@@ -220,11 +238,14 @@ class AuthController extends Notifier<AuthState> {
 
     try {
       final dio = ref.read(dioProvider);
-      final response = await dio.post('/auth/login', data: {
-        'email': email,
-        'password': password,
-        'device_name': ref.read(deviceNameProvider),
-      });
+      final response = await dio.post(
+        '/auth/login',
+        data: {
+          'email': email,
+          'password': password,
+          'device_name': ref.read(deviceNameProvider),
+        },
+      );
 
       // Server envelope: { data: { token, user: { name, ... } }, message }.
       final raw = response.data;
@@ -237,14 +258,22 @@ class AuthController extends Notifier<AuthState> {
       if (token != null) {
         final storage = ref.read(secureStorageProvider);
         await storage.write(key: _authTokenKey, value: token.toString());
+        final refreshToken = data['refresh_token'];
+        if (refreshToken != null) {
+          await storage.write(
+            key: authRefreshTokenKey,
+            value: refreshToken.toString(),
+          );
+        }
 
         final displayName = _parseDisplayName(data, email);
         if (displayName != null) {
           await storage.write(key: _authDisplayNameKey, value: displayName);
         }
 
-        await _persistRememberedEmail(
+        await _persistRememberedCredentials(
           email: email,
+          password: password,
           remember: rememberCredentials,
         );
 
@@ -262,10 +291,7 @@ class AuthController extends Notifier<AuthState> {
         return false;
       }
     } on DioException catch (e) {
-      state = state.copyWith(
-        isLoading: false,
-        error: _mapLoginError(e),
-      );
+      state = state.copyWith(isLoading: false, error: _mapLoginError(e));
       return false;
     } catch (e) {
       state = state.copyWith(
@@ -292,11 +318,14 @@ class AuthController extends Notifier<AuthState> {
     } finally {
       final storage = ref.read(secureStorageProvider);
       await storage.delete(key: _authTokenKey);
+      await storage.delete(key: authRefreshTokenKey);
       await storage.delete(key: _authDisplayNameKey);
+      // The driver chose to leave; a session that expired on the way out is not news.
       state = state.copyWith(
         isAuthenticated: false,
         isLoading: false,
         clearDisplayName: true,
+        clearError: true,
       );
     }
     return const LoggedOut();
