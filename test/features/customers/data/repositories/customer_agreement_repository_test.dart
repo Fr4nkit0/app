@@ -79,6 +79,7 @@ void main() {
   test('create rejects invalid input and stores nothing', () async {
     for (final result in [
       await create(price: 0),
+      await create(price: 12.345),
       await create(validFrom: '2026-10-22', validTo: '2026-10-21'),
       await create(reason: 'x' * 501),
     ]) {

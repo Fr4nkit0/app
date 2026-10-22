@@ -79,6 +79,11 @@ class DriftCustomerAgreementRepository implements CustomerAgreementRepository {
     if (unitPrice <= 0) {
       return Resource.error(Exception('El precio debe ser mayor a 0.'));
     }
+    // The server keeps two decimals and rejects more, which would strand the
+    // agreement in the queue while it already prices sales here.
+    if ((unitPrice * 100).roundToDouble() / 100 != unitPrice) {
+      return Resource.error(Exception('El precio admite hasta 2 decimales.'));
+    }
     if (validTo != null && validTo.compareTo(validFrom) < 0) {
       return Resource.error(
         Exception('La fecha de fin no puede ser anterior al inicio.'),
