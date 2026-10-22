@@ -82,9 +82,9 @@ class SalePusher implements EntityPusher, RejectionAware {
               for (final l in lines)
                 {
                   'product_id': l.readTable(_db.productTable).serverId,
-                  'customer_agreement_id': l
-                      .readTable(_db.saleItemTable)
-                      .agreementServerId,
+                  ...await _agreementReference(
+                    l.readTable(_db.saleItemTable),
+                  ),
                   'quantity': l.readTable(_db.saleItemTable).quantity,
                   'unit_price': l.readTable(_db.saleItemTable).unitPrice,
                 },
@@ -94,6 +94,21 @@ class SalePusher implements EntityPusher, RejectionAware {
       );
     }
     return PushPlan(records: records, rejections: rejections);
+  }
+
+  /// The line's agreement by server id when it has one (the line's own or
+  /// the one stored since), by local uuid while it has not.
+  Future<Json> _agreementReference(SaleItemTableData line) async {
+    final uuid = line.agreementUuid;
+    var serverId = line.agreementServerId;
+    if (serverId == null && uuid != null) {
+      serverId = (await (_db.select(_db.customerAgreementTable)
+                ..where((t) => t.agreementId.equals(uuid)))
+              .getSingleOrNull())
+          ?.serverId;
+    }
+    if (uuid == null) return {'customer_agreement_id': serverId};
+    return reference('customer_agreement', serverId: serverId, uuid: uuid);
   }
 
   @override

@@ -215,6 +215,7 @@ class SyncService {
     final productId = await _localProductId(a['product_id'] as int?);
     if (customerId == null || productId == null) return;
     final serverId = a['id'] as int;
+    final clientUuid = a['client_uuid'] as String?;
     final fields = CustomerAgreementTableCompanion(
       customerId: Value(customerId),
       productId: Value(productId),
@@ -224,10 +225,24 @@ class SyncService {
       reason: Value(a['reason'] as String?),
       serverId: Value(serverId),
     );
+    // A row this device pushed is matched by its own uuid, before (or
+    // without) the server id being stored, so it is never duplicated.
+    if (clientUuid != null) {
+      final byUuid = await (_db.update(_db.customerAgreementTable)
+            ..where((t) => t.agreementId.equals(clientUuid)))
+          .write(fields);
+      if (byUuid > 0) return;
+    }
     final updated = await (_db.update(_db.customerAgreementTable)
           ..where((t) => t.serverId.equals(serverId)))
         .write(fields);
-    if (updated == 0) await _db.into(_db.customerAgreementTable).insert(fields);
+    if (updated == 0) {
+      await _db.into(_db.customerAgreementTable).insert(
+            fields.copyWith(
+              agreementId: clientUuid == null ? const Value.absent() : Value(clientUuid),
+            ),
+          );
+    }
   }
 
   /// Server balances replace local ones, plus the sales and minus the
@@ -490,21 +505,41 @@ class SyncService {
         await _upsertPreference(p, localId, keepLocal);
       }
 
-      await (_db.delete(_db.customerAgreementTable)
-            ..where((t) => t.customerId.equals(localId) & t.serverId.isNotNull()))
+      final pushedUuids = [
+        for (final a in _list(c['agreements']))
+          if (a['client_uuid'] case final String uuid) uuid,
+      ];
+      // Rows this device pushed keep their uuid: they are updated below
+      // instead of being deleted and inserted again.
+      await (_db.delete(_db.customerAgreementTable)..where(
+            (t) =>
+                t.customerId.equals(localId) &
+                t.serverId.isNotNull() &
+                t.agreementId.isNotIn(pushedUuids),
+          ))
           .go();
       for (final a in _list(c['agreements'])) {
         final productId = productIds[a['product_id'] as int];
         if (productId == null) continue;
+        final clientUuid = a['client_uuid'] as String?;
+        final fields = CustomerAgreementTableCompanion(
+          customerId: Value(localId),
+          productId: Value(productId),
+          unitPrice: Value(_toDouble(a['unit_price'])),
+          validFrom: Value(a['valid_from'] as String),
+          validTo: Value(a['valid_to'] as String?),
+          reason: Value(a['reason'] as String?),
+          serverId: Value(a['id'] as int),
+        );
+        final updated = clientUuid == null
+            ? 0
+            : await (_db.update(_db.customerAgreementTable)
+                  ..where((t) => t.agreementId.equals(clientUuid)))
+                .write(fields);
+        if (updated > 0) continue;
         await _db.into(_db.customerAgreementTable).insert(
-              CustomerAgreementTableCompanion.insert(
-                customerId: localId,
-                productId: productId,
-                unitPrice: _toDouble(a['unit_price']),
-                validFrom: a['valid_from'] as String,
-                validTo: Value(a['valid_to'] as String?),
-                reason: Value(a['reason'] as String?),
-                serverId: Value(a['id'] as int),
+              fields.copyWith(
+                agreementId: clientUuid == null ? const Value.absent() : Value(clientUuid),
               ),
             );
       }

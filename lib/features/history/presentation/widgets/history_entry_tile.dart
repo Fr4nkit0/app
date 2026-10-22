@@ -273,6 +273,13 @@ class _HistoryEntryVisual {
           iconBackground: tokens.brandBlue.withValues(alpha: 0.1),
           typeLabel: 'Cliente',
         );
+      case HistoryEntryType.agreement:
+        return _HistoryEntryVisual(
+          icon: Icons.handshake_outlined,
+          iconColor: tokens.brandBlue,
+          iconBackground: tokens.brandBlue.withValues(alpha: 0.1),
+          typeLabel: 'Acuerdo',
+        );
       case HistoryEntryType.routeStop:
         return _HistoryEntryVisual(
           icon: Icons.schedule_rounded,

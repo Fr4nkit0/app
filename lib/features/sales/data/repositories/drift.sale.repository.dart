@@ -62,6 +62,7 @@ class DriftSaleRepository implements SaleRepository {
               price: ir.unitPrice,
               available: pr.stock,
               agreementId: ir.agreementServerId,
+              agreementUuid: ir.agreementUuid,
             ),
             quantity: ir.quantity,
           );
@@ -127,6 +128,7 @@ class DriftSaleRepository implements SaleRepository {
                   unitPrice: item.product.price,
                   subtotal: item.subtotal,
                   agreementServerId: Value(item.product.agreementId),
+                  agreementUuid: Value(item.product.agreementUuid),
                 ),
               );
         }
@@ -175,6 +177,7 @@ class DriftSaleRepository implements SaleRepository {
                   'quantity': item.quantity,
                   'unitPrice': item.product.price,
                   'agreementId': item.product.agreementId,
+                  'agreementUuid': item.product.agreementUuid,
                   'subtotal': item.subtotal,
                 },
             ],

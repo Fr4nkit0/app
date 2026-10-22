@@ -59,6 +59,7 @@ class DriftProductRepository implements ProductRepository {
               price: a.unitPrice,
               available: p.available,
               agreementId: a.serverId,
+              agreementUuid: a.agreementId,
             )
           else
             p,

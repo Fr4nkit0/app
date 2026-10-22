@@ -9,6 +9,10 @@ class Product {
   /// [price] is the list price.
   final int? agreementId;
 
+  /// Local uuid of that agreement; the only reference while the agreement
+  /// has not reached the server.
+  final String? agreementUuid;
+
   const Product({
     required this.id,
     required this.name,
@@ -16,6 +20,7 @@ class Product {
     required this.price,
     this.available,
     this.agreementId,
+    this.agreementUuid,
   });
 
   /// The server has no list price yet, so a product without agreement may
