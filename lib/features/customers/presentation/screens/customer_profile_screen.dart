@@ -9,6 +9,7 @@ import 'package:app/features/customers/domain/models/customer.dart';
 import 'package:app/features/customers/presentation/providers/customer_count_provider.dart';
 import 'package:app/features/customers/presentation/providers/customer_repository_provider.dart';
 import 'package:app/features/customers/presentation/widgets/address_picker_map.dart';
+import 'package:app/features/customers/presentation/widgets/customer_agreements_tab.dart';
 import 'package:app/features/history/domain/models/history_entry.dart';
 import 'package:latlong2/latlong.dart';
 import 'package:app/features/history/presentation/providers/history_list_provider.dart';
@@ -592,7 +593,7 @@ class _CustomerProfileScreenState extends ConsumerState<CustomerProfileScreen> {
       case 1:
         return _buildPreferencesTab(customer);
       case 2:
-        return _buildAcuerdosTab();
+        return CustomerAgreementsTab(customerId: customer.id);
       case 3:
         return _buildDatosTab(customer);
       default:
@@ -710,56 +711,6 @@ class _CustomerProfileScreenState extends ConsumerState<CustomerProfileScreen> {
                 ),
               );
             }),
-          ],
-        ),
-      ),
-    );
-  }
-
-  Widget _buildAcuerdosTab() {
-    return Container(
-      padding: const EdgeInsets.all(16),
-      child: Container(
-        padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 32),
-        decoration: BoxDecoration(
-          color: Colors.white,
-          borderRadius: BorderRadius.circular(16),
-          border: Border.all(color: const Color(0xFFE2E8F0)),
-        ),
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            Container(
-              padding: const EdgeInsets.all(16),
-              decoration: const BoxDecoration(
-                color: Color(0xFFF1F5F9),
-                shape: BoxShape.circle,
-              ),
-              child: const Icon(
-                Icons.handshake_outlined,
-                size: 32,
-                color: Color(0xFF475569),
-              ),
-            ),
-            const SizedBox(height: 16),
-            const Text(
-              'Acuerdos Comerciales',
-              style: TextStyle(
-                fontSize: 16,
-                fontWeight: FontWeight.w700,
-                color: Color(0xFF0D1B3E),
-              ),
-            ),
-            const SizedBox(height: 6),
-            Text(
-              'Próximamente disponible. Aquí se listarán los contratos especiales de comodato y precios fijos.',
-              textAlign: TextAlign.center,
-              style: TextStyle(
-                fontSize: 13,
-                color: Colors.grey.shade500,
-                height: 1.4,
-              ),
-            ),
           ],
         ),
       ),

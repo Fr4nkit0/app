@@ -7,6 +7,7 @@ import '../../core/services/database.helper.dart';
 import 'data/repositories/pending_change.repository.dart';
 import 'domain/models/pending_change.dart';
 import 'domain/models/sync_status.dart';
+import 'push/agreement_pusher.dart';
 import 'push/container_movement_pusher.dart';
 import 'push/customer_pusher.dart';
 import 'push/entity_pusher.dart';
@@ -42,6 +43,7 @@ class SyncEngine {
   /// Entity pushers in the server's dependency order.
   static List<EntityPusher> defaultPushers(AppDatabase db) => [
     CustomerPusher(db),
+    AgreementPusher(db),
     RouteStopPusher(db),
     VisitPusher(db),
     ContainerMovementPusher(db),

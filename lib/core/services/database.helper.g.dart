@@ -6857,6 +6857,17 @@ class $SaleItemTableTable extends SaleItemTable
     type: DriftSqlType.int,
     requiredDuringInsert: false,
   );
+  static const VerificationMeta _agreementUuidMeta = const VerificationMeta(
+    'agreementUuid',
+  );
+  @override
+  late final GeneratedColumn<String> agreementUuid = GeneratedColumn<String>(
+    'agreement_uuid',
+    aliasedName,
+    true,
+    type: DriftSqlType.string,
+    requiredDuringInsert: false,
+  );
   @override
   List<GeneratedColumn> get $columns => [
     createdAt,
@@ -6870,6 +6881,7 @@ class $SaleItemTableTable extends SaleItemTable
     unitPrice,
     subtotal,
     agreementServerId,
+    agreementUuid,
   ];
   @override
   String get aliasedName => _alias ?? actualTableName;
@@ -6968,6 +6980,15 @@ class $SaleItemTableTable extends SaleItemTable
         ),
       );
     }
+    if (data.containsKey('agreement_uuid')) {
+      context.handle(
+        _agreementUuidMeta,
+        agreementUuid.isAcceptableOrUnknown(
+          data['agreement_uuid']!,
+          _agreementUuidMeta,
+        ),
+      );
+    }
     return context;
   }
 
@@ -7021,6 +7042,10 @@ class $SaleItemTableTable extends SaleItemTable
         DriftSqlType.int,
         data['${effectivePrefix}agreement_server_id'],
       ),
+      agreementUuid: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}agreement_uuid'],
+      ),
     );
   }
 
@@ -7046,6 +7071,10 @@ class SaleItemTableData extends DataClass
   /// Server id of the customer agreement that set [unitPrice]; null for
   /// the list price.
   final int? agreementServerId;
+
+  /// Local uuid of that agreement, for agreements the server did not know
+  /// yet when the sale was made.
+  final String? agreementUuid;
   const SaleItemTableData({
     required this.createdAt,
     required this.lastModifiedDate,
@@ -7058,6 +7087,7 @@ class SaleItemTableData extends DataClass
     required this.unitPrice,
     required this.subtotal,
     this.agreementServerId,
+    this.agreementUuid,
   });
   @override
   Map<String, Expression> toColumns(bool nullToAbsent) {
@@ -7076,6 +7106,9 @@ class SaleItemTableData extends DataClass
     map['subtotal'] = Variable<double>(subtotal);
     if (!nullToAbsent || agreementServerId != null) {
       map['agreement_server_id'] = Variable<int>(agreementServerId);
+    }
+    if (!nullToAbsent || agreementUuid != null) {
+      map['agreement_uuid'] = Variable<String>(agreementUuid);
     }
     return map;
   }
@@ -7097,6 +7130,9 @@ class SaleItemTableData extends DataClass
       agreementServerId: agreementServerId == null && nullToAbsent
           ? const Value.absent()
           : Value(agreementServerId),
+      agreementUuid: agreementUuid == null && nullToAbsent
+          ? const Value.absent()
+          : Value(agreementUuid),
     );
   }
 
@@ -7117,6 +7153,7 @@ class SaleItemTableData extends DataClass
       unitPrice: serializer.fromJson<double>(json['unitPrice']),
       subtotal: serializer.fromJson<double>(json['subtotal']),
       agreementServerId: serializer.fromJson<int?>(json['agreementServerId']),
+      agreementUuid: serializer.fromJson<String?>(json['agreementUuid']),
     );
   }
   @override
@@ -7134,6 +7171,7 @@ class SaleItemTableData extends DataClass
       'unitPrice': serializer.toJson<double>(unitPrice),
       'subtotal': serializer.toJson<double>(subtotal),
       'agreementServerId': serializer.toJson<int?>(agreementServerId),
+      'agreementUuid': serializer.toJson<String?>(agreementUuid),
     };
   }
 
@@ -7149,6 +7187,7 @@ class SaleItemTableData extends DataClass
     double? unitPrice,
     double? subtotal,
     Value<int?> agreementServerId = const Value.absent(),
+    Value<String?> agreementUuid = const Value.absent(),
   }) => SaleItemTableData(
     createdAt: createdAt ?? this.createdAt,
     lastModifiedDate: lastModifiedDate ?? this.lastModifiedDate,
@@ -7163,6 +7202,9 @@ class SaleItemTableData extends DataClass
     agreementServerId: agreementServerId.present
         ? agreementServerId.value
         : this.agreementServerId,
+    agreementUuid: agreementUuid.present
+        ? agreementUuid.value
+        : this.agreementUuid,
   );
   SaleItemTableData copyWithCompanion(SaleItemTableCompanion data) {
     return SaleItemTableData(
@@ -7183,6 +7225,9 @@ class SaleItemTableData extends DataClass
       agreementServerId: data.agreementServerId.present
           ? data.agreementServerId.value
           : this.agreementServerId,
+      agreementUuid: data.agreementUuid.present
+          ? data.agreementUuid.value
+          : this.agreementUuid,
     );
   }
 
@@ -7199,7 +7244,8 @@ class SaleItemTableData extends DataClass
           ..write('quantity: $quantity, ')
           ..write('unitPrice: $unitPrice, ')
           ..write('subtotal: $subtotal, ')
-          ..write('agreementServerId: $agreementServerId')
+          ..write('agreementServerId: $agreementServerId, ')
+          ..write('agreementUuid: $agreementUuid')
           ..write(')'))
         .toString();
   }
@@ -7217,6 +7263,7 @@ class SaleItemTableData extends DataClass
     unitPrice,
     subtotal,
     agreementServerId,
+    agreementUuid,
   );
   @override
   bool operator ==(Object other) =>
@@ -7232,7 +7279,8 @@ class SaleItemTableData extends DataClass
           other.quantity == this.quantity &&
           other.unitPrice == this.unitPrice &&
           other.subtotal == this.subtotal &&
-          other.agreementServerId == this.agreementServerId);
+          other.agreementServerId == this.agreementServerId &&
+          other.agreementUuid == this.agreementUuid);
 }
 
 class SaleItemTableCompanion extends UpdateCompanion<SaleItemTableData> {
@@ -7247,6 +7295,7 @@ class SaleItemTableCompanion extends UpdateCompanion<SaleItemTableData> {
   final Value<double> unitPrice;
   final Value<double> subtotal;
   final Value<int?> agreementServerId;
+  final Value<String?> agreementUuid;
   final Value<int> rowid;
   const SaleItemTableCompanion({
     this.createdAt = const Value.absent(),
@@ -7260,6 +7309,7 @@ class SaleItemTableCompanion extends UpdateCompanion<SaleItemTableData> {
     this.unitPrice = const Value.absent(),
     this.subtotal = const Value.absent(),
     this.agreementServerId = const Value.absent(),
+    this.agreementUuid = const Value.absent(),
     this.rowid = const Value.absent(),
   });
   SaleItemTableCompanion.insert({
@@ -7274,6 +7324,7 @@ class SaleItemTableCompanion extends UpdateCompanion<SaleItemTableData> {
     required double unitPrice,
     required double subtotal,
     this.agreementServerId = const Value.absent(),
+    this.agreementUuid = const Value.absent(),
     this.rowid = const Value.absent(),
   }) : saleId = Value(saleId),
        productId = Value(productId),
@@ -7292,6 +7343,7 @@ class SaleItemTableCompanion extends UpdateCompanion<SaleItemTableData> {
     Expression<double>? unitPrice,
     Expression<double>? subtotal,
     Expression<int>? agreementServerId,
+    Expression<String>? agreementUuid,
     Expression<int>? rowid,
   }) {
     return RawValuesInsertable({
@@ -7306,6 +7358,7 @@ class SaleItemTableCompanion extends UpdateCompanion<SaleItemTableData> {
       if (unitPrice != null) 'unit_price': unitPrice,
       if (subtotal != null) 'subtotal': subtotal,
       if (agreementServerId != null) 'agreement_server_id': agreementServerId,
+      if (agreementUuid != null) 'agreement_uuid': agreementUuid,
       if (rowid != null) 'rowid': rowid,
     });
   }
@@ -7322,6 +7375,7 @@ class SaleItemTableCompanion extends UpdateCompanion<SaleItemTableData> {
     Value<double>? unitPrice,
     Value<double>? subtotal,
     Value<int?>? agreementServerId,
+    Value<String?>? agreementUuid,
     Value<int>? rowid,
   }) {
     return SaleItemTableCompanion(
@@ -7336,6 +7390,7 @@ class SaleItemTableCompanion extends UpdateCompanion<SaleItemTableData> {
       unitPrice: unitPrice ?? this.unitPrice,
       subtotal: subtotal ?? this.subtotal,
       agreementServerId: agreementServerId ?? this.agreementServerId,
+      agreementUuid: agreementUuid ?? this.agreementUuid,
       rowid: rowid ?? this.rowid,
     );
   }
@@ -7376,6 +7431,9 @@ class SaleItemTableCompanion extends UpdateCompanion<SaleItemTableData> {
     if (agreementServerId.present) {
       map['agreement_server_id'] = Variable<int>(agreementServerId.value);
     }
+    if (agreementUuid.present) {
+      map['agreement_uuid'] = Variable<String>(agreementUuid.value);
+    }
     if (rowid.present) {
       map['rowid'] = Variable<int>(rowid.value);
     }
@@ -7396,6 +7454,7 @@ class SaleItemTableCompanion extends UpdateCompanion<SaleItemTableData> {
           ..write('unitPrice: $unitPrice, ')
           ..write('subtotal: $subtotal, ')
           ..write('agreementServerId: $agreementServerId, ')
+          ..write('agreementUuid: $agreementUuid, ')
           ..write('rowid: $rowid')
           ..write(')'))
         .toString();
@@ -20217,6 +20276,7 @@ typedef $$SaleItemTableTableCreateCompanionBuilder =
       required double unitPrice,
       required double subtotal,
       Value<int?> agreementServerId,
+      Value<String?> agreementUuid,
       Value<int> rowid,
     });
 typedef $$SaleItemTableTableUpdateCompanionBuilder =
@@ -20232,6 +20292,7 @@ typedef $$SaleItemTableTableUpdateCompanionBuilder =
       Value<double> unitPrice,
       Value<double> subtotal,
       Value<int?> agreementServerId,
+      Value<String?> agreementUuid,
       Value<int> rowid,
     });
 
@@ -20340,6 +20401,11 @@ class $$SaleItemTableTableFilterComposer
     builder: (column) => ColumnFilters(column),
   );
 
+  ColumnFilters<String> get agreementUuid => $composableBuilder(
+    column: $table.agreementUuid,
+    builder: (column) => ColumnFilters(column),
+  );
+
   $$SaleTableTableFilterComposer get saleId {
     final $$SaleTableTableFilterComposer composer = $composerBuilder(
       composer: this,
@@ -20441,6 +20507,11 @@ class $$SaleItemTableTableOrderingComposer
     builder: (column) => ColumnOrderings(column),
   );
 
+  ColumnOrderings<String> get agreementUuid => $composableBuilder(
+    column: $table.agreementUuid,
+    builder: (column) => ColumnOrderings(column),
+  );
+
   $$SaleTableTableOrderingComposer get saleId {
     final $$SaleTableTableOrderingComposer composer = $composerBuilder(
       composer: this,
@@ -20530,6 +20601,11 @@ class $$SaleItemTableTableAnnotationComposer
     builder: (column) => column,
   );
 
+  GeneratedColumn<String> get agreementUuid => $composableBuilder(
+    column: $table.agreementUuid,
+    builder: (column) => column,
+  );
+
   $$SaleTableTableAnnotationComposer get saleId {
     final $$SaleTableTableAnnotationComposer composer = $composerBuilder(
       composer: this,
@@ -20616,6 +20692,7 @@ class $$SaleItemTableTableTableManager
                 Value<double> unitPrice = const Value.absent(),
                 Value<double> subtotal = const Value.absent(),
                 Value<int?> agreementServerId = const Value.absent(),
+                Value<String?> agreementUuid = const Value.absent(),
                 Value<int> rowid = const Value.absent(),
               }) => SaleItemTableCompanion(
                 createdAt: createdAt,
@@ -20629,6 +20706,7 @@ class $$SaleItemTableTableTableManager
                 unitPrice: unitPrice,
                 subtotal: subtotal,
                 agreementServerId: agreementServerId,
+                agreementUuid: agreementUuid,
                 rowid: rowid,
               ),
           createCompanionCallback:
@@ -20644,6 +20722,7 @@ class $$SaleItemTableTableTableManager
                 required double unitPrice,
                 required double subtotal,
                 Value<int?> agreementServerId = const Value.absent(),
+                Value<String?> agreementUuid = const Value.absent(),
                 Value<int> rowid = const Value.absent(),
               }) => SaleItemTableCompanion.insert(
                 createdAt: createdAt,
@@ -20657,6 +20736,7 @@ class $$SaleItemTableTableTableManager
                 unitPrice: unitPrice,
                 subtotal: subtotal,
                 agreementServerId: agreementServerId,
+                agreementUuid: agreementUuid,
                 rowid: rowid,
               ),
           withReferenceMapper: (p0) => p0

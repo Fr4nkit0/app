@@ -73,6 +73,7 @@ class DriftHistoryRepository implements HistoryRepository {
         PendingEntity.containerMovement => await _containerMovements(ids),
         PendingEntity.sale => await _sales(ids),
         PendingEntity.payment => await _payments(ids),
+        PendingEntity.customerAgreement => await _agreements(ids),
       };
       for (final MapEntry(:key, :value) in found.entries) {
         details[_key(entity, key)] = value;
@@ -139,6 +140,16 @@ class DriftHistoryRepository implements HistoryRepository {
     };
   }
 
+  Future<Map<String, _Detail>> _agreements(Set<String> ids) async {
+    final rows = await (_db.select(
+      _db.customerAgreementTable,
+    )..where((t) => t.agreementId.isIn(ids))).get();
+    return {
+      for (final r in rows)
+        r.agreementId: _Detail(customerId: r.customerId, amount: r.unitPrice),
+    };
+  }
+
   Future<Map<String, String>> _customerNames(Set<String> ids) async {
     if (ids.isEmpty) return const {};
     final rows = await (_db.select(
@@ -160,6 +171,7 @@ class DriftHistoryRepository implements HistoryRepository {
     PendingEntity.containerMovement => HistoryEntryType.delivery,
     PendingEntity.sale => HistoryEntryType.sale,
     PendingEntity.payment => HistoryEntryType.payment,
+    PendingEntity.customerAgreement => HistoryEntryType.agreement,
   };
 
   static String _describe(PendingEntity entity, PendingAction action) =>
@@ -174,6 +186,7 @@ class DriftHistoryRepository implements HistoryRepository {
         (PendingEntity.containerMovement, _) => 'Movimiento de envases',
         (PendingEntity.sale, _) => 'Venta registrada',
         (PendingEntity.payment, _) => 'Cobro registrado',
+        (PendingEntity.customerAgreement, _) => 'Acuerdo de precio creado',
       };
 }
 

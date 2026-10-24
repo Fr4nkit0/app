@@ -109,6 +109,7 @@ class PaginatedHistoryNotifier extends Notifier<PaginatedHistoryState> {
           deliveries++;
         case HistoryEntryType.customer:
         case HistoryEntryType.routeStop:
+        case HistoryEntryType.agreement:
           break;
       }
     }

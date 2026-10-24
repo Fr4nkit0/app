@@ -106,6 +106,38 @@ void main() {
     expect(entry.status, PendingStatus.pending);
   });
 
+  test('lists a price agreement created on the street', () async {
+    await db.into(db.productTable).insert(
+          ProductTableCompanion.insert(
+            productId: const Value('p-1'),
+            name: 'Agua 20L',
+            price: 1500,
+          ),
+        );
+    await db.into(db.customerAgreementTable).insert(
+          CustomerAgreementTableCompanion.insert(
+            agreementId: const Value('a-1'),
+            customerId: 'cus-1',
+            productId: 'p-1',
+            unitPrice: 1200,
+            validFrom: '2026-10-22',
+          ),
+        );
+    await queue.enqueue(
+      entity: PendingEntity.customerAgreement,
+      entityId: 'a-1',
+      action: PendingAction.insert,
+    );
+
+    final entry = (await sut.watchHistory().first).single;
+
+    expect(entry.type, HistoryEntryType.agreement);
+    expect(entry.customerName, 'Ana Gómez');
+    expect(entry.amount, 1200);
+    expect(entry.description, 'Acuerdo de precio creado');
+    expect(entry.status, PendingStatus.pending);
+  });
+
   test('emits again when the server answers a record', () async {
     await insertSale('sale-1', 4500);
     await queue.enqueue(

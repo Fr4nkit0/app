@@ -26,6 +26,10 @@ class SaleItemTable extends Table with Timestamps {
   /// the list price.
   late final agreementServerId = integer().nullable()();
 
+  /// Local uuid of that agreement, for agreements the server did not know
+  /// yet when the sale was made.
+  late final agreementUuid = text().nullable()();
+
   @override
   Set<Column<Object>> get primaryKey => {saleItemId};
 }

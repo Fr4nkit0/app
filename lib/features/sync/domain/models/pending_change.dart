@@ -7,7 +7,8 @@ enum PendingEntity {
   visit('visit'),
   containerMovement('container_movement'),
   sale('sale'),
-  payment('payment');
+  payment('payment'),
+  customerAgreement('customer_agreement');
 
   const PendingEntity(this.wireName);
 
