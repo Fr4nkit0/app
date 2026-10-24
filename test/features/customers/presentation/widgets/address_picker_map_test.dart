@@ -1,4 +1,6 @@
+import 'package:app/core/network/dio_client.dart';
 import 'dart:async';
+import 'package:dio/dio.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
@@ -13,13 +15,17 @@ class MockGeolocatorPlatform extends GeolocatorPlatform {
   Future<bool> isLocationServiceEnabled() async => true;
 
   @override
-  Future<LocationPermission> checkPermission() async => LocationPermission.whileInUse;
+  Future<LocationPermission> checkPermission() async =>
+      LocationPermission.whileInUse;
 
   @override
-  Future<LocationPermission> requestPermission() async => LocationPermission.whileInUse;
+  Future<LocationPermission> requestPermission() async =>
+      LocationPermission.whileInUse;
 
   @override
-  Future<Position> getCurrentPosition({LocationSettings? locationSettings}) async {
+  Future<Position> getCurrentPosition({
+    LocationSettings? locationSettings,
+  }) async {
     return Position(
       latitude: -24.789000,
       longitude: -65.411000,
@@ -35,7 +41,9 @@ class MockGeolocatorPlatform extends GeolocatorPlatform {
   }
 
   @override
-  Future<Position?> getLastKnownPosition({bool forceLocationManager = false}) async {
+  Future<Position?> getLastKnownPosition({
+    bool forceLocationManager = false,
+  }) async {
     return Position(
       latitude: -24.789000,
       longitude: -65.411000,
@@ -69,9 +77,14 @@ class MockGeolocatorPlatform extends GeolocatorPlatform {
   }
 }
 
+class FakeDio implements Dio {
+  @override
+  dynamic noSuchMethod(Invocation invocation) => super.noSuchMethod(invocation);
+}
+
 class FakeRoutingService extends RoutingService {
   final RoutingRoute result;
-  FakeRoutingService(this.result);
+  FakeRoutingService(this.result) : super(FakeDio());
 
   @override
   Future<RoutingRoute> getRoute(LatLng start, LatLng end) async {
@@ -86,37 +99,59 @@ void main() {
 
   Widget wrapWithScope(Widget child, List<Override> overrides) {
     return ProviderScope(
-      overrides: overrides,
-      child: MaterialApp(
-        home: child,
-      ),
+      overrides: [
+        apiBaseUrlProvider.overrideWithValue('http://test.local/api/v1'),
+        ...overrides,
+      ],
+      child: MaterialApp(home: child),
     );
   }
 
   group('AddressPickerMap Widget Tests', () {
-    testWidgets('renders search bar and instructions', (WidgetTester tester) async {
+    testWidgets('renders search bar and instructions', (
+      WidgetTester tester,
+    ) async {
+      final fallbackRoute = RoutingRoute(
+        distance: 500.0,
+        duration: 60.0,
+        points: [
+          LatLng(-24.789000, -65.411000),
+          LatLng(-24.789124, -65.411624),
+        ],
+        isFallback: true,
+      );
+
       await tester.pumpWidget(
         wrapWithScope(
           const AddressPickerMap(
             initialLatitude: -24.789124,
             initialLongitude: -65.411624,
           ),
-          [],
+          [
+            routingServiceProvider.overrideWithValue(
+              FakeRoutingService(fallbackRoute),
+            ),
+          ],
         ),
       );
 
       // Verify instruction text is visible
-      expect(find.textContaining('Arrastrá el pin rojo o tocá el mapa'), findsOneWidget);
+      expect(
+        find.textContaining('Arrastrá el pin rojo o tocá el mapa'),
+        findsOneWidget,
+      );
       // Verify search input placeholder is visible
       expect(find.textContaining('Buscar dirección'), findsOneWidget);
       // Verify confirm button is active
       expect(find.text('Cerrar / Volver'), findsOneWidget);
     });
 
-    testWidgets('displays OSRM route distance and ETA on bottom panel', (WidgetTester tester) async {
+    testWidgets('displays OSRM route distance and ETA on bottom panel', (
+      WidgetTester tester,
+    ) async {
       final fakeRoute = RoutingRoute(
         distance: 1200.0, // 1.2 km
-        duration: 180.0,  // 3 min
+        duration: 180.0, // 3 min
         points: [
           LatLng(-24.789000, -65.411000),
           LatLng(-24.789124, -65.411624),
@@ -131,7 +166,9 @@ void main() {
             initialLongitude: -65.411624,
           ),
           [
-            routingServiceProvider.overrideWithValue(FakeRoutingService(fakeRoute)),
+            routingServiceProvider.overrideWithValue(
+              FakeRoutingService(fakeRoute),
+            ),
           ],
         ),
       );
@@ -145,7 +182,9 @@ void main() {
       expect(find.text('Distancia de ruta'), findsOneWidget);
     });
 
-    testWidgets('displays fallback straight line warnings when OSRM fails', (WidgetTester tester) async {
+    testWidgets('displays fallback straight line warnings when OSRM fails', (
+      WidgetTester tester,
+    ) async {
       final fallbackRoute = RoutingRoute(
         distance: 500.0,
         duration: 60.0,
@@ -164,7 +203,9 @@ void main() {
             initialLongitude: -65.411624,
           ),
           [
-            routingServiceProvider.overrideWithValue(FakeRoutingService(fallbackRoute)),
+            routingServiceProvider.overrideWithValue(
+              FakeRoutingService(fallbackRoute),
+            ),
           ],
         ),
       );

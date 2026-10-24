@@ -1,27 +1,24 @@
 import 'package:flutter/material.dart';
+import 'package:app/core/theme/marilin_tokens.dart';
 import 'package:app/core/theme/sales_tokens.dart';
 
 abstract final class AppTheme {
-  // ─── Brand colors ──────────────────────────────────────────────────────────
-  static const Color _primary = Color(0xFF0D1B3E);
-  static const Color _secondary = Color(0xFFBF1B1B);
-  static const Color _navBlue = Color(0xFF1565C0);
-  static const Color _darkText = Color(0xFF111827);
+  static const Color _darkText = Color(0xFF0F172A);
   static const Color _error = Color(0xFFB3261E);
 
   // ─── ColorScheme — paleta limpia (sin crema) ──────────────────────────────
   static const ColorScheme _colorScheme = ColorScheme(
     brightness: Brightness.light,
 
-    primary: _primary,
+    primary: MarilinColors.brandBlue,
     onPrimary: Colors.white,
-    primaryContainer: Color(0xFF1E3A6E),
-    onPrimaryContainer: Color(0xFFD0E4FF),
+    primaryContainer: Color(0xFFDBEAFE),
+    onPrimaryContainer: MarilinColors.brandNavy,
 
-    secondary: _secondary,
+    secondary: MarilinColors.brandNavy,
     onSecondary: Colors.white,
-    secondaryContainer: Color(0xFFFFDAD6),
-    onSecondaryContainer: Color(0xFF410002),
+    secondaryContainer: Color(0xFFE2E8F0),
+    onSecondaryContainer: MarilinColors.brandNavy,
 
     tertiary: Color(0xFFBC6700),
     onTertiary: Colors.white,
@@ -55,8 +52,8 @@ abstract final class AppTheme {
     return ThemeData(
       useMaterial3: true,
       colorScheme: _colorScheme,
-      scaffoldBackgroundColor: Colors.white,
-      extensions: const [SalesTokens.light],
+      extensions: const [MarilinTokens.light, SalesTokens.light],
+      scaffoldBackgroundColor: MarilinColors.scaffoldMuted,
 
       // ── PageTransitions: evitar flash con color de fondo ──────────────────
       pageTransitionsTheme: const PageTransitionsTheme(
@@ -70,23 +67,23 @@ abstract final class AppTheme {
       // ── AppBar: blanco limpio para screens secundarias ────────────────────
       appBarTheme: const AppBarTheme(
         backgroundColor: Colors.white,
-        foregroundColor: _primary,
+        foregroundColor: MarilinColors.brandNavy,
         elevation: 0,
         centerTitle: false,
         scrolledUnderElevation: 0.5,
         shadowColor: Color(0x14000000),
         titleTextStyle: TextStyle(
-          color: _primary,
+          color: MarilinColors.brandNavy,
           fontSize: 18,
           fontWeight: FontWeight.w700,
         ),
-        iconTheme: IconThemeData(color: _primary),
+        iconTheme: IconThemeData(color: MarilinColors.brandNavy),
       ),
 
       // ── Buttons ──────────────────────────────────────────────────────────
       elevatedButtonTheme: ElevatedButtonThemeData(
         style: ElevatedButton.styleFrom(
-          backgroundColor: _secondary,
+          backgroundColor: MarilinColors.brandBlue,
           foregroundColor: Colors.white,
           elevation: 0,
           minimumSize: const Size(double.infinity, 56),
@@ -109,7 +106,7 @@ abstract final class AppTheme {
 
       outlinedButtonTheme: OutlinedButtonThemeData(
         style: OutlinedButton.styleFrom(
-          foregroundColor: _primary,
+          foregroundColor: MarilinColors.brandNavy,
           side: const BorderSide(color: Color(0xFFD1D5DB), width: 1.5),
           minimumSize: const Size(double.infinity, 52),
           shape: RoundedRectangleBorder(
@@ -121,14 +118,14 @@ abstract final class AppTheme {
 
       textButtonTheme: TextButtonThemeData(
         style: TextButton.styleFrom(
-          foregroundColor: _navBlue,
+          foregroundColor: MarilinColors.brandBlue,
           textStyle: const TextStyle(fontWeight: FontWeight.w700),
         ),
       ),
 
       // ── FAB ──────────────────────────────────────────────────────────────
       floatingActionButtonTheme: const FloatingActionButtonThemeData(
-        backgroundColor: _secondary,
+        backgroundColor: MarilinColors.brandBlue,
         foregroundColor: Colors.white,
         elevation: 3,
         shape: RoundedRectangleBorder(
@@ -142,7 +139,7 @@ abstract final class AppTheme {
         elevation: 0,
         shadowColor: const Color(0x14000000),
         surfaceTintColor: Colors.transparent,
-        indicatorColor: _navBlue,
+        indicatorColor: MarilinColors.brandBlue,
         iconTheme: WidgetStateProperty.resolveWith<IconThemeData>((states) {
           if (states.contains(WidgetState.selected)) {
             return const IconThemeData(color: Colors.white, size: 24);
@@ -152,7 +149,7 @@ abstract final class AppTheme {
         labelTextStyle: WidgetStateProperty.resolveWith<TextStyle>((states) {
           if (states.contains(WidgetState.selected)) {
             return const TextStyle(
-              color: _navBlue,
+              color: MarilinColors.brandBlue,
               fontSize: 12,
               fontWeight: FontWeight.w600,
             );
@@ -179,7 +176,7 @@ abstract final class AppTheme {
         ),
         focusedBorder: OutlineInputBorder(
           borderRadius: BorderRadius.circular(12),
-          borderSide: const BorderSide(color: _navBlue, width: 2),
+          borderSide: const BorderSide(color: MarilinColors.brandBlue, width: 2),
         ),
         errorBorder: OutlineInputBorder(
           borderRadius: BorderRadius.circular(12),
@@ -187,7 +184,7 @@ abstract final class AppTheme {
         ),
         labelStyle: const TextStyle(color: Color(0xFF9CA3AF)),
         floatingLabelStyle: const TextStyle(
-          color: _navBlue,
+          color: MarilinColors.brandBlue,
           fontWeight: FontWeight.w600,
         ),
         hintStyle: const TextStyle(color: Color(0xFF9CA3AF)),

@@ -1,11 +1,12 @@
-import 'dart:convert';
-
 import 'package:drift/drift.dart';
 import 'package:uuid/uuid.dart';
 
 import 'package:app/core/services/database.helper.dart';
+import 'package:app/features/payments/data/repositories/customer_balance.store.dart';
 import 'package:app/features/payments/domain/models/customer_account_entry.dart';
 import 'package:app/features/payments/domain/models/payment.dart';
+import 'package:app/features/sync/data/repositories/pending_change.repository.dart';
+import 'package:app/features/sync/domain/models/pending_change.dart';
 
 const _uuid = Uuid();
 
@@ -19,9 +20,14 @@ abstract class PaymentRepository {
 }
 
 class DriftPaymentRepository implements PaymentRepository {
-  DriftPaymentRepository(this._db);
+  DriftPaymentRepository(AppDatabase db)
+    : _db = db,
+      _queue = DriftPendingChangeRepository(db),
+      _balances = CustomerBalanceStore(db);
 
   final AppDatabase _db;
+  final PendingChangeRepository _queue;
+  final CustomerBalanceStore _balances;
 
   @override
   Future<void> recordPayment(Payment payment) async {
@@ -81,52 +87,28 @@ class DriftPaymentRepository implements PaymentRepository {
                 ),
               );
 
-          await _db
-              .into(_db.auditLogTable)
-              .insert(
-                AuditLogTableCompanion.insert(
-                  tableNameColumn: 'payments',
-                  recordId: payment.id,
-                  action: 'INSERT',
-                  payload: Value(
-                    jsonEncode({
-                      'paymentId': payment.id,
-                      'customerId': payment.customerId,
-                      'amount': payment.amount,
-                      'paymentMethod': payment.type.dbValue,
-                    }),
-                  ),
-                ),
-              );
-        }
-
-        final existing =
-            await (_db.select(_db.customerBalanceTable)
-                  ..where((t) => t.customerId.equals(customerId)))
-                .getSingleOrNull();
-
-        final newBalance = (existing?.currentBalance ?? 0.0) - totalAmount;
-
-        if (existing == null) {
-          await _db
-              .into(_db.customerBalanceTable)
-              .insert(
-                CustomerBalanceTableCompanion.insert(
-                  customerId: customerId,
-                  currentBalance: Value(newBalance),
-                  lastEntryId: Value(lastEntryId),
-                ),
-              );
-        } else {
-          await (_db.update(
-            _db.customerBalanceTable,
-          )..where((t) => t.customerId.equals(customerId))).write(
-            CustomerBalanceTableCompanion(
-              currentBalance: Value(newBalance),
-              lastEntryId: Value(lastEntryId),
-            ),
+          await _queue.enqueue(
+            entity: PendingEntity.payment,
+            entityId: payment.id,
+            action: PendingAction.insert,
+            payload: {
+              'paymentId': payment.id,
+              'customerId': payment.customerId,
+              'amount': payment.amount,
+              'paymentMethod': payment.type.dbValue,
+              'visitId': payment.visitId,
+              'saleId': payment.saleId,
+              'notes': payment.notes,
+              'createdAt': payment.createdAt.toIso8601String(),
+            },
           );
         }
+
+        await _balances.adjust(
+          customerId,
+          -totalAmount,
+          lastEntryId: lastEntryId,
+        );
       }
     });
   }

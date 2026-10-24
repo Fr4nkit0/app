@@ -63,7 +63,36 @@ class PaginatedCustomerList extends Notifier<PaginatedCustomerListState> {
 
   @override
   PaginatedCustomerListState build() {
+    // Drift's live query emits whenever a sync or an edit touches the
+    // customers, so the loaded pages are reloaded instead of going stale.
+    ref.listen(customerListProvider, (_, next) {
+      if (next.hasValue) reload();
+    });
     return PaginatedCustomerListState();
+  }
+
+  /// Reloads as many customers as are already shown, keeping the search and
+  /// the scroll depth.
+  Future<void> reload() async {
+    final pages = state.currentPage < 1 ? 1 : state.currentPage;
+    try {
+      final repository = ref.read(customerRepositoryProvider);
+      final customers = state.searchQuery.isEmpty
+          ? await repository.getCustomersPage(page: 0, pageSize: _pageSize * pages)
+          : await repository.searchCustomers(
+              query: state.searchQuery,
+              page: 0,
+              pageSize: _pageSize * pages,
+            );
+      state = state.copyWith(
+        customers: customers,
+        currentPage: pages,
+        hasReachedMax: customers.length < _pageSize * pages,
+        isLoading: false,
+      );
+    } catch (_) {
+      // Keep what is shown; the next change or a manual refresh retries.
+    }
   }
 
   /// Loads the next page of customers (handles both normal list and search)

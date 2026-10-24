@@ -1,9 +1,6 @@
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:uuid/uuid.dart';
 import 'package:app/features/customers/domain/models/customer.dart';
-import 'package:app/features/history/domain/models/history_entry.dart';
-import 'package:app/features/history/domain/models/history_entry_type.dart';
-import 'package:app/features/history/presentation/providers/history_repository_provider.dart';
 import 'package:app/features/sales/domain/models/payment_method.dart';
 import 'package:app/features/sales/domain/models/sale.dart';
 import 'package:app/features/sales/domain/models/sale_draft_state.dart';
@@ -19,11 +16,19 @@ class SaleDraft extends Notifier<SaleDraftState> {
     state = state.copyWith(customer: customer, visitId: visitId);
   }
 
+  /// Lines were priced for the previous customer's agreements, so they go
+  /// with it.
   void clearCustomer() {
-    state = state.copyWith(clearCustomer: true, clearRouteStopId: true);
+    state = state.copyWith(
+      clearCustomer: true,
+      clearRouteStopId: true,
+      items: const [],
+      returnedContainers: const {},
+    );
   }
 
   void setQuantity(SaleItem item, int quantity) {
+    if (quantity > 0 && !item.product.hasPrice) return;
     List<SaleItem> newItems;
     if (quantity <= 0) {
       newItems = state.items
@@ -108,27 +113,8 @@ class SaleDraft extends Notifier<SaleDraftState> {
         .read(registerSaleUseCaseProvider)
         .execute(sale, containerMovements: movements);
 
-    // TODO: when paymentMethod == credit, update customer.debtAmount by draft.total.
-    // Deferred: Customer is immutable without copyWith and CustomerRepository
-    // has no addDebt method in this iteration (decision #302). Do NOT touch
-    // lib/features/customers/ until the debt-sync feature is scoped.
-
-    final description = draft.items
-        .map((i) => '${i.quantity} ${i.product.unitLabel}')
-        .join(' · ');
-
-    await ref
-        .read(historyRepositoryProvider)
-        .addEntry(
-          HistoryEntry(
-            id: const Uuid().v4(),
-            type: HistoryEntryType.sale,
-            customer: draft.customer!,
-            date: DateTime.now(),
-            amount: draft.total,
-            description: description,
-          ),
-        );
+    // The customer balance moves with the sale and its settling payments
+    // (see CustomerBalanceStore); nothing to update here.
 
     state = const SaleDraftState();
   }

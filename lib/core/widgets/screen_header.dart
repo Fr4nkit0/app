@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:app/core/theme/marilin_tokens.dart';
 
 class ScreenHeader extends StatelessWidget {
   const ScreenHeader({
@@ -16,6 +17,8 @@ class ScreenHeader extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final tokens = MarilinTokens.of(context);
+
     return Column(
       mainAxisSize: MainAxisSize.min,
       crossAxisAlignment: CrossAxisAlignment.stretch,
@@ -28,26 +31,17 @@ class ScreenHeader extends StatelessWidget {
             child: Stack(
               alignment: Alignment.center,
               children: [
-                // Title (always centered)
                 Center(
                   child: Padding(
                     padding: const EdgeInsets.symmetric(horizontal: 56),
                     child: Text(
                       title,
-                      style: const TextStyle(
-                        fontSize: 22,
-                        fontWeight: FontWeight.w900,
-                        color: Color(
-                          0xFF0F4C81,
-                        ), // Elegant blue matching Historial exactly
-                        letterSpacing: 0.5,
-                      ),
+                      style: tokens.titleLarge,
                       textAlign: TextAlign.center,
                       overflow: TextOverflow.ellipsis,
                     ),
                   ),
                 ),
-                // Back button (left aligned)
                 if (onBackPressed != null)
                   Positioned(
                     left: 0,
@@ -59,23 +53,19 @@ class ScreenHeader extends StatelessWidget {
                         child: Container(
                           padding: const EdgeInsets.all(8),
                           decoration: BoxDecoration(
-                            color: const Color(0xFFF1F5F9), // Slate 100
+                            color: const Color(0xFFF1F5F9),
                             borderRadius: BorderRadius.circular(12),
-                            border: Border.all(
-                              color: const Color(0xFFE2E8F0), // Slate 200
-                              width: 1,
-                            ),
+                            border: Border.all(color: tokens.border, width: 1),
                           ),
-                          child: const Icon(
+                          child: Icon(
                             Icons.arrow_back_ios_new_rounded,
                             size: 14,
-                            color: Color(0xFF0F4C81),
+                            color: tokens.brandNavy,
                           ),
                         ),
                       ),
                     ),
                   ),
-                // Trailing widget (right aligned)
                 if (trailing != null) Positioned(right: 0, child: trailing!),
               ],
             ),
@@ -88,11 +78,7 @@ class ScreenHeader extends StatelessWidget {
               padding: const EdgeInsets.symmetric(horizontal: 24),
               child: Text(
                 subtitle!,
-                style: const TextStyle(
-                  fontSize: 13,
-                  fontWeight: FontWeight.w600,
-                  color: Color(0xFF64748B), // Muted slate text
-                ),
+                style: tokens.subtitle,
                 textAlign: TextAlign.center,
                 overflow: TextOverflow.ellipsis,
               ),
@@ -100,7 +86,7 @@ class ScreenHeader extends StatelessWidget {
           ),
         ],
         const SizedBox(height: 12),
-        const Divider(color: Color(0xFFE2E8F0), height: 1),
+        Divider(color: tokens.border, height: 1),
       ],
     );
   }

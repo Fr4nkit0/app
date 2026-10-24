@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:app/core/theme/marilin_tokens.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:app/core/widgets/top_toast.dart';
 
@@ -53,7 +54,8 @@ class _CreateCustomerScreenState extends ConsumerState<CreateCustomerScreen> {
     ) {
       if (next == true) {
         TopToast.showSuccess(context, 'Cliente guardado exitosamente');
-        Navigator.of(context).pop();
+        // Returns the new customer so a sale started here can go on with it.
+        Navigator.of(context).pop(ref.read(customerFormProvider).createdCustomer);
       }
     });
 
@@ -98,10 +100,12 @@ class _CreateCustomerScreenState extends ConsumerState<CreateCustomerScreen> {
                   ),
                   StepAddressView(
                     street: formState.street,
+                    neighborhood: formState.neighborhood,
                     apartment: formState.apartment,
                     floor: formState.floor,
                     visualReference: formState.visualReference,
                     onStreetChanged: formNotifier.updateStreet,
+                    onNeighborhoodChanged: formNotifier.updateNeighborhood,
                     onApartmentChanged: formNotifier.updateApartment,
                     onFloorChanged: formNotifier.updateFloor,
                     onVisualReferenceChanged:
@@ -166,7 +170,7 @@ class _CreateCustomerScreenState extends ConsumerState<CreateCustomerScreen> {
                               : formNotifier.nextStep)
                         : null,
                     style: FilledButton.styleFrom(
-                      backgroundColor: const Color(0xFF1565C0),
+                      backgroundColor: MarilinColors.brandBlue,
                       minimumSize: const Size(160, 52),
                     ),
                     child: formState.isSubmitting

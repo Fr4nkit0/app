@@ -118,6 +118,33 @@ void main() {
     });
   });
 
+  group('execute — balance and settling payments', () {
+    test('a cash sale is settled by one payment of its total and leaves the balance unchanged', () async {
+      await sut.execute(makeSale());
+
+      final payment = await db.select(db.paymentTable).getSingle();
+      expect(payment.saleId, 'sale-test-1');
+      expect(payment.amount, 13000.0);
+      expect(await paymentRepo.watchCustomerBalance(testCustomer.id).first, 0);
+    });
+
+    test('a credit sale queues no payment and raises the balance by its total', () async {
+      await sut.execute(
+        Sale(
+          id: 'sale-credit',
+          customer: testCustomer,
+          items: const [SaleItem(product: testProduct, quantity: 2)],
+          total: 13000.0,
+          paymentMethod: PaymentMethod.credit,
+          date: DateTime.now(),
+        ),
+      );
+
+      expect(await db.select(db.paymentTable).get(), isEmpty);
+      expect(await paymentRepo.watchCustomerBalance(testCustomer.id).first, 13000.0);
+    });
+  });
+
   // ───────────────────────────────────────────────────────────────
   // Scenario F1b — empty items rejected
   // ───────────────────────────────────────────────────────────────

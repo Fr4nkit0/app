@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:app/core/theme/marilin_tokens.dart';
 
 class CoreSearchBar extends StatelessWidget {
   const CoreSearchBar({
@@ -54,7 +55,7 @@ class CoreSearchBar extends StatelessWidget {
         focusedBorder: OutlineInputBorder(
           borderRadius: BorderRadius.circular(12),
           borderSide: BorderSide(
-            color: focusedBorderColor ?? const Color(0xFF1565C0),
+            color: focusedBorderColor ?? MarilinColors.brandBlue,
             width: 1.5,
           ),
         ),

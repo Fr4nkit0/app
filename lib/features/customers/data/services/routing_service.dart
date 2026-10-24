@@ -1,8 +1,8 @@
-import 'dart:convert';
-import 'package:http/http.dart' as http;
+import 'package:dio/dio.dart';
 import 'package:latlong2/latlong.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:geolocator/geolocator.dart';
+import 'package:app/core/network/dio_client.dart';
 
 class RoutingRoute {
   final double distance;
@@ -21,24 +21,21 @@ class RoutingRoute {
 }
 
 class RoutingService {
-  final http.Client _client;
+  final Dio _dio;
 
-  RoutingService({http.Client? client}) : _client = client ?? http.Client();
+  RoutingService(this._dio);
 
   /// Requests a driving route between start and end coordinates.
   /// Falls back to straight line on timeout or exception.
   Future<RoutingRoute> getRoute(LatLng start, LatLng end) async {
-    final url = Uri.parse(
-      'https://router.project-osrm.org/route/v1/driving/'
-      '${start.longitude},${start.latitude};${end.longitude},${end.latitude}'
-      '?geometries=geojson&overview=full',
-    );
-
     try {
-      final response = await _client.get(
-        url,
-        headers: {
-          'User-Agent': 'MarilinApp/1.0 (com.marilin.app)',
+      final response = await _dio.get(
+        '/map/route',
+        queryParameters: {
+          'origin_lat': start.latitude,
+          'origin_lng': start.longitude,
+          'destination_lat': end.latitude,
+          'destination_lng': end.longitude,
         },
       ).timeout(const Duration(seconds: 10));
 
@@ -46,10 +43,10 @@ class RoutingService {
         throw Exception('HTTP error ${response.statusCode}');
       }
 
-      final data = json.decode(utf8.decode(response.bodyBytes)) as Map<String, dynamic>;
+      final data = response.data['data'] as Map<String, dynamic>;
       final routes = data['routes'] as List<dynamic>?;
       if (routes == null || routes.isEmpty) {
-        throw Exception('No route found in OSRM response');
+        throw Exception('No route found in response');
       }
 
       final routeData = routes.first as Map<String, dynamic>;
@@ -58,12 +55,12 @@ class RoutingService {
 
       final geometry = routeData['geometry'] as Map<String, dynamic>?;
       if (geometry == null) {
-        throw Exception('No geometry found in OSRM route');
+        throw Exception('No geometry found in route');
       }
 
       final coordinates = geometry['coordinates'] as List<dynamic>?;
       if (coordinates == null || coordinates.isEmpty) {
-        throw Exception('No coordinates found in OSRM geometry');
+        throw Exception('No coordinates found in geometry');
       }
 
       final points = coordinates.map((coords) {
@@ -101,6 +98,7 @@ class RoutingService {
 }
 
 final routingServiceProvider = Provider<RoutingService>((ref) {
-  return RoutingService();
+  final dio = ref.watch(dioProvider);
+  return RoutingService(dio);
 });
 

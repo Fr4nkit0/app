@@ -4,6 +4,8 @@ import 'package:flutter_test/flutter_test.dart';
 
 import 'package:app/core/services/database.helper.dart';
 import 'package:app/features/inventory/data/repositories/inventory.repository.dart';
+import 'package:app/features/sync/data/repositories/pending_change.repository.dart';
+import 'package:app/features/sync/domain/models/pending_change.dart';
 import 'package:app/features/inventory/domain/models/container_movement.dart';
 import 'package:app/features/inventory/domain/models/route_inventory_load.dart';
 
@@ -164,15 +166,15 @@ void main() {
       expect(c2.quantity, 1);
     });
 
-    test('logs audit entry with correct fields', () async {
-      await sut.recordContainerMovement(makeMovement(id: 'mov-audit'));
+    test('queues one pending insert per movement', () async {
+      await sut.recordContainerMovement(makeMovement(id: 'mov-queue'));
 
-      final logs = await db.select(db.auditLogTable).get();
-      expect(logs.length, 1);
-      expect(logs.first.action, 'INSERT');
-      expect(logs.first.tableNameColumn, 'container_movements');
-      expect(logs.first.recordId, 'mov-audit');
-      expect(logs.first.payload, isNotNull);
+      final queue = await DriftPendingChangeRepository(db).getPending();
+      expect(queue.length, 1);
+      expect(queue.first.entity, PendingEntity.containerMovement);
+      expect(queue.first.action, PendingAction.insert);
+      expect(queue.first.entityId, 'mov-queue');
+      expect(queue.first.payload, isNotNull);
     });
 
     test(
@@ -202,8 +204,8 @@ void main() {
             .get();
         expect(balances, isEmpty);
 
-        final logs = await db.select(db.auditLogTable).get();
-        expect(logs, isEmpty);
+        final queue = await DriftPendingChangeRepository(db).getPending();
+        expect(queue, isEmpty);
       },
     );
   });

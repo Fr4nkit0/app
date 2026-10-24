@@ -129,7 +129,6 @@ class _CustomerListScreenState extends ConsumerState<CustomerListScreen> {
             ref.read(paginatedCustomerListProvider.notifier).refresh();
           }
         },
-        backgroundColor: const Color(0xFF1565C0),
       ),
     );
   }

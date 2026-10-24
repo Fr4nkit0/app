@@ -1,5 +1,6 @@
 import 'package:freezed_annotation/freezed_annotation.dart';
 
+import 'package:app/features/customers/domain/models/customer.dart';
 import 'package:app/features/customers/domain/models/customer.preference.dart';
 
 part 'customer_form_state.freezed.dart';
@@ -11,12 +12,15 @@ abstract class CustomerFormState with _$CustomerFormState {
     @Default('') String name,
     @Default('') String phone,
     @Default('') String street,
+    @Default('') String neighborhood,
     @Default('') String apartment,
     @Default('') String floor,
     @Default('') String visualReference,
     @Default([]) List<CustomerPreference> preferences,
     @Default(false) bool isSubmitting,
     @Default(false) bool isSuccess,
+    /// The customer just saved, handed back to whoever opened the form.
+    Customer? createdCustomer,
     String? errorMessage,
     double? latitude,
     double? longitude,
@@ -26,7 +30,7 @@ abstract class CustomerFormState with _$CustomerFormState {
 
   bool get isIdentityValid => name.isNotEmpty;
 
-  bool get isAddressValid => street.isNotEmpty;
+  bool get isAddressValid => street.isNotEmpty && neighborhood.isNotEmpty;
 
   bool get isPreferenceValid => preferences.isNotEmpty;
 

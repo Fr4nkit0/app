@@ -1,11 +1,11 @@
-import 'dart:convert';
-
 import 'package:drift/drift.dart';
 
 import 'package:app/core/services/database.helper.dart';
 import 'package:app/features/inventory/domain/models/container_movement.dart';
 import 'package:app/features/inventory/domain/models/customer_container_balance.dart';
 import 'package:app/features/inventory/domain/models/route_inventory_load.dart';
+import 'package:app/features/sync/data/repositories/pending_change.repository.dart';
+import 'package:app/features/sync/domain/models/pending_change.dart';
 
 abstract class InventoryRepository {
   Future<void> recordContainerMovement(ContainerMovement movement);
@@ -22,9 +22,12 @@ abstract class InventoryRepository {
 }
 
 class DriftInventoryRepository implements InventoryRepository {
-  DriftInventoryRepository(this._db);
+  DriftInventoryRepository(AppDatabase db)
+    : _db = db,
+      _queue = DriftPendingChangeRepository(db);
 
   final AppDatabase _db;
+  final PendingChangeRepository _queue;
 
   @override
   Future<void> recordContainerMovement(ContainerMovement movement) async {
@@ -71,28 +74,28 @@ class DriftInventoryRepository implements InventoryRepository {
                   t.containerType.equals(movement.containerType),
             ))
             .write(
-              CustomerContainerBalanceTableCompanion(quantity: Value(newQty)),
+              CustomerContainerBalanceTableCompanion(
+                quantity: Value(newQty),
+                lastModifiedDate: Value(DateTime.now()),
+              ),
             );
       }
 
-      await _db
-          .into(_db.auditLogTable)
-          .insert(
-            AuditLogTableCompanion.insert(
-              tableNameColumn: 'container_movements',
-              recordId: movement.id,
-              action: 'INSERT',
-              payload: Value(
-                jsonEncode({
-                  'containerMovementId': movement.id,
-                  'customerId': movement.customerId,
-                  'containerType': movement.containerType,
-                  'deliveredQuantity': movement.deliveredQuantity,
-                  'returnedQuantity': movement.returnedQuantity,
-                }),
-              ),
-            ),
-          );
+      await _queue.enqueue(
+        entity: PendingEntity.containerMovement,
+        entityId: movement.id,
+        action: PendingAction.insert,
+        payload: {
+          'containerMovementId': movement.id,
+          'customerId': movement.customerId,
+          'containerType': movement.containerType,
+          'deliveredQuantity': movement.deliveredQuantity,
+          'returnedQuantity': movement.returnedQuantity,
+          'visitId': movement.visitId,
+          'routeId': movement.routeId,
+          'createdAt': movement.createdAt.toIso8601String(),
+        },
+      );
     });
   }
 
@@ -148,6 +151,7 @@ class DriftInventoryRepository implements InventoryRepository {
     )..where((t) => t.routeInventoryLoadId.equals(routeInventoryLoadId))).write(
       RouteInventoryLoadTableCompanion(
         quantity: Value(existing.quantity - returnedQuantity),
+        lastModifiedDate: Value(DateTime.now()),
       ),
     );
   }
@@ -156,7 +160,7 @@ class DriftInventoryRepository implements InventoryRepository {
   Future<List<RouteInventoryLoad>> getRouteLoads(String routeId) async {
     final rows =
         await (_db.select(_db.routeInventoryLoadTable)
-              ..where((t) => t.routeId.equals(routeId))
+              ..where((t) => t.routeId.equals(routeId) & t.enabled.equals(true))
               ..orderBy([(t) => OrderingTerm.asc(t.loadedAt)]))
             .get();
     return rows.map(_rowToLoad).toList();

@@ -1,5 +1,6 @@
 import 'dart:async';
 import 'package:app/core/utils/resource.dart';
+import 'package:app/core/utils/string_utils.dart';
 import 'package:app/features/customers/data/repositories/customer.repository.dart';
 import 'package:app/features/customers/domain/models/customer.dart';
 import 'package:app/features/customers/domain/models/customer.address.dart';
@@ -76,16 +77,29 @@ class MockCustomerRepository implements CustomerRepository {
     required int page,
     required int pageSize,
   }) async {
-    final offset = page * pageSize;
-    final end = offset + pageSize;
-    final lowerQuery = query.toLowerCase();
-    final matches = _customers
-        .where((c) => c.name.toLowerCase().contains(lowerQuery))
-        .toList();
-    return matches.sublist(
-      offset.clamp(0, matches.length),
-      end.clamp(0, matches.length),
-    );
+    if (query.isEmpty) {
+      final start = page * pageSize;
+      if (start >= _customers.length) return [];
+      final end = (start + pageSize) < _customers.length
+          ? (start + pageSize)
+          : _customers.length;
+      return _customers.sublist(start, end);
+    }
+
+    final filtered = _customers.where((customer) {
+      final addressesStr = customer.addresses
+          .map((a) => '${a.street ?? ''} ${a.neighborhood ?? ''}')
+          .join(' ');
+      final target = '${customer.name} ${customer.phone ?? ''} $addressesStr';
+      return StringUtils.fuzzyMatch(query, target);
+    }).toList();
+
+    final start = page * pageSize;
+    if (start >= filtered.length) return [];
+    final end = (start + pageSize) < filtered.length
+        ? (start + pageSize)
+        : filtered.length;
+    return filtered.sublist(start, end);
   }
 
   @override
@@ -122,6 +136,7 @@ class MockCustomerRepository implements CustomerRepository {
           isPrimary: address.isPrimary,
           latitude: latitude,
           longitude: longitude,
+          neighborhood: address.neighborhood,
         );
         final updatedAddresses = List<CustomerAddress>.from(customer.addresses);
         updatedAddresses[addressIndex] = updatedAddress;
@@ -151,6 +166,7 @@ class MockCustomerRepository implements CustomerRepository {
         CustomerAddress(
           id: 'addr-1',
           street: 'Av. San Martín 1300',
+          neighborhood: 'Centro',
           isPrimary: true,
         ),
       ],
@@ -162,7 +178,12 @@ class MockCustomerRepository implements CustomerRepository {
       name: 'Laura Gómez',
       phone: '387-555-0202',
       addresses: [
-        CustomerAddress(id: 'addr-2', street: 'mza 517 C', isPrimary: true),
+        CustomerAddress(
+          id: 'addr-2',
+          street: 'mza 517 C',
+          neighborhood: 'Grand Bourg',
+          isPrimary: true,
+        ),
       ],
       preferences: const [],
       productLabels: const ['1 Bidón'],
@@ -172,7 +193,12 @@ class MockCustomerRepository implements CustomerRepository {
       name: "Despensa 'El Sol'",
       phone: '387-555-0303',
       addresses: [
-        CustomerAddress(id: 'addr-3', street: 'mza 77 A', isPrimary: true),
+        CustomerAddress(
+          id: 'addr-3',
+          street: 'mza 77 A',
+          neighborhood: 'Limache',
+          isPrimary: true,
+        ),
       ],
       preferences: const [],
       debtAmount: 6500,
@@ -183,7 +209,12 @@ class MockCustomerRepository implements CustomerRepository {
       name: 'Kiosco Don Juan',
       phone: '387-555-0404',
       addresses: [
-        CustomerAddress(id: 'addr-4', street: 'mza 912 D', isPrimary: true),
+        CustomerAddress(
+          id: 'addr-4',
+          street: 'mza 912 D',
+          neighborhood: 'Intersindical',
+          isPrimary: true,
+        ),
       ],
       preferences: const [],
       productLabels: const ['5 Bidones'],

@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:app/core/theme/marilin_tokens.dart';
 import 'package:app/features/customers/domain/models/customer.preference.dart';
 
 class StepPreferenceView extends StatelessWidget {
@@ -118,13 +119,13 @@ class _EmptyState extends StatelessWidget {
             Icon(
               Icons.schedule_outlined,
               size: 32,
-              color: const Color(0xFF1565C0).withValues(alpha: 0.6),
+              color: MarilinColors.brandBlue.withValues(alpha: 0.6),
             ),
             const SizedBox(height: 10),
             Text(
               'Tocá para agregar un horario de entrega',
               style: Theme.of(context).textTheme.bodyMedium?.copyWith(
-                color: const Color(0xFF1565C0),
+                color: MarilinColors.brandBlue,
                 fontWeight: FontWeight.w600,
               ),
             ),
@@ -146,23 +147,23 @@ class _AddButton extends StatelessWidget {
       child: Container(
         padding: const EdgeInsets.symmetric(vertical: 14),
         decoration: BoxDecoration(
-          color: const Color(0xFF1565C0).withValues(alpha: 0.06),
+          color: MarilinColors.brandBlue.withValues(alpha: 0.06),
           borderRadius: BorderRadius.circular(12),
           border: Border.all(
-            color: const Color(0xFF1565C0).withValues(alpha: 0.2),
+            color: MarilinColors.brandBlue.withValues(alpha: 0.2),
           ),
         ),
         child: Row(
           mainAxisAlignment: MainAxisAlignment.center,
           children: [
-            Icon(Icons.add_rounded, color: const Color(0xFF1565C0), size: 20),
+            Icon(Icons.add_rounded, color: MarilinColors.brandBlue, size: 20),
             const SizedBox(width: 6),
             Text(
               'Agregar otro horario',
               style: TextStyle(
                 fontWeight: FontWeight.w700,
                 fontSize: 14,
-                color: const Color(0xFF1565C0),
+                color: MarilinColors.brandBlue,
               ),
             ),
           ],
@@ -202,13 +203,13 @@ class _PreferenceSummaryCard extends StatelessWidget {
               width: 36,
               height: 36,
               decoration: BoxDecoration(
-                color: const Color(0xFF1565C0).withValues(alpha: 0.08),
+                color: MarilinColors.brandBlue.withValues(alpha: 0.08),
                 shape: BoxShape.circle,
               ),
               child: const Icon(
                 Icons.schedule_rounded,
                 size: 18,
-                color: Color(0xFF1565C0),
+                color: MarilinColors.brandBlue,
               ),
             ),
             const SizedBox(width: 12),
@@ -302,7 +303,7 @@ class _PreferenceDialogState extends State<_PreferenceDialog> {
       builder: (ctx, child) {
         return Theme(
           data: Theme.of(ctx).copyWith(
-            colorScheme: const ColorScheme.light(primary: Color(0xFF1565C0)),
+            colorScheme: const ColorScheme.light(primary: MarilinColors.brandBlue),
           ),
           child: child!,
         );
@@ -415,7 +416,7 @@ class _PreferenceDialogState extends State<_PreferenceDialog> {
                 ),
                 focusedBorder: OutlineInputBorder(
                   borderRadius: BorderRadius.all(Radius.circular(10)),
-                  borderSide: BorderSide(color: Color(0xFF1565C0), width: 2),
+                  borderSide: BorderSide(color: MarilinColors.brandBlue, width: 2),
                 ),
               ),
               items: _days.entries
@@ -494,7 +495,7 @@ class _PreferenceDialogState extends State<_PreferenceDialog> {
                     child: FilledButton(
                       onPressed: _save,
                       style: FilledButton.styleFrom(
-                        backgroundColor: const Color(0xFF1565C0),
+                        backgroundColor: MarilinColors.brandBlue,
                         padding: const EdgeInsets.symmetric(vertical: 14),
                         shape: RoundedRectangleBorder(
                           borderRadius: BorderRadius.circular(12),

@@ -1,6 +1,6 @@
-import 'dart:convert';
-import 'package:http/http.dart' as http;
+import 'package:dio/dio.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:app/core/network/dio_client.dart';
 
 class GeocodingResult {
   final String name;
@@ -42,9 +42,9 @@ class GeocodingResult {
 }
 
 class GeocodingService {
-  final http.Client _client;
+  final Dio _dio;
 
-  GeocodingService({http.Client? client}) : _client = client ?? http.Client();
+  GeocodingService(this._dio);
 
   Future<List<GeocodingResult>> search(
     String query, {
@@ -54,48 +54,27 @@ class GeocodingService {
   }) async {
     if (query.trim().isEmpty) return [];
 
-    final url = Uri.parse('https://photon.komoot.io/api/').replace(
-      queryParameters: {
-        'q': query,
-        'limit': limit.toString(),
-        if (biasLatitude != null) 'lat': biasLatitude.toString(),
-        if (biasLongitude != null) 'lon': biasLongitude.toString(),
-      },
-    );
-
     try {
-      final response = await _client
-          .get(url, headers: {'User-Agent': 'MarilinApp/1.0 (com.marilin.app)'})
-          .timeout(const Duration(seconds: 10));
+      final response = await _dio.get(
+        '/map/geocode',
+        queryParameters: {
+          'q': query,
+        },
+      ).timeout(const Duration(seconds: 10));
 
       if (response.statusCode != 200) {
         throw Exception('HTTP error ${response.statusCode}');
       }
 
-      final data =
-          json.decode(utf8.decode(response.bodyBytes)) as Map<String, dynamic>;
-      final features = data['features'] as List<dynamic>? ?? const [];
-
+      final data = response.data['data'] as List<dynamic>? ?? const [];
       final results = <GeocodingResult>[];
-      for (final feature in features) {
-        final geometry = feature['geometry'] as Map<String, dynamic>?;
-        final properties = feature['properties'] as Map<String, dynamic>?;
 
-        if (geometry == null || properties == null) continue;
+      for (final item in data) {
+        final double longitude = (item['longitude'] as num).toDouble();
+        final double latitude = (item['latitude'] as num).toDouble();
 
-        final coordinates = geometry['coordinates'] as List<dynamic>?;
-        if (coordinates == null || coordinates.length < 2) continue;
-
-        // GeoJSON coordinates order: [longitude, latitude]
-        final double longitude = (coordinates[0] as num).toDouble();
-        final double latitude = (coordinates[1] as num).toDouble();
-
-        final String name = properties['name']?.toString() ?? '';
-        final String? street = properties['street']?.toString();
-        final String? houseNumber = properties['housenumber']?.toString();
-        final String? city = properties['city']?.toString();
-        final String? stateName = properties['state']?.toString();
-        final String? country = properties['country']?.toString();
+        final String name = item['name']?.toString() ?? '';
+        final String? street = item['street']?.toString();
 
         results.add(
           GeocodingResult(
@@ -103,10 +82,8 @@ class GeocodingService {
             latitude: latitude,
             longitude: longitude,
             street: street,
-            houseNumber: houseNumber,
-            city: city,
-            state: stateName,
-            country: country,
+            // Our proxy simplified the data and no longer returns houseNumber, city, state, country
+            // but we maintain the constructor for compatibility.
           ),
         );
       }
@@ -118,5 +95,6 @@ class GeocodingService {
 }
 
 final geocodingServiceProvider = Provider<GeocodingService>((ref) {
-  return GeocodingService();
+  final dio = ref.watch(dioProvider);
+  return GeocodingService(dio);
 });

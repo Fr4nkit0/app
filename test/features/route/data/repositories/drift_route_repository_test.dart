@@ -1,3 +1,4 @@
+import '../../../../support/seed_customers.dart';
 import 'package:drift/native.dart';
 import 'package:drift/drift.dart' as drift;
 import 'package:flutter_test/flutter_test.dart';
@@ -20,10 +21,9 @@ void main() {
   setUp(() async {
     db = AppDatabase(NativeDatabase.memory());
     sut = DriftRouteRepository(db);
-    // NativeDatabase.memory() triggers onCreate → seedDatabase inserts:
-    //   - mock-customer-1..4 (always in test mode)
-    //   - mock-addr-1..4 with isPrimary=true for each customer (always)
-    // The !FLUTTER_TEST-gated block (routes, stops, visits, sales…) is SKIPPED.
+    // A fresh database is empty; seed mock-customer-1..4 with a primary
+    // address each (mock-addr-1..4) explicitly.
+    await seedTestCustomers(db);
   });
 
   tearDown(() async {
@@ -375,6 +375,60 @@ void main() {
       await Future.delayed(const Duration(milliseconds: 30));
 
       expect(emissions.last.first.status, StopStatus.done);
+    });
+  });
+
+  group('rescheduleStop', () {
+    test(
+      'adds a stop of the same customer to today\'s route at the chosen time, linked to the original, which shows as rescheduled',
+      () async {
+        await insertRoute('route-today', todayStr);
+        final now = DateTime.now();
+        final original = DateTime(now.year, now.month, now.day, 9, 0);
+        await insertStop(
+          stopId: 'stop-1',
+          routeId: 'route-today',
+          customerId: 'mock-customer-1',
+          sequence: 1,
+          scheduledAt: original,
+        );
+        final at = DateTime(now.year, now.month, now.day, 16, 30);
+
+        final newId = await sut.rescheduleStop('stop-1', at);
+
+        final stops = await sut.watchDayStops().first;
+        final created = stops.singleWhere((s) => s.id == newId);
+        final old = stops.singleWhere((s) => s.id == 'stop-1');
+        expect(created.status, StopStatus.pending);
+        expect(created.customer.id, 'mock-customer-1');
+        expect(created.scheduledAt, at);
+        expect(created.hasScheduledTime, isTrue);
+        expect(created.rescheduledFromStopId, 'stop-1');
+        expect(created.rescheduledFromAt, original);
+        expect(old.status, StopStatus.rescheduled);
+        final row = await (db.select(
+          db.routeStopTable,
+        )..where((t) => t.routeStopId.equals(newId))).getSingle();
+        expect(row.routeId, 'route-today');
+        expect(row.scheduledTime, '16:30:00');
+      },
+    );
+
+    test('a stop that was not rescheduled carries no link', () async {
+      await insertRoute('route-today', todayStr);
+      final now = DateTime.now();
+      await insertStop(
+        stopId: 'stop-1',
+        routeId: 'route-today',
+        customerId: 'mock-customer-1',
+        sequence: 1,
+        scheduledAt: DateTime(now.year, now.month, now.day, 9, 0),
+      );
+
+      final stop = (await sut.watchDayStops().first).single;
+
+      expect(stop.rescheduledFromStopId, isNull);
+      expect(stop.rescheduledFromAt, isNull);
     });
   });
 }
