@@ -79,14 +79,16 @@ class _NewAgreementSheetState extends ConsumerState<NewAgreementSheet> {
   Future<void> _save() async {
     if (!_formKey.currentState!.validate()) return;
     setState(() => _saving = true);
-    final result = await ref.read(driftCustomerAgreementRepositoryProvider).create(
-      customerId: widget.customerId,
-      productId: _productId!,
-      unitPrice: _parsePrice(_price.text)!,
-      validFrom: _iso(_validFrom),
-      validTo: _validTo == null ? null : _iso(_validTo!),
-      reason: _reason.text,
-    );
+    final result = await ref
+        .read(driftCustomerAgreementRepositoryProvider)
+        .create(
+          customerId: widget.customerId,
+          productId: _productId!,
+          unitPrice: _parsePrice(_price.text)!,
+          validFrom: _iso(_validFrom),
+          validTo: _validTo == null ? null : _iso(_validTo!),
+          reason: _reason.text,
+        );
     if (!mounted) return;
     switch (result) {
       case Success():
@@ -139,7 +141,9 @@ class _NewAgreementSheetState extends ConsumerState<NewAgreementSheet> {
               TextFormField(
                 key: const Key('agreement_price'),
                 controller: _price,
-                keyboardType: const TextInputType.numberWithOptions(decimal: true),
+                keyboardType: const TextInputType.numberWithOptions(
+                  decimal: true,
+                ),
                 decoration: const InputDecoration(
                   labelText: 'Precio unitario',
                   prefixText: '\$ ',
@@ -150,7 +154,9 @@ class _NewAgreementSheetState extends ConsumerState<NewAgreementSheet> {
                     return 'Ingresá un precio mayor a 0';
                   }
                   // The server keeps prices with two decimals and rejects more.
-                  if (!RegExp(r'^\d+([.,]\d{1,2})?$').hasMatch((v ?? '').trim())) {
+                  if (!RegExp(
+                    r'^\d+([.,]\d{1,2})?$',
+                  ).hasMatch((v ?? '').trim())) {
                     return 'Usá hasta 2 decimales';
                   }
                   return null;
@@ -167,10 +173,13 @@ class _NewAgreementSheetState extends ConsumerState<NewAgreementSheet> {
               ListTile(
                 contentPadding: EdgeInsets.zero,
                 title: const Text('Vigente hasta (opcional)'),
-                subtitle: Text(_validTo == null ? 'Sin fecha de fin' : _show(_validTo!)),
+                subtitle: Text(
+                  _validTo == null ? 'Sin fecha de fin' : _show(_validTo!),
+                ),
                 trailing: _validTo == null
                     ? const Icon(Icons.calendar_today_outlined)
                     : IconButton(
+                        tooltip: 'Quitar',
                         icon: const Icon(Icons.clear),
                         onPressed: () => setState(() => _validTo = null),
                       ),
@@ -180,9 +189,12 @@ class _NewAgreementSheetState extends ConsumerState<NewAgreementSheet> {
                 key: const Key('agreement_reason'),
                 controller: _reason,
                 maxLines: 2,
-                decoration: const InputDecoration(labelText: 'Motivo (opcional)'),
+                decoration: const InputDecoration(
+                  labelText: 'Motivo (opcional)',
+                ),
                 validator: (v) =>
-                    (v?.trim().length ?? 0) > CustomerAgreementRepository.maxReasonLength
+                    (v?.trim().length ?? 0) >
+                        CustomerAgreementRepository.maxReasonLength
                     ? 'Máximo ${CustomerAgreementRepository.maxReasonLength} caracteres'
                     : null,
               ),

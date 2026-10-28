@@ -68,7 +68,8 @@ class _VisitScreenState extends ConsumerState<VisitScreen> {
   RescheduleTimeError? _rescheduleError;
   final TextEditingController _noteController = TextEditingController();
 
-  bool get _isRescheduleSelected => _selectedOutcome?.triggersReschedule ?? false;
+  bool get _isRescheduleSelected =>
+      _selectedOutcome?.triggersReschedule ?? false;
 
   @override
   void dispose() {
@@ -109,8 +110,7 @@ class _VisitScreenState extends ConsumerState<VisitScreen> {
           orElse: () => false,
         );
 
-        if ((hasReturns || hasPayments) &&
-            _isRescheduleSelected) {
+        if ((hasReturns || hasPayments) && _isRescheduleSelected) {
           _selectedOutcome = null;
         }
 
@@ -119,6 +119,7 @@ class _VisitScreenState extends ConsumerState<VisitScreen> {
           appBar: AppBar(
             centerTitle: true,
             leading: IconButton(
+              tooltip: 'Volver',
               icon: const Icon(Icons.arrow_back),
               onPressed: () => Navigator.of(context).pop(),
             ),
@@ -372,7 +373,9 @@ class _VisitScreenState extends ConsumerState<VisitScreen> {
 
     if (payments.isEmpty) return;
 
-    final res = await ref.read(registerPaymentUseCaseProvider).execute(payments);
+    final res = await ref
+        .read(registerPaymentUseCaseProvider)
+        .execute(payments);
     if (!context.mounted) return;
     switch (res) {
       case Success():
@@ -398,19 +401,19 @@ class _VisitScreenState extends ConsumerState<VisitScreen> {
     required bool hasReturns,
   }) async {
     if (!hasSales && _isSaleSelected) {
-      ref.read(saleDraftProvider.notifier).selectCustomer(
-            stop.customer,
-            visitId: stop.id,
-          );
+      ref
+          .read(saleDraftProvider.notifier)
+          .selectCustomer(stop.customer, visitId: stop.id);
       if (!mounted) return;
-      await Navigator.of(context).push(
-        MaterialPageRoute(builder: (_) => const SaleStep1Screen()),
-      );
+      await Navigator.of(
+        context,
+      ).push(MaterialPageRoute(builder: (_) => const SaleStep1Screen()));
       return;
     }
 
     final outcome = _selectedOutcome;
-    final triggersReschedule = !hasSales && (outcome?.triggersReschedule ?? false);
+    final triggersReschedule =
+        !hasSales && (outcome?.triggersReschedule ?? false);
     final nextStatus = triggersReschedule ? StopStatus.absent : StopStatus.done;
 
     DateTime? rescheduleAt;
@@ -455,17 +458,19 @@ class _VisitScreenState extends ConsumerState<VisitScreen> {
       );
     });
 
-    final visitType =
-        _isSaleSelected ? VisitType.sale : VisitType.visit;
+    final visitType = _isSaleSelected ? VisitType.sale : VisitType.visit;
 
-    await ref.read(completeVisitUseCaseProvider).execute(
+    await ref
+        .read(completeVisitUseCaseProvider)
+        .execute(
           stopId: stop.id,
           customerId: stop.customer.id,
           visitType: visitType,
           nextStatus: nextStatus,
           outcomeId: hasSales ? null : outcome?.id,
-          observations:
-              _noteController.text.isNotEmpty ? _noteController.text : null,
+          observations: _noteController.text.isNotEmpty
+              ? _noteController.text
+              : null,
           rescheduleAt: rescheduleAt,
         );
   }
@@ -487,7 +492,13 @@ class _VisitScreenState extends ConsumerState<VisitScreen> {
       helpText: 'Hora de la nueva parada (hoy)',
     );
     if (picked == null || !mounted) return;
-    final at = DateTime(now.year, now.month, now.day, picked.hour, picked.minute);
+    final at = DateTime(
+      now.year,
+      now.month,
+      now.day,
+      picked.hour,
+      picked.minute,
+    );
     setState(() {
       _rescheduleTime = picked;
       _rescheduleError = checkRescheduleTime(now: DateTime.now(), at: at);
@@ -512,7 +523,10 @@ class _VisitScreenState extends ConsumerState<VisitScreen> {
             if (outcomes.isEmpty) {
               return Text(
                 'No hay resultados disponibles. Sincronizá la ruta.',
-                style: TextStyle(fontSize: 13, color: context.marilin.inkSecondary),
+                style: TextStyle(
+                  fontSize: 13,
+                  color: context.marilin.inkSecondary,
+                ),
               );
             }
             return Row(
@@ -593,10 +607,7 @@ class _VisitScreenState extends ConsumerState<VisitScreen> {
     );
   }
 
-  Widget _buildResultButton(
-    VisitOutcome outcome, {
-    bool isEnabled = true,
-  }) {
+  Widget _buildResultButton(VisitOutcome outcome, {bool isEnabled = true}) {
     final label = outcome.name;
     final icon = visitOutcomeIcon(outcome);
     final isSelected = _selectedOutcome?.id == outcome.id;
@@ -656,7 +667,9 @@ class _VisitScreenState extends ConsumerState<VisitScreen> {
   Widget _buildDoneStateBanner(StopStatus status) {
     final isDone = status == StopStatus.done;
     final color = isDone ? const Color(0xFF10B981) : const Color(0xFFEF4444);
-    final bg = isDone ? context.marilin.soft(Color(0xFFE8F5E9)) : context.marilin.soft(Color(0xFFFFEBEE));
+    final bg = isDone
+        ? context.marilin.soft(Color(0xFFE8F5E9))
+        : context.marilin.soft(Color(0xFFFFEBEE));
 
     return Container(
       padding: const EdgeInsets.all(16),
@@ -770,7 +783,9 @@ class _VisitScreenState extends ConsumerState<VisitScreen> {
             border: Border.all(color: context.marilin.border, width: 1),
             boxShadow: [
               BoxShadow(
-                color: Colors.black.withValues(alpha: context.marilin.isDark ? 0.3 : 0.02),
+                color: Colors.black.withValues(
+                  alpha: context.marilin.isDark ? 0.3 : 0.02,
+                ),
                 blurRadius: 8,
                 offset: const Offset(0, 4),
               ),
@@ -867,7 +882,10 @@ class _VisitScreenState extends ConsumerState<VisitScreen> {
       decoration: BoxDecoration(
         color: context.marilin.soft(Color(0xFFEFF6FF)),
         borderRadius: BorderRadius.circular(10),
-        border: Border.all(color: context.marilin.soft(Color(0xFFBFDBFE)), width: 1),
+        border: Border.all(
+          color: context.marilin.soft(Color(0xFFBFDBFE)),
+          width: 1,
+        ),
       ),
       child: const Row(
         children: [

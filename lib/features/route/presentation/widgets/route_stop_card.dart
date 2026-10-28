@@ -202,11 +202,31 @@ class RouteStopCard extends ConsumerWidget {
                                         Text(
                                           stop.customer.addresses.isNotEmpty
                                               ? AddressFormatter.format(
-                                                  street: stop.customer.addresses.first.street,
-                                                  neighborhood: stop.customer.addresses.first.neighborhood,
-                                                  floor: stop.customer.addresses.first.floor,
-                                                  apartment: stop.customer.addresses.first.apartment,
-                                                  visualReference: stop.customer.addresses.first.visualReference,
+                                                  street: stop
+                                                      .customer
+                                                      .addresses
+                                                      .first
+                                                      .street,
+                                                  neighborhood: stop
+                                                      .customer
+                                                      .addresses
+                                                      .first
+                                                      .neighborhood,
+                                                  floor: stop
+                                                      .customer
+                                                      .addresses
+                                                      .first
+                                                      .floor,
+                                                  apartment: stop
+                                                      .customer
+                                                      .addresses
+                                                      .first
+                                                      .apartment,
+                                                  visualReference: stop
+                                                      .customer
+                                                      .addresses
+                                                      .first
+                                                      .visualReference,
                                                 )
                                               : 'Sin dirección',
                                           style: TextStyle(
@@ -339,18 +359,21 @@ class RouteStopCard extends ConsumerWidget {
                                               }
                                             }
                                           },
-                                          child: Container(
-                                            width: 44,
-                                            height: 44,
-                                            alignment: Alignment.center,
-                                            decoration: const BoxDecoration(
-                                              color: Color(0xFF25D366),
-                                              shape: BoxShape.circle,
-                                            ),
-                                            child: FaIcon(
-                                              FontAwesomeIcons.whatsapp,
-                                              color: Colors.white,
-                                              size: 28,
+                                          child: Tooltip(
+                                            message: 'WhatsApp',
+                                            child: Container(
+                                              width: 44,
+                                              height: 44,
+                                              alignment: Alignment.center,
+                                              decoration: const BoxDecoration(
+                                                color: Color(0xFF25D366),
+                                                shape: BoxShape.circle,
+                                              ),
+                                              child: FaIcon(
+                                                FontAwesomeIcons.whatsapp,
+                                                color: Colors.white,
+                                                size: 28,
+                                              ),
                                             ),
                                           ),
                                         ),

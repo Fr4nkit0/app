@@ -757,6 +757,7 @@ class _ContainerReturnConfirmationDialogState
                     Row(
                       children: [
                         IconButton(
+                          tooltip: 'Restar',
                           onPressed: returned > 0
                               ? () {
                                   setState(() {
@@ -779,6 +780,7 @@ class _ContainerReturnConfirmationDialogState
                           ),
                         ),
                         IconButton(
+                          tooltip: 'Sumar',
                           onPressed: returned < maxReturns
                               ? () {
                                   setState(() {

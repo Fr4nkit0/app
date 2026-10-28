@@ -229,24 +229,33 @@ class _CustomerProfileScreenState extends ConsumerState<CustomerProfileScreen> {
             child: IntrinsicHeight(
               child: Builder(
                 builder: (context) {
-                  final balanceAsync = ref.watch(customerBalanceProvider(customer.id));
+                  final balanceAsync = ref.watch(
+                    customerBalanceProvider(customer.id),
+                  );
                   final balance = balanceAsync.value ?? customer.debtAmount;
-                  final containerBalancesAsync = ref.watch(customerContainerBalancesProvider(customer.id));
+                  final containerBalancesAsync = ref.watch(
+                    customerContainerBalancesProvider(customer.id),
+                  );
 
                   return Row(
                     children: [
                       Expanded(
                         child: Material(
-                          color: balance > 0 ? context.marilin.soft(Color(0xFFFEF2F2)) : context.marilin.soft(Color(0xFFECFDF5)),
+                          color: balance > 0
+                              ? context.marilin.soft(Color(0xFFFEF2F2))
+                              : context.marilin.soft(Color(0xFFECFDF5)),
                           borderRadius: BorderRadius.circular(16),
                           child: InkWell(
                             borderRadius: BorderRadius.circular(16),
                             onTap: balance > 0
                                 ? () async {
-                                    final result = await showDialog<DebtPaymentResult>(
-                                      context: context,
-                                      builder: (_) => DebtPaymentDialog(totalDebt: balance),
-                                    );
+                                    final result =
+                                        await showDialog<DebtPaymentResult>(
+                                          context: context,
+                                          builder: (_) => DebtPaymentDialog(
+                                            totalDebt: balance,
+                                          ),
+                                        );
                                     if (result == null) return;
 
                                     final payments = <Payment>[];
@@ -261,7 +270,8 @@ class _CustomerProfileScreenState extends ConsumerState<CustomerProfileScreen> {
                                           createdAt: now,
                                         ),
                                       );
-                                    } else if (result.method == 'Transferencia') {
+                                    } else if (result.method ==
+                                        'Transferencia') {
                                       payments.add(
                                         Payment(
                                           id: const Uuid().v4(),
@@ -272,7 +282,8 @@ class _CustomerProfileScreenState extends ConsumerState<CustomerProfileScreen> {
                                         ),
                                       );
                                     } else if (result.method == 'Mixto') {
-                                      if (result.cashAmount != null && result.cashAmount! > 0) {
+                                      if (result.cashAmount != null &&
+                                          result.cashAmount! > 0) {
                                         payments.add(
                                           Payment(
                                             id: const Uuid().v4(),
@@ -291,20 +302,27 @@ class _CustomerProfileScreenState extends ConsumerState<CustomerProfileScreen> {
                                             customerId: customer.id,
                                             amount: result.transferAmount!,
                                             type: PaymentType.transfer,
-                                            createdAt: now.add(const Duration(milliseconds: 10)),
+                                            createdAt: now.add(
+                                              const Duration(milliseconds: 10),
+                                            ),
                                           ),
                                         );
                                       }
                                     }
 
                                     if (payments.isNotEmpty) {
-                                      final usecase = ref.read(registerPaymentUseCaseProvider);
-                                      final res = await usecase.execute(payments);
+                                      final usecase = ref.read(
+                                        registerPaymentUseCaseProvider,
+                                      );
+                                      final res = await usecase.execute(
+                                        payments,
+                                      );
                                       if (res is Success) {
                                         if (context.mounted) {
                                           TopToast.show(
                                             context,
-                                            message: 'Pago registrado con éxito',
+                                            message:
+                                                'Pago registrado con éxito',
                                             icon: Icons.check_circle_rounded,
                                             color: const Color(0xFF10B981),
                                           );
@@ -313,7 +331,8 @@ class _CustomerProfileScreenState extends ConsumerState<CustomerProfileScreen> {
                                         if (context.mounted) {
                                           TopToast.show(
                                             context,
-                                            message: 'Error al registrar pago: ${res.error}',
+                                            message:
+                                                'Error al registrar pago: ${res.error}',
                                             icon: Icons.error_outline,
                                             color: const Color(0xFFDC2626),
                                           );
@@ -336,7 +355,8 @@ class _CustomerProfileScreenState extends ConsumerState<CustomerProfileScreen> {
                                 crossAxisAlignment: CrossAxisAlignment.start,
                                 children: [
                                   Row(
-                                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                                    mainAxisAlignment:
+                                        MainAxisAlignment.spaceBetween,
                                     children: [
                                       Text(
                                         'Saldo en dinero',
@@ -352,8 +372,9 @@ class _CustomerProfileScreenState extends ConsumerState<CustomerProfileScreen> {
                                         balance > 0
                                             ? Icons.credit_card_rounded
                                             : (balance == 0
-                                                ? Icons.check_circle_rounded
-                                                : Icons.monetization_on_outlined),
+                                                  ? Icons.check_circle_rounded
+                                                  : Icons
+                                                        .monetization_on_outlined),
                                         size: 16,
                                         color: balance > 0
                                             ? const Color(0xFFEF4444)
@@ -366,8 +387,8 @@ class _CustomerProfileScreenState extends ConsumerState<CustomerProfileScreen> {
                                     balance > 0
                                         ? '\$${balance.toStringAsFixed(0)}'
                                         : (balance == 0
-                                            ? '\$0'
-                                            : '\$${(-balance).toStringAsFixed(0)}'),
+                                              ? '\$0'
+                                              : '\$${(-balance).toStringAsFixed(0)}'),
                                     style: TextStyle(
                                       fontSize: 22,
                                       fontWeight: FontWeight.w800,
@@ -381,8 +402,8 @@ class _CustomerProfileScreenState extends ConsumerState<CustomerProfileScreen> {
                                     balance > 0
                                         ? 'Deuda: \$${balance.toStringAsFixed(0)}'
                                         : (balance == 0
-                                            ? 'Al día'
-                                            : 'Saldo a favor: \$${(-balance).toStringAsFixed(0)}'),
+                                              ? 'Al día'
+                                              : 'Saldo a favor: \$${(-balance).toStringAsFixed(0)}'),
                                     style: TextStyle(
                                       fontSize: 13,
                                       color: balance > 0
@@ -406,20 +427,25 @@ class _CustomerProfileScreenState extends ConsumerState<CustomerProfileScreen> {
                             onTap: () {
                               showDialog(
                                 context: context,
-                                builder: (_) => ProfileContainerReturnDialog(customer: customer),
+                                builder: (_) => ProfileContainerReturnDialog(
+                                  customer: customer,
+                                ),
                               );
                             },
                             child: Container(
                               padding: const EdgeInsets.all(14),
                               decoration: BoxDecoration(
                                 borderRadius: BorderRadius.circular(16),
-                                border: Border.all(color: context.marilin.border),
+                                border: Border.all(
+                                  color: context.marilin.border,
+                                ),
                               ),
                               child: Column(
                                 crossAxisAlignment: CrossAxisAlignment.start,
                                 children: [
                                   Row(
-                                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                                    mainAxisAlignment:
+                                        MainAxisAlignment.spaceBetween,
                                     children: [
                                       Text(
                                         'Comodatos activos',
@@ -441,22 +467,26 @@ class _CustomerProfileScreenState extends ConsumerState<CustomerProfileScreen> {
                                     data: (balances) {
                                       final bidon = balances
                                           .firstWhere(
-                                            (b) => b.containerType == 'BIDON_20L',
-                                            orElse: () => CustomerContainerBalance(
-                                              customerId: customer.id,
-                                              containerType: 'BIDON_20L',
-                                              quantity: 0,
-                                            ),
+                                            (b) =>
+                                                b.containerType == 'BIDON_20L',
+                                            orElse: () =>
+                                                CustomerContainerBalance(
+                                                  customerId: customer.id,
+                                                  containerType: 'BIDON_20L',
+                                                  quantity: 0,
+                                                ),
                                           )
                                           .quantity;
                                       final sifon = balances
                                           .firstWhere(
-                                            (b) => b.containerType == 'SIFON_2L',
-                                            orElse: () => CustomerContainerBalance(
-                                              customerId: customer.id,
-                                              containerType: 'SIFON_2L',
-                                              quantity: 0,
-                                            ),
+                                            (b) =>
+                                                b.containerType == 'SIFON_2L',
+                                            orElse: () =>
+                                                CustomerContainerBalance(
+                                                  customerId: customer.id,
+                                                  containerType: 'SIFON_2L',
+                                                  quantity: 0,
+                                                ),
                                           )
                                           .quantity;
 
@@ -479,7 +509,9 @@ class _CustomerProfileScreenState extends ConsumerState<CustomerProfileScreen> {
                                     loading: () => const SizedBox(
                                       height: 16,
                                       width: 16,
-                                      child: CircularProgressIndicator(strokeWidth: 2),
+                                      child: CircularProgressIndicator(
+                                        strokeWidth: 2,
+                                      ),
                                     ),
                                     error: (_, __) => Text(
                                       'Sin comodatos',
@@ -754,7 +786,11 @@ class _CustomerProfileScreenState extends ConsumerState<CustomerProfileScreen> {
                     const SizedBox(height: 8),
                     Row(
                       children: [
-                        const Icon(Icons.check_circle, size: 16, color: Colors.green),
+                        const Icon(
+                          Icons.check_circle,
+                          size: 16,
+                          color: Colors.green,
+                        ),
                         const SizedBox(width: 8),
                         Text(
                           'Ubicación fijada (${addr.latitude!.toStringAsFixed(6)}, ${addr.longitude!.toStringAsFixed(6)})',
@@ -1015,6 +1051,7 @@ class _ProfileContainerReturnDialogState
                     Row(
                       children: [
                         IconButton(
+                          tooltip: 'Restar',
                           onPressed: returned > 0
                               ? () {
                                   setState(() {
@@ -1037,6 +1074,7 @@ class _ProfileContainerReturnDialogState
                           ),
                         ),
                         IconButton(
+                          tooltip: 'Sumar',
                           onPressed: returned < balance
                               ? () {
                                   setState(() {

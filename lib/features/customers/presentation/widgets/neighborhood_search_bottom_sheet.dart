@@ -7,10 +7,7 @@ import 'package:app/features/customers/domain/models/salta_neighborhoods.dart';
 class NeighborhoodSearchBottomSheet extends StatefulWidget {
   final ValueChanged<String> onSelected;
 
-  const NeighborhoodSearchBottomSheet({
-    super.key,
-    required this.onSelected,
-  });
+  const NeighborhoodSearchBottomSheet({super.key, required this.onSelected});
 
   @override
   State<NeighborhoodSearchBottomSheet> createState() =>
@@ -81,11 +78,12 @@ class _NeighborhoodSearchBottomSheetState
               Text(
                 'Seleccionar Barrio',
                 style: Theme.of(context).textTheme.titleMedium?.copyWith(
-                      fontWeight: FontWeight.bold,
-                      color: context.marilin.ink,
-                    ),
+                  fontWeight: FontWeight.bold,
+                  color: context.marilin.ink,
+                ),
               ),
               IconButton(
+                tooltip: 'Cerrar',
                 icon: const Icon(Icons.close),
                 onPressed: () => Navigator.pop(context),
               ),
@@ -99,6 +97,7 @@ class _NeighborhoodSearchBottomSheetState
               prefixIcon: const Icon(Icons.search),
               suffixIcon: _searchQuery.isNotEmpty
                   ? IconButton(
+                      tooltip: 'Limpiar búsqueda',
                       icon: const Icon(Icons.clear),
                       onPressed: () {
                         setState(() {
@@ -119,9 +118,15 @@ class _NeighborhoodSearchBottomSheetState
               ),
               focusedBorder: OutlineInputBorder(
                 borderRadius: BorderRadius.circular(12),
-                borderSide: const BorderSide(color: MarilinColors.brandBlue, width: 2),
+                borderSide: const BorderSide(
+                  color: MarilinColors.brandBlue,
+                  width: 2,
+                ),
               ),
-              contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+              contentPadding: const EdgeInsets.symmetric(
+                horizontal: 16,
+                vertical: 12,
+              ),
             ),
             onChanged: (val) {
               setState(() {

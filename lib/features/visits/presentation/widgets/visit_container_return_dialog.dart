@@ -77,6 +77,7 @@ class _StandaloneContainerReturnDialogState
                     Row(
                       children: [
                         IconButton(
+                          tooltip: 'Restar',
                           onPressed: returned > 0
                               ? () {
                                   setState(() {
@@ -99,6 +100,7 @@ class _StandaloneContainerReturnDialogState
                           ),
                         ),
                         IconButton(
+                          tooltip: 'Sumar',
                           onPressed: returned < balance
                               ? () {
                                   setState(() {

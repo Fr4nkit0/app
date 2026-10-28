@@ -34,7 +34,12 @@ class CoreSearchBar extends StatelessWidget {
             Icon(Icons.search, color: context.marilin.inkHint, size: 20),
         suffixIcon: onClear != null
             ? IconButton(
-                icon: Icon(Icons.clear, color: context.marilin.textMuted, size: 20),
+                tooltip: 'Limpiar búsqueda',
+                icon: Icon(
+                  Icons.clear,
+                  color: context.marilin.textMuted,
+                  size: 20,
+                ),
                 onPressed: onClear,
               )
             : null,
