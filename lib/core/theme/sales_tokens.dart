@@ -45,6 +45,12 @@ class SalesTokens extends ThemeExtension<SalesTokens> {
     destructive: MarilinColors.destructive,
   );
 
+  static const SalesTokens dark = SalesTokens(
+    primary: Color(0xFF3B82F6),
+    accent: Color(0xFFFB923C),
+    destructive: Color(0xFFF87171),
+  );
+
   // ─── ThemeExtension contract ──────────────────────────────────────────────
 
   @override

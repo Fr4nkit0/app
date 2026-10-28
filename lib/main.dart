@@ -3,6 +3,7 @@ import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:app/core/theme/app.theme.dart';
+import 'package:app/core/theme/theme_mode_controller.dart';
 import 'package:app/features/customers/presentation/providers/customer_count_provider.dart';
 import 'package:app/features/customers/presentation/screens/customer_list_screen.dart';
 import 'package:app/features/history/presentation/screens/history_screen.dart';
@@ -29,15 +30,18 @@ void main() {
   );
 }
 
-class MarilinApp extends StatelessWidget {
+class MarilinApp extends ConsumerWidget {
   const MarilinApp({super.key});
 
   @override
-  Widget build(BuildContext context) {
+  Widget build(BuildContext context, WidgetRef ref) {
     return MaterialApp(
       title: 'Marilin',
       debugShowCheckedModeBanner: false,
       theme: AppTheme.lightTheme,
+      darkTheme: AppTheme.darkTheme,
+      // The phone's theme unless the driver picked one in the profile.
+      themeMode: ref.watch(themeModeProvider),
       home: const AuthWrapper(),
     );
   }

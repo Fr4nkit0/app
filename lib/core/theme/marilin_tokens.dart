@@ -51,6 +51,19 @@ class MarilinTokens extends ThemeExtension<MarilinTokens> {
     accent: MarilinColors.accent,
   );
 
+  /// DESIGN.md dark palette: dark canvas, lighter cards, light ink.
+  static const MarilinTokens dark = MarilinTokens(
+    scaffoldMuted: Color(0xFF0F172A),
+    surface: Color(0xFF1E293B),
+    brandBlue: Color(0xFF3B82F6),
+    brandNavy: Color(0xFFF1F5F9),
+    textMuted: Color(0xFF94A3B8),
+    border: Color(0xFF334155),
+    success: Color(0xFF34D399),
+    destructive: Color(0xFFF87171),
+    accent: Color(0xFFFB923C),
+  );
+
   static MarilinTokens of(BuildContext context) {
     return Theme.of(context).extension<MarilinTokens>() ?? light;
   }
