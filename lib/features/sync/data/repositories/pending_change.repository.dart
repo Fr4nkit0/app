@@ -26,6 +26,10 @@ abstract class PendingChangeRepository {
 
   Stream<int> watchPendingCount();
 
+  /// The most recent queue row (highest id) for the record, or null when it
+  /// has none.
+  Stream<PendingChange?> watchLatestFor(PendingEntity entity, String entityId);
+
   /// pending → sent. Changes in any other state are left untouched.
   Future<void> markSent(List<int> ids);
 
@@ -69,6 +73,19 @@ class DriftPendingChangeRepository implements PendingChangeRepository {
 
   @override
   Stream<int> watchPendingCount() => _pendingCount().watchSingle();
+
+  @override
+  Stream<PendingChange?> watchLatestFor(PendingEntity entity, String entityId) {
+    final query = _db.select(_db.pendingChangeTable)
+      ..where(
+        (t) => t.entity.equals(entity.wireName) & t.entityId.equals(entityId),
+      )
+      ..orderBy([(t) => OrderingTerm.desc(t.pendingChangeId)])
+      ..limit(1);
+    return query.watchSingleOrNull().map(
+      (row) => row == null ? null : _rowToChange(row),
+    );
+  }
 
   @override
   Future<void> markSent(List<int> ids) async {

@@ -26,20 +26,22 @@ void main() {
         ),
       );
 
-  testWidgets('shows a pending record as pending', (tester) async {
+  testWidgets('shows a pending record as unsent', (tester) async {
     await pump(tester, _entry(PendingStatus.pending));
 
     expect(find.text('Ana Gómez'), findsOneWidget);
-    expect(find.text('Pendiente'), findsOneWidget);
+    expect(find.text('Sin enviar'), findsOneWidget);
+    expect(find.text('Pendiente'), findsNothing);
     expect(find.text('Enviado'), findsNothing);
     expect(find.text('Rechazado'), findsNothing);
   });
 
-  testWidgets('shows a sent record as sent', (tester) async {
+  testWidgets('shows no pill for a sent record', (tester) async {
     await pump(tester, _entry(PendingStatus.sent));
 
-    expect(find.text('Enviado'), findsOneWidget);
-    expect(find.text('Pendiente'), findsNothing);
+    expect(find.text('Enviado'), findsNothing);
+    expect(find.text('Sin enviar'), findsNothing);
+    expect(find.text('Rechazado'), findsNothing);
   });
 
   testWidgets('shows a rejected record with its reason', (tester) async {

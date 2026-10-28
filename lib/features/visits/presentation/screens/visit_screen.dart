@@ -23,6 +23,8 @@ import 'package:app/features/payments/presentation/widgets/debt_payment_dialog.d
 import 'package:app/features/payments/domain/models/payment.dart';
 import 'package:app/core/utils/resource.dart';
 import 'package:app/core/theme/marilin_tokens.dart';
+import 'package:app/features/sync/domain/models/pending_change.dart';
+import 'package:app/features/sync/presentation/widgets/sync_badge_container.dart';
 import 'package:app/features/visits/presentation/widgets/visit_section_header.dart';
 import 'package:app/features/visits/presentation/visit_outcome_display.dart';
 import 'package:app/features/visits/presentation/widgets/visit_sticky_footer.dart';
@@ -882,6 +884,13 @@ class _VisitScreenState extends ConsumerState<VisitScreen> {
                 ),
               ),
             ],
+          ),
+        ),
+        Align(
+          alignment: Alignment.centerLeft,
+          child: SyncBadgeContainer(
+            entity: PendingEntity.sale,
+            entityId: sale.id,
           ),
         ),
       ],

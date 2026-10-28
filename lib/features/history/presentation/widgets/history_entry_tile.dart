@@ -4,6 +4,7 @@ import 'package:app/core/utils/avatar_utils.dart';
 import 'package:app/features/history/domain/models/history_entry.dart';
 import 'package:app/features/history/domain/models/history_entry_type.dart';
 import 'package:app/features/sync/domain/models/pending_change.dart';
+import 'package:app/features/sync/presentation/widgets/sync_badge.dart';
 
 String _formatArsAmount(double amount) {
   final rounded = amount.round();
@@ -35,7 +36,8 @@ class HistoryEntryTile extends StatelessWidget {
       baseColor: AvatarUtils.getPastelColor(entry.customerName),
     );
     final initials = AvatarUtils.getInitials(entry.customerName);
-    final showAmount = entry.amount != null &&
+    final showAmount =
+        entry.amount != null &&
         (entry.type == HistoryEntryType.sale ||
             entry.type == HistoryEntryType.payment);
 
@@ -43,7 +45,9 @@ class HistoryEntryTile extends StatelessWidget {
       decoration: BoxDecoration(
         color: tokens.surface,
         borderRadius: BorderRadius.circular(14),
-        border: Border.all(color: tokens.border.withValues(alpha: tokens.border.a * 0.85)),
+        border: Border.all(
+          color: tokens.border.withValues(alpha: tokens.border.a * 0.85),
+        ),
       ),
       child: Padding(
         padding: const EdgeInsets.fromLTRB(14, 12, 14, 12),
@@ -160,61 +164,11 @@ class HistoryEntryTile extends StatelessWidget {
                     ),
                   ),
                 const SizedBox(height: 8),
-                _StatusBadge(status: entry.status, tokens: tokens),
+                SyncStatusPill(status: entry.status),
               ],
             ),
           ],
         ),
-      ),
-    );
-  }
-}
-
-class _StatusBadge extends StatelessWidget {
-  const _StatusBadge({required this.status, required this.tokens});
-
-  final PendingStatus status;
-  final MarilinTokens tokens;
-
-  @override
-  Widget build(BuildContext context) {
-    final (label, icon, color) = switch (status) {
-      PendingStatus.pending => (
-        'Pendiente',
-        Icons.cloud_upload_outlined,
-        tokens.accent,
-      ),
-      PendingStatus.sent => (
-        'Enviado',
-        Icons.check_circle_rounded,
-        tokens.success,
-      ),
-      PendingStatus.rejected => (
-        'Rechazado',
-        Icons.error_outline_rounded,
-        tokens.destructive,
-      ),
-    };
-    return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
-      decoration: BoxDecoration(
-        color: color.withValues(alpha: 0.12),
-        borderRadius: BorderRadius.circular(6),
-      ),
-      child: Row(
-        mainAxisSize: MainAxisSize.min,
-        children: [
-          Icon(icon, size: 14, color: color),
-          const SizedBox(width: 3),
-          Text(
-            label,
-            style: TextStyle(
-              fontSize: 13,
-              fontWeight: FontWeight.w800,
-              color: color,
-            ),
-          ),
-        ],
       ),
     );
   }

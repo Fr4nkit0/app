@@ -10,6 +10,8 @@ import 'package:app/features/route/domain/models/route_stop.dart';
 import 'package:app/features/route/domain/models/stop_status.dart';
 import 'package:app/features/route/presentation/widgets/stop_reschedule_label.dart';
 import 'package:app/core/theme/marilin_tokens.dart';
+import 'package:app/features/sync/domain/models/pending_change.dart';
+import 'package:app/features/sync/presentation/widgets/sync_badge_container.dart';
 
 class RouteStopCard extends ConsumerWidget {
   const RouteStopCard({
@@ -261,6 +263,14 @@ class RouteStopCard extends ConsumerWidget {
                                   ],
                                 ],
                               ),
+                              if (isDone || isAbsent)
+                                Align(
+                                  alignment: Alignment.centerLeft,
+                                  child: SyncBadgeContainer(
+                                    entity: PendingEntity.routeStop,
+                                    entityId: stop.id,
+                                  ),
+                                ),
                               const SizedBox(height: 12),
 
                               // Bottom line: Tags + Actions
