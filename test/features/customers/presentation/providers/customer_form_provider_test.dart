@@ -30,8 +30,6 @@ class FakeCustomerRepository implements CustomerRepository {
   Stream<int> watchCustomerCount() => throw UnimplementedError();
   @override
   Stream<List<Customer>> watchAllCustomers() => throw UnimplementedError();
-  @override
-  Future<Resource<void>> updateAddressCoordinates(String addressId, double latitude, double longitude) => throw UnimplementedError();
 }
 
 void main() {

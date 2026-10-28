@@ -115,48 +115,6 @@ class MockCustomerRepository implements CustomerRepository {
     return const Resource.success(null);
   }
 
-  @override
-  Future<Resource<void>> updateAddressCoordinates(
-    String addressId,
-    double latitude,
-    double longitude,
-  ) async {
-    for (int i = 0; i < _customers.length; i++) {
-      final customer = _customers[i];
-      final addressIndex =
-          customer.addresses.indexWhere((a) => a.id == addressId);
-      if (addressIndex >= 0) {
-        final address = customer.addresses[addressIndex];
-        final updatedAddress = CustomerAddress(
-          id: address.id,
-          street: address.street,
-          apartment: address.apartment,
-          floor: address.floor,
-          visualReference: address.visualReference,
-          isPrimary: address.isPrimary,
-          latitude: latitude,
-          longitude: longitude,
-          neighborhood: address.neighborhood,
-        );
-        final updatedAddresses = List<CustomerAddress>.from(customer.addresses);
-        updatedAddresses[addressIndex] = updatedAddress;
-
-        _customers[i] = Customer(
-          id: customer.id,
-          name: customer.name,
-          phone: customer.phone,
-          addresses: updatedAddresses,
-          preferences: customer.preferences,
-          debtAmount: customer.debtAmount,
-          productLabels: customer.productLabels,
-        );
-        _controller.add(_customers);
-        return const Resource.success(null);
-      }
-    }
-    return Resource.error(Exception('Address not found'));
-  }
-
   static List<Customer> _buildInitialCustomers() => [
     Customer(
       id: 'mock-1',

@@ -7,11 +7,8 @@ import 'package:app/core/utils/avatar_utils.dart';
 import 'package:app/core/utils/address_formatter.dart';
 import 'package:app/features/customers/domain/models/customer.dart';
 import 'package:app/features/customers/presentation/providers/customer_count_provider.dart';
-import 'package:app/features/customers/presentation/providers/customer_repository_provider.dart';
-import 'package:app/features/customers/presentation/widgets/address_picker_map.dart';
 import 'package:app/features/customers/presentation/widgets/customer_agreements_tab.dart';
 import 'package:app/features/history/domain/models/history_entry.dart';
-import 'package:latlong2/latlong.dart';
 import 'package:app/features/history/presentation/providers/history_list_provider.dart';
 import 'package:app/features/history/presentation/widgets/history_entry_tile.dart';
 import 'package:app/features/sales/presentation/providers/sale_draft_provider.dart';
@@ -42,26 +39,6 @@ class _CustomerProfileScreenState extends ConsumerState<CustomerProfileScreen> {
   static const _days = ['', 'Lun', 'Mar', 'Mié', 'Jue', 'Vie', 'Sáb', 'Dom'];
 
   String _dayName(int day) => day >= 1 && day <= 7 ? _days[day] : 'Día $day';
-
-  Future<void> _updateCoordinates(
-    BuildContext context,
-    String addressId,
-    double lat,
-    double lng,
-  ) async {
-    final repository = ref.read(customerRepositoryProvider);
-    final result = await repository.updateAddressCoordinates(addressId, lat, lng);
-
-    if (context.mounted) {
-      switch (result) {
-        case Success():
-          TopToast.showSuccess(context, 'Coordenadas actualizadas correctamente');
-          ref.invalidate(customerByIdProvider(widget.customerId));
-        case Error(:final error):
-          TopToast.showError(context, 'Error al guardar coordenadas: $error');
-      }
-    }
-  }
 
   @override
   Widget build(BuildContext context) {
@@ -790,47 +767,6 @@ class _CustomerProfileScreenState extends ConsumerState<CustomerProfileScreen> {
                       ],
                     ),
                   ],
-                  const SizedBox(height: 14),
-                  SizedBox(
-                    width: double.infinity,
-                    child: OutlinedButton.icon(
-                      onPressed: () async {
-                        await Navigator.of(context).push<LatLng>(
-                          MaterialPageRoute(
-                            builder: (context) => AddressPickerMap(
-                              initialLatitude: addr.latitude,
-                              initialLongitude: addr.longitude,
-                              initialSearchQuery: (addr.neighborhood != null && addr.neighborhood!.trim().isNotEmpty)
-                                  ? '${addr.street}, ${addr.neighborhood}, Salta'
-                                  : '${addr.street}, Salta',
-                              onSave: (latLng) async {
-                                await _updateCoordinates(
-                                  context,
-                                  addr.id,
-                                  latLng.latitude,
-                                  latLng.longitude,
-                                );
-                              },
-                            ),
-                            fullscreenDialog: true,
-                          ),
-                        );
-                      },
-                      icon: const Icon(Icons.map_outlined, size: 16),
-                      label: Text(
-                        addr.latitude != null && addr.longitude != null
-                            ? 'Ver / Editar Ubicación'
-                            : 'Ubicar en Mapa',
-                      ),
-                      style: OutlinedButton.styleFrom(
-                        foregroundColor: MarilinColors.brandBlue,
-                        side: const BorderSide(color: MarilinColors.brandBlue),
-                        shape: RoundedRectangleBorder(
-                          borderRadius: BorderRadius.circular(10),
-                        ),
-                      ),
-                    ),
-                  ),
                 ] else
                   Text(
                     'Sin dirección cargada',
