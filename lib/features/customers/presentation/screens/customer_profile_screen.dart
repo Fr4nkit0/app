@@ -16,6 +16,7 @@ import 'package:app/features/sales/presentation/screens/sale_step1_screen.dart';
 import 'package:app/features/inventory/presentation/providers/inventory_repository_provider.dart';
 import 'package:app/features/inventory/domain/models/customer_container_balance.dart';
 import 'package:app/features/inventory/domain/models/container_movement.dart';
+import 'package:app/core/widgets/error_state.dart';
 import 'package:app/core/widgets/top_toast.dart';
 import 'package:uuid/uuid.dart';
 import 'package:app/core/utils/resource.dart';
@@ -64,8 +65,17 @@ class _CustomerProfileScreenState extends ConsumerState<CustomerProfileScreen> {
       },
       loading: () =>
           const Scaffold(body: Center(child: CircularProgressIndicator())),
-      error: (e, _) =>
-          Scaffold(body: Center(child: Text('Error al cargar: $e'))),
+      error: (e, _) => Scaffold(
+        appBar: AppBar(title: const Text('Perfil de Cliente')),
+        body: ErrorState(
+          title: 'No pudimos cargar el cliente',
+          message:
+              'Revisá la conexión y reintentá. '
+              'Lo que ya cargaste sigue guardado en el teléfono.',
+          onRetry: () =>
+              ref.invalidate(customerByIdProvider(widget.customerId)),
+        ),
+      ),
     );
   }
 

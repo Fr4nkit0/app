@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:app/core/theme/marilin_tokens.dart';
 import 'package:app/core/widgets/empty_state.dart';
+import 'package:app/core/widgets/error_state.dart';
 import 'package:app/features/route/domain/models/route_stop.dart';
 import 'package:app/features/route/domain/models/stop_status.dart';
 import 'package:app/features/route/presentation/providers/route_repository_provider.dart';
@@ -10,6 +11,7 @@ import 'package:app/features/route/presentation/widgets/route_stop_card.dart';
 import 'package:app/features/auth/auth_controller.dart';
 import 'package:app/features/profile/profile_screen.dart';
 import 'package:app/features/profile/widgets/profile_avatar.dart';
+import 'package:app/features/sync/presentation/providers/sync_providers.dart';
 import 'package:app/features/sync/presentation/widgets/sync_status_button_container.dart';
 
 class RouteDayScreen extends ConsumerStatefulWidget {
@@ -52,6 +54,7 @@ class _RouteDayScreenState extends ConsumerState<RouteDayScreen> {
   Widget build(BuildContext context) {
     final stopsAsync = ref.watch(routeDayProvider);
     final allStopsAsync = ref.watch(routeAllStopsProvider);
+    final isSyncRunning = ref.watch(syncRunningProvider).value ?? false;
 
     return Scaffold(
       body: SafeArea(
@@ -72,10 +75,15 @@ class _RouteDayScreenState extends ConsumerState<RouteDayScreen> {
                     hasScrollBody: false,
                     child: EmptyState(
                       icon: Icons.route_outlined,
-                      title: 'Sin paradas',
+                      title: 'Sin paradas por ahora',
                       message:
-                          'No hay visitas cargadas para hoy. '
-                          'Cuando la ruta esté disponible, va a aparecer acá.',
+                          'Cuando la ruta del día esté cargada, va a aparecer acá.',
+                      actionLabel: isSyncRunning
+                          ? 'Sincronizando…'
+                          : 'Sincronizar ahora',
+                      onAction: isSyncRunning
+                          ? null
+                          : () => ref.read(syncEngineProvider).runCycle(),
                     ),
                   )
                 else ...[
@@ -136,7 +144,16 @@ class _RouteDayScreenState extends ConsumerState<RouteDayScreen> {
             );
           },
           loading: () => const Center(child: CircularProgressIndicator()),
-          error: (e, _) => const Center(child: Text('Error al cargar la ruta')),
+          error: (e, _) => ErrorState(
+            title: 'No pudimos cargar la ruta',
+            message:
+                'Revisá la conexión y reintentá. '
+                'Lo que ya cargaste sigue guardado en el teléfono.',
+            onRetry: () {
+              ref.invalidate(routeDayProvider);
+              ref.invalidate(routeAllStopsProvider);
+            },
+          ),
         ),
       ),
     );

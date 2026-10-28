@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:app/core/theme/marilin_tokens.dart';
+import 'package:app/core/widgets/error_state.dart';
 import 'package:app/core/theme/sales_tokens.dart';
 import 'package:app/core/widgets/screen_header.dart';
 import 'package:app/core/widgets/core_search_bar.dart';
@@ -277,8 +278,13 @@ class _SearchMode extends ConsumerWidget {
               );
             },
             loading: () => const Center(child: CircularProgressIndicator()),
-            error: (e, _) =>
-                const Center(child: Text('Error al cargar clientes')),
+            error: (e, _) => ErrorState(
+              title: 'No pudimos cargar los clientes',
+              message:
+                  'Revisá la conexión y reintentá. '
+                  'Lo que ya cargaste sigue guardado en el teléfono.',
+              onRetry: () => ref.invalidate(customerListProvider),
+            ),
           ),
         ),
       ],
@@ -404,8 +410,14 @@ class _SelectedMode extends ConsumerWidget {
               ],
             ),
             loading: () => const Center(child: CircularProgressIndicator()),
-            error: (e, _) =>
-                const Center(child: Text('Error al cargar productos')),
+            error: (e, _) => ErrorState(
+              title: 'No pudimos cargar los productos',
+              message:
+                  'Revisá la conexión y reintentá. '
+                  'Lo que ya cargaste sigue guardado en el teléfono.',
+              onRetry: () =>
+                  ref.invalidate(customerProductListProvider(customer.id)),
+            ),
           ),
         ),
       ],

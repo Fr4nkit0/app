@@ -6,15 +6,22 @@ class EmptyState extends StatelessWidget {
     required this.icon,
     required this.title,
     required this.message,
+    this.actionLabel,
+    this.onAction,
   });
 
   final IconData icon;
   final String title;
   final String message;
 
+  /// The action renders when [actionLabel] is set; a null [onAction] disables it.
+  final String? actionLabel;
+  final VoidCallback? onAction;
+
   @override
   Widget build(BuildContext context) {
     final colorScheme = Theme.of(context).colorScheme;
+    final actionLabel = this.actionLabel;
     return Center(
       child: Padding(
         padding: const EdgeInsets.all(40),
@@ -38,6 +45,14 @@ class EmptyState extends StatelessWidget {
                 context,
               ).textTheme.bodyMedium?.copyWith(color: colorScheme.outline),
             ),
+            if (actionLabel != null) ...[
+              const SizedBox(height: 24),
+              OutlinedButton(
+                style: OutlinedButton.styleFrom(minimumSize: const Size(0, 52)),
+                onPressed: onAction,
+                child: Text(actionLabel),
+              ),
+            ],
           ],
         ),
       ),

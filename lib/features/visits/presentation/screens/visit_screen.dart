@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:url_launcher/url_launcher.dart';
 import 'package:app/core/utils/address_formatter.dart';
+import 'package:app/core/widgets/error_state.dart';
 import 'package:app/core/widgets/top_toast.dart';
 import 'package:app/features/route/domain/models/route_stop.dart';
 import 'package:app/features/route/domain/models/stop_status.dart';
@@ -277,8 +278,17 @@ class _VisitScreenState extends ConsumerState<VisitScreen> {
       ),
       error: (e, _) => Scaffold(
         backgroundColor: context.marilin.surface,
-        body: Center(
-          child: Text('Error al cargar la información de la visita'),
+        body: ErrorState(
+          title: 'No pudimos cargar la visita',
+          message:
+              'Revisá la conexión y reintentá. '
+              'Lo que ya cargaste sigue guardado en el teléfono.',
+          onRetry: () {
+            ref.invalidate(stopSalesProvider(widget.stopId));
+            ref.invalidate(customerBalanceProvider(stop.customer.id));
+            ref.invalidate(visitPaymentsProvider(widget.stopId));
+            ref.invalidate(visitMovementsProvider(widget.stopId));
+          },
         ),
       ),
     );
