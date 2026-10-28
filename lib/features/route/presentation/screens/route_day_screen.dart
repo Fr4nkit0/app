@@ -8,7 +8,8 @@ import 'package:app/features/route/presentation/providers/route_repository_provi
 import 'package:app/features/visits/presentation/screens/visit_screen.dart';
 import 'package:app/features/route/presentation/widgets/route_stop_card.dart';
 import 'package:app/features/auth/auth_controller.dart';
-import 'package:app/core/utils/avatar_utils.dart';
+import 'package:app/features/profile/profile_screen.dart';
+import 'package:app/features/profile/widgets/profile_avatar.dart';
 import 'package:app/features/sync/presentation/widgets/sync_status_button_container.dart';
 
 class RouteDayScreen extends ConsumerStatefulWidget {
@@ -195,7 +196,6 @@ class _RouteHeader extends ConsumerWidget {
     final greeting = (firstName != null && firstName.isNotEmpty)
         ? '¡Hola, $firstName!'
         : '¡Hola!';
-    final initials = AvatarUtils.getInitials(displayName ?? 'Repartidor');
 
     final now = DateTime.now();
     const months = [
@@ -246,97 +246,82 @@ class _RouteHeader extends ConsumerWidget {
               const Flexible(child: SyncStatusButtonContainer()),
             ],
           ),
-          const SizedBox(height: 14),
-          // 2. Profile Row with perfectly centered Avatar and Greeting
-          Row(
-            crossAxisAlignment: CrossAxisAlignment.center,
-            children: [
-              // Premium Avatar Container
-              Stack(
-                children: [
-                  Container(
-                    width: 54,
-                    height: 54,
-                    decoration: BoxDecoration(
-                      gradient: const LinearGradient(
-                        colors: [MarilinColors.brandBlue, Color(0xFF1E88E5)],
-                        begin: Alignment.topLeft,
-                        end: Alignment.bottomRight,
-                      ),
-                      shape: BoxShape.circle,
-                      boxShadow: [
-                        BoxShadow(
-                          color: MarilinColors.brandBlue.withValues(alpha: 0.2),
-                          blurRadius: 8,
-                          offset: const Offset(0, 3),
-                        ),
-                      ],
-                    ),
-                    alignment: Alignment.center,
-                    child: Text(
-                      initials,
-                      style: const TextStyle(
-                        color: Colors.white,
-                        fontWeight: FontWeight.w900,
-                        fontSize: 16,
-                        letterSpacing: 0.5,
-                      ),
-                    ),
-                  ),
-                  Positioned(
-                    right: 1,
-                    bottom: 1,
-                    child: Container(
-                      width: 12,
-                      height: 12,
-                      decoration: BoxDecoration(
-                        color: const Color(0xFF10B981),
-                        shape: BoxShape.circle,
-                        border: Border.all(color: Colors.white, width: 2),
-                      ),
-                    ),
-                  ),
-                ],
+          const SizedBox(height: 10),
+          // 2. Identity row: avatar and greeting; tapping it opens the profile.
+          Material(
+            color: Colors.transparent,
+            child: InkWell(
+              borderRadius: BorderRadius.circular(16),
+              onTap: () => Navigator.of(context).push(
+                MaterialPageRoute<void>(builder: (_) => const ProfileScreen()),
               ),
-              const SizedBox(width: 16),
-              // User text details (Greeting + Subtitle)
-              Expanded(
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  mainAxisSize: MainAxisSize.min,
-                  children: [
-                    Text(
-                      greeting,
-                      style: Theme.of(context).textTheme.headlineMedium
-                          ?.copyWith(
-                            fontWeight: FontWeight.w900,
-                            color: context.marilin.ink,
-                            fontSize: 26,
-                          ),
-                    ),
-                    const SizedBox(height: 3),
-                    Row(
-                      children: [
-                        Icon(
-                          Icons.local_shipping_outlined,
-                          size: 14,
+              child: Semantics(
+                button: true,
+                label: 'Mi perfil',
+                child: Padding(
+                  padding: const EdgeInsets.symmetric(vertical: 4),
+                  child: Row(
+                    crossAxisAlignment: CrossAxisAlignment.center,
+                    children: [
+                      ProfileAvatar(name: displayName ?? 'Repartidor'),
+                      const SizedBox(width: 16),
+                      // User text details (Greeting + Subtitle)
+                      Expanded(
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          mainAxisSize: MainAxisSize.min,
+                          children: [
+                            Text(
+                              greeting,
+                              style: Theme.of(context).textTheme.headlineMedium
+                                  ?.copyWith(
+                                    fontWeight: FontWeight.w900,
+                                    color: context.marilin.ink,
+                                    fontSize: 26,
+                                  ),
+                            ),
+                            const SizedBox(height: 3),
+                            Row(
+                              children: [
+                                Icon(
+                                  Icons.local_shipping_outlined,
+                                  size: 14,
+                                  color: context.marilin.textMuted,
+                                ),
+                                const SizedBox(width: 5),
+                                Text(
+                                  'Buen día de reparto',
+                                  style: Theme.of(context).textTheme.bodyMedium
+                                      ?.copyWith(
+                                        color: context.marilin.inkSecondary,
+                                        fontWeight: FontWeight.w600,
+                                      ),
+                                ),
+                              ],
+                            ),
+                          ],
+                        ),
+                      ),
+                      const SizedBox(width: 8),
+                      Container(
+                        width: 36,
+                        height: 36,
+                        decoration: BoxDecoration(
+                          color: context.marilin.fill,
+                          shape: BoxShape.circle,
+                          border: Border.all(color: context.marilin.border),
+                        ),
+                        child: Icon(
+                          Icons.chevron_right_rounded,
+                          size: 22,
                           color: context.marilin.textMuted,
                         ),
-                        const SizedBox(width: 5),
-                        Text(
-                          'Buen día de reparto',
-                          style: Theme.of(context).textTheme.bodyMedium
-                              ?.copyWith(
-                                color: context.marilin.inkSecondary,
-                                fontWeight: FontWeight.w600,
-                              ),
-                        ),
-                      ],
-                    ),
-                  ],
+                      ),
+                    ],
+                  ),
                 ),
               ),
-            ],
+            ),
           ),
         ],
       ),

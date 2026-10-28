@@ -43,6 +43,7 @@ Implementation: `lib/core/theme/marilin_tokens.dart`
 | Visit debt / custody | `VisitDebtBanner`, `VisitCustodyBanner` |
 | Container return dialog | `StandaloneContainerReturnDialog` in `visit_container_return_dialog.dart` |
 | Empty states | `EmptyState` |
+| Driver avatar | `ProfileAvatar` (`lib/features/profile/widgets/profile_avatar.dart`): route header at 54dp, profile at 88dp |
 
 ## Rules for new UI
 
@@ -55,3 +56,5 @@ Implementation: `lib/core/theme/marilin_tokens.dart`
 ## Session / identity (UI)
 
 - Repartidor display name: `AuthState.displayName` (secure storage), used on route header greeting and avatar initials.
+- Profile entry point: the identity row (avatar + greeting) on the route screen opens `ProfileScreen`. The navigation bar stays at four operational tabs; the profile is not a tab.
+- `ProfileScreen` sections: identity, sync status (reuses `HistorySyncStatusCard`), theme card, sign out with a pending-changes notice.
