@@ -6,7 +6,7 @@ import 'package:app/core/theme/marilin_tokens.dart';
 import 'package:app/core/widgets/core_search_bar.dart';
 import 'package:app/core/widgets/empty_state.dart';
 import 'package:app/core/widgets/screen_header.dart';
-import 'package:app/features/auth/logout_button.dart';
+import 'package:app/features/profile/profile_screen.dart';
 import 'package:app/features/history/domain/models/history_entry.dart';
 import 'package:app/features/history/presentation/providers/paginated_history_provider.dart';
 import 'package:app/features/history/presentation/widgets/history_date_utils.dart';
@@ -105,7 +105,7 @@ class _HistoryScreenState extends ConsumerState<HistoryScreen> {
             const ScreenHeader(
               title: 'Historial',
               subtitle: 'Ventas, visitas y cobros de tu jornada',
-              trailing: LogoutButton(),
+              trailing: ProfileButton(),
             ),
             Padding(
               padding: const EdgeInsets.fromLTRB(16, 0, 16, 12),

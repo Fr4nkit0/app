@@ -2,7 +2,9 @@ import 'dart:async';
 
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 import 'package:app/core/theme/app.theme.dart';
+import 'package:app/core/theme/theme_mode_controller.dart';
 import 'package:app/features/customers/presentation/providers/customer_count_provider.dart';
 import 'package:app/features/customers/presentation/screens/customer_list_screen.dart';
 import 'package:app/features/history/presentation/screens/history_screen.dart';
@@ -15,8 +17,10 @@ import 'package:app/features/auth/login_screen.dart';
 import 'package:app/features/sync/background/background_sync_task.dart';
 import 'package:app/features/sync/presentation/widgets/sync_triggers_host.dart';
 
-void main() {
+Future<void> main() async {
   WidgetsFlutterBinding.ensureInitialized();
+  // The theme is known before the first frame, so a dark choice does not flash light.
+  ThemeModeController.initial = await ThemeModeController.readSaved(const FlutterSecureStorage());
   // Best effort: a device that refuses background work still syncs while
   // the app is open.
   unawaited(scheduleBackgroundSync().catchError((Object _) {}));
@@ -29,15 +33,18 @@ void main() {
   );
 }
 
-class MarilinApp extends StatelessWidget {
+class MarilinApp extends ConsumerWidget {
   const MarilinApp({super.key});
 
   @override
-  Widget build(BuildContext context) {
+  Widget build(BuildContext context, WidgetRef ref) {
     return MaterialApp(
       title: 'Marilin',
       debugShowCheckedModeBanner: false,
       theme: AppTheme.lightTheme,
+      darkTheme: AppTheme.darkTheme,
+      // The phone's theme unless the driver picked one in the profile.
+      themeMode: ref.watch(themeModeProvider),
       home: const AuthWrapper(),
     );
   }

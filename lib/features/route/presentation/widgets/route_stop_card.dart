@@ -37,7 +37,7 @@ class RouteStopCard extends ConsumerWidget {
         ? const Color(0xFF10B981) // Green
         : isAbsent
         ? const Color(0xFFEF4444) // Red
-        : const Color(0xFFD1D5DB); // Gray
+        : context.marilin.lineStrong; // Gray
 
     final initials = AvatarUtils.getInitials(stop.customer.name);
     final avatarColors = AvatarUtils.getColors(
@@ -71,7 +71,7 @@ class RouteStopCard extends ConsumerWidget {
                   width: 32,
                   height: 32,
                   decoration: BoxDecoration(
-                    color: Colors.white,
+                    color: context.marilin.surface,
                     shape: BoxShape.circle,
                     boxShadow: [
                       BoxShadow(
@@ -124,7 +124,7 @@ class RouteStopCard extends ConsumerWidget {
               Expanded(
                 child: Container(
                   decoration: BoxDecoration(
-                    color: Colors.white,
+                    color: context.marilin.surface,
                     borderRadius: BorderRadius.circular(16),
                     boxShadow: [
                       BoxShadow(
@@ -135,10 +135,10 @@ class RouteStopCard extends ConsumerWidget {
                     ],
                     border: Border.all(
                       color: isDone
-                          ? const Color(0xFFE8F5E9)
+                          ? context.marilin.soft(Color(0xFFE8F5E9))
                           : isAbsent
-                          ? const Color(0xFFFFEBEE)
-                          : const Color(0xFFF3F4F6),
+                          ? context.marilin.soft(Color(0xFFFFEBEE))
+                          : context.marilin.fill,
                       width: 1.5,
                     ),
                   ),
@@ -163,7 +163,7 @@ class RouteStopCard extends ConsumerWidget {
                                     height: 38,
                                     decoration: BoxDecoration(
                                       color: isDone || isAbsent
-                                          ? Colors.grey.shade100
+                                          ? context.marilin.fill
                                           : avatarColors.background,
                                       shape: BoxShape.circle,
                                     ),
@@ -172,7 +172,7 @@ class RouteStopCard extends ConsumerWidget {
                                       initials,
                                       style: TextStyle(
                                         color: isDone || isAbsent
-                                            ? Colors.grey.shade400
+                                            ? context.marilin.inkHint
                                             : avatarColors.foreground,
                                         fontWeight: FontWeight.bold,
                                         fontSize: 14,
@@ -191,8 +191,8 @@ class RouteStopCard extends ConsumerWidget {
                                             fontSize: 15,
                                             fontWeight: FontWeight.w700,
                                             color: isDone || isAbsent
-                                                ? Colors.grey.shade400
-                                                : const Color(0xFF0D1B3E),
+                                                ? context.marilin.inkHint
+                                                : context.marilin.ink,
                                             decoration: isDone
                                                 ? TextDecoration.lineThrough
                                                 : null,
@@ -211,7 +211,7 @@ class RouteStopCard extends ConsumerWidget {
                                               : 'Sin dirección',
                                           style: TextStyle(
                                             fontSize: 13,
-                                            color: Colors.grey.shade500,
+                                            color: context.marilin.textMuted,
                                           ),
                                           maxLines: 1,
                                           overflow: TextOverflow.ellipsis,
@@ -390,7 +390,7 @@ class RouteStopCard extends ConsumerWidget {
     final bg = isDone
         ? Colors.grey.shade100
         : isAbsent
-        ? const Color(0xFFFFEBEE)
+        ? Color(0xFFFFEBEE)
         : MarilinColors.brandBlue.withValues(alpha: 0.08);
 
     return Container(

@@ -15,10 +15,10 @@ class StepIdentityView extends StatelessWidget {
     required this.onPhoneChanged,
   });
 
-  static const _border = OutlineInputBorder(
-    borderRadius: BorderRadius.all(Radius.circular(12)),
-    borderSide: BorderSide(color: Color(0xFFE5E7EB)),
-  );
+  static OutlineInputBorder _border(BuildContext context) => OutlineInputBorder(
+        borderRadius: const BorderRadius.all(Radius.circular(12)),
+        borderSide: BorderSide(color: context.marilin.border),
+      );
   static const _focusBorder = OutlineInputBorder(
     borderRadius: BorderRadius.all(Radius.circular(12)),
     borderSide: BorderSide(color: MarilinColors.brandBlue, width: 2),
@@ -42,9 +42,9 @@ class StepIdentityView extends StatelessWidget {
             ).textTheme.titleLarge?.copyWith(fontWeight: FontWeight.w800),
           ),
           const SizedBox(height: 4),
-          const Text(
+          Text(
             'Ingresá los datos de contacto.',
-            style: TextStyle(color: Color(0xFF9CA3AF), fontSize: 14),
+            style: TextStyle(color: context.marilin.inkHint, fontSize: 14),
           ),
           const SizedBox(height: 28),
           TextFormField(
@@ -55,18 +55,18 @@ class StepIdentityView extends StatelessWidget {
             autovalidateMode: AutovalidateMode.onUserInteraction,
             validator: (v) =>
                 (v == null || v.isEmpty) ? 'El nombre es requerido' : null,
-            decoration: const InputDecoration(
+            decoration: InputDecoration(
               labelText: 'Nombre completo',
               hintText: 'Ej. Juan Pérez',
               prefixIcon: Icon(Icons.person_outline, size: 20),
               filled: true,
-              fillColor: Colors.white,
+              fillColor: context.marilin.surface,
               contentPadding: EdgeInsets.symmetric(
                 horizontal: 16,
                 vertical: 16,
               ),
-              border: _border,
-              enabledBorder: _border,
+              border: _border(context),
+              enabledBorder: _border(context),
               focusedBorder: _focusBorder,
               errorBorder: _errorBorder,
               focusedErrorBorder: _errorBorder,
@@ -77,18 +77,18 @@ class StepIdentityView extends StatelessWidget {
             initialValue: phone,
             onChanged: onPhoneChanged,
             keyboardType: TextInputType.phone,
-            decoration: const InputDecoration(
+            decoration: InputDecoration(
               labelText: 'Teléfono (opcional)',
               hintText: 'Ej. 387-555-0101',
               prefixIcon: Icon(Icons.phone_outlined, size: 20),
               filled: true,
-              fillColor: Colors.white,
+              fillColor: context.marilin.surface,
               contentPadding: EdgeInsets.symmetric(
                 horizontal: 16,
                 vertical: 16,
               ),
-              border: _border,
-              enabledBorder: _border,
+              border: _border(context),
+              enabledBorder: _border(context),
               focusedBorder: _focusBorder,
             ),
           ),

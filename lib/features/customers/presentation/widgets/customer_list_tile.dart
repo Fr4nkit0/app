@@ -52,7 +52,7 @@ class CustomerListTile extends ConsumerWidget {
       duration: const Duration(milliseconds: 200),
       margin: const EdgeInsets.symmetric(horizontal: 16, vertical: 6),
       decoration: BoxDecoration(
-        color: selected ? blue.withValues(alpha: 0.03) : Colors.white,
+        color: selected ? blue.withValues(alpha: 0.03) : context.marilin.surface,
         borderRadius: BorderRadius.circular(16),
         boxShadow: [
           BoxShadow(
@@ -66,7 +66,7 @@ class CustomerListTile extends ConsumerWidget {
         border: Border.all(
           color: selected
               ? blue.withValues(alpha: 0.8)
-              : const Color(0xFFE2E8F0),
+              : context.marilin.border,
           width: selected ? 2.0 : 1.5,
         ),
       ),
@@ -115,7 +115,7 @@ class CustomerListTile extends ConsumerWidget {
                                 fontWeight: FontWeight.w700,
                                 color: selected
                                     ? blue
-                                    : const Color(0xFF0D1B3E),
+                                    : context.marilin.ink,
                               ),
                             ),
                             const SizedBox(height: 2),
@@ -123,7 +123,7 @@ class CustomerListTile extends ConsumerWidget {
                               _address.isNotEmpty ? _address : 'Sin dirección',
                               style: TextStyle(
                                 fontSize: 13,
-                                color: Colors.grey.shade500,
+                                color: context.marilin.textMuted,
                               ),
                               maxLines: 1,
                               overflow: TextOverflow.ellipsis,
@@ -146,7 +146,7 @@ class CustomerListTile extends ConsumerWidget {
                               : Icon(
                                   Icons.circle_outlined,
                                   key: const ValueKey('unselected'),
-                                  color: Colors.grey.shade300,
+                                  color: context.marilin.lineStrong,
                                   size: 24,
                                 ),
                         ),
@@ -155,7 +155,7 @@ class CustomerListTile extends ConsumerWidget {
                         Icon(
                           Icons.arrow_forward_ios_rounded,
                           size: 14,
-                          color: Colors.grey.shade400,
+                          color: context.marilin.inkHint,
                         ),
                       ],
                     ],
@@ -183,7 +183,7 @@ class CustomerListTile extends ConsumerWidget {
                                 backgroundColor: const Color(
                                   0xFFEF4444,
                                 ).withValues(alpha: 0.08),
-                                borderColor: const Color(0xFFFFCDD2),
+                                borderColor: context.marilin.soft(Color(0xFFFFCDD2)),
                                 borderWidth: 1.0,
                                 textColor: const Color(0xFFEF4444),
                                 fontSize: 11,

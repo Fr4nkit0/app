@@ -72,10 +72,10 @@ class _ModeCard extends StatelessWidget {
           decoration: BoxDecoration(
             color: isSelected
                 ? activeColor.withValues(alpha: 0.08)
-                : Colors.white,
+                : context.marilin.surface,
             borderRadius: BorderRadius.circular(16),
             border: Border.all(
-              color: isSelected ? activeColor : MarilinColors.border,
+              color: isSelected ? activeColor : context.marilin.border,
               width: isSelected ? 2 : 1,
             ),
           ),
@@ -83,7 +83,7 @@ class _ModeCard extends StatelessWidget {
             children: [
               Icon(
                 icon,
-                color: isSelected ? activeColor : MarilinColors.textMuted,
+                color: isSelected ? activeColor : context.marilin.textMuted,
                 size: 28,
               ),
               const SizedBox(height: 8),
@@ -93,8 +93,8 @@ class _ModeCard extends StatelessWidget {
                   fontWeight: FontWeight.w900,
                   fontSize: 15,
                   color: isSelected
-                      ? MarilinColors.brandNavy
-                      : MarilinColors.textMuted,
+                      ? context.marilin.ink
+                      : context.marilin.textMuted,
                 ),
               ),
               const SizedBox(height: 2),
@@ -104,7 +104,7 @@ class _ModeCard extends StatelessWidget {
                 style: TextStyle(
                   fontSize: 11,
                   fontWeight: FontWeight.w600,
-                  color: MarilinColors.textMuted,
+                  color: context.marilin.textMuted,
                 ),
               ),
             ],

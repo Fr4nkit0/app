@@ -91,12 +91,12 @@ class VisitCustodyBanner extends ConsumerWidget {
                     child: Column(
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
-                        const Text(
+                        Text(
                           'Envases bajo custodia',
                           style: TextStyle(
                             fontSize: 14,
                             fontWeight: FontWeight.w800,
-                            color: MarilinColors.brandNavy,
+                            color: context.marilin.ink,
                           ),
                         ),
                         const SizedBox(height: 8),
@@ -175,9 +175,9 @@ class VisitContainerBadge extends StatelessWidget {
     final hasStock = count > 0;
     final bgColor = hasStock
         ? MarilinColors.brandBlue.withValues(alpha: 0.08)
-        : const Color(0xFFF1F5F9);
+        : context.marilin.fill;
     final textColor =
-        hasStock ? MarilinColors.brandBlue : MarilinColors.textMuted;
+        hasStock ? MarilinColors.brandBlue : context.marilin.textMuted;
 
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 6),
@@ -187,7 +187,7 @@ class VisitContainerBadge extends StatelessWidget {
         border: Border.all(
           color: hasStock
               ? MarilinColors.brandBlue.withValues(alpha: 0.15)
-              : MarilinColors.border,
+              : context.marilin.border,
         ),
       ),
       child: Row(

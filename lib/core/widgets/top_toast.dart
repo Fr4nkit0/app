@@ -144,7 +144,7 @@ class _TopToastWidgetState extends State<_TopToastWidget>
             child: Container(
               padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
               decoration: BoxDecoration(
-                color: Colors.white,
+                color: context.marilin.surface,
                 borderRadius: BorderRadius.circular(16),
                 border: Border.all(
                   color: widget.color.withValues(alpha: 0.15),
@@ -152,7 +152,8 @@ class _TopToastWidgetState extends State<_TopToastWidget>
                 ),
                 boxShadow: [
                   BoxShadow(
-                    color: const Color(0xFF0F172A).withValues(alpha: 0.08),
+                    // A shadow is dark in both themes; the ink color would glow on dark.
+                    color: Colors.black.withValues(alpha: context.marilin.isDark ? 0.5 : 0.08),
                     blurRadius: 16,
                     offset: const Offset(0, 8),
                   ),
@@ -172,10 +173,10 @@ class _TopToastWidgetState extends State<_TopToastWidget>
                   Expanded(
                     child: Text(
                       widget.message,
-                      style: const TextStyle(
+                      style: TextStyle(
                         fontSize: 13,
                         fontWeight: FontWeight.w700,
-                        color: Color(0xFF0F172A),
+                        color: context.marilin.ink,
                       ),
                     ),
                   ),

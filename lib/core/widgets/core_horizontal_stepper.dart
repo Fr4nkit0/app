@@ -26,7 +26,7 @@ class CoreHorizontalStepper extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final effectiveActiveColor = activeColor ?? MarilinColors.brandBlue;
-    final effectiveInactiveColor = inactiveColor ?? const Color(0xFFE5E7EB);
+    final effectiveInactiveColor = inactiveColor ?? context.marilin.border;
 
     return Row(
       crossAxisAlignment: CrossAxisAlignment.start,
@@ -75,7 +75,7 @@ class CoreHorizontalStepper extends StatelessWidget {
                     style: TextStyle(
                       fontSize: 12,
                       fontWeight: FontWeight.w700,
-                      color: isActive ? Colors.white : const Color(0xFF9CA3AF),
+                      color: isActive ? Colors.white : context.marilin.inkHint,
                     ),
                   ),
           ),
@@ -86,7 +86,7 @@ class CoreHorizontalStepper extends StatelessWidget {
           style: TextStyle(
             fontSize: 10,
             fontWeight: isActive ? FontWeight.w700 : FontWeight.w500,
-            color: isActive ? effectiveActiveColor : const Color(0xFF9CA3AF),
+            color: isActive ? effectiveActiveColor : context.marilin.inkHint,
           ),
         );
 
@@ -97,10 +97,10 @@ class CoreHorizontalStepper extends StatelessWidget {
         final descriptionText = hasDescription
             ? Text(
                 stepDescriptions![index],
-                style: const TextStyle(
+                style: TextStyle(
                   fontSize: 9,
                   fontWeight: FontWeight.w400,
-                  color: Color(0xFF9CA3AF),
+                  color: context.marilin.inkHint,
                 ),
               )
             : null;

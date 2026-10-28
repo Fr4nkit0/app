@@ -14,6 +14,7 @@ import 'package:app/features/inventory/domain/models/customer_container_balance.
 
 import 'package:app/features/products/domain/models/product.dart';
 import 'package:app/features/sales/domain/models/sale_item.dart';
+import 'package:app/core/theme/marilin_tokens.dart';
 
 class SaleStep3Screen extends ConsumerWidget {
   const SaleStep3Screen({super.key});
@@ -26,7 +27,7 @@ class SaleStep3Screen extends ConsumerWidget {
 
     return Scaffold(
       primary: false,
-      backgroundColor: Colors.white,
+      backgroundColor: context.marilin.surface,
       body: Column(
         children: [
           Expanded(
@@ -156,9 +157,9 @@ class _ClientCard extends StatelessWidget {
       margin: const EdgeInsets.symmetric(horizontal: 16),
       padding: const EdgeInsets.all(14),
       decoration: BoxDecoration(
-        color: Colors.grey.shade50,
+        color: context.marilin.fill,
         borderRadius: BorderRadius.circular(12),
-        border: Border.all(color: Colors.grey.shade200),
+        border: Border.all(color: context.marilin.border),
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
@@ -182,10 +183,10 @@ class _ClientCard extends StatelessWidget {
               padding: const EdgeInsets.only(bottom: 4),
               child: Row(
                 children: [
-                  const Icon(
+                  Icon(
                     Icons.water_drop_outlined,
                     size: 13,
-                    color: Colors.grey,
+                    color: context.marilin.textMuted,
                   ),
                   const SizedBox(width: 6),
                   Expanded(
@@ -284,10 +285,10 @@ class _PaymentCard extends StatelessWidget {
         duration: const Duration(milliseconds: 150),
         padding: const EdgeInsets.all(14),
         decoration: BoxDecoration(
-          color: selected ? primary : Colors.grey.shade50,
+          color: selected ? primary : context.marilin.fill,
           borderRadius: BorderRadius.circular(12),
           border: Border.all(
-            color: selected ? primary : Colors.grey.shade200,
+            color: selected ? primary : context.marilin.border,
             width: selected ? 2 : 1,
           ),
         ),
@@ -421,18 +422,18 @@ class _AmountField extends StatelessWidget {
         labelText: label,
         prefixText: '\$ ',
         filled: true,
-        fillColor: Colors.grey.shade50,
+        fillColor: context.marilin.fill,
         contentPadding: const EdgeInsets.symmetric(
           horizontal: 16,
           vertical: 14,
         ),
         border: OutlineInputBorder(
           borderRadius: BorderRadius.circular(10),
-          borderSide: BorderSide(color: Colors.grey.shade200),
+          borderSide: BorderSide(color: context.marilin.border),
         ),
         enabledBorder: OutlineInputBorder(
           borderRadius: BorderRadius.circular(10),
-          borderSide: BorderSide(color: Colors.grey.shade200),
+          borderSide: BorderSide(color: context.marilin.border),
         ),
         focusedBorder: OutlineInputBorder(
           borderRadius: BorderRadius.circular(10),
@@ -497,7 +498,7 @@ class _SectionLabel extends StatelessWidget {
       style: TextStyle(
         fontSize: 11,
         fontWeight: FontWeight.w700,
-        color: Colors.grey.shade500,
+        color: context.marilin.textMuted,
         letterSpacing: 0.8,
       ),
     );
@@ -516,7 +517,7 @@ class _Footer extends ConsumerWidget {
     final tokens = Theme.of(context).extension<SalesTokens>()!;
     return Container(
       decoration: BoxDecoration(
-        color: Colors.white,
+        color: context.marilin.surface,
         boxShadow: [
           BoxShadow(
             color: Colors.black.withValues(alpha: 0.07),
@@ -640,7 +641,7 @@ class _Footer extends ConsumerWidget {
                       : null,
                   style: FilledButton.styleFrom(
                     backgroundColor: tokens.primary,
-                    disabledBackgroundColor: Colors.grey.shade200,
+                    disabledBackgroundColor: context.marilin.border,
                     minimumSize: const Size(0, 56),
                     shape: RoundedRectangleBorder(
                       borderRadius: BorderRadius.circular(12),
@@ -726,9 +727,9 @@ class _ContainerReturnConfirmationDialogState
           mainAxisSize: MainAxisSize.min,
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            const Text(
+            Text(
               'Confirmá o ajustá la cantidad de envases retornados por el cliente.',
-              style: TextStyle(color: Colors.grey, fontSize: 14),
+              style: TextStyle(color: context.marilin.textMuted, fontSize: 14),
             ),
             const SizedBox(height: 16),
             ...containerTypes.map((type) {

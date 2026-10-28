@@ -36,8 +36,8 @@ class VisitStickyFooter extends StatelessWidget {
 
     return Container(
       decoration: BoxDecoration(
-        color: MarilinColors.surface,
-        border: Border(top: BorderSide(color: MarilinColors.border)),
+        color: context.marilin.surface,
+        border: Border(top: BorderSide(color: context.marilin.border)),
         boxShadow: [
           BoxShadow(
             color: Colors.black.withValues(alpha: 0.06),

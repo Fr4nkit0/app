@@ -66,8 +66,8 @@ class _NeighborhoodSearchBottomSheetState
     final visibleCount = min(filtered.length, _currentPage * _pageSize);
 
     return Container(
-      decoration: const BoxDecoration(
-        color: Colors.white,
+      decoration: BoxDecoration(
+        color: context.marilin.surface,
         borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
       ),
       padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 16),
@@ -82,7 +82,7 @@ class _NeighborhoodSearchBottomSheetState
                 'Seleccionar Barrio',
                 style: Theme.of(context).textTheme.titleMedium?.copyWith(
                       fontWeight: FontWeight.bold,
-                      color: const Color(0xFF0D1B3E),
+                      color: context.marilin.ink,
                     ),
               ),
               IconButton(
@@ -111,11 +111,11 @@ class _NeighborhoodSearchBottomSheetState
                   : null,
               border: OutlineInputBorder(
                 borderRadius: BorderRadius.circular(12),
-                borderSide: const BorderSide(color: Color(0xFFE5E7EB)),
+                borderSide: BorderSide(color: context.marilin.border),
               ),
               enabledBorder: OutlineInputBorder(
                 borderRadius: BorderRadius.circular(12),
-                borderSide: const BorderSide(color: Color(0xFFE5E7EB)),
+                borderSide: BorderSide(color: context.marilin.border),
               ),
               focusedBorder: OutlineInputBorder(
                 borderRadius: BorderRadius.circular(12),
@@ -133,12 +133,12 @@ class _NeighborhoodSearchBottomSheetState
           const SizedBox(height: 12),
           Flexible(
             child: filtered.isEmpty
-                ? const Padding(
+                ? Padding(
                     padding: EdgeInsets.symmetric(vertical: 24),
                     child: Center(
                       child: Text(
                         'No se encontraron barrios',
-                        style: TextStyle(color: Colors.grey),
+                        style: TextStyle(color: context.marilin.textMuted),
                       ),
                     ),
                   )

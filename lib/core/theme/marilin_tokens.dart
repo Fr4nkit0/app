@@ -27,6 +27,7 @@ class MarilinTokens extends ThemeExtension<MarilinTokens> {
     required this.success,
     required this.destructive,
     required this.accent,
+    this.isDark = false,
   });
 
   final Color scaffoldMuted;
@@ -39,6 +40,42 @@ class MarilinTokens extends ThemeExtension<MarilinTokens> {
   final Color destructive;
   final Color accent;
 
+  /// Whether these are the dark-theme tokens; picks the neutral roles below.
+  final bool isDark;
+
+  /// Main text and icons (the navy of the light theme).
+  Color get ink => brandNavy;
+
+  Color get inkSecondary => isDark ? const Color(0xFFC9CDD4) : const Color(0xFF334155);
+
+  /// Hints and placeholders.
+  Color get inkHint => isDark ? const Color(0xFF5E6570) : const Color(0xFF9CA3AF);
+
+  Color get lineStrong => isDark ? const Color(0xFF353B45) : const Color(0xFFD1D5DB);
+
+  /// Subtle fills behind chips, rows and inputs.
+  Color get fill => isDark ? const Color(0xFF1D2127) : const Color(0xFFF1F5F9);
+
+  /// A strong status color for text and icons: as is in light, lifted in dark
+  /// so it keeps its contrast over the near-black background.
+  Color vivid(Color strong) {
+    if (!isDark) return strong;
+    final hsl = HSLColor.fromColor(strong);
+    return hsl.lightness >= 0.62 ? strong : hsl.withLightness(0.62).toColor();
+  }
+
+  /// A pastel status background: as is in light. In dark, a translucent wash of
+  /// the same hue at full strength, so tiles read blue/green/orange and not grey.
+  Color soft(Color pastel) {
+    if (!isDark) return pastel;
+    final hsl = HSLColor.fromColor(pastel);
+    return hsl
+        .withLightness(0.55)
+        .withSaturation(hsl.saturation < 0.6 ? 0.6 : hsl.saturation)
+        .toColor()
+        .withValues(alpha: 0.16);
+  }
+
   static const MarilinTokens light = MarilinTokens(
     scaffoldMuted: MarilinColors.scaffoldMuted,
     surface: MarilinColors.surface,
@@ -49,6 +86,21 @@ class MarilinTokens extends ThemeExtension<MarilinTokens> {
     success: MarilinColors.success,
     destructive: MarilinColors.destructive,
     accent: MarilinColors.accent,
+  );
+
+  /// Near-black neutral dark with solid cards one step lighter than the
+  /// background. The accent is the light theme's blue.
+  static const MarilinTokens dark = MarilinTokens(
+    scaffoldMuted: Color(0xFF0B0D10),
+    surface: Color(0xFF16191E),
+    brandBlue: Color(0xFF3B82F6),
+    brandNavy: Color(0xFFF4F5F7),
+    textMuted: Color(0xFF8B929C),
+    border: Color(0xFF262B33),
+    success: Color(0xFF34D399),
+    destructive: Color(0xFFF87171),
+    accent: Color(0xFFFB923C),
+    isDark: true,
   );
 
   static MarilinTokens of(BuildContext context) {
@@ -90,6 +142,7 @@ class MarilinTokens extends ThemeExtension<MarilinTokens> {
       success: success ?? this.success,
       destructive: destructive ?? this.destructive,
       accent: accent ?? this.accent,
+      isDark: isDark,
     );
   }
 
@@ -106,6 +159,12 @@ class MarilinTokens extends ThemeExtension<MarilinTokens> {
       success: Color.lerp(success, other.success, t)!,
       destructive: Color.lerp(destructive, other.destructive, t)!,
       accent: Color.lerp(accent, other.accent, t)!,
+      isDark: t < 0.5 ? isDark : other.isDark,
     );
   }
+}
+
+/// `context.marilin.surface`: the current theme's tokens.
+extension MarilinThemeContext on BuildContext {
+  MarilinTokens get marilin => MarilinTokens.of(this);
 }
