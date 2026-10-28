@@ -66,7 +66,7 @@ Future<void> _payCash(WidgetTester tester) async {
   await tester.pumpAndSettle();
   await tester.enterText(find.byType(TextField), '400');
   await tester.pump();
-  await tester.tap(find.text('Confirmar pago'));
+  await tester.tap(find.text('Registrar monto ingresado'));
   await tester.pumpAndSettle();
 }
 

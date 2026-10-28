@@ -7,10 +7,10 @@ import 'package:app/core/widgets/top_toast.dart';
 import 'package:app/features/customers/domain/models/customer.dart';
 import 'package:app/features/payments/domain/models/payment.dart';
 import 'package:app/features/payments/presentation/providers/payment_repository_provider.dart';
-import 'package:app/features/payments/presentation/widgets/debt_payment_dialog.dart';
+import 'package:app/features/payments/presentation/widgets/debt_payment_sheet.dart';
 
-/// Opens [DebtPaymentDialog], records the chosen payments and reports the
-/// outcome with a toast. Does nothing when the dialog is cancelled.
+/// Opens [DebtPaymentSheet], records the chosen payments and reports the
+/// outcome with a toast. Does nothing when the sheet is dismissed.
 Future<void> registerDebtPayment(
   BuildContext context,
   WidgetRef ref, {
@@ -18,9 +18,16 @@ Future<void> registerDebtPayment(
   required double debt,
   String? visitId,
 }) async {
-  final result = await showDialog<DebtPaymentResult>(
+  final result = await showModalBottomSheet<DebtPaymentResult>(
     context: context,
-    builder: (_) => DebtPaymentDialog(totalDebt: debt),
+    isScrollControlled: true,
+    useSafeArea: true,
+    builder: (sheetContext) => Padding(
+      padding: EdgeInsets.only(
+        bottom: MediaQuery.viewInsetsOf(sheetContext).bottom,
+      ),
+      child: DebtPaymentSheet(totalDebt: debt),
+    ),
   );
   if (result == null) return;
 
