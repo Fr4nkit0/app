@@ -4,6 +4,7 @@ import 'package:url_launcher/url_launcher.dart';
 import 'package:app/core/theme/marilin_tokens.dart';
 import 'package:app/core/utils/address_formatter.dart';
 import 'package:app/features/route/domain/models/route_stop.dart';
+import 'package:app/core/widgets/top_toast.dart';
 
 BoxDecoration _heroDecoration(BuildContext context) => BoxDecoration(
   color: context.marilin.surface,
@@ -180,12 +181,7 @@ class _ActionButton extends StatelessWidget {
       opened = false;
     }
     if (!opened && context.mounted) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: Text(failureMessage),
-          duration: const Duration(seconds: 2),
-        ),
-      );
+      TopToast.showError(context, failureMessage);
     }
   }
 

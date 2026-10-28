@@ -30,39 +30,59 @@ class TopToast {
     overlayState.insert(overlayEntry);
   }
 
-  static void showSuccess(BuildContext context, String message) {
+  static void showSuccess(
+    BuildContext context,
+    String message, {
+    Duration duration = const Duration(seconds: 3),
+  }) {
     show(
       context,
       message: message,
       icon: Icons.check_circle_rounded,
       color: const Color(0xFF10B981), // Beautiful emerald green
+      duration: duration,
     );
   }
 
-  static void showError(BuildContext context, String message) {
+  static void showError(
+    BuildContext context,
+    String message, {
+    Duration duration = const Duration(seconds: 5),
+  }) {
     show(
       context,
       message: message,
       icon: Icons.error_outline_rounded,
       color: const Color(0xFFEF4444), // Vibrant red
+      duration: duration,
     );
   }
 
-  static void showWarning(BuildContext context, String message) {
+  static void showWarning(
+    BuildContext context,
+    String message, {
+    Duration duration = const Duration(seconds: 3),
+  }) {
     show(
       context,
       message: message,
       icon: Icons.warning_amber_rounded,
       color: const Color(0xFFF59E0B), // Vibrant amber/orange
+      duration: duration,
     );
   }
 
-  static void showInfo(BuildContext context, String message) {
+  static void showInfo(
+    BuildContext context,
+    String message, {
+    Duration duration = const Duration(seconds: 3),
+  }) {
     show(
       context,
       message: message,
       icon: Icons.info_outline_rounded,
       color: MarilinColors.brandBlue, // Premium blue
+      duration: duration,
     );
   }
 }
@@ -153,7 +173,9 @@ class _TopToastWidgetState extends State<_TopToastWidget>
                 boxShadow: [
                   BoxShadow(
                     // A shadow is dark in both themes; the ink color would glow on dark.
-                    color: Colors.black.withValues(alpha: context.marilin.isDark ? 0.5 : 0.08),
+                    color: Colors.black.withValues(
+                      alpha: context.marilin.isDark ? 0.5 : 0.08,
+                    ),
                     blurRadius: 16,
                     offset: const Offset(0, 8),
                   ),

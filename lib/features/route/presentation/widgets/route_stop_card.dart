@@ -12,6 +12,7 @@ import 'package:app/features/route/presentation/widgets/stop_reschedule_label.da
 import 'package:app/core/theme/marilin_tokens.dart';
 import 'package:app/features/sync/domain/models/pending_change.dart';
 import 'package:app/features/sync/presentation/widgets/sync_badge_container.dart';
+import 'package:app/core/widgets/top_toast.dart';
 
 class RouteStopCard extends ConsumerWidget {
   const RouteStopCard({
@@ -366,17 +367,9 @@ class RouteStopCard extends ConsumerWidget {
                                               );
                                             } catch (_) {
                                               if (context.mounted) {
-                                                ScaffoldMessenger.of(
+                                                TopToast.showError(
                                                   context,
-                                                ).showSnackBar(
-                                                  const SnackBar(
-                                                    content: Text(
-                                                      'No se pudo abrir WhatsApp',
-                                                    ),
-                                                    duration: Duration(
-                                                      seconds: 2,
-                                                    ),
-                                                  ),
+                                                  'No se pudo abrir WhatsApp',
                                                 );
                                               }
                                             }

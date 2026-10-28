@@ -126,7 +126,7 @@ class _DebtPaymentDialogState extends State<DebtPaymentDialog> {
           ),
           const SizedBox(width: 6),
           Text(
-            isCovered ? '✓ Cubierto' : 'Restante: ${formatMoney(_remaining)}',
+            isCovered ? 'Cubierto' : 'Restante: ${formatMoney(_remaining)}',
             style: TextStyle(
               fontWeight: FontWeight.w700,
               fontSize: 13,

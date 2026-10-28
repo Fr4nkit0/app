@@ -211,11 +211,9 @@ class _CustomerProfileScreenState extends ConsumerState<CustomerProfileScreen> {
                         );
                       } catch (_) {
                         if (context.mounted) {
-                          ScaffoldMessenger.of(context).showSnackBar(
-                            const SnackBar(
-                              content: Text('No se pudo abrir WhatsApp'),
-                              duration: Duration(seconds: 2),
-                            ),
+                          TopToast.showError(
+                            context,
+                            'No se pudo abrir WhatsApp',
                           );
                         }
                       }

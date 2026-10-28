@@ -430,7 +430,7 @@ class _RemainingIndicator extends StatelessWidget {
           ),
           const SizedBox(width: 6),
           Text(
-            isCovered ? '✓ Cubierto' : 'Falta: ${formatMoney(remaining)}',
+            isCovered ? 'Cubierto' : 'Falta: ${formatMoney(remaining)}',
             style: TextStyle(
               fontWeight: FontWeight.w700,
               fontSize: 13,

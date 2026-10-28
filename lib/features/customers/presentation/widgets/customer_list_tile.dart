@@ -9,6 +9,7 @@ import 'package:app/core/utils/avatar_utils.dart';
 import 'package:app/core/utils/address_formatter.dart';
 import 'package:app/features/customers/domain/models/customer.dart';
 import 'package:font_awesome_flutter/font_awesome_flutter.dart';
+import 'package:app/core/widgets/top_toast.dart';
 
 class CustomerListTile extends ConsumerWidget {
   const CustomerListTile({
@@ -222,15 +223,9 @@ class CustomerListTile extends ConsumerWidget {
                                     );
                                   } catch (_) {
                                     if (context.mounted) {
-                                      ScaffoldMessenger.of(
+                                      TopToast.showError(
                                         context,
-                                      ).showSnackBar(
-                                        const SnackBar(
-                                          content: Text(
-                                            'No se pudo abrir WhatsApp',
-                                          ),
-                                          duration: Duration(seconds: 2),
-                                        ),
+                                        'No se pudo abrir WhatsApp',
                                       );
                                     }
                                   }

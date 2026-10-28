@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import 'package:app/features/auth/auth_controller.dart';
+import 'package:app/core/widgets/top_toast.dart';
 
 /// Asks for confirmation and closes the session, unless changes are still
 /// waiting to sync.
@@ -30,9 +31,7 @@ Future<void> confirmAndLogout(BuildContext context, WidgetRef ref) async {
 
   final result = await ref.read(authControllerProvider.notifier).logout();
   if (result is LogoutBlocked && context.mounted) {
-    ScaffoldMessenger.of(
-      context,
-    ).showSnackBar(SnackBar(content: Text(result.message)));
+    TopToast.showError(context, result.message);
   }
 }
 
