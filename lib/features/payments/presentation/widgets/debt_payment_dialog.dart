@@ -209,7 +209,7 @@ class _DebtPaymentDialogState extends State<DebtPaymentDialog> {
                 Text(
                   _selectedMethod == 'Mixto' ? 'MONTOS MIXTOS' : 'MONTO',
                   style: TextStyle(
-                    fontSize: 11,
+                    fontSize: 13,
                     fontWeight: FontWeight.w700,
                     color: context.marilin.textMuted,
                     letterSpacing: 0.8,

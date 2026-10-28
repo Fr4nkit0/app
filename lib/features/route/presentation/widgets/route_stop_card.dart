@@ -260,7 +260,7 @@ class RouteStopCard extends ConsumerWidget {
                                             ),
                                             borderWidth: 1.0,
                                             textColor: const Color(0xFFEF4444),
-                                            fontSize: 11,
+                                            fontSize: 13,
                                             fontWeight: FontWeight.w700,
                                             icon: Icons.warning_amber_rounded,
                                             iconSize: 11,
@@ -291,7 +291,7 @@ class RouteStopCard extends ConsumerWidget {
                                             ),
                                             borderWidth: 1.0,
                                             textColor: const Color(0xFF0369A1),
-                                            fontSize: 11,
+                                            fontSize: 12,
                                             fontWeight: FontWeight.w700,
                                             icon: Icons.water_drop_outlined,
                                             iconSize: 11,
@@ -409,25 +409,4 @@ class RouteStopCard extends ConsumerWidget {
       ),
     );
   }
-
-  // Widget _buildTypeChip(VisitType type) {
-  //   final isSale = type == VisitType.sale;
-  //   return Container(
-  //     padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
-  //     decoration: BoxDecoration(
-  //       color: isSale
-  //           ? MarilinColors.brandBlue.withValues(alpha: 0.08)
-  //           : const Color(0xFF9E9E9E).withValues(alpha: 0.08),
-  //       borderRadius: BorderRadius.circular(8),
-  //     ),
-  //     child: Text(
-  //       isSale ? 'Venta' : 'Visita',
-  //       style: TextStyle(
-  //         fontSize: 11,
-  //         fontWeight: FontWeight.w700,
-  //         color: isSale ? MarilinColors.brandBlue : const Color(0xFF616161),
-  //       ),
-  //     ),
-  //   );
-  // }
 }

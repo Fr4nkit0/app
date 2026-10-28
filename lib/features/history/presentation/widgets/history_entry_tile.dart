@@ -153,7 +153,7 @@ class HistoryEntryTile extends StatelessWidget {
                     child: Text(
                       initials,
                       style: TextStyle(
-                        fontSize: 11,
+                        fontSize: 12,
                         fontWeight: FontWeight.w800,
                         color: avatarColors.foreground,
                       ),
@@ -209,7 +209,7 @@ class _StatusBadge extends StatelessWidget {
           Text(
             label,
             style: TextStyle(
-              fontSize: 10,
+              fontSize: 13,
               fontWeight: FontWeight.w800,
               color: color,
             ),

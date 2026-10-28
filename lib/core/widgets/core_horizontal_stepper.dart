@@ -84,7 +84,7 @@ class CoreHorizontalStepper extends StatelessWidget {
         final titleText = Text(
           steps[index],
           style: TextStyle(
-            fontSize: 10,
+            fontSize: 13,
             fontWeight: isActive ? FontWeight.w700 : FontWeight.w500,
             color: isActive ? effectiveActiveColor : context.marilin.inkHint,
           ),
@@ -98,7 +98,7 @@ class CoreHorizontalStepper extends StatelessWidget {
             ? Text(
                 stepDescriptions![index],
                 style: TextStyle(
-                  fontSize: 9,
+                  fontSize: 12,
                   fontWeight: FontWeight.w400,
                   color: context.marilin.inkHint,
                 ),

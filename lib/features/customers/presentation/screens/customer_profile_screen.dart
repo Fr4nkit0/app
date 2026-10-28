@@ -384,7 +384,7 @@ class _CustomerProfileScreenState extends ConsumerState<CustomerProfileScreen> {
                                             ? 'Al día'
                                             : 'Saldo a favor: \$${(-balance).toStringAsFixed(0)}'),
                                     style: TextStyle(
-                                      fontSize: 11,
+                                      fontSize: 13,
                                       color: balance > 0
                                           ? Colors.red.shade700
                                           : Colors.green.shade700,
@@ -849,7 +849,7 @@ class _CustomerProfileScreenState extends ConsumerState<CustomerProfileScreen> {
               Text(
                 label,
                 style: TextStyle(
-                  fontSize: 11,
+                  fontSize: 12,
                   fontWeight: FontWeight.w600,
                   color: context.marilin.inkHint,
                 ),

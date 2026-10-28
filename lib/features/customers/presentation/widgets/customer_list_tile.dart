@@ -186,7 +186,7 @@ class CustomerListTile extends ConsumerWidget {
                                 borderColor: context.marilin.soft(Color(0xFFFFCDD2)),
                                 borderWidth: 1.0,
                                 textColor: const Color(0xFFEF4444),
-                                fontSize: 11,
+                                fontSize: 13,
                                 fontWeight: FontWeight.w700,
                                 icon: Icons.warning_amber_rounded,
                                 iconSize: 11,

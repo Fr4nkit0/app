@@ -24,7 +24,7 @@ class VisitSectionHeader extends StatelessWidget {
           Text(
             title.toUpperCase(),
             style: TextStyle(
-              fontSize: 11,
+              fontSize: 13,
               fontWeight: FontWeight.w800,
               color: tokens.textMuted,
               letterSpacing: 1.0,

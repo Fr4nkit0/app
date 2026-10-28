@@ -149,7 +149,7 @@ class _VisitScreenState extends ConsumerState<VisitScreen> {
                     Text(
                       isDone ? 'COMPLETADA' : 'EN CURSO',
                       style: TextStyle(
-                        fontSize: 10,
+                        fontSize: 13,
                         fontWeight: FontWeight.w900,
                         letterSpacing: 0.5,
                         color: isDone ? Colors.green : MarilinColors.brandBlue,
@@ -579,7 +579,7 @@ class _VisitScreenState extends ConsumerState<VisitScreen> {
                   child: Text(
                     'Se agregará una nueva parada a la ruta de hoy a la hora elegida.',
                     style: TextStyle(
-                      fontSize: 11,
+                      fontSize: 12,
                       color: MarilinColors.brandBlue.withValues(alpha: 0.9),
                       fontWeight: FontWeight.w500,
                     ),
@@ -806,7 +806,7 @@ class _VisitScreenState extends ConsumerState<VisitScreen> {
                       child: Text(
                         methodText,
                         style: TextStyle(
-                          fontSize: 10,
+                          fontSize: 13,
                           fontWeight: FontWeight.w900,
                           color: badgeColor,
                           letterSpacing: 0.5,
@@ -877,7 +877,7 @@ class _VisitScreenState extends ConsumerState<VisitScreen> {
             child: Text(
               'La visita se marcará como completada al finalizar.',
               style: TextStyle(
-                fontSize: 11,
+                fontSize: 12,
                 color: Color(0xFF1E40AF),
                 fontWeight: FontWeight.w600,
               ),

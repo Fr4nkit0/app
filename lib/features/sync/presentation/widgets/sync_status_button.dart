@@ -62,7 +62,7 @@ class SyncStatusButton extends StatelessWidget {
                       overflow: TextOverflow.ellipsis,
                       style: TextStyle(
                         color: color,
-                        fontSize: 11,
+                        fontSize: 13,
                         fontWeight: FontWeight.w800,
                       ),
                     ),
@@ -80,7 +80,7 @@ class SyncStatusButton extends StatelessWidget {
                             overflow: TextOverflow.ellipsis,
                             style: TextStyle(
                               color: context.marilin.textMuted,
-                              fontSize: 10,
+                              fontSize: 13,
                             ),
                           ),
                         ),
@@ -98,7 +98,7 @@ class SyncStatusButton extends StatelessWidget {
                               color: status.rejectedCount > 0
                                   ? MarilinColors.destructive
                                   : context.marilin.textMuted,
-                              fontSize: 10,
+                              fontSize: 13,
                             ),
                           ),
                         ),

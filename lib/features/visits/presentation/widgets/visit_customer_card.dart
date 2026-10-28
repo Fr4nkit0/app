@@ -45,7 +45,7 @@ class VisitCustomerCard extends StatelessWidget {
                     Text(
                       'CLIENTE ACTUAL',
                       style: TextStyle(
-                        fontSize: 10,
+                        fontSize: 12,
                         fontWeight: FontWeight.w800,
                         color: context.marilin.textMuted.withValues(alpha: 0.9),
                         letterSpacing: 1.0,

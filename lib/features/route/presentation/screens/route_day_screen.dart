@@ -175,7 +175,7 @@ class _RouteHeader extends ConsumerWidget {
               overflow: TextOverflow.ellipsis,
               style: const TextStyle(
                 color: MarilinColors.brandBlue,
-                fontSize: 11,
+                fontSize: 12,
                 fontWeight: FontWeight.w800,
                 letterSpacing: 0.2,
               ),
@@ -475,7 +475,7 @@ class _StatCard extends StatelessWidget {
           Text(
             title,
             style: TextStyle(
-              fontSize: 9,
+              fontSize: 13,
               fontWeight: FontWeight.w700,
               color: iconColor.withValues(alpha: 0.8),
               letterSpacing: 0.2,
