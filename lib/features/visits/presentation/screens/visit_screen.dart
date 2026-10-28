@@ -17,9 +17,8 @@ import 'package:app/features/visits/domain/models/visit_type.dart';
 import 'package:app/features/visits/presentation/providers/visit_repository_provider.dart';
 import 'package:app/features/visits/presentation/providers/complete_visit_usecase_provider.dart';
 import 'package:app/features/inventory/presentation/providers/inventory_repository_provider.dart';
-import 'package:uuid/uuid.dart';
 import 'package:app/features/payments/presentation/providers/payment_repository_provider.dart';
-import 'package:app/features/payments/presentation/widgets/debt_payment_dialog.dart';
+import 'package:app/features/payments/presentation/register_debt_payment.dart';
 import 'package:app/features/payments/domain/models/payment.dart';
 import 'package:app/core/utils/resource.dart';
 import 'package:app/core/theme/marilin_tokens.dart';
@@ -203,7 +202,13 @@ class _VisitScreenState extends ConsumerState<VisitScreen> {
                             debtAmount: balance,
                             onTap: isDone
                                 ? null
-                                : () => _registerDebtPayment(balance, stop),
+                                : () => registerDebtPayment(
+                                    context,
+                                    ref,
+                                    customer: stop.customer,
+                                    debt: balance,
+                                    visitId: stop.id,
+                                  ),
                           ),
                           const SizedBox(height: 12),
                         ],
@@ -324,88 +329,6 @@ class _VisitScreenState extends ConsumerState<VisitScreen> {
           ),
         );
       }
-    }
-  }
-
-  Future<void> _registerDebtPayment(double debt, RouteStop stop) async {
-    final result = await showDialog<DebtPaymentResult>(
-      context: context,
-      builder: (_) => DebtPaymentDialog(totalDebt: debt),
-    );
-    if (result == null) return;
-
-    final payments = <Payment>[];
-    final now = DateTime.now();
-    if (result.method == 'Efectivo') {
-      payments.add(
-        Payment(
-          id: const Uuid().v4(),
-          customerId: stop.customer.id,
-          amount: result.cashAmount!,
-          type: PaymentType.cash,
-          createdAt: now,
-          visitId: stop.id,
-        ),
-      );
-    } else if (result.method == 'Transferencia') {
-      payments.add(
-        Payment(
-          id: const Uuid().v4(),
-          customerId: stop.customer.id,
-          amount: result.transferAmount!,
-          type: PaymentType.transfer,
-          createdAt: now,
-          visitId: stop.id,
-        ),
-      );
-    } else if (result.method == 'Mixto') {
-      if (result.cashAmount != null && result.cashAmount! > 0) {
-        payments.add(
-          Payment(
-            id: const Uuid().v4(),
-            customerId: stop.customer.id,
-            amount: result.cashAmount!,
-            type: PaymentType.cash,
-            createdAt: now,
-            visitId: stop.id,
-          ),
-        );
-      }
-      if (result.transferAmount != null && result.transferAmount! > 0) {
-        payments.add(
-          Payment(
-            id: const Uuid().v4(),
-            customerId: stop.customer.id,
-            amount: result.transferAmount!,
-            type: PaymentType.transfer,
-            createdAt: now.add(const Duration(milliseconds: 10)),
-            visitId: stop.id,
-          ),
-        );
-      }
-    }
-
-    if (payments.isEmpty) return;
-
-    final res = await ref
-        .read(registerPaymentUseCaseProvider)
-        .execute(payments);
-    if (!context.mounted) return;
-    switch (res) {
-      case Success():
-        TopToast.show(
-          context,
-          message: 'Pago registrado con éxito',
-          icon: Icons.check_circle_rounded,
-          color: MarilinColors.success,
-        );
-      case Error(:final error):
-        TopToast.show(
-          context,
-          message: 'No se guardó el pago. Reintentá.',
-          icon: Icons.error_outline,
-          color: MarilinColors.destructive,
-        );
     }
   }
 

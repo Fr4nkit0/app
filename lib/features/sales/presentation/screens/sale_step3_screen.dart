@@ -1,5 +1,4 @@
 import 'package:flutter/material.dart';
-import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:app/core/theme/sales_tokens.dart';
 import 'package:app/core/widgets/top_toast.dart';
@@ -15,6 +14,7 @@ import 'package:app/features/inventory/domain/models/customer_container_balance.
 import 'package:app/features/products/domain/models/product.dart';
 import 'package:app/features/sales/domain/models/sale_item.dart';
 import 'package:app/core/theme/marilin_tokens.dart';
+import 'package:app/features/payments/presentation/widgets/amount_field.dart';
 
 class SaleStep3Screen extends ConsumerWidget {
   const SaleStep3Screen({super.key});
@@ -370,6 +370,7 @@ class _MixedAmountsSectionState extends ConsumerState<_MixedAmountsSection> {
   @override
   Widget build(BuildContext context) {
     final isMixed = widget.draft.paymentMethod == PaymentMethod.mixed;
+    final primary = Theme.of(context).extension<SalesTokens>()!.primary;
 
     return AnimatedSize(
       duration: const Duration(milliseconds: 200),
@@ -382,13 +383,15 @@ class _MixedAmountsSectionState extends ConsumerState<_MixedAmountsSection> {
                 children: [
                   _SectionLabel('MONTOS MIXTOS'),
                   const SizedBox(height: 10),
-                  _AmountField(
+                  AmountField(
+                    focusColor: primary,
                     label: 'Efectivo',
                     controller: _cashController,
                     onChanged: _onCashChanged,
                   ),
                   const SizedBox(height: 10),
-                  _AmountField(
+                  AmountField(
+                    focusColor: primary,
                     label: 'Transferencia',
                     controller: _transferController,
                     onChanged: _onTransferChanged,
@@ -398,53 +401,6 @@ class _MixedAmountsSectionState extends ConsumerState<_MixedAmountsSection> {
               ),
             )
           : const SizedBox.shrink(),
-    );
-  }
-}
-
-class _AmountField extends StatelessWidget {
-  const _AmountField({
-    required this.label,
-    required this.controller,
-    required this.onChanged,
-  });
-
-  final String label;
-  final TextEditingController controller;
-  final ValueChanged<String> onChanged;
-
-  @override
-  Widget build(BuildContext context) {
-    final primary = Theme.of(context).extension<SalesTokens>()!.primary;
-    return TextField(
-      controller: controller,
-      onChanged: onChanged,
-      keyboardType: const TextInputType.numberWithOptions(decimal: true),
-      inputFormatters: [
-        FilteringTextInputFormatter.allow(RegExp(r'^\d*\.?\d*')),
-      ],
-      decoration: InputDecoration(
-        labelText: label,
-        prefixText: '\$ ',
-        filled: true,
-        fillColor: context.marilin.fill,
-        contentPadding: const EdgeInsets.symmetric(
-          horizontal: 16,
-          vertical: 14,
-        ),
-        border: OutlineInputBorder(
-          borderRadius: BorderRadius.circular(10),
-          borderSide: BorderSide(color: context.marilin.border),
-        ),
-        enabledBorder: OutlineInputBorder(
-          borderRadius: BorderRadius.circular(10),
-          borderSide: BorderSide(color: context.marilin.border),
-        ),
-        focusedBorder: OutlineInputBorder(
-          borderRadius: BorderRadius.circular(10),
-          borderSide: BorderSide(color: primary, width: 1.5),
-        ),
-      ),
     );
   }
 }

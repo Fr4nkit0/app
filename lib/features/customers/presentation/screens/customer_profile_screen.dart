@@ -19,10 +19,8 @@ import 'package:app/features/inventory/domain/models/container_movement.dart';
 import 'package:app/core/widgets/error_state.dart';
 import 'package:app/core/widgets/top_toast.dart';
 import 'package:uuid/uuid.dart';
-import 'package:app/core/utils/resource.dart';
 import 'package:app/features/payments/presentation/providers/payment_repository_provider.dart';
-import 'package:app/features/payments/presentation/widgets/debt_payment_dialog.dart';
-import 'package:app/features/payments/domain/models/payment.dart';
+import 'package:app/features/payments/presentation/register_debt_payment.dart';
 
 class CustomerProfileScreen extends ConsumerStatefulWidget {
   const CustomerProfileScreen({super.key, required this.customerId});
@@ -258,98 +256,12 @@ class _CustomerProfileScreenState extends ConsumerState<CustomerProfileScreen> {
                           child: InkWell(
                             borderRadius: BorderRadius.circular(16),
                             onTap: balance > 0
-                                ? () async {
-                                    final result =
-                                        await showDialog<DebtPaymentResult>(
-                                          context: context,
-                                          builder: (_) => DebtPaymentDialog(
-                                            totalDebt: balance,
-                                          ),
-                                        );
-                                    if (result == null) return;
-
-                                    final payments = <Payment>[];
-                                    final now = DateTime.now();
-                                    if (result.method == 'Efectivo') {
-                                      payments.add(
-                                        Payment(
-                                          id: const Uuid().v4(),
-                                          customerId: customer.id,
-                                          amount: result.cashAmount!,
-                                          type: PaymentType.cash,
-                                          createdAt: now,
-                                        ),
-                                      );
-                                    } else if (result.method ==
-                                        'Transferencia') {
-                                      payments.add(
-                                        Payment(
-                                          id: const Uuid().v4(),
-                                          customerId: customer.id,
-                                          amount: result.transferAmount!,
-                                          type: PaymentType.transfer,
-                                          createdAt: now,
-                                        ),
-                                      );
-                                    } else if (result.method == 'Mixto') {
-                                      if (result.cashAmount != null &&
-                                          result.cashAmount! > 0) {
-                                        payments.add(
-                                          Payment(
-                                            id: const Uuid().v4(),
-                                            customerId: customer.id,
-                                            amount: result.cashAmount!,
-                                            type: PaymentType.cash,
-                                            createdAt: now,
-                                          ),
-                                        );
-                                      }
-                                      if (result.transferAmount != null &&
-                                          result.transferAmount! > 0) {
-                                        payments.add(
-                                          Payment(
-                                            id: const Uuid().v4(),
-                                            customerId: customer.id,
-                                            amount: result.transferAmount!,
-                                            type: PaymentType.transfer,
-                                            createdAt: now.add(
-                                              const Duration(milliseconds: 10),
-                                            ),
-                                          ),
-                                        );
-                                      }
-                                    }
-
-                                    if (payments.isNotEmpty) {
-                                      final usecase = ref.read(
-                                        registerPaymentUseCaseProvider,
-                                      );
-                                      final res = await usecase.execute(
-                                        payments,
-                                      );
-                                      if (res is Success) {
-                                        if (context.mounted) {
-                                          TopToast.show(
-                                            context,
-                                            message:
-                                                'Pago registrado con éxito',
-                                            icon: Icons.check_circle_rounded,
-                                            color: const Color(0xFF10B981),
-                                          );
-                                        }
-                                      } else if (res is Error) {
-                                        if (context.mounted) {
-                                          TopToast.show(
-                                            context,
-                                            message:
-                                                'No se guardó el pago. Reintentá.',
-                                            icon: Icons.error_outline,
-                                            color: const Color(0xFFDC2626),
-                                          );
-                                        }
-                                      }
-                                    }
-                                  }
+                                ? () => registerDebtPayment(
+                                    context,
+                                    ref,
+                                    customer: customer,
+                                    debt: balance,
+                                  )
                                 : null,
                             child: Container(
                               padding: const EdgeInsets.all(14),
