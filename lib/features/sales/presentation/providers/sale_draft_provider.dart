@@ -27,7 +27,10 @@ class SaleDraft extends Notifier<SaleDraftState> {
     );
   }
 
-  void setQuantity(SaleItem item, int quantity) {
+  static const maxQuantity = 999;
+
+  void setQuantity(SaleItem item, int requested) {
+    final quantity = requested.clamp(0, maxQuantity);
     if (quantity > 0 && !item.product.hasPrice) return;
     List<SaleItem> newItems;
     if (quantity <= 0) {

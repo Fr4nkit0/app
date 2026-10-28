@@ -368,7 +368,7 @@ class _SelectedMode extends ConsumerWidget {
                   child: Text(
                     'PRODUCTOS',
                     style: TextStyle(
-                      fontSize: 11,
+                      fontSize: 13,
                       fontWeight: FontWeight.w700,
                       color: context.marilin.textMuted,
                       letterSpacing: 0.8,
@@ -396,6 +396,12 @@ class _SelectedMode extends ConsumerWidget {
                         .setQuantity(
                           SaleItem(product: p, quantity: 0),
                           qty - 1,
+                        ),
+                    onQuantitySubmitted: (value) => ref
+                        .read(saleDraftProvider.notifier)
+                        .setQuantity(
+                          SaleItem(product: p, quantity: 0),
+                          value,
                         ),
                   );
                 }),
@@ -528,7 +534,7 @@ class _SectionHeader extends StatelessWidget {
       child: Text(
         label.toUpperCase(),
         style: TextStyle(
-          fontSize: 11,
+          fontSize: 13,
           fontWeight: FontWeight.w700,
           color: context.marilin.textMuted,
           letterSpacing: 0.8,

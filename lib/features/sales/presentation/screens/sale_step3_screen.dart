@@ -496,7 +496,7 @@ class _SectionLabel extends StatelessWidget {
     return Text(
       text,
       style: TextStyle(
-        fontSize: 11,
+        fontSize: 13,
         fontWeight: FontWeight.w700,
         color: context.marilin.textMuted,
         letterSpacing: 0.8,
