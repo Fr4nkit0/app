@@ -136,7 +136,9 @@ class _SaleStep1ScreenState extends ConsumerState<SaleStep1Screen> {
                         ? _SelectedMode(
                             customer: customer,
                             onChangeCustomer: () {
-                              ref.read(saleDraftProvider.notifier).clearCustomer();
+                              ref
+                                  .read(saleDraftProvider.notifier)
+                                  .clearCustomer();
                               setState(() {
                                 _query = '';
                                 _searchController.clear();
@@ -155,10 +157,11 @@ class _SaleStep1ScreenState extends ConsumerState<SaleStep1Screen> {
                             onNewCustomer: () async {
                               final created = await Navigator.of(context)
                                   .push<Customer>(
-                                MaterialPageRoute(
-                                  builder: (_) => const CreateCustomerScreen(),
-                                ),
-                              );
+                                    MaterialPageRoute(
+                                      builder: (_) =>
+                                          const CreateCustomerScreen(),
+                                    ),
+                                  );
                               // The new customer is selected so the sale goes
                               // straight to picking products.
                               if (created != null) {
@@ -173,11 +176,7 @@ class _SaleStep1ScreenState extends ConsumerState<SaleStep1Screen> {
               ),
             ),
           ),
-          _StickyFooter(
-            draft: draft,
-            label: ctaLabel,
-            onTap: ctaAction,
-          ),
+          _StickyFooter(draft: draft, label: ctaLabel, onTap: ctaAction),
           SizedBox(height: bottomInset),
         ],
       ),
@@ -399,10 +398,7 @@ class _SelectedMode extends ConsumerWidget {
                         ),
                     onQuantitySubmitted: (value) => ref
                         .read(saleDraftProvider.notifier)
-                        .setQuantity(
-                          SaleItem(product: p, quantity: 0),
-                          value,
-                        ),
+                        .setQuantity(SaleItem(product: p, quantity: 0), value),
                   );
                 }),
               ],
@@ -462,7 +458,10 @@ class _HabitualOrderCard extends StatelessWidget {
                 ),
                 Text(
                   labels.join(' · '),
-                  style: TextStyle(fontSize: 12, color: context.marilin.inkSecondary),
+                  style: TextStyle(
+                    fontSize: 12,
+                    color: context.marilin.inkSecondary,
+                  ),
                 ),
               ],
             ),
@@ -564,7 +563,9 @@ class _StickyFooter extends StatelessWidget {
     return Container(
       decoration: BoxDecoration(
         color: context.marilin.surface,
-        border: Border(top: BorderSide(color: context.marilin.border, width: 1)),
+        border: Border(
+          top: BorderSide(color: context.marilin.border, width: 1),
+        ),
         boxShadow: [
           BoxShadow(
             color: Colors.black.withValues(alpha: 0.05),
@@ -609,11 +610,10 @@ class _StickyFooter extends StatelessWidget {
             height: 56,
             child: FilledButton(
               onPressed: onTap,
+              // Disabled colors come from the theme: a visible, inactive shape.
               style: FilledButton.styleFrom(
-                backgroundColor: enabled
-                    ? tokens.primary
-                    : context.marilin.border,
-                foregroundColor: enabled ? Colors.white : context.marilin.inkHint,
+                backgroundColor: tokens.primary,
+                foregroundColor: Colors.white,
                 minimumSize: const Size(double.infinity, 56),
                 elevation: enabled ? 4 : 0,
                 shadowColor: tokens.primary.withValues(alpha: 0.4),

@@ -50,6 +50,15 @@ class _Palette {
   final Color onErrorContainer;
 }
 
+/// A 1.5dp outline only while the button is disabled.
+WidgetStateProperty<BorderSide?> _disabledOutline(MarilinTokens t) {
+  return WidgetStateProperty.resolveWith(
+    (states) => states.contains(WidgetState.disabled)
+        ? BorderSide(color: t.lineStrong, width: 1.5)
+        : null,
+  );
+}
+
 abstract final class AppTheme {
   // Light: the values the app always had.
   static const _Palette _light = _Palette(
@@ -169,27 +178,33 @@ abstract final class AppTheme {
       ),
 
       // ── Buttons ──────────────────────────────────────────────────────────
+      // A disabled primary button keeps a visible shape (fill, muted label,
+      // strong outline) so it reads as "not yet" and never as the scaffold.
       elevatedButtonTheme: ElevatedButtonThemeData(
         style: ElevatedButton.styleFrom(
           backgroundColor: t.brandBlue,
           foregroundColor: Colors.white,
+          disabledBackgroundColor: t.fill,
+          disabledForegroundColor: t.textMuted,
           elevation: 0,
           minimumSize: const Size(double.infinity, 56),
           shape: RoundedRectangleBorder(
             borderRadius: BorderRadius.circular(12),
           ),
           textStyle: const TextStyle(fontSize: 15, fontWeight: FontWeight.w700),
-        ),
+        ).copyWith(side: _disabledOutline(t)),
       ),
 
       filledButtonTheme: FilledButtonThemeData(
         style: FilledButton.styleFrom(
+          disabledBackgroundColor: t.fill,
+          disabledForegroundColor: t.textMuted,
           minimumSize: const Size(double.infinity, 52),
           shape: RoundedRectangleBorder(
             borderRadius: BorderRadius.circular(12),
           ),
           textStyle: const TextStyle(fontSize: 15, fontWeight: FontWeight.w700),
-        ),
+        ).copyWith(side: _disabledOutline(t)),
       ),
 
       outlinedButtonTheme: OutlinedButtonThemeData(
@@ -238,11 +253,15 @@ abstract final class AppTheme {
           if (states.contains(WidgetState.selected)) {
             return TextStyle(
               color: t.brandBlue,
-              fontSize: 12,
+              fontSize: 13,
               fontWeight: FontWeight.w600,
             );
           }
-          return TextStyle(color: p.textMuted, fontSize: 12);
+          return TextStyle(
+            color: p.textMuted,
+            fontSize: 13,
+            fontWeight: FontWeight.w500,
+          );
         }),
       ),
 
@@ -290,11 +309,7 @@ abstract final class AppTheme {
       ),
 
       // ── Divider ──────────────────────────────────────────────────────────
-      dividerTheme: DividerThemeData(
-        color: p.divider,
-        thickness: 1,
-        space: 1,
-      ),
+      dividerTheme: DividerThemeData(color: p.divider, thickness: 1, space: 1),
 
       // ── SnackBar ─────────────────────────────────────────────────────────
       snackBarTheme: SnackBarThemeData(
@@ -334,11 +349,7 @@ abstract final class AppTheme {
         ),
         bodyLarge: TextStyle(color: p.text, fontSize: 16, height: 1.5),
         bodyMedium: TextStyle(color: p.text, fontSize: 14, height: 1.4),
-        bodySmall: TextStyle(
-          color: p.textMuted,
-          fontSize: 12,
-          height: 1.4,
-        ),
+        bodySmall: TextStyle(color: p.textMuted, fontSize: 12, height: 1.4),
         labelLarge: TextStyle(
           color: p.text,
           fontWeight: FontWeight.w700,
