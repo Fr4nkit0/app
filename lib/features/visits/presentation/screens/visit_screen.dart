@@ -770,7 +770,7 @@ class _VisitScreenState extends ConsumerState<VisitScreen> {
             border: Border.all(color: context.marilin.border, width: 1),
             boxShadow: [
               BoxShadow(
-                color: context.marilin.ink.withValues(alpha: 0.02),
+                color: Colors.black.withValues(alpha: context.marilin.isDark ? 0.3 : 0.02),
                 blurRadius: 8,
                 offset: const Offset(0, 4),
               ),

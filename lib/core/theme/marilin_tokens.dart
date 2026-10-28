@@ -51,10 +51,10 @@ class MarilinTokens extends ThemeExtension<MarilinTokens> {
   /// Hints and placeholders.
   Color get inkHint => isDark ? const Color(0xFF5E6570) : const Color(0xFF9CA3AF);
 
-  Color get lineStrong => isDark ? const Color(0x33FFFFFF) : const Color(0xFFD1D5DB);
+  Color get lineStrong => isDark ? const Color(0xFF353B45) : const Color(0xFFD1D5DB);
 
   /// Subtle fills behind chips, rows and inputs.
-  Color get fill => isDark ? const Color(0x0FFFFFFF) : const Color(0xFFF1F5F9);
+  Color get fill => isDark ? const Color(0xFF1D2127) : const Color(0xFFF1F5F9);
 
   /// A strong status color for text and icons: as is in light, lifted in dark
   /// so it keeps its contrast over the near-black background.
@@ -88,16 +88,15 @@ class MarilinTokens extends ThemeExtension<MarilinTokens> {
     accent: MarilinColors.accent,
   );
 
-  /// Near-black neutral dark with frosted-glass cards: [surface] and [border]
-  /// are translucent white over the dark background (no blur, so long lists
-  /// stay smooth on low-end phones). The accent is the light theme's blue.
+  /// Near-black neutral dark with solid cards one step lighter than the
+  /// background. The accent is the light theme's blue.
   static const MarilinTokens dark = MarilinTokens(
     scaffoldMuted: Color(0xFF0B0D10),
-    surface: Color(0x12FFFFFF),
+    surface: Color(0xFF16191E),
     brandBlue: Color(0xFF3B82F6),
     brandNavy: Color(0xFFF4F5F7),
     textMuted: Color(0xFF8B929C),
-    border: Color(0x1FFFFFFF),
+    border: Color(0xFF262B33),
     success: Color(0xFF34D399),
     destructive: Color(0xFFF87171),
     accent: Color(0xFFFB923C),

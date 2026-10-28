@@ -152,7 +152,8 @@ class _TopToastWidgetState extends State<_TopToastWidget>
                 ),
                 boxShadow: [
                   BoxShadow(
-                    color: context.marilin.ink.withValues(alpha: 0.08),
+                    // A shadow is dark in both themes; the ink color would glow on dark.
+                    color: Colors.black.withValues(alpha: context.marilin.isDark ? 0.5 : 0.08),
                     blurRadius: 16,
                     offset: const Offset(0, 8),
                   ),

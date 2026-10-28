@@ -70,12 +70,14 @@ void main() {
       expect(AppTheme.lightTheme.extension<MarilinTokens>(), MarilinTokens.light);
     });
 
-    test('dark text is light on a dark glass card', () {
+    test('dark cards and toasts are solid, one step lighter than the background, with light text', () {
       final tokens = MarilinTokens.dark;
-      // The card is translucent: what the eye sees is the card over the background.
-      final card = Color.alphaBlend(tokens.surface, tokens.scaffoldMuted);
 
-      expect(card.computeLuminance(), lessThan(0.05));
+      expect(tokens.surface.a, 1.0);
+      expect(tokens.border.a, 1.0);
+      expect(tokens.fill.a, 1.0);
+      expect(tokens.surface.computeLuminance(), greaterThan(tokens.scaffoldMuted.computeLuminance()));
+      expect(tokens.surface.computeLuminance(), lessThan(0.05));
       expect(tokens.ink.computeLuminance(), greaterThan(0.8));
     });
 
