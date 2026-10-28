@@ -43,7 +43,7 @@ class HistoryEntryTile extends StatelessWidget {
       decoration: BoxDecoration(
         color: tokens.surface,
         borderRadius: BorderRadius.circular(14),
-        border: Border.all(color: tokens.border.withValues(alpha: 0.85)),
+        border: Border.all(color: tokens.border.withValues(alpha: tokens.border.a * 0.85)),
       ),
       child: Padding(
         padding: const EdgeInsets.fromLTRB(14, 12, 14, 12),

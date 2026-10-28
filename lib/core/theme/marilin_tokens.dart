@@ -46,18 +46,35 @@ class MarilinTokens extends ThemeExtension<MarilinTokens> {
   /// Main text and icons (the navy of the light theme).
   Color get ink => brandNavy;
 
-  Color get inkSecondary => isDark ? const Color(0xFFCBD5E1) : const Color(0xFF334155);
+  Color get inkSecondary => isDark ? const Color(0xFFC9CDD4) : const Color(0xFF334155);
 
   /// Hints and placeholders.
-  Color get inkHint => isDark ? const Color(0xFF64748B) : const Color(0xFF9CA3AF);
+  Color get inkHint => isDark ? const Color(0xFF5E6570) : const Color(0xFF9CA3AF);
 
-  Color get lineStrong => isDark ? const Color(0xFF475569) : const Color(0xFFD1D5DB);
+  Color get lineStrong => isDark ? const Color(0x33FFFFFF) : const Color(0xFFD1D5DB);
 
   /// Subtle fills behind chips, rows and inputs.
-  Color get fill => isDark ? const Color(0xFF334155) : const Color(0xFFF1F5F9);
+  Color get fill => isDark ? const Color(0x0FFFFFFF) : const Color(0xFFF1F5F9);
 
-  /// A pastel status background: as is in light, a faint wash of it in dark.
-  Color soft(Color pastel) => isDark ? pastel.withValues(alpha: 0.14) : pastel;
+  /// A strong status color for text and icons: as is in light, lifted in dark
+  /// so it keeps its contrast over the near-black background.
+  Color vivid(Color strong) {
+    if (!isDark) return strong;
+    final hsl = HSLColor.fromColor(strong);
+    return hsl.lightness >= 0.62 ? strong : hsl.withLightness(0.62).toColor();
+  }
+
+  /// A pastel status background: as is in light. In dark, a translucent wash of
+  /// the same hue at full strength, so tiles read blue/green/orange and not grey.
+  Color soft(Color pastel) {
+    if (!isDark) return pastel;
+    final hsl = HSLColor.fromColor(pastel);
+    return hsl
+        .withLightness(0.55)
+        .withSaturation(hsl.saturation < 0.6 ? 0.6 : hsl.saturation)
+        .toColor()
+        .withValues(alpha: 0.16);
+  }
 
   static const MarilinTokens light = MarilinTokens(
     scaffoldMuted: MarilinColors.scaffoldMuted,
@@ -71,14 +88,16 @@ class MarilinTokens extends ThemeExtension<MarilinTokens> {
     accent: MarilinColors.accent,
   );
 
-  /// DESIGN.md dark palette: dark canvas, lighter cards, light ink.
+  /// Near-black neutral dark with frosted-glass cards: [surface] and [border]
+  /// are translucent white over the dark background (no blur, so long lists
+  /// stay smooth on low-end phones). The accent is water blue (sky).
   static const MarilinTokens dark = MarilinTokens(
-    scaffoldMuted: Color(0xFF0F172A),
-    surface: Color(0xFF1E293B),
-    brandBlue: Color(0xFF3B82F6),
-    brandNavy: Color(0xFFF1F5F9),
-    textMuted: Color(0xFF94A3B8),
-    border: Color(0xFF334155),
+    scaffoldMuted: Color(0xFF0B0D10),
+    surface: Color(0x12FFFFFF),
+    brandBlue: Color(0xFF0EA5E9),
+    brandNavy: Color(0xFFF4F5F7),
+    textMuted: Color(0xFF8B929C),
+    border: Color(0x1FFFFFFF),
     success: Color(0xFF34D399),
     destructive: Color(0xFFF87171),
     accent: Color(0xFFFB923C),

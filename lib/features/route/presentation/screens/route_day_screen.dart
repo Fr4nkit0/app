@@ -67,6 +67,8 @@ class _RouteDayScreenState extends ConsumerState<RouteDayScreen> {
                 SliverToBoxAdapter(child: _ProgressSection(stops: allStops)),
                 if (allStops.isEmpty)
                   SliverFillRemaining(
+                    // Taller than what is left on a small phone: scroll instead of overflowing.
+                    hasScrollBody: false,
                     child: EmptyState(
                       icon: Icons.route_outlined,
                       title: 'Sin paradas',
@@ -415,7 +417,7 @@ class _ProgressSection extends StatelessWidget {
                     value: '$total',
                     icon: Icons.inventory_2_outlined,
                     iconColor: MarilinColors.brandBlue,
-                    bgColor: const Color(0xFFE3F2FD),
+                    bgColor: context.marilin.soft(const Color(0xFFE3F2FD)),
                   ),
                 ),
                 const SizedBox(width: 8),
@@ -464,10 +466,12 @@ class _StatCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final iconColor = context.marilin.vivid(this.iconColor);
     return Container(
       padding: const EdgeInsets.symmetric(vertical: 10, horizontal: 8),
       decoration: BoxDecoration(
-        color: bgColor.withValues(alpha: 0.7),
+        // Multiply, not replace: the dark tint is already translucent.
+        color: bgColor.withValues(alpha: bgColor.a * 0.7),
         borderRadius: BorderRadius.circular(12),
         border: Border.all(color: bgColor, width: 1),
       ),

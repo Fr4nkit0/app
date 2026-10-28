@@ -68,7 +68,7 @@ class VisitCustomerCard extends StatelessWidget {
             ],
           ),
           const SizedBox(height: 16),
-          Divider(height: 1, color: context.marilin.border.withValues(alpha: 0.6)),
+          Divider(height: 1, color: context.marilin.border.withValues(alpha: context.marilin.border.a * 0.6)),
           const SizedBox(height: 16),
           Row(
             children: [

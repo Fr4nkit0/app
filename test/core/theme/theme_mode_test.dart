@@ -60,11 +60,32 @@ void main() {
       expect(AppTheme.lightTheme.extension<MarilinTokens>(), MarilinTokens.light);
     });
 
-    test('dark text is light on a dark surface', () {
+    test('dark text is light on a dark glass card', () {
       final tokens = MarilinTokens.dark;
+      // The card is translucent: what the eye sees is the card over the background.
+      final card = Color.alphaBlend(tokens.surface, tokens.scaffoldMuted);
 
-      expect(tokens.surface.computeLuminance(), lessThan(0.1));
-      expect(tokens.brandNavy.computeLuminance(), greaterThan(0.8));
+      expect(card.computeLuminance(), lessThan(0.05));
+      expect(tokens.ink.computeLuminance(), greaterThan(0.8));
+    });
+
+    test('a pastel status tile keeps its hue in dark instead of turning grey', () {
+      const pastelBlue = Color(0xFFEFF6FF);
+
+      expect(MarilinTokens.light.soft(pastelBlue), pastelBlue);
+      final wash = HSLColor.fromColor(MarilinTokens.dark.soft(pastelBlue));
+      expect(wash.hue, closeTo(HSLColor.fromColor(pastelBlue).hue, 1));
+      expect(wash.saturation, greaterThanOrEqualTo(0.6));
+      expect(wash.alpha, lessThan(0.2));
+    });
+
+    test('a dark-green status icon is lifted in dark and untouched in light', () {
+      const green800 = Color(0xFF2E7D32);
+
+      expect(MarilinTokens.light.vivid(green800), green800);
+      final lifted = HSLColor.fromColor(MarilinTokens.dark.vivid(green800));
+      expect(lifted.lightness, closeTo(0.62, 0.01));
+      expect(lifted.hue, closeTo(HSLColor.fromColor(green800).hue, 1));
     });
   });
 }

@@ -46,7 +46,7 @@ class SalesTokens extends ThemeExtension<SalesTokens> {
   );
 
   static const SalesTokens dark = SalesTokens(
-    primary: Color(0xFF3B82F6),
+    primary: Color(0xFF0EA5E9),
     accent: Color(0xFFFB923C),
     destructive: Color(0xFFF87171),
   );
