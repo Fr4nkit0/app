@@ -148,44 +148,6 @@ class _RouteDayScreenState extends ConsumerState<RouteDayScreen> {
 class _RouteHeader extends ConsumerWidget {
   const _RouteHeader({required this.stops});
 
-  static Widget _dateBadge(String weekday, int day, String month) {
-    return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
-      decoration: BoxDecoration(
-        color: MarilinColors.brandBlue.withValues(alpha: 0.06),
-        borderRadius: BorderRadius.circular(20),
-        border: Border.all(
-          color: MarilinColors.brandBlue.withValues(alpha: 0.15),
-          width: 1,
-        ),
-      ),
-      child: Row(
-        mainAxisSize: MainAxisSize.min,
-        children: [
-          const Icon(
-            Icons.calendar_month_outlined,
-            size: 13,
-            color: MarilinColors.brandBlue,
-          ),
-          const SizedBox(width: 4),
-          Flexible(
-            child: Text(
-              '$weekday, $day de $month',
-              maxLines: 1,
-              overflow: TextOverflow.ellipsis,
-              style: const TextStyle(
-                color: MarilinColors.brandBlue,
-                fontSize: 12,
-                fontWeight: FontWeight.w800,
-                letterSpacing: 0.2,
-              ),
-            ),
-          ),
-        ],
-      ),
-    );
-  }
-
   final List<RouteStop> stops;
 
   @override
@@ -229,22 +191,10 @@ class _RouteHeader extends ConsumerWidget {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          // 1. Date badge and sync control on top
-          // Both chips shrink so long dates fit next to the sync status on narrow phones.
-          Row(
-            crossAxisAlignment: CrossAxisAlignment.center,
-            mainAxisAlignment: MainAxisAlignment.spaceBetween,
-            children: [
-              Flexible(
-                child: _dateBadge(
-                  days[now.weekday],
-                  now.day,
-                  months[now.month],
-                ),
-              ),
-              const SizedBox(width: 8),
-              const Flexible(child: SyncStatusButtonContainer()),
-            ],
+          // 1. The sync control owns the top row, so its texts never shrink.
+          const Align(
+            alignment: Alignment.centerRight,
+            child: SyncStatusButtonContainer(),
           ),
           const SizedBox(height: 10),
           // 2. Identity row: avatar and greeting; tapping it opens the profile.
@@ -284,18 +234,22 @@ class _RouteHeader extends ConsumerWidget {
                             Row(
                               children: [
                                 Icon(
-                                  Icons.local_shipping_outlined,
-                                  size: 14,
+                                  Icons.calendar_month_outlined,
+                                  size: 15,
                                   color: context.marilin.textMuted,
                                 ),
                                 const SizedBox(width: 5),
-                                Text(
-                                  'Buen día de reparto',
-                                  style: Theme.of(context).textTheme.bodyMedium
-                                      ?.copyWith(
-                                        color: context.marilin.inkSecondary,
-                                        fontWeight: FontWeight.w600,
-                                      ),
+                                Flexible(
+                                  child: Text(
+                                    '${days[now.weekday]}, ${now.day} de ${months[now.month]}',
+                                    maxLines: 1,
+                                    overflow: TextOverflow.ellipsis,
+                                    style: TextStyle(
+                                      fontSize: 14,
+                                      color: context.marilin.inkSecondary,
+                                      fontWeight: FontWeight.w600,
+                                    ),
+                                  ),
                                 ),
                               ],
                             ),
