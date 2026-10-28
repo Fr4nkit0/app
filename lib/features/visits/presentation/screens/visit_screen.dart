@@ -552,8 +552,8 @@ class _VisitScreenState extends ConsumerState<VisitScreen> {
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
         const VisitSectionHeader(
-          title: 'Resultado',
-          subtitle: 'Motivo si no hubo venta',
+          title: '¿Qué pasó?',
+          subtitle: 'Elegí el motivo de la visita sin venta',
         ),
         // Toggle Buttons for Results (catalog driven)
         Consumer(

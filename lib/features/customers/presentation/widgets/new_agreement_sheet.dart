@@ -96,7 +96,7 @@ class _NewAgreementSheetState extends ConsumerState<NewAgreementSheet> {
         TopToast.showSuccess(context, 'Acuerdo creado');
       case Error(:final error):
         setState(() => _saving = false);
-        TopToast.showError(context, 'No se pudo crear el acuerdo: $error');
+        TopToast.showError(context, 'No se guardó el acuerdo. Reintentá.');
     }
   }
 

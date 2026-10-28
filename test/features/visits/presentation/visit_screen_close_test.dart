@@ -129,9 +129,11 @@ Future<_FakeCompleteVisit> _pumpVisit(
   return fake;
 }
 
-Finder get _primary => find.widgetWithText(FilledButton, 'Cerrar Visita');
+Finder get _primary => find.widgetWithText(FilledButton, 'Cerrar visita');
 
 Future<void> _selectAbsent(WidgetTester tester) async {
+  await tester.ensureVisible(find.text('Ausente'));
+  await tester.pumpAndSettle();
   await tester.tap(find.text('Ausente'));
   await tester.pump();
 }
@@ -225,8 +227,12 @@ void main() {
 
   testWidgets('a rescheduled visit recaps the chosen time', (tester) async {
     final fake = await _pumpVisit(tester);
+    await tester.ensureVisible(find.text('Reprogramar'));
+    await tester.pumpAndSettle();
     await tester.tap(find.text('Reprogramar'));
     await tester.pump();
+    await tester.ensureVisible(find.text('Elegir hora'));
+    await tester.pumpAndSettle();
     await tester.tap(find.text('Elegir hora'));
     await tester.pumpAndSettle();
     await tester.tap(find.text('OK'));

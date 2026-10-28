@@ -26,7 +26,9 @@ class VisitCustomerCard extends StatelessWidget {
         border: Border.all(color: context.marilin.border, width: 1.5),
         boxShadow: [
           BoxShadow(
-            color: Colors.black.withValues(alpha: context.marilin.isDark ? 0.3 : 0.04),
+            color: Colors.black.withValues(
+              alpha: context.marilin.isDark ? 0.3 : 0.04,
+            ),
             blurRadius: 16,
             offset: const Offset(0, 8),
           ),
@@ -70,7 +72,12 @@ class VisitCustomerCard extends StatelessWidget {
             ],
           ),
           const SizedBox(height: 16),
-          Divider(height: 1, color: context.marilin.border.withValues(alpha: context.marilin.border.a * 0.6)),
+          Divider(
+            height: 1,
+            color: context.marilin.border.withValues(
+              alpha: context.marilin.border.a * 0.6,
+            ),
+          ),
           const SizedBox(height: 16),
           Row(
             children: [

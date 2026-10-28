@@ -25,13 +25,12 @@ class VisitStickyFooter extends StatelessWidget {
   /// shows a spinner instead of its icon.
   final bool isBusy;
 
-  bool get _needsSoloResult =>
-      !hasSales && !isSaleSelected && !hasSoloResult;
+  bool get _needsSoloResult => !hasSales && !isSaleSelected && !hasSoloResult;
 
   String get _primaryLabel {
-    if (hasSales) return 'Cerrar Visita';
-    if (isSaleSelected) return 'Iniciar Registro de Venta';
-    return 'Cerrar Visita';
+    if (hasSales) return 'Cerrar visita';
+    if (isSaleSelected) return 'Cargar la venta';
+    return 'Cerrar visita';
   }
 
   @override
@@ -56,14 +55,17 @@ class VisitStickyFooter extends StatelessWidget {
           ? SizedBox(
               width: double.infinity,
               height: 52,
-              child: OutlinedButton(onPressed: onBackToRoute, child: const Text('Volver a la Ruta')),
+              child: OutlinedButton(
+                onPressed: onBackToRoute,
+                child: const Text('Volver a la ruta'),
+              ),
             )
           : Column(
               mainAxisSize: MainAxisSize.min,
               children: [
                 if (_needsSoloResult) ...[
                   Text(
-                    'Seleccioná un resultado primero',
+                    'Elegí qué pasó para cerrar la visita',
                     style: TextStyle(
                       fontSize: 13,
                       fontWeight: FontWeight.w600,
@@ -80,7 +82,9 @@ class VisitStickyFooter extends StatelessWidget {
                       backgroundColor: MarilinColors.brandBlue,
                       minimumSize: const Size(double.infinity, 56),
                     ),
-                    onPressed: _needsSoloResult || isBusy ? null : onPrimaryPressed,
+                    onPressed: _needsSoloResult || isBusy
+                        ? null
+                        : onPrimaryPressed,
                     child: Row(
                       mainAxisAlignment: MainAxisAlignment.center,
                       children: [

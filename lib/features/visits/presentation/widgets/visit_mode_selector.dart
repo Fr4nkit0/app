@@ -20,8 +20,8 @@ class VisitModeSelector extends StatelessWidget {
       children: [
         Expanded(
           child: _ModeCard(
-            title: 'Registrar Venta',
-            subtitle: 'Facturar bidones',
+            title: 'Registrar venta',
+            subtitle: 'Cobrás productos ahora',
             icon: Icons.point_of_sale_outlined,
             isSelected: isSaleSelected,
             onTap: onSelectSale,
@@ -30,8 +30,8 @@ class VisitModeSelector extends StatelessWidget {
         const SizedBox(width: 12),
         Expanded(
           child: _ModeCard(
-            title: 'Visita',
-            subtitle: 'Entrega o gestión',
+            title: 'Solo visita',
+            subtitle: 'Sin venta: entrega, gestión o ausente',
             icon: Icons.assignment_turned_in_outlined,
             isSelected: !isSaleSelected,
             onTap: onSelectVisit,
