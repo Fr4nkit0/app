@@ -53,6 +53,9 @@ class SaleDraftState {
     );
   }
 
+  /// Nothing the driver would miss: no customer and no lines.
+  bool get isEmpty => customer == null && items.isEmpty;
+
   double get total => items.fold(0.0, (sum, item) => sum + item.subtotal);
 
   double get mixedTotal => (cashAmount ?? 0) + (transferAmount ?? 0);

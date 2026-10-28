@@ -1,3 +1,4 @@
+import 'package:app/core/theme/marilin_tokens.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:app/core/widgets/product_chip.dart';
@@ -13,7 +14,7 @@ void main() {
         ),
       );
 
-      const blue = Color(0xFF1565C0);
+      const blue = MarilinColors.brandBlue;
       expect(find.text('Soda'), findsOneWidget);
       expect(find.byIcon(Icons.water_drop_outlined), findsOneWidget);
 
@@ -37,7 +38,7 @@ void main() {
         ),
       );
 
-      const blue = Color(0xFF1565C0);
+      const blue = MarilinColors.brandBlue;
       final container = tester.widget<Container>(find.byType(Container));
       final decoration = container.decoration as BoxDecoration?;
       expect(decoration?.color, equals(blue));

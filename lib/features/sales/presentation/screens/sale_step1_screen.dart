@@ -1,6 +1,8 @@
+import 'package:app/core/utils/money_formatter.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:app/core/theme/marilin_tokens.dart';
+import 'package:app/core/widgets/error_state.dart';
 import 'package:app/core/theme/sales_tokens.dart';
 import 'package:app/core/widgets/screen_header.dart';
 import 'package:app/core/widgets/core_search_bar.dart';
@@ -136,7 +138,9 @@ class _SaleStep1ScreenState extends ConsumerState<SaleStep1Screen> {
                         ? _SelectedMode(
                             customer: customer,
                             onChangeCustomer: () {
-                              ref.read(saleDraftProvider.notifier).clearCustomer();
+                              ref
+                                  .read(saleDraftProvider.notifier)
+                                  .clearCustomer();
                               setState(() {
                                 _query = '';
                                 _searchController.clear();
@@ -155,10 +159,11 @@ class _SaleStep1ScreenState extends ConsumerState<SaleStep1Screen> {
                             onNewCustomer: () async {
                               final created = await Navigator.of(context)
                                   .push<Customer>(
-                                MaterialPageRoute(
-                                  builder: (_) => const CreateCustomerScreen(),
-                                ),
-                              );
+                                    MaterialPageRoute(
+                                      builder: (_) =>
+                                          const CreateCustomerScreen(),
+                                    ),
+                                  );
                               // The new customer is selected so the sale goes
                               // straight to picking products.
                               if (created != null) {
@@ -173,11 +178,7 @@ class _SaleStep1ScreenState extends ConsumerState<SaleStep1Screen> {
               ),
             ),
           ),
-          _StickyFooter(
-            draft: draft,
-            label: ctaLabel,
-            onTap: ctaAction,
-          ),
+          _StickyFooter(draft: draft, label: ctaLabel, onTap: ctaAction),
           SizedBox(height: bottomInset),
         ],
       ),
@@ -278,8 +279,13 @@ class _SearchMode extends ConsumerWidget {
               );
             },
             loading: () => const Center(child: CircularProgressIndicator()),
-            error: (e, _) =>
-                const Center(child: Text('Error al cargar clientes')),
+            error: (e, _) => ErrorState(
+              title: 'No pudimos cargar los clientes',
+              message:
+                  'Revisá la conexión y reintentá. '
+                  'Lo que ya cargaste sigue guardado en el teléfono.',
+              onRetry: () => ref.invalidate(customerListProvider),
+            ),
           ),
         ),
       ],
@@ -368,7 +374,7 @@ class _SelectedMode extends ConsumerWidget {
                   child: Text(
                     'PRODUCTOS',
                     style: TextStyle(
-                      fontSize: 11,
+                      fontSize: 13,
                       fontWeight: FontWeight.w700,
                       color: context.marilin.textMuted,
                       letterSpacing: 0.8,
@@ -397,13 +403,22 @@ class _SelectedMode extends ConsumerWidget {
                           SaleItem(product: p, quantity: 0),
                           qty - 1,
                         ),
+                    onQuantitySubmitted: (value) => ref
+                        .read(saleDraftProvider.notifier)
+                        .setQuantity(SaleItem(product: p, quantity: 0), value),
                   );
                 }),
               ],
             ),
             loading: () => const Center(child: CircularProgressIndicator()),
-            error: (e, _) =>
-                const Center(child: Text('Error al cargar productos')),
+            error: (e, _) => ErrorState(
+              title: 'No pudimos cargar los productos',
+              message:
+                  'Revisá la conexión y reintentá. '
+                  'Lo que ya cargaste sigue guardado en el teléfono.',
+              onRetry: () =>
+                  ref.invalidate(customerProductListProvider(customer.id)),
+            ),
           ),
         ),
       ],
@@ -456,7 +471,10 @@ class _HabitualOrderCard extends StatelessWidget {
                 ),
                 Text(
                   labels.join(' · '),
-                  style: TextStyle(fontSize: 12, color: context.marilin.inkSecondary),
+                  style: TextStyle(
+                    fontSize: 12,
+                    color: context.marilin.inkSecondary,
+                  ),
                 ),
               ],
             ),
@@ -528,7 +546,7 @@ class _SectionHeader extends StatelessWidget {
       child: Text(
         label.toUpperCase(),
         style: TextStyle(
-          fontSize: 11,
+          fontSize: 13,
           fontWeight: FontWeight.w700,
           color: context.marilin.textMuted,
           letterSpacing: 0.8,
@@ -558,7 +576,9 @@ class _StickyFooter extends StatelessWidget {
     return Container(
       decoration: BoxDecoration(
         color: context.marilin.surface,
-        border: Border(top: BorderSide(color: context.marilin.border, width: 1)),
+        border: Border(
+          top: BorderSide(color: context.marilin.border, width: 1),
+        ),
         boxShadow: [
           BoxShadow(
             color: Colors.black.withValues(alpha: 0.05),
@@ -585,7 +605,7 @@ class _StickyFooter extends StatelessWidget {
                   ),
                 ),
                 Text(
-                  'Total: \$${draft.total.toStringAsFixed(0)}',
+                  'Total: ${formatMoney(draft.total)}',
                   style: TextStyle(
                     fontWeight: FontWeight.w900,
                     color: tokens.primary,
@@ -603,11 +623,10 @@ class _StickyFooter extends StatelessWidget {
             height: 56,
             child: FilledButton(
               onPressed: onTap,
+              // Disabled colors come from the theme: a visible, inactive shape.
               style: FilledButton.styleFrom(
-                backgroundColor: enabled
-                    ? tokens.primary
-                    : context.marilin.border,
-                foregroundColor: enabled ? Colors.white : context.marilin.inkHint,
+                backgroundColor: tokens.primary,
+                foregroundColor: Colors.white,
                 minimumSize: const Size(double.infinity, 56),
                 elevation: enabled ? 4 : 0,
                 shadowColor: tokens.primary.withValues(alpha: 0.4),

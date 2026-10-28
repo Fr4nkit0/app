@@ -11,6 +11,7 @@ import 'package:app/features/history/presentation/screens/history_screen.dart';
 import 'package:app/features/route/presentation/screens/route_day_screen.dart';
 import 'package:app/features/sales/presentation/providers/sale_draft_provider.dart';
 import 'package:app/features/sales/presentation/screens/sale_step1_screen.dart';
+import 'package:app/features/sales/presentation/widgets/discard_sale_dialog.dart';
 
 import 'package:app/features/auth/auth_controller.dart';
 import 'package:app/features/auth/login_screen.dart';
@@ -20,7 +21,9 @@ import 'package:app/features/sync/presentation/widgets/sync_triggers_host.dart';
 Future<void> main() async {
   WidgetsFlutterBinding.ensureInitialized();
   // The theme is known before the first frame, so a dark choice does not flash light.
-  ThemeModeController.initial = await ThemeModeController.readSaved(const FlutterSecureStorage());
+  ThemeModeController.initial = await ThemeModeController.readSaved(
+    const FlutterSecureStorage(),
+  );
   // Best effort: a device that refuses background work still syncs while
   // the app is open.
   unawaited(scheduleBackgroundSync().catchError((Object _) {}));
@@ -81,9 +84,15 @@ class _RootShell extends ConsumerStatefulWidget {
 class _RootShellState extends ConsumerState<_RootShell> {
   int _selectedIndex = 0;
 
-  void _onTabChanged(int index) {
-    // Resetear el draft de venta al salir del tab Venta (index 2)
-    if (_selectedIndex == 2 && index != 2) {
+  static const _saleTabIndex = 2;
+
+  Future<void> _onTabChanged(int index) async {
+    // Leaving the sale tab drops the draft; a started sale asks first.
+    if (_selectedIndex == _saleTabIndex && index != _saleTabIndex) {
+      if (!ref.read(saleDraftProvider).isEmpty) {
+        final discard = await confirmDiscardSale(context);
+        if (!discard || !mounted) return;
+      }
       ref.read(saleDraftProvider.notifier).reset();
     }
     setState(() => _selectedIndex = index);

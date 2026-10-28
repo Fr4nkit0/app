@@ -1,4 +1,6 @@
+import 'package:app/core/utils/money_formatter.dart';
 import 'package:app/core/theme/marilin_tokens.dart';
+import 'package:app/core/widgets/error_state.dart';
 import 'package:app/features/customers/domain/models/customer_agreement.dart';
 import 'package:app/features/customers/presentation/providers/customer_agreements_provider.dart';
 import 'package:app/features/customers/presentation/widgets/new_agreement_sheet.dart';
@@ -46,9 +48,13 @@ class CustomerAgreementsTab extends ConsumerWidget {
               padding: EdgeInsets.all(32),
               child: Center(child: CircularProgressIndicator()),
             ),
-            error: (e, _) => Padding(
-              padding: const EdgeInsets.all(32),
-              child: Center(child: Text('Error al cargar acuerdos: $e')),
+            error: (e, _) => ErrorState(
+              title: 'No pudimos cargar los acuerdos',
+              message:
+                  'Revisá la conexión y reintentá. '
+                  'Lo que ya cargaste sigue guardado en el teléfono.',
+              onRetry: () =>
+                  ref.invalidate(customerAgreementsProvider(customerId)),
             ),
           ),
         ],
@@ -68,7 +74,11 @@ class _EmptyAgreements extends StatelessWidget {
       child: Column(
         mainAxisSize: MainAxisSize.min,
         children: [
-          Icon(Icons.handshake_outlined, size: 48, color: context.marilin.lineStrong),
+          Icon(
+            Icons.handshake_outlined,
+            size: 48,
+            color: context.marilin.lineStrong,
+          ),
           const SizedBox(height: 16),
           Text(
             'Sin acuerdos',
@@ -96,18 +106,14 @@ class AgreementCard extends StatelessWidget {
 
   final CustomerAgreement agreement;
 
-  static String formatMoney(double value) => value == value.roundToDouble()
-      ? '\$${value.toStringAsFixed(0)}'
-      : '\$${value.toStringAsFixed(2).replaceAll('.', ',')}';
-
   static String formatDate(String day) {
     final p = day.split('-');
     return '${p[2]}/${p[1]}/${p[0]}';
   }
 
   static (String, Color) _chip(AgreementStatus status) => switch (status) {
-    AgreementStatus.inForce => ('Vigente', const Color(0xFF15803D)),
-    AgreementStatus.ended => ('Finalizado', Color(0xFF64748B)),
+    AgreementStatus.inForce => ('Vigente', MarilinColors.success),
+    AgreementStatus.ended => ('Finalizado', MarilinColors.textMuted),
     AgreementStatus.future => ('Futuro', MarilinColors.brandBlue),
   };
 
@@ -141,7 +147,10 @@ class AgreementCard extends StatelessWidget {
                 ),
               ),
               Container(
-                padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+                padding: const EdgeInsets.symmetric(
+                  horizontal: 10,
+                  vertical: 4,
+                ),
                 decoration: BoxDecoration(
                   color: color.withValues(alpha: 0.12),
                   borderRadius: BorderRadius.circular(999),
@@ -175,14 +184,21 @@ class AgreementCard extends StatelessWidget {
             const SizedBox(height: 4),
             Text(
               agreement.reason!,
-              style: TextStyle(fontSize: 13, color: context.marilin.inkSecondary),
+              style: TextStyle(
+                fontSize: 13,
+                color: context.marilin.inkSecondary,
+              ),
             ),
           ],
           if (!agreement.isSynced) ...[
             const SizedBox(height: 8),
             Row(
               children: [
-                Icon(Icons.sync_outlined, size: 14, color: Colors.orange.shade700),
+                Icon(
+                  Icons.sync_outlined,
+                  size: 14,
+                  color: Colors.orange.shade700,
+                ),
                 const SizedBox(width: 4),
                 Text(
                   'Pendiente de sincronizar',

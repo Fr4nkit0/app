@@ -1,7 +1,9 @@
+import 'package:app/core/utils/money_formatter.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:url_launcher/url_launcher.dart';
 import 'package:app/core/utils/address_formatter.dart';
+import 'package:app/core/widgets/error_state.dart';
 import 'package:app/core/widgets/top_toast.dart';
 import 'package:app/features/route/domain/models/route_stop.dart';
 import 'package:app/features/route/domain/models/stop_status.dart';
@@ -16,12 +18,13 @@ import 'package:app/features/visits/domain/models/visit_type.dart';
 import 'package:app/features/visits/presentation/providers/visit_repository_provider.dart';
 import 'package:app/features/visits/presentation/providers/complete_visit_usecase_provider.dart';
 import 'package:app/features/inventory/presentation/providers/inventory_repository_provider.dart';
-import 'package:uuid/uuid.dart';
 import 'package:app/features/payments/presentation/providers/payment_repository_provider.dart';
-import 'package:app/features/payments/presentation/widgets/debt_payment_dialog.dart';
+import 'package:app/features/payments/presentation/register_debt_payment.dart';
 import 'package:app/features/payments/domain/models/payment.dart';
 import 'package:app/core/utils/resource.dart';
 import 'package:app/core/theme/marilin_tokens.dart';
+import 'package:app/features/sync/domain/models/pending_change.dart';
+import 'package:app/features/sync/presentation/widgets/sync_badge_container.dart';
 import 'package:app/features/visits/presentation/widgets/visit_section_header.dart';
 import 'package:app/features/visits/presentation/visit_outcome_display.dart';
 import 'package:app/features/visits/presentation/widgets/visit_sticky_footer.dart';
@@ -31,7 +34,6 @@ import 'package:app/features/visits/presentation/widgets/visit_debt_banner.dart'
 import 'package:app/features/visits/presentation/widgets/visit_custody_banner.dart';
 import 'package:app/features/visits/presentation/widgets/visit_reschedule_time_field.dart';
 import 'package:app/features/visits/domain/reschedule_time.dart';
-import 'package:app/features/payments/presentation/providers/payment_repository_provider.dart';
 
 final stopSalesProvider = StreamProvider.family<List<Sale>, String>((
   ref,
@@ -66,9 +68,11 @@ class _VisitScreenState extends ConsumerState<VisitScreen> {
   // Reschedules happen later the same day (ADR 0002).
   TimeOfDay? _rescheduleTime;
   RescheduleTimeError? _rescheduleError;
+  bool _isClosing = false;
   final TextEditingController _noteController = TextEditingController();
 
-  bool get _isRescheduleSelected => _selectedOutcome?.triggersReschedule ?? false;
+  bool get _isRescheduleSelected =>
+      _selectedOutcome?.triggersReschedule ?? false;
 
   @override
   void dispose() {
@@ -109,8 +113,7 @@ class _VisitScreenState extends ConsumerState<VisitScreen> {
           orElse: () => false,
         );
 
-        if ((hasReturns || hasPayments) &&
-            _isRescheduleSelected) {
+        if ((hasReturns || hasPayments) && _isRescheduleSelected) {
           _selectedOutcome = null;
         }
 
@@ -119,6 +122,7 @@ class _VisitScreenState extends ConsumerState<VisitScreen> {
           appBar: AppBar(
             centerTitle: true,
             leading: IconButton(
+              tooltip: 'Volver',
               icon: const Icon(Icons.arrow_back),
               onPressed: () => Navigator.of(context).pop(),
             ),
@@ -149,7 +153,7 @@ class _VisitScreenState extends ConsumerState<VisitScreen> {
                     Text(
                       isDone ? 'COMPLETADA' : 'EN CURSO',
                       style: TextStyle(
-                        fontSize: 10,
+                        fontSize: 13,
                         fontWeight: FontWeight.w900,
                         letterSpacing: 0.5,
                         color: isDone ? Colors.green : MarilinColors.brandBlue,
@@ -198,7 +202,13 @@ class _VisitScreenState extends ConsumerState<VisitScreen> {
                             debtAmount: balance,
                             onTap: isDone
                                 ? null
-                                : () => _registerDebtPayment(balance, stop),
+                                : () => registerDebtPayment(
+                                    context,
+                                    ref,
+                                    customer: stop.customer,
+                                    debt: balance,
+                                    visitId: stop.id,
+                                  ),
                           ),
                           const SizedBox(height: 12),
                         ],
@@ -256,6 +266,7 @@ class _VisitScreenState extends ConsumerState<VisitScreen> {
                   hasSales: hasSales,
                   isSaleSelected: _isSaleSelected,
                   hasSoloResult: _selectedOutcome != null,
+                  isBusy: _isClosing,
                   onBackToRoute: () => Navigator.of(context).pop(),
                   onPrimaryPressed: () => _onVisitFooterPrimary(
                     stop,
@@ -274,8 +285,17 @@ class _VisitScreenState extends ConsumerState<VisitScreen> {
       ),
       error: (e, _) => Scaffold(
         backgroundColor: context.marilin.surface,
-        body: Center(
-          child: Text('Error al cargar la información de la visita'),
+        body: ErrorState(
+          title: 'No pudimos cargar la visita',
+          message:
+              'Revisá la conexión y reintentá. '
+              'Lo que ya cargaste sigue guardado en el teléfono.',
+          onRetry: () {
+            ref.invalidate(stopSalesProvider(widget.stopId));
+            ref.invalidate(customerBalanceProvider(stop.customer.id));
+            ref.invalidate(visitPaymentsProvider(widget.stopId));
+            ref.invalidate(visitMovementsProvider(widget.stopId));
+          },
         ),
       ),
     );
@@ -302,93 +322,8 @@ class _VisitScreenState extends ConsumerState<VisitScreen> {
       await launchUrl(uri, mode: LaunchMode.externalApplication);
     } catch (_) {
       if (context.mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(
-            content: Text('No se pudo abrir WhatsApp'),
-            duration: Duration(seconds: 2),
-          ),
-        );
+        TopToast.showError(context, 'No se pudo abrir WhatsApp');
       }
-    }
-  }
-
-  Future<void> _registerDebtPayment(double debt, RouteStop stop) async {
-    final result = await showDialog<DebtPaymentResult>(
-      context: context,
-      builder: (_) => DebtPaymentDialog(totalDebt: debt),
-    );
-    if (result == null) return;
-
-    final payments = <Payment>[];
-    final now = DateTime.now();
-    if (result.method == 'Efectivo') {
-      payments.add(
-        Payment(
-          id: const Uuid().v4(),
-          customerId: stop.customer.id,
-          amount: result.cashAmount!,
-          type: PaymentType.cash,
-          createdAt: now,
-          visitId: stop.id,
-        ),
-      );
-    } else if (result.method == 'Transferencia') {
-      payments.add(
-        Payment(
-          id: const Uuid().v4(),
-          customerId: stop.customer.id,
-          amount: result.transferAmount!,
-          type: PaymentType.transfer,
-          createdAt: now,
-          visitId: stop.id,
-        ),
-      );
-    } else if (result.method == 'Mixto') {
-      if (result.cashAmount != null && result.cashAmount! > 0) {
-        payments.add(
-          Payment(
-            id: const Uuid().v4(),
-            customerId: stop.customer.id,
-            amount: result.cashAmount!,
-            type: PaymentType.cash,
-            createdAt: now,
-            visitId: stop.id,
-          ),
-        );
-      }
-      if (result.transferAmount != null && result.transferAmount! > 0) {
-        payments.add(
-          Payment(
-            id: const Uuid().v4(),
-            customerId: stop.customer.id,
-            amount: result.transferAmount!,
-            type: PaymentType.transfer,
-            createdAt: now.add(const Duration(milliseconds: 10)),
-            visitId: stop.id,
-          ),
-        );
-      }
-    }
-
-    if (payments.isEmpty) return;
-
-    final res = await ref.read(registerPaymentUseCaseProvider).execute(payments);
-    if (!context.mounted) return;
-    switch (res) {
-      case Success():
-        TopToast.show(
-          context,
-          message: 'Pago registrado con éxito',
-          icon: Icons.check_circle_rounded,
-          color: MarilinColors.success,
-        );
-      case Error(:final error):
-        TopToast.show(
-          context,
-          message: 'Error al registrar pago: $error',
-          icon: Icons.error_outline,
-          color: MarilinColors.destructive,
-        );
     }
   }
 
@@ -398,19 +333,21 @@ class _VisitScreenState extends ConsumerState<VisitScreen> {
     required bool hasReturns,
   }) async {
     if (!hasSales && _isSaleSelected) {
-      ref.read(saleDraftProvider.notifier).selectCustomer(
-            stop.customer,
-            visitId: stop.id,
-          );
+      ref
+          .read(saleDraftProvider.notifier)
+          .selectCustomer(stop.customer, visitId: stop.id);
       if (!mounted) return;
-      await Navigator.of(context).push(
-        MaterialPageRoute(builder: (_) => const SaleStep1Screen()),
-      );
+      await Navigator.of(
+        context,
+      ).push(MaterialPageRoute(builder: (_) => const SaleStep1Screen()));
       return;
     }
 
+    if (_isClosing) return;
+
     final outcome = _selectedOutcome;
-    final triggersReschedule = !hasSales && (outcome?.triggersReschedule ?? false);
+    final triggersReschedule =
+        !hasSales && (outcome?.triggersReschedule ?? false);
     final nextStatus = triggersReschedule ? StopStatus.absent : StopStatus.done;
 
     DateTime? rescheduleAt;
@@ -425,49 +362,76 @@ class _VisitScreenState extends ConsumerState<VisitScreen> {
       }
     }
 
+    final customerName = stop.customer.name;
     late final String toastMessage;
     late final IconData toastIcon;
     late final Color toastColor;
 
     if (hasSales) {
-      toastMessage = 'Visita finalizada - Venta registrada';
+      toastMessage = 'Venta registrada · $customerName';
       toastIcon = Icons.check_circle_rounded;
       toastColor = MarilinColors.success;
     } else if (triggersReschedule) {
-      toastMessage = 'Visita finalizada - ${outcome!.name}';
+      final at = rescheduleAt!;
+      final time =
+          '${at.hour.toString().padLeft(2, '0')}:'
+          '${at.minute.toString().padLeft(2, '0')}';
+      toastMessage = 'Reprogramada $time · $customerName';
       toastIcon = Icons.calendar_today_outlined;
       toastColor = MarilinColors.brandBlue;
     } else {
-      toastMessage = 'Visita finalizada - ${outcome?.name ?? 'Sin resultado'}';
+      toastMessage = 'Visita cerrada · $customerName';
       toastIcon = Icons.check_circle_rounded;
       toastColor = MarilinColors.success;
     }
 
-    if (!mounted) return;
-    Navigator.of(context).pop();
+    final visitType = _isSaleSelected ? VisitType.sale : VisitType.visit;
 
-    WidgetsBinding.instance.addPostFrameCallback((_) {
-      TopToast.show(
-        context,
-        message: toastMessage,
-        icon: toastIcon,
-        color: toastColor,
-      );
-    });
-
-    final visitType =
-        _isSaleSelected ? VisitType.sale : VisitType.visit;
-
-    await ref.read(completeVisitUseCaseProvider).execute(
+    setState(() => _isClosing = true);
+    final result = await ref
+        .read(completeVisitUseCaseProvider)
+        .execute(
           stopId: stop.id,
           customerId: stop.customer.id,
           visitType: visitType,
           nextStatus: nextStatus,
           outcomeId: hasSales ? null : outcome?.id,
-          observations:
-              _noteController.text.isNotEmpty ? _noteController.text : null,
+          observations: _noteController.text.isNotEmpty
+              ? _noteController.text
+              : null,
           rescheduleAt: rescheduleAt,
         );
+    if (!mounted) return;
+
+    switch (result) {
+      case Success():
+        // The toast outlives this screen, so it uses the navigator's context.
+        final navigator = Navigator.of(context);
+        navigator.pop();
+        WidgetsBinding.instance.addPostFrameCallback((_) {
+          if (!navigator.mounted) return;
+          TopToast.show(
+            navigator.context,
+            message: toastMessage,
+            icon: toastIcon,
+            color: toastColor,
+            duration: const Duration(seconds: 4),
+          );
+        });
+      case Error(:final error):
+        setState(() {
+          _isClosing = false;
+          if (error is RescheduleTimeException) _rescheduleError = error.reason;
+        });
+        if (error is! RescheduleTimeException) {
+          TopToast.show(
+            context,
+            message: 'No se guardó la visita. Reintentá.',
+            icon: Icons.error_outline,
+            color: MarilinColors.destructive,
+          );
+        }
+    }
   }
 
   /// The chosen reschedule time on [now]'s day, or null when none is chosen.
@@ -487,7 +451,13 @@ class _VisitScreenState extends ConsumerState<VisitScreen> {
       helpText: 'Hora de la nueva parada (hoy)',
     );
     if (picked == null || !mounted) return;
-    final at = DateTime(now.year, now.month, now.day, picked.hour, picked.minute);
+    final at = DateTime(
+      now.year,
+      now.month,
+      now.day,
+      picked.hour,
+      picked.minute,
+    );
     setState(() {
       _rescheduleTime = picked;
       _rescheduleError = checkRescheduleTime(now: DateTime.now(), at: at);
@@ -502,8 +472,8 @@ class _VisitScreenState extends ConsumerState<VisitScreen> {
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
         const VisitSectionHeader(
-          title: 'Resultado',
-          subtitle: 'Motivo si no hubo venta',
+          title: '¿Qué pasó?',
+          subtitle: 'Elegí el motivo de la visita sin venta',
         ),
         // Toggle Buttons for Results (catalog driven)
         Consumer(
@@ -512,7 +482,10 @@ class _VisitScreenState extends ConsumerState<VisitScreen> {
             if (outcomes.isEmpty) {
               return Text(
                 'No hay resultados disponibles. Sincronizá la ruta.',
-                style: TextStyle(fontSize: 13, color: context.marilin.inkSecondary),
+                style: TextStyle(
+                  fontSize: 13,
+                  color: context.marilin.inkSecondary,
+                ),
               );
             }
             return Row(
@@ -579,7 +552,7 @@ class _VisitScreenState extends ConsumerState<VisitScreen> {
                   child: Text(
                     'Se agregará una nueva parada a la ruta de hoy a la hora elegida.',
                     style: TextStyle(
-                      fontSize: 11,
+                      fontSize: 12,
                       color: MarilinColors.brandBlue.withValues(alpha: 0.9),
                       fontWeight: FontWeight.w500,
                     ),
@@ -593,10 +566,7 @@ class _VisitScreenState extends ConsumerState<VisitScreen> {
     );
   }
 
-  Widget _buildResultButton(
-    VisitOutcome outcome, {
-    bool isEnabled = true,
-  }) {
+  Widget _buildResultButton(VisitOutcome outcome, {bool isEnabled = true}) {
     final label = outcome.name;
     final icon = visitOutcomeIcon(outcome);
     final isSelected = _selectedOutcome?.id == outcome.id;
@@ -655,8 +625,14 @@ class _VisitScreenState extends ConsumerState<VisitScreen> {
 
   Widget _buildDoneStateBanner(StopStatus status) {
     final isDone = status == StopStatus.done;
-    final color = isDone ? const Color(0xFF10B981) : const Color(0xFFEF4444);
-    final bg = isDone ? context.marilin.soft(Color(0xFFE8F5E9)) : context.marilin.soft(Color(0xFFFFEBEE));
+    final color = isDone
+        ? context.marilin.vivid(MarilinColors.success)
+        : context.marilin.vivid(MarilinColors.destructive);
+    final bg = isDone
+        ? context.marilin.soft(MarilinColors.success.withValues(alpha: 0.12))
+        : context.marilin.soft(
+            MarilinColors.destructive.withValues(alpha: 0.12),
+          );
 
     return Container(
       padding: const EdgeInsets.all(16),
@@ -705,23 +681,31 @@ class _VisitScreenState extends ConsumerState<VisitScreen> {
     switch (sale.paymentMethod) {
       case PaymentMethod.cash:
         methodText = 'EFECTIVO';
-        badgeColor = const Color(0xFF10B981);
-        badgeBg = context.marilin.soft(Color(0xFFE8F5E9));
+        badgeColor = context.marilin.vivid(MarilinColors.success);
+        badgeBg = context.marilin.soft(
+          MarilinColors.success.withValues(alpha: 0.12),
+        );
         break;
       case PaymentMethod.transfer:
         methodText = 'TRANSFERENCIA';
-        badgeColor = const Color(0xFF8B5CF6);
-        badgeBg = const Color(0xFFF3E8FF);
+        badgeColor = context.marilin.inkSecondary;
+        badgeBg = context.marilin.soft(
+          MarilinColors.brandNavy.withValues(alpha: 0.08),
+        );
         break;
       case PaymentMethod.credit:
         methodText = 'A CRÉDITO';
-        badgeColor = const Color(0xFFF97316);
-        badgeBg = context.marilin.soft(Color(0xFFFFF7ED));
+        badgeColor = context.marilin.vivid(MarilinColors.accent);
+        badgeBg = context.marilin.soft(
+          MarilinColors.accent.withValues(alpha: 0.12),
+        );
         break;
       case PaymentMethod.mixed:
         methodText = 'MIXTO';
-        badgeColor = const Color(0xFF2563EB);
-        badgeBg = context.marilin.soft(Color(0xFFEFF6FF));
+        badgeColor = context.marilin.vivid(MarilinColors.brandBlue);
+        badgeBg = context.marilin.soft(
+          MarilinColors.brandBlue.withValues(alpha: 0.12),
+        );
         break;
       case PaymentMethod.route:
         methodText = 'RUTA';
@@ -739,12 +723,14 @@ class _VisitScreenState extends ConsumerState<VisitScreen> {
             Container(
               padding: const EdgeInsets.all(4),
               decoration: BoxDecoration(
-                color: context.marilin.soft(Color(0xFFEFF6FF)),
+                color: context.marilin.soft(
+                  MarilinColors.brandBlue.withValues(alpha: 0.12),
+                ),
                 shape: BoxShape.circle,
               ),
               child: const Icon(
                 Icons.check,
-                color: Color(0xFF2563EB),
+                color: MarilinColors.brandBlue,
                 size: 14,
               ),
             ),
@@ -770,7 +756,9 @@ class _VisitScreenState extends ConsumerState<VisitScreen> {
             border: Border.all(color: context.marilin.border, width: 1),
             boxShadow: [
               BoxShadow(
-                color: Colors.black.withValues(alpha: context.marilin.isDark ? 0.3 : 0.02),
+                color: Colors.black.withValues(
+                  alpha: context.marilin.isDark ? 0.3 : 0.02,
+                ),
                 blurRadius: 8,
                 offset: const Offset(0, 4),
               ),
@@ -806,7 +794,7 @@ class _VisitScreenState extends ConsumerState<VisitScreen> {
                       child: Text(
                         methodText,
                         style: TextStyle(
-                          fontSize: 10,
+                          fontSize: 13,
                           fontWeight: FontWeight.w900,
                           color: badgeColor,
                           letterSpacing: 0.5,
@@ -819,7 +807,7 @@ class _VisitScreenState extends ConsumerState<VisitScreen> {
               const SizedBox(width: 12),
               // Right: Total amount
               Text(
-                '\$${sale.total.toStringAsFixed(0)}',
+                formatMoney(sale.total),
                 style: TextStyle(
                   fontSize: 20,
                   fontWeight: FontWeight.w900,
@@ -828,6 +816,13 @@ class _VisitScreenState extends ConsumerState<VisitScreen> {
                 ),
               ),
             ],
+          ),
+        ),
+        Align(
+          alignment: Alignment.centerLeft,
+          child: SyncBadgeContainer(
+            entity: PendingEntity.sale,
+            entityId: sale.id,
           ),
         ),
       ],
@@ -865,20 +860,27 @@ class _VisitScreenState extends ConsumerState<VisitScreen> {
     return Container(
       padding: const EdgeInsets.all(12),
       decoration: BoxDecoration(
-        color: context.marilin.soft(Color(0xFFEFF6FF)),
+        color: context.marilin.soft(
+          MarilinColors.brandBlue.withValues(alpha: 0.12),
+        ),
         borderRadius: BorderRadius.circular(10),
-        border: Border.all(color: context.marilin.soft(Color(0xFFBFDBFE)), width: 1),
+        border: Border.all(
+          color: context.marilin.soft(
+            MarilinColors.brandBlue.withValues(alpha: 0.3),
+          ),
+          width: 1,
+        ),
       ),
       child: const Row(
         children: [
-          Icon(Icons.info_outline, color: Color(0xFF2563EB), size: 16),
+          Icon(Icons.info_outline, color: MarilinColors.brandBlue, size: 16),
           SizedBox(width: 8),
           Expanded(
             child: Text(
               'La visita se marcará como completada al finalizar.',
               style: TextStyle(
-                fontSize: 11,
-                color: Color(0xFF1E40AF),
+                fontSize: 12,
+                color: MarilinColors.brandBlue,
                 fontWeight: FontWeight.w600,
               ),
             ),

@@ -11,6 +11,7 @@ class VisitStickyFooter extends StatelessWidget {
     required this.hasSoloResult,
     required this.onBackToRoute,
     required this.onPrimaryPressed,
+    this.isBusy = false,
   });
 
   final bool isDone;
@@ -20,13 +21,16 @@ class VisitStickyFooter extends StatelessWidget {
   final VoidCallback onBackToRoute;
   final VoidCallback? onPrimaryPressed;
 
-  bool get _needsSoloResult =>
-      !hasSales && !isSaleSelected && !hasSoloResult;
+  /// True while the close is being saved: the primary button is disabled and
+  /// shows a spinner instead of its icon.
+  final bool isBusy;
+
+  bool get _needsSoloResult => !hasSales && !isSaleSelected && !hasSoloResult;
 
   String get _primaryLabel {
-    if (hasSales) return 'Cerrar Visita';
-    if (isSaleSelected) return 'Iniciar Registro de Venta';
-    return 'Cerrar Visita';
+    if (hasSales) return 'Cerrar visita';
+    if (isSaleSelected) return 'Cargar la venta';
+    return 'Cerrar visita';
   }
 
   @override
@@ -51,14 +55,17 @@ class VisitStickyFooter extends StatelessWidget {
           ? SizedBox(
               width: double.infinity,
               height: 52,
-              child: OutlinedButton(onPressed: onBackToRoute, child: const Text('Volver a la Ruta')),
+              child: OutlinedButton(
+                onPressed: onBackToRoute,
+                child: const Text('Volver a la ruta'),
+              ),
             )
           : Column(
               mainAxisSize: MainAxisSize.min,
               children: [
                 if (_needsSoloResult) ...[
                   Text(
-                    'Seleccioná un resultado primero',
+                    'Elegí qué pasó para cerrar la visita',
                     style: TextStyle(
                       fontSize: 13,
                       fontWeight: FontWeight.w600,
@@ -75,7 +82,9 @@ class VisitStickyFooter extends StatelessWidget {
                       backgroundColor: MarilinColors.brandBlue,
                       minimumSize: const Size(double.infinity, 56),
                     ),
-                    onPressed: _needsSoloResult ? null : onPrimaryPressed,
+                    onPressed: _needsSoloResult || isBusy
+                        ? null
+                        : onPrimaryPressed,
                     child: Row(
                       mainAxisAlignment: MainAxisAlignment.center,
                       children: [
@@ -84,7 +93,17 @@ class VisitStickyFooter extends StatelessWidget {
                           style: const TextStyle(fontWeight: FontWeight.w800),
                         ),
                         const SizedBox(width: 8),
-                        const Icon(Icons.arrow_forward_rounded, size: 16),
+                        if (isBusy)
+                          const SizedBox(
+                            width: 20,
+                            height: 20,
+                            child: CircularProgressIndicator(
+                              strokeWidth: 2.5,
+                              color: Colors.white,
+                            ),
+                          )
+                        else
+                          const Icon(Icons.arrow_forward_rounded, size: 16),
                       ],
                     ),
                   ),

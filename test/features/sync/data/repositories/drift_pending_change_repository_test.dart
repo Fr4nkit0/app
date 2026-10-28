@@ -103,17 +103,20 @@ void main() {
       expect(row.status, 'sent');
     });
 
-    test('markRejected stores the reason and leaves the pending list', () async {
-      await enqueueSale('a');
-      final id = (await sut.getPending()).single.id;
+    test(
+      'markRejected stores the reason and leaves the pending list',
+      () async {
+        await enqueueSale('a');
+        final id = (await sut.getPending()).single.id;
 
-      await sut.markRejected(id, 'Product no longer exists');
+        await sut.markRejected(id, 'Product no longer exists');
 
-      expect(await sut.getPending(), isEmpty);
-      final rejected = await sut.getRejected();
-      expect(rejected.single.status, PendingStatus.rejected);
-      expect(rejected.single.rejectionReason, 'Product no longer exists');
-    });
+        expect(await sut.getPending(), isEmpty);
+        final rejected = await sut.getRejected();
+        expect(rejected.single.status, PendingStatus.rejected);
+        expect(rejected.single.rejectionReason, 'Product no longer exists');
+      },
+    );
 
     test('a sent change cannot be rejected afterwards', () async {
       await enqueueSale('a');
@@ -171,6 +174,66 @@ void main() {
       await sub.cancel();
 
       expect(emissions, [0, 1, 0]);
+    });
+  });
+
+  group('watchLatestFor', () {
+    test('yields null when the record has no queue row', () async {
+      await enqueueSale('other');
+
+      final latest = await sut.watchLatestFor(PendingEntity.sale, 'a').first;
+
+      expect(latest, isNull);
+    });
+
+    test('yields the pending row of the record', () async {
+      await enqueueSale('a');
+
+      final latest = await sut.watchLatestFor(PendingEntity.sale, 'a').first;
+
+      expect(latest?.entityId, 'a');
+      expect(latest?.status, PendingStatus.pending);
+    });
+
+    test('does not mix entities that share an id', () async {
+      await enqueueSale('a');
+
+      final latest = await sut
+          .watchLatestFor(PendingEntity.routeStop, 'a')
+          .first;
+
+      expect(latest, isNull);
+    });
+
+    test('yields sent and rejected states with the reason', () async {
+      await enqueueSale('a');
+      await enqueueSale('b');
+      final pending = await sut.getPending();
+      await sut.markSent([pending.first.id]);
+      await sut.markRejected(pending.last.id, 'Cliente dado de baja');
+
+      final sent = await sut.watchLatestFor(PendingEntity.sale, 'a').first;
+      final rejected = await sut.watchLatestFor(PendingEntity.sale, 'b').first;
+
+      expect(sent?.status, PendingStatus.sent);
+      expect(rejected?.status, PendingStatus.rejected);
+      expect(rejected?.rejectionReason, 'Cliente dado de baja');
+    });
+
+    test('a later row wins and the stream emits as it arrives', () async {
+      await enqueueSale('a');
+      await sut.markSent([(await sut.getPending()).single.id]);
+      final emissions = <PendingStatus?>[];
+      final sub = sut
+          .watchLatestFor(PendingEntity.sale, 'a')
+          .listen((c) => emissions.add(c?.status));
+      await pumpEventQueue();
+
+      await enqueueSale('a');
+      await pumpEventQueue();
+      await sub.cancel();
+
+      expect(emissions, [PendingStatus.sent, PendingStatus.pending]);
     });
   });
 }

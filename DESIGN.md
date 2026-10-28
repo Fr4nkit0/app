@@ -18,6 +18,7 @@ Implementation: `lib/core/theme/marilin_tokens.dart`
 | Success | `MarilinColors.success` | Done stops, confirmations |
 | Destructive | `MarilinColors.destructive` | Debt, errors |
 | Accent | `MarilinColors.accent` | Secondary emphasis (sales) |
+| Warning | `MarilinColors.warning` | Pending, caution, amber notices |
 
 **Runtime access:** `MarilinTokens.of(context)` for `ThemeExtension` fields and text styles (`titleLarge`, `subtitle`).
 
@@ -25,8 +26,9 @@ Implementation: `lib/core/theme/marilin_tokens.dart`
 
 ## Theme
 
-- Global theme: `AppTheme.lightTheme` in `lib/core/theme/app.theme.dart`
-- Material 3, light only (no dark/industrial)
+- Global themes: `AppTheme.lightTheme` and `AppTheme.darkTheme` in `lib/core/theme/app.theme.dart`, built from `MarilinTokens.light` / `MarilinTokens.dark`
+- Material 3. Light is the default; the driver can choose dark (or follow the phone) in the profile. Dark is neutral near-black with the same blue accent, never industrial
+- Status colors in dark: `tokens.vivid(color)` for text and icons, `tokens.soft(color)` for pastel washes
 - `scaffoldBackgroundColor` = `MarilinColors.scaffoldMuted`
 - Primary buttons / FAB / nav: `brandBlue`
 - Minimum primary button height: 56dp (theme); sticky footers must respect safe area
@@ -43,10 +45,11 @@ Implementation: `lib/core/theme/marilin_tokens.dart`
 | Visit debt / custody | `VisitDebtBanner`, `VisitCustodyBanner` |
 | Container return dialog | `StandaloneContainerReturnDialog` in `visit_container_return_dialog.dart` |
 | Empty states | `EmptyState` |
+| Driver avatar | `ProfileAvatar` (`lib/features/profile/widgets/profile_avatar.dart`): route header at 54dp, profile at 88dp |
 
 ## Rules for new UI
 
-1. Do **not** introduce new hex primaries; extend `MarilinColors` if a semantic is missing.
+1. Do **not** introduce new hex primaries; extend `MarilinColors` if a semantic is missing. `test/core/theme/no_raw_colors_test.dart` fails on any `Color(0x…)` outside `lib/core/theme/`.
 2. Prefer `Theme.of(context).colorScheme` / `MarilinTokens.of` over inline `Color(0x…)`.
 3. Touch targets ≥ 48dp; primary actions ≥ 52–56dp.
 4. Copy: Spanish (Rioplatense), code: English.
@@ -55,3 +58,5 @@ Implementation: `lib/core/theme/marilin_tokens.dart`
 ## Session / identity (UI)
 
 - Repartidor display name: `AuthState.displayName` (secure storage), used on route header greeting and avatar initials.
+- Profile entry point: the identity row (avatar + greeting) on the route screen opens `ProfileScreen`. The navigation bar stays at four operational tabs; the profile is not a tab.
+- `ProfileScreen` sections: identity, sync status (reuses `HistorySyncStatusCard`), theme card, sign out with a pending-changes notice.

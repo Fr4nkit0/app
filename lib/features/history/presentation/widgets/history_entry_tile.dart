@@ -1,23 +1,11 @@
+import 'package:app/core/utils/money_formatter.dart';
 import 'package:flutter/material.dart';
 import 'package:app/core/theme/marilin_tokens.dart';
 import 'package:app/core/utils/avatar_utils.dart';
 import 'package:app/features/history/domain/models/history_entry.dart';
 import 'package:app/features/history/domain/models/history_entry_type.dart';
 import 'package:app/features/sync/domain/models/pending_change.dart';
-
-String _formatArsAmount(double amount) {
-  final rounded = amount.round();
-  final digits = rounded.abs().toString();
-  final buffer = StringBuffer();
-  for (var i = 0; i < digits.length; i++) {
-    if (i > 0 && (digits.length - i) % 3 == 0) {
-      buffer.write('.');
-    }
-    buffer.write(digits[i]);
-  }
-  final body = buffer.toString();
-  return rounded < 0 ? '-\$$body' : '\$$body';
-}
+import 'package:app/features/sync/presentation/widgets/sync_badge.dart';
 
 class HistoryEntryTile extends StatelessWidget {
   const HistoryEntryTile({super.key, required this.entry});
@@ -35,7 +23,8 @@ class HistoryEntryTile extends StatelessWidget {
       baseColor: AvatarUtils.getPastelColor(entry.customerName),
     );
     final initials = AvatarUtils.getInitials(entry.customerName);
-    final showAmount = entry.amount != null &&
+    final showAmount =
+        entry.amount != null &&
         (entry.type == HistoryEntryType.sale ||
             entry.type == HistoryEntryType.payment);
 
@@ -43,7 +32,9 @@ class HistoryEntryTile extends StatelessWidget {
       decoration: BoxDecoration(
         color: tokens.surface,
         borderRadius: BorderRadius.circular(14),
-        border: Border.all(color: tokens.border.withValues(alpha: tokens.border.a * 0.85)),
+        border: Border.all(
+          color: tokens.border.withValues(alpha: tokens.border.a * 0.85),
+        ),
       ),
       child: Padding(
         padding: const EdgeInsets.fromLTRB(14, 12, 14, 12),
@@ -137,7 +128,7 @@ class HistoryEntryTile extends StatelessWidget {
               children: [
                 if (showAmount)
                   Text(
-                    _formatArsAmount(entry.amount!),
+                    formatMoney(entry.amount!),
                     style: TextStyle(
                       fontSize: 14,
                       fontWeight: FontWeight.w900,
@@ -153,68 +144,18 @@ class HistoryEntryTile extends StatelessWidget {
                     child: Text(
                       initials,
                       style: TextStyle(
-                        fontSize: 11,
+                        fontSize: 12,
                         fontWeight: FontWeight.w800,
                         color: avatarColors.foreground,
                       ),
                     ),
                   ),
                 const SizedBox(height: 8),
-                _StatusBadge(status: entry.status, tokens: tokens),
+                SyncStatusPill(status: entry.status),
               ],
             ),
           ],
         ),
-      ),
-    );
-  }
-}
-
-class _StatusBadge extends StatelessWidget {
-  const _StatusBadge({required this.status, required this.tokens});
-
-  final PendingStatus status;
-  final MarilinTokens tokens;
-
-  @override
-  Widget build(BuildContext context) {
-    final (label, icon, color) = switch (status) {
-      PendingStatus.pending => (
-        'Pendiente',
-        Icons.cloud_upload_outlined,
-        tokens.accent,
-      ),
-      PendingStatus.sent => (
-        'Enviado',
-        Icons.check_circle_rounded,
-        tokens.success,
-      ),
-      PendingStatus.rejected => (
-        'Rechazado',
-        Icons.error_outline_rounded,
-        tokens.destructive,
-      ),
-    };
-    return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
-      decoration: BoxDecoration(
-        color: color.withValues(alpha: 0.12),
-        borderRadius: BorderRadius.circular(6),
-      ),
-      child: Row(
-        mainAxisSize: MainAxisSize.min,
-        children: [
-          Icon(icon, size: 14, color: color),
-          const SizedBox(width: 3),
-          Text(
-            label,
-            style: TextStyle(
-              fontSize: 10,
-              fontWeight: FontWeight.w800,
-              color: color,
-            ),
-          ),
-        ],
       ),
     );
   }

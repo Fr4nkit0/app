@@ -3,11 +3,7 @@ import 'package:app/core/theme/marilin_tokens.dart';
 
 /// Section label for the visit stop screen (Operate / scan-first hierarchy).
 class VisitSectionHeader extends StatelessWidget {
-  const VisitSectionHeader({
-    super.key,
-    required this.title,
-    this.subtitle,
-  });
+  const VisitSectionHeader({super.key, required this.title, this.subtitle});
 
   final String title;
   final String? subtitle;
@@ -24,7 +20,7 @@ class VisitSectionHeader extends StatelessWidget {
           Text(
             title.toUpperCase(),
             style: TextStyle(
-              fontSize: 11,
+              fontSize: 13,
               fontWeight: FontWeight.w800,
               color: tokens.textMuted,
               letterSpacing: 1.0,

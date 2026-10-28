@@ -105,7 +105,7 @@ class _SummaryChip extends StatelessWidget {
           Text(
             label,
             style: TextStyle(
-              fontSize: 11,
+              fontSize: 13,
               fontWeight: FontWeight.w700,
               color: tokens.textMuted,
             ),

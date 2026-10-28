@@ -69,7 +69,7 @@ void main() {
           ),
         ),
       );
-      expect(find.text('\$1200 c/u · acuerdo'), findsOneWidget);
+      expect(find.text('\$1.200 c/u · acuerdo'), findsOneWidget);
     });
 
     testWidgets('calls onIncrement when + button is tapped', (tester) async {
@@ -148,7 +148,7 @@ void main() {
         ),
       );
 
-      expect(find.text('Sin precio'), findsOneWidget);
+      expect(find.text('Sin precio · no se puede vender'), findsOneWidget);
       await tester.tap(find.byIcon(Icons.add_rounded));
       expect(incrementCalled, 0);
     });

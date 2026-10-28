@@ -30,14 +30,15 @@ class SyncStatusButton extends StatelessWidget {
       child: InkWell(
         customBorder: const StadiumBorder(),
         onTap: isRunning ? null : onPressed,
-        child: Padding(
-          padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+        child: Container(
+          constraints: const BoxConstraints(minHeight: 44),
+          padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 6),
           child: Row(
             mainAxisSize: MainAxisSize.min,
             children: [
               if (isRunning)
                 SizedBox.square(
-                  dimension: 13,
+                  dimension: 16,
                   child: CircularProgressIndicator(
                     strokeWidth: 2,
                     color: color,
@@ -46,10 +47,10 @@ class SyncStatusButton extends StatelessWidget {
               else
                 Icon(
                   failed ? Icons.sync_problem : Icons.sync,
-                  size: 13,
+                  size: 18,
                   color: color,
                 ),
-              const SizedBox(width: 4),
+              const SizedBox(width: 8),
               // On narrow headers the texts shrink with an ellipsis instead of overflowing.
               Flexible(
                 child: Column(
@@ -62,7 +63,7 @@ class SyncStatusButton extends StatelessWidget {
                       overflow: TextOverflow.ellipsis,
                       style: TextStyle(
                         color: color,
-                        fontSize: 11,
+                        fontSize: 14,
                         fontWeight: FontWeight.w800,
                       ),
                     ),
@@ -80,7 +81,7 @@ class SyncStatusButton extends StatelessWidget {
                             overflow: TextOverflow.ellipsis,
                             style: TextStyle(
                               color: context.marilin.textMuted,
-                              fontSize: 10,
+                              fontSize: 13,
                             ),
                           ),
                         ),
@@ -98,7 +99,7 @@ class SyncStatusButton extends StatelessWidget {
                               color: status.rejectedCount > 0
                                   ? MarilinColors.destructive
                                   : context.marilin.textMuted,
-                              fontSize: 10,
+                              fontSize: 13,
                             ),
                           ),
                         ),

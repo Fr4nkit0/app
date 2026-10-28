@@ -8,10 +8,7 @@ import 'package:app/features/route/domain/models/stop_status.dart';
 import 'package:app/features/visits/presentation/widgets/visit_container_return_dialog.dart';
 
 class VisitCustodyBanner extends ConsumerWidget {
-  const VisitCustodyBanner({
-    super.key,
-    required this.stop,
-  });
+  const VisitCustodyBanner({super.key, required this.stop});
 
   final RouteStop stop;
 
@@ -176,8 +173,9 @@ class VisitContainerBadge extends StatelessWidget {
     final bgColor = hasStock
         ? MarilinColors.brandBlue.withValues(alpha: 0.08)
         : context.marilin.fill;
-    final textColor =
-        hasStock ? MarilinColors.brandBlue : context.marilin.textMuted;
+    final textColor = hasStock
+        ? MarilinColors.brandBlue
+        : context.marilin.textMuted;
 
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 6),
@@ -202,7 +200,7 @@ class VisitContainerBadge extends StatelessWidget {
               maxLines: 1,
               overflow: TextOverflow.ellipsis,
               style: TextStyle(
-                fontSize: 11,
+                fontSize: 13,
                 fontWeight: FontWeight.w600,
                 color: textColor,
               ),

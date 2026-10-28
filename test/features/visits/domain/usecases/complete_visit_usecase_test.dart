@@ -1,7 +1,6 @@
 import 'package:drift/native.dart';
 import 'package:drift/drift.dart' as drift;
 import 'package:flutter_test/flutter_test.dart';
-import 'package:uuid/uuid.dart';
 
 import 'package:app/core/services/database.helper.dart';
 import 'package:app/core/utils/resource.dart';
@@ -100,14 +99,18 @@ void main() {
 
   group('execute — success (F2a)', () {
     test('without an outcome (a sale) it records no outcome', () async {
-      await db.into(db.visitOutcomeTable).insert(
+      await db
+          .into(db.visitOutcomeTable)
+          .insert(
             VisitOutcomeTableCompanion.insert(
               id: const drift.Value(2),
               name: 'Absent',
               triggersReschedule: const drift.Value(true),
             ),
           );
-      await db.into(db.visitOutcomeTable).insert(
+      await db
+          .into(db.visitOutcomeTable)
+          .insert(
             VisitOutcomeTableCompanion.insert(
               id: const drift.Value(3),
               name: 'Ausente',
@@ -229,8 +232,10 @@ void main() {
         expect(created.rescheduledFromStopId, 'stop-test-1');
         expect(created.scheduledAt, at);
         expect(created.status, 'pending');
-        expect((await db.select(db.visitTable).getSingle()).routeStopId,
-            'stop-test-1');
+        expect(
+          (await db.select(db.visitTable).getSingle()).routeStopId,
+          'stop-test-1',
+        );
       },
     );
 
@@ -352,6 +357,3 @@ String _dateOnly(DateTime d) =>
     '${d.year.toString().padLeft(4, '0')}-'
     '${d.month.toString().padLeft(2, '0')}-'
     '${d.day.toString().padLeft(2, '0')}';
-
-// Suppress unused import — Uuid is needed for visitId generation in use case.
-const _uuid = Uuid();

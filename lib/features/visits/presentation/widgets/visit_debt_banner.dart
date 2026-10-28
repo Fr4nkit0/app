@@ -1,3 +1,4 @@
+import 'package:app/core/utils/money_formatter.dart';
 import 'package:flutter/material.dart';
 import 'package:app/core/theme/marilin_tokens.dart';
 
@@ -49,7 +50,7 @@ class VisitDebtBanner extends StatelessWidget {
                 ),
               ),
               Text(
-                '-\$${debtAmount.toStringAsFixed(0)}',
+                formatMoney(-debtAmount),
                 style: TextStyle(
                   fontSize: 15,
                   fontWeight: FontWeight.w900,

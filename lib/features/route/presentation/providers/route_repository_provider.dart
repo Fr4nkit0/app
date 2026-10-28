@@ -3,6 +3,7 @@ import 'package:app/core/services/database.helper.dart';
 import 'package:app/features/route/data/repositories/repositories/drift_route_repository.dart';
 import 'package:app/features/route/data/repositories/repositories/route.repository.dart';
 import 'package:app/features/route/domain/models/route_stop.dart';
+import 'package:app/features/route/domain/models/stop_status.dart';
 
 final routeRepositoryProvider = Provider<RouteRepository>(
   (ref) => DriftRouteRepository(ref.watch(databaseProvider)),
@@ -53,4 +54,11 @@ final routeStopByIdProvider = Provider.family<RouteStop?, String>((ref, id) {
       .value
       ?.where((s) => s.id == id)
       .firstOrNull;
+});
+
+/// First pending stop of the day, in the order of [routeAllStopsProvider].
+/// Null when nothing is pending or the list has not loaded yet.
+final nextStopProvider = Provider<RouteStop?>((ref) {
+  final stops = ref.watch(routeAllStopsProvider).value;
+  return stops?.where((s) => s.status == StopStatus.pending).firstOrNull;
 });

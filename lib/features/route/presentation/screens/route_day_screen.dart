@@ -2,13 +2,19 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:app/core/theme/marilin_tokens.dart';
 import 'package:app/core/widgets/empty_state.dart';
+import 'package:app/core/widgets/error_state.dart';
 import 'package:app/features/route/domain/models/route_stop.dart';
 import 'package:app/features/route/domain/models/stop_status.dart';
 import 'package:app/features/route/presentation/providers/route_repository_provider.dart';
 import 'package:app/features/visits/presentation/screens/visit_screen.dart';
+import 'package:app/features/route/presentation/widgets/next_stop_card.dart';
+import 'package:app/features/route/presentation/widgets/route_progress_line.dart';
 import 'package:app/features/route/presentation/widgets/route_stop_card.dart';
+import 'package:app/features/inventory/presentation/providers/inventory_repository_provider.dart';
 import 'package:app/features/auth/auth_controller.dart';
-import 'package:app/core/utils/avatar_utils.dart';
+import 'package:app/features/profile/profile_screen.dart';
+import 'package:app/features/profile/widgets/profile_avatar.dart';
+import 'package:app/features/sync/presentation/providers/sync_providers.dart';
 import 'package:app/features/sync/presentation/widgets/sync_status_button_container.dart';
 
 class RouteDayScreen extends ConsumerStatefulWidget {
@@ -51,6 +57,8 @@ class _RouteDayScreenState extends ConsumerState<RouteDayScreen> {
   Widget build(BuildContext context) {
     final stopsAsync = ref.watch(routeDayProvider);
     final allStopsAsync = ref.watch(routeAllStopsProvider);
+    final nextStop = ref.watch(nextStopProvider);
+    final isSyncRunning = ref.watch(syncRunningProvider).value ?? false;
 
     return Scaffold(
       body: SafeArea(
@@ -64,28 +72,53 @@ class _RouteDayScreenState extends ConsumerState<RouteDayScreen> {
               controller: _scrollController,
               slivers: [
                 SliverToBoxAdapter(child: _RouteHeader(stops: allStops)),
-                SliverToBoxAdapter(child: _ProgressSection(stops: allStops)),
+                if (allStops.isNotEmpty)
+                  SliverToBoxAdapter(
+                    child: Padding(
+                      padding: const EdgeInsets.fromLTRB(20, 16, 20, 0),
+                      child: nextStop != null
+                          ? _NextStopHero(stop: nextStop)
+                          : RouteDoneCard(closedCount: allStops.length),
+                    ),
+                  ),
+                SliverToBoxAdapter(
+                  child: Padding(
+                    padding: const EdgeInsets.fromLTRB(20, 16, 20, 0),
+                    child: RouteProgressLine(
+                      done: allStops
+                          .where((s) => s.status != StopStatus.pending)
+                          .length,
+                      total: allStops.length,
+                    ),
+                  ),
+                ),
                 if (allStops.isEmpty)
                   SliverFillRemaining(
                     // Taller than what is left on a small phone: scroll instead of overflowing.
                     hasScrollBody: false,
                     child: EmptyState(
                       icon: Icons.route_outlined,
-                      title: 'Sin paradas',
+                      title: 'Sin paradas por ahora',
                       message:
-                          'No hay visitas cargadas para hoy. '
-                          'Cuando la ruta esté disponible, va a aparecer acá.',
+                          'Cuando la ruta del día esté cargada, va a aparecer acá.',
+                      actionLabel: isSyncRunning
+                          ? 'Sincronizando…'
+                          : 'Sincronizar ahora',
+                      onAction: isSyncRunning
+                          ? null
+                          : () => ref.read(syncEngineProvider).runCycle(),
                     ),
                   )
                 else ...[
                   SliverPadding(
-                    padding: const EdgeInsets.symmetric(vertical: 8),
+                    padding: const EdgeInsets.only(top: 8, bottom: 8),
                     sliver: SliverList(
                       delegate: SliverChildBuilderDelegate(
                         (context, i) => RouteStopCard(
                           stop: stops[i],
                           isFirst: i == 0,
                           isLast: i == stops.length - 1 && isFullyLoaded,
+                          isNext: stops[i].id == nextStop?.id,
                           onTap: () => Navigator.of(context).push(
                             MaterialPageRoute(
                               builder: (_) => VisitScreen(stopId: stops[i].id),
@@ -135,7 +168,16 @@ class _RouteDayScreenState extends ConsumerState<RouteDayScreen> {
             );
           },
           loading: () => const Center(child: CircularProgressIndicator()),
-          error: (e, _) => const Center(child: Text('Error al cargar la ruta')),
+          error: (e, _) => ErrorState(
+            title: 'No pudimos cargar la ruta',
+            message:
+                'Revisá la conexión y reintentá. '
+                'Lo que ya cargaste sigue guardado en el teléfono.',
+            onRetry: () {
+              ref.invalidate(routeDayProvider);
+              ref.invalidate(routeAllStopsProvider);
+            },
+          ),
         ),
       ),
     );
@@ -147,44 +189,6 @@ class _RouteDayScreenState extends ConsumerState<RouteDayScreen> {
 class _RouteHeader extends ConsumerWidget {
   const _RouteHeader({required this.stops});
 
-  static Widget _dateBadge(String weekday, int day, String month) {
-    return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
-      decoration: BoxDecoration(
-        color: MarilinColors.brandBlue.withValues(alpha: 0.06),
-        borderRadius: BorderRadius.circular(20),
-        border: Border.all(
-          color: MarilinColors.brandBlue.withValues(alpha: 0.15),
-          width: 1,
-        ),
-      ),
-      child: Row(
-        mainAxisSize: MainAxisSize.min,
-        children: [
-          const Icon(
-            Icons.calendar_month_outlined,
-            size: 13,
-            color: MarilinColors.brandBlue,
-          ),
-          const SizedBox(width: 4),
-          Flexible(
-            child: Text(
-              '$weekday, $day de $month',
-              maxLines: 1,
-              overflow: TextOverflow.ellipsis,
-              style: const TextStyle(
-                color: MarilinColors.brandBlue,
-                fontSize: 11,
-                fontWeight: FontWeight.w800,
-                letterSpacing: 0.2,
-              ),
-            ),
-          ),
-        ],
-      ),
-    );
-  }
-
   final List<RouteStop> stops;
 
   @override
@@ -195,7 +199,6 @@ class _RouteHeader extends ConsumerWidget {
     final greeting = (firstName != null && firstName.isNotEmpty)
         ? '¡Hola, $firstName!'
         : '¡Hola!';
-    final initials = AvatarUtils.getInitials(displayName ?? 'Repartidor');
 
     final now = DateTime.now();
     const months = [
@@ -229,114 +232,91 @@ class _RouteHeader extends ConsumerWidget {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          // 1. Date badge and sync control on top
-          // Both chips shrink so long dates fit next to the sync status on narrow phones.
-          Row(
-            crossAxisAlignment: CrossAxisAlignment.center,
-            mainAxisAlignment: MainAxisAlignment.spaceBetween,
-            children: [
-              Flexible(
-                child: _dateBadge(
-                  days[now.weekday],
-                  now.day,
-                  months[now.month],
-                ),
-              ),
-              const SizedBox(width: 8),
-              const Flexible(child: SyncStatusButtonContainer()),
-            ],
+          // 1. The sync control owns the top row, so its texts never shrink.
+          const Align(
+            alignment: Alignment.centerRight,
+            child: SyncStatusButtonContainer(),
           ),
-          const SizedBox(height: 14),
-          // 2. Profile Row with perfectly centered Avatar and Greeting
-          Row(
-            crossAxisAlignment: CrossAxisAlignment.center,
-            children: [
-              // Premium Avatar Container
-              Stack(
-                children: [
-                  Container(
-                    width: 54,
-                    height: 54,
-                    decoration: BoxDecoration(
-                      gradient: const LinearGradient(
-                        colors: [MarilinColors.brandBlue, Color(0xFF1E88E5)],
-                        begin: Alignment.topLeft,
-                        end: Alignment.bottomRight,
-                      ),
-                      shape: BoxShape.circle,
-                      boxShadow: [
-                        BoxShadow(
-                          color: MarilinColors.brandBlue.withValues(alpha: 0.2),
-                          blurRadius: 8,
-                          offset: const Offset(0, 3),
-                        ),
-                      ],
-                    ),
-                    alignment: Alignment.center,
-                    child: Text(
-                      initials,
-                      style: const TextStyle(
-                        color: Colors.white,
-                        fontWeight: FontWeight.w900,
-                        fontSize: 16,
-                        letterSpacing: 0.5,
-                      ),
-                    ),
-                  ),
-                  Positioned(
-                    right: 1,
-                    bottom: 1,
-                    child: Container(
-                      width: 12,
-                      height: 12,
-                      decoration: BoxDecoration(
-                        color: const Color(0xFF10B981),
-                        shape: BoxShape.circle,
-                        border: Border.all(color: Colors.white, width: 2),
-                      ),
-                    ),
-                  ),
-                ],
+          const SizedBox(height: 10),
+          // 2. Identity row: avatar and greeting; tapping it opens the profile.
+          Material(
+            color: Colors.transparent,
+            child: InkWell(
+              borderRadius: BorderRadius.circular(16),
+              onTap: () => Navigator.of(context).push(
+                MaterialPageRoute<void>(builder: (_) => const ProfileScreen()),
               ),
-              const SizedBox(width: 16),
-              // User text details (Greeting + Subtitle)
-              Expanded(
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  mainAxisSize: MainAxisSize.min,
-                  children: [
-                    Text(
-                      greeting,
-                      style: Theme.of(context).textTheme.headlineMedium
-                          ?.copyWith(
-                            fontWeight: FontWeight.w900,
-                            color: context.marilin.ink,
-                            fontSize: 26,
-                          ),
-                    ),
-                    const SizedBox(height: 3),
-                    Row(
-                      children: [
-                        Icon(
-                          Icons.local_shipping_outlined,
-                          size: 14,
+              child: Semantics(
+                button: true,
+                label: 'Mi perfil',
+                child: Padding(
+                  padding: const EdgeInsets.symmetric(vertical: 4),
+                  child: Row(
+                    crossAxisAlignment: CrossAxisAlignment.center,
+                    children: [
+                      ProfileAvatar(name: displayName ?? 'Repartidor'),
+                      const SizedBox(width: 16),
+                      // User text details (Greeting + Subtitle)
+                      Expanded(
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          mainAxisSize: MainAxisSize.min,
+                          children: [
+                            Text(
+                              greeting,
+                              style: Theme.of(context).textTheme.headlineMedium
+                                  ?.copyWith(
+                                    fontWeight: FontWeight.w900,
+                                    color: context.marilin.ink,
+                                    fontSize: 26,
+                                  ),
+                            ),
+                            const SizedBox(height: 3),
+                            Row(
+                              children: [
+                                Icon(
+                                  Icons.calendar_month_outlined,
+                                  size: 15,
+                                  color: context.marilin.textMuted,
+                                ),
+                                const SizedBox(width: 5),
+                                Flexible(
+                                  child: Text(
+                                    '${days[now.weekday]}, ${now.day} de ${months[now.month]}',
+                                    maxLines: 1,
+                                    overflow: TextOverflow.ellipsis,
+                                    style: TextStyle(
+                                      fontSize: 14,
+                                      color: context.marilin.inkSecondary,
+                                      fontWeight: FontWeight.w600,
+                                    ),
+                                  ),
+                                ),
+                              ],
+                            ),
+                          ],
+                        ),
+                      ),
+                      const SizedBox(width: 8),
+                      Container(
+                        width: 36,
+                        height: 36,
+                        decoration: BoxDecoration(
+                          color: context.marilin.fill,
+                          shape: BoxShape.circle,
+                          border: Border.all(color: context.marilin.border),
+                        ),
+                        child: Icon(
+                          Icons.chevron_right_rounded,
+                          size: 22,
                           color: context.marilin.textMuted,
                         ),
-                        const SizedBox(width: 5),
-                        Text(
-                          'Buen día de reparto',
-                          style: Theme.of(context).textTheme.bodyMedium
-                              ?.copyWith(
-                                color: context.marilin.inkSecondary,
-                                fontWeight: FontWeight.w600,
-                              ),
-                        ),
-                      ],
-                    ),
-                  ],
+                      ),
+                    ],
+                  ),
                 ),
               ),
-            ],
+            ),
           ),
         ],
       ),
@@ -344,162 +324,29 @@ class _RouteHeader extends ConsumerWidget {
   }
 }
 
-// ─── Barra de progreso ────────────────────────────────────────────────────────
+// ─── Next stop hero ───────────────────────────────────────────────────────────
 
-class _ProgressSection extends StatelessWidget {
-  const _ProgressSection({required this.stops});
+class _NextStopHero extends ConsumerWidget {
+  const _NextStopHero({required this.stop});
 
-  final List<RouteStop> stops;
-
-  @override
-  Widget build(BuildContext context) {
-    final done = stops.where((s) => s.status != StopStatus.pending).length;
-    final total = stops.length;
-    final pending = total - done;
-    final progress = total == 0 ? 0.0 : done / total;
-
-    return Padding(
-      padding: const EdgeInsets.fromLTRB(20, 16, 20, 16),
-      child: Container(
-        padding: const EdgeInsets.all(16),
-        decoration: BoxDecoration(
-          color: context.marilin.surface,
-          borderRadius: BorderRadius.circular(20),
-          border: Border.all(color: context.marilin.border, width: 1.5),
-          boxShadow: [
-            BoxShadow(
-              color: MarilinColors.brandBlue.withValues(alpha: 0.04),
-              blurRadius: 20,
-              offset: const Offset(0, 8),
-            ),
-          ],
-        ),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Row(
-              mainAxisAlignment: MainAxisAlignment.spaceBetween,
-              children: [
-                Text(
-                  'Progreso de la jornada',
-                  style: Theme.of(context).textTheme.labelLarge?.copyWith(
-                    color: context.marilin.ink,
-                    fontWeight: FontWeight.w900,
-                    fontSize: 14,
-                  ),
-                ),
-                Text(
-                  '${(progress * 100).toInt()}% completado',
-                  style: const TextStyle(
-                    color: MarilinColors.brandBlue,
-                    fontWeight: FontWeight.w900,
-                    fontSize: 13,
-                  ),
-                ),
-              ],
-            ),
-            const SizedBox(height: 10),
-            ClipRRect(
-              borderRadius: BorderRadius.circular(6),
-              child: LinearProgressIndicator(
-                value: progress,
-                minHeight: 8,
-                backgroundColor: context.marilin.border,
-                valueColor: AlwaysStoppedAnimation(MarilinColors.brandBlue),
-              ),
-            ),
-            const SizedBox(height: 16),
-            Row(
-              children: [
-                Expanded(
-                  child: _StatCard(
-                    title: 'Total',
-                    value: '$total',
-                    icon: Icons.inventory_2_outlined,
-                    iconColor: MarilinColors.brandBlue,
-                    bgColor: context.marilin.soft(const Color(0xFFE3F2FD)),
-                  ),
-                ),
-                const SizedBox(width: 8),
-                Expanded(
-                  child: _StatCard(
-                    title: 'Completas',
-                    value: '$done',
-                    icon: Icons.check_circle_outline_rounded,
-                    iconColor: const Color(0xFF2E7D32),
-                    bgColor: context.marilin.soft(Color(0xFFE8F5E9)),
-                  ),
-                ),
-                const SizedBox(width: 8),
-                Expanded(
-                  child: _StatCard(
-                    title: 'Pendientes',
-                    value: '$pending',
-                    icon: Icons.pending_actions_rounded,
-                    iconColor: const Color(0xFFE65100),
-                    bgColor: context.marilin.soft(Color(0xFFFFF3E0)),
-                  ),
-                ),
-              ],
-            ),
-          ],
-        ),
-      ),
-    );
-  }
-}
-
-class _StatCard extends StatelessWidget {
-  const _StatCard({
-    required this.title,
-    required this.value,
-    required this.icon,
-    required this.iconColor,
-    required this.bgColor,
-  });
-
-  final String title;
-  final String value;
-  final IconData icon;
-  final Color iconColor;
-  final Color bgColor;
+  final RouteStop stop;
 
   @override
-  Widget build(BuildContext context) {
-    final iconColor = context.marilin.vivid(this.iconColor);
-    return Container(
-      padding: const EdgeInsets.symmetric(vertical: 10, horizontal: 8),
-      decoration: BoxDecoration(
-        // Multiply, not replace: the dark tint is already translucent.
-        color: bgColor.withValues(alpha: bgColor.a * 0.7),
-        borderRadius: BorderRadius.circular(12),
-        border: Border.all(color: bgColor, width: 1),
-      ),
-      child: Column(
-        children: [
-          Icon(icon, size: 20, color: iconColor),
-          const SizedBox(height: 4),
-          Text(
-            value,
-            style: TextStyle(
-              fontSize: 16,
-              fontWeight: FontWeight.w900,
-              color: iconColor,
-            ),
-          ),
-          Text(
-            title,
-            style: TextStyle(
-              fontSize: 9,
-              fontWeight: FontWeight.w700,
-              color: iconColor.withValues(alpha: 0.8),
-              letterSpacing: 0.2,
-            ),
-            maxLines: 1,
-            overflow: TextOverflow.ellipsis,
-          ),
-        ],
-      ),
+  Widget build(BuildContext context, WidgetRef ref) {
+    // Loading or error: the custody item is simply absent.
+    final custody =
+        ref
+            .watch(customerContainerBalancesProvider(stop.customer.id))
+            .value
+            ?.fold<int>(0, (sum, b) => sum + b.quantity) ??
+        0;
+
+    return NextStopCard(
+      stop: stop,
+      custodyCount: custody,
+      onTap: () => Navigator.of(
+        context,
+      ).push(MaterialPageRoute(builder: (_) => VisitScreen(stopId: stop.id))),
     );
   }
 }

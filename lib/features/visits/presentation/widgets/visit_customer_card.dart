@@ -26,7 +26,9 @@ class VisitCustomerCard extends StatelessWidget {
         border: Border.all(color: context.marilin.border, width: 1.5),
         boxShadow: [
           BoxShadow(
-            color: Colors.black.withValues(alpha: context.marilin.isDark ? 0.3 : 0.04),
+            color: Colors.black.withValues(
+              alpha: context.marilin.isDark ? 0.3 : 0.04,
+            ),
             blurRadius: 16,
             offset: const Offset(0, 8),
           ),
@@ -45,7 +47,7 @@ class VisitCustomerCard extends StatelessWidget {
                     Text(
                       'CLIENTE ACTUAL',
                       style: TextStyle(
-                        fontSize: 10,
+                        fontSize: 12,
                         fontWeight: FontWeight.w800,
                         color: context.marilin.textMuted.withValues(alpha: 0.9),
                         letterSpacing: 1.0,
@@ -55,6 +57,8 @@ class VisitCustomerCard extends StatelessWidget {
                     Text(
                       customerName,
                       textAlign: TextAlign.center,
+                      maxLines: 2,
+                      overflow: TextOverflow.ellipsis,
                       style: TextStyle(
                         fontSize: 22,
                         fontWeight: FontWeight.w900,
@@ -68,7 +72,12 @@ class VisitCustomerCard extends StatelessWidget {
             ],
           ),
           const SizedBox(height: 16),
-          Divider(height: 1, color: context.marilin.border.withValues(alpha: context.marilin.border.a * 0.6)),
+          Divider(
+            height: 1,
+            color: context.marilin.border.withValues(
+              alpha: context.marilin.border.a * 0.6,
+            ),
+          ),
           const SizedBox(height: 16),
           Row(
             children: [
@@ -104,7 +113,7 @@ class VisitCustomerCard extends StatelessWidget {
                 Container(
                   padding: const EdgeInsets.all(6),
                   decoration: const BoxDecoration(
-                    color: Color(0xFF25D366),
+                    color: MarilinColors.success,
                     shape: BoxShape.circle,
                   ),
                   child: const FaIcon(

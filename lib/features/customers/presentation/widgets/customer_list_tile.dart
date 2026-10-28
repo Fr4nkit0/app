@@ -1,7 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:app/core/theme/marilin_tokens.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import 'package:app/core/theme/marilin_tokens.dart';
 import 'package:url_launcher/url_launcher.dart';
 import 'package:app/core/widgets/debt_chip.dart';
 import 'package:app/core/widgets/product_chip.dart';
@@ -9,6 +8,7 @@ import 'package:app/core/utils/avatar_utils.dart';
 import 'package:app/core/utils/address_formatter.dart';
 import 'package:app/features/customers/domain/models/customer.dart';
 import 'package:font_awesome_flutter/font_awesome_flutter.dart';
+import 'package:app/core/widgets/top_toast.dart';
 
 class CustomerListTile extends ConsumerWidget {
   const CustomerListTile({
@@ -52,7 +52,9 @@ class CustomerListTile extends ConsumerWidget {
       duration: const Duration(milliseconds: 200),
       margin: const EdgeInsets.symmetric(horizontal: 16, vertical: 6),
       decoration: BoxDecoration(
-        color: selected ? blue.withValues(alpha: 0.03) : context.marilin.surface,
+        color: selected
+            ? blue.withValues(alpha: 0.03)
+            : context.marilin.surface,
         borderRadius: BorderRadius.circular(16),
         boxShadow: [
           BoxShadow(
@@ -113,9 +115,7 @@ class CustomerListTile extends ConsumerWidget {
                               style: TextStyle(
                                 fontSize: 15,
                                 fontWeight: FontWeight.w700,
-                                color: selected
-                                    ? blue
-                                    : context.marilin.ink,
+                                color: selected ? blue : context.marilin.ink,
                               ),
                             ),
                             const SizedBox(height: 2),
@@ -180,18 +180,26 @@ class CustomerListTile extends ConsumerWidget {
                                   vertical: 4,
                                 ),
                                 borderRadius: BorderRadius.circular(8),
-                                backgroundColor: const Color(
-                                  0xFFEF4444,
-                                ).withValues(alpha: 0.08),
-                                borderColor: context.marilin.soft(Color(0xFFFFCDD2)),
+                                backgroundColor: context.marilin
+                                    .vivid(MarilinColors.destructive)
+                                    .withValues(alpha: 0.08),
+                                borderColor: context.marilin.soft(
+                                  MarilinColors.destructive.withValues(
+                                    alpha: 0.3,
+                                  ),
+                                ),
                                 borderWidth: 1.0,
-                                textColor: const Color(0xFFEF4444),
-                                fontSize: 11,
+                                textColor: context.marilin.vivid(
+                                  MarilinColors.destructive,
+                                ),
+                                fontSize: 13,
                                 fontWeight: FontWeight.w700,
                                 icon: Icons.warning_amber_rounded,
                                 iconSize: 11,
-                                iconColor: const Color(0xFFEF4444),
-                                prefixText: 'Deuda: \$',
+                                iconColor: context.marilin.vivid(
+                                  MarilinColors.destructive,
+                                ),
+                                prefixText: 'Deuda: ',
                               ),
                             ...customer.productLabels
                                 .take(2) // Max 2 tags to avoid overflow
@@ -220,31 +228,28 @@ class CustomerListTile extends ConsumerWidget {
                                     );
                                   } catch (_) {
                                     if (context.mounted) {
-                                      ScaffoldMessenger.of(
+                                      TopToast.showError(
                                         context,
-                                      ).showSnackBar(
-                                        const SnackBar(
-                                          content: Text(
-                                            'No se pudo abrir WhatsApp',
-                                          ),
-                                          duration: Duration(seconds: 2),
-                                        ),
+                                        'No se pudo abrir WhatsApp',
                                       );
                                     }
                                   }
                                 },
-                                child: Container(
-                                  width: 44,
-                                  height: 44,
-                                  alignment: Alignment.center,
-                                  decoration: const BoxDecoration(
-                                    color: Color(0xFF25D366),
-                                    shape: BoxShape.circle,
-                                  ),
-                                  child: FaIcon(
-                                    FontAwesomeIcons.whatsapp,
-                                    color: Colors.white,
-                                    size: 28,
+                                child: Tooltip(
+                                  message: 'WhatsApp',
+                                  child: Container(
+                                    width: 44,
+                                    height: 44,
+                                    alignment: Alignment.center,
+                                    decoration: const BoxDecoration(
+                                      color: MarilinColors.success,
+                                      shape: BoxShape.circle,
+                                    ),
+                                    child: FaIcon(
+                                      FontAwesomeIcons.whatsapp,
+                                      color: Colors.white,
+                                      size: 28,
+                                    ),
                                   ),
                                 ),
                               ),

@@ -110,9 +110,15 @@ class _EmptyState extends StatelessWidget {
       child: Container(
         padding: const EdgeInsets.all(24),
         decoration: BoxDecoration(
-          color: context.marilin.soft(Color(0xFFEFF6FF)),
+          color: context.marilin.soft(
+            MarilinColors.brandBlue.withValues(alpha: 0.12),
+          ),
           borderRadius: BorderRadius.circular(14),
-          border: Border.all(color: context.marilin.soft(Color(0xFFBFDBFE))),
+          border: Border.all(
+            color: context.marilin.soft(
+              MarilinColors.brandBlue.withValues(alpha: 0.3),
+            ),
+          ),
         ),
         child: Column(
           children: [
@@ -200,15 +206,15 @@ class _PreferenceSummaryCard extends StatelessWidget {
         child: Row(
           children: [
             Container(
-              width: 36,
-              height: 36,
+              width: 48,
+              height: 48,
               decoration: BoxDecoration(
                 color: MarilinColors.brandBlue.withValues(alpha: 0.08),
                 shape: BoxShape.circle,
               ),
               child: const Icon(
                 Icons.schedule_rounded,
-                size: 18,
+                size: 22,
                 color: MarilinColors.brandBlue,
               ),
             ),
@@ -228,25 +234,33 @@ class _PreferenceSummaryCard extends StatelessWidget {
                   const SizedBox(height: 2),
                   Text(
                     '${preference.timeWindowStart} — ${preference.timeWindowEnd ?? '--:--'}',
-                    style: TextStyle(fontSize: 13, color: context.marilin.textMuted),
+                    style: TextStyle(
+                      fontSize: 13,
+                      color: context.marilin.textMuted,
+                    ),
                   ),
                 ],
               ),
             ),
             const SizedBox(width: 8),
-            GestureDetector(
-              onTap: onRemove,
-              child: Container(
-                width: 32,
-                height: 32,
-                decoration: BoxDecoration(
-                  color: context.marilin.soft(Color(0xFFFFF0F0)),
-                  borderRadius: BorderRadius.circular(8),
-                ),
-                child: const Icon(
-                  Icons.delete_outline_rounded,
-                  color: Color(0xFFBF1B1B),
-                  size: 16,
+            Tooltip(
+              message: 'Quitar',
+              child: GestureDetector(
+                onTap: onRemove,
+                child: Container(
+                  width: 48,
+                  height: 48,
+                  decoration: BoxDecoration(
+                    color: context.marilin.soft(
+                      MarilinColors.destructive.withValues(alpha: 0.12),
+                    ),
+                    borderRadius: BorderRadius.circular(8),
+                  ),
+                  child: const Icon(
+                    Icons.delete_outline_rounded,
+                    color: MarilinColors.destructive,
+                    size: 22,
+                  ),
                 ),
               ),
             ),
@@ -303,7 +317,9 @@ class _PreferenceDialogState extends State<_PreferenceDialog> {
       builder: (ctx, child) {
         return Theme(
           data: Theme.of(ctx).copyWith(
-            colorScheme: const ColorScheme.light(primary: MarilinColors.brandBlue),
+            colorScheme: const ColorScheme.light(
+              primary: MarilinColors.brandBlue,
+            ),
           ),
           child: child!,
         );
@@ -355,7 +371,8 @@ class _PreferenceDialogState extends State<_PreferenceDialog> {
   void _save() {
     if (!_isValidTime()) {
       setState(() {
-        _errorMessage = 'Horario inválido. La hora "Hasta" debe ser posterior a "Desde". L a V: 9-18hs, Sáb: 9-15hs';
+        _errorMessage =
+            'Horario inválido. La hora "Hasta" debe ser posterior a "Desde". L a V: 9-18hs, Sáb: 9-15hs';
       });
       return;
     }
@@ -416,7 +433,10 @@ class _PreferenceDialogState extends State<_PreferenceDialog> {
                 ),
                 focusedBorder: OutlineInputBorder(
                   borderRadius: BorderRadius.all(Radius.circular(10)),
-                  borderSide: BorderSide(color: MarilinColors.brandBlue, width: 2),
+                  borderSide: BorderSide(
+                    color: MarilinColors.brandBlue,
+                    width: 2,
+                  ),
                 ),
               ),
               items: _days.entries
@@ -451,14 +471,20 @@ class _PreferenceDialogState extends State<_PreferenceDialog> {
                 width: double.infinity,
                 padding: const EdgeInsets.all(10),
                 decoration: BoxDecoration(
-                  color: context.marilin.soft(Color(0xFFFEF2F2)),
+                  color: context.marilin.soft(
+                    MarilinColors.destructive.withValues(alpha: 0.12),
+                  ),
                   borderRadius: BorderRadius.circular(8),
-                  border: Border.all(color: const Color(0xFFFCA5A5)),
+                  border: Border.all(
+                    color: context.marilin.soft(
+                      MarilinColors.destructive.withValues(alpha: 0.3),
+                    ),
+                  ),
                 ),
                 child: Text(
                   _errorMessage!,
                   style: const TextStyle(
-                    color: Color(0xFFB91C1C),
+                    color: MarilinColors.destructive,
                     fontWeight: FontWeight.w600,
                     fontSize: 13,
                   ),

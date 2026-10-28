@@ -39,7 +39,7 @@ A specialized, high-efficiency operational tool tailored specifically for the ph
 - Spanish (Rioplatense) for the UI copy and user interactions.
 - English for the source code (classes, variables, tables).
 - Professional, clear, and direct tone.
-- Aesthetic contract: "The Premium SaaS" (light, clean, highly readable, no dark/industrial themes).
+- Aesthetic contract: "The Premium SaaS" (clean, highly readable; light theme by default, with a near-black dark theme the driver can choose in the profile).
 
 ## Evidence on Hand
 
