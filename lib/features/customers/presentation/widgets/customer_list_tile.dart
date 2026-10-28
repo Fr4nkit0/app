@@ -3,18 +3,11 @@ import 'package:app/core/theme/marilin_tokens.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:app/core/theme/marilin_tokens.dart';
 import 'package:url_launcher/url_launcher.dart';
-import 'package:latlong2/latlong.dart';
 import 'package:app/core/widgets/debt_chip.dart';
 import 'package:app/core/widgets/product_chip.dart';
 import 'package:app/core/utils/avatar_utils.dart';
 import 'package:app/core/utils/address_formatter.dart';
-import 'package:app/core/widgets/circular_action_button.dart';
-import 'package:app/core/widgets/top_toast.dart';
-import 'package:app/core/utils/resource.dart';
 import 'package:app/features/customers/domain/models/customer.dart';
-import 'package:app/features/customers/presentation/widgets/address_picker_map.dart';
-import 'package:app/features/customers/presentation/providers/customer_repository_provider.dart';
-import 'package:app/features/customers/presentation/providers/customer_count_provider.dart';
 import 'package:font_awesome_flutter/font_awesome_flutter.dart';
 
 class CustomerListTile extends ConsumerWidget {
@@ -255,67 +248,7 @@ class CustomerListTile extends ConsumerWidget {
                                   ),
                                 ),
                               ),
-                              const SizedBox(width: 8),
                             ],
-                            if (_address.isNotEmpty)
-                              CircularActionButton(
-                                icon: Icons.location_on,
-                                color: const Color(0xFF0369A1),
-                                onPressed: () async {
-                                  final addr = customer.addresses
-                                          .where((a) => a.isPrimary)
-                                          .firstOrNull ??
-                                      customer.addresses.firstOrNull;
-                                  if (addr == null) return;
-
-                                  await Navigator.of(context).push<LatLng>(
-                                    MaterialPageRoute(
-                                      builder: (context) => AddressPickerMap(
-                                        initialLatitude: addr.latitude,
-                                        initialLongitude: addr.longitude,
-                                        initialSearchQuery: (addr.neighborhood != null && addr.neighborhood!.trim().isNotEmpty)
-                                            ? '${addr.street}, ${addr.neighborhood}, Salta'
-                                            : '${addr.street}, Salta',
-                                        onSave: (latLng) async {
-                                          final repository =
-                                              ref.read(customerRepositoryProvider);
-                                          final updateResult =
-                                              await repository
-                                                  .updateAddressCoordinates(
-                                            addr.id,
-                                            latLng.latitude,
-                                            latLng.longitude,
-                                          );
-
-                                          if (context.mounted) {
-                                            switch (updateResult) {
-                                              case Success():
-                                                TopToast.showSuccess(
-                                                  context,
-                                                  'Ubicación del cliente guardada',
-                                                );
-                                                ref
-                                                    .read(
-                                                        paginatedCustomerListProvider
-                                                            .notifier)
-                                                    .refresh();
-                                                ref.invalidate(
-                                                    customerByIdProvider(
-                                                        customer.id));
-                                              case Error(:final error):
-                                                TopToast.showError(
-                                                  context,
-                                                  'Error al guardar ubicación: $error',
-                                                );
-                                            }
-                                          }
-                                        },
-                                      ),
-                                      fullscreenDialog: true,
-                                    ),
-                                  );
-                                },
-                              ),
                           ],
                         ),
                       ],

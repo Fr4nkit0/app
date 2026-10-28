@@ -135,28 +135,6 @@ void main() {
 
       expect(await queue.getPending(), isEmpty);
     });
-
-    test('geocoding an address queues a customer update and stamps it', () async {
-      await sut.saveCustomer(makeCustomer());
-      await (db.update(db.customerAddressTable)).write(
-        CustomerAddressTableCompanion(lastModifiedDate: drift.Value(longAgo)),
-      );
-
-      await sut.updateAddressCoordinates('addr-1', -24.78, -65.41);
-
-      final change = (await queue.getPending()).last;
-      expect(change.entity, PendingEntity.customer);
-      expect(change.entityId, 'cust-1');
-      expect(change.action, PendingAction.update);
-      final row = await db.select(db.customerAddressTable).getSingle();
-      expect(row.lastModifiedDate.isAfter(longAgo), isTrue);
-    });
-
-    test('geocoding a missing address queues nothing', () async {
-      await sut.updateAddressCoordinates('ghost', 1, 2);
-
-      expect(await queue.getPending(), isEmpty);
-    });
   });
 
   group('route stops', () {

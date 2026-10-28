@@ -3,11 +3,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:url_launcher/url_launcher.dart';
 import 'package:app/core/utils/address_formatter.dart';
 import 'package:app/core/widgets/top_toast.dart';
-import 'package:app/features/customers/presentation/providers/customer_count_provider.dart';
-import 'package:app/features/customers/presentation/providers/customer_repository_provider.dart';
-import 'package:app/features/customers/presentation/widgets/address_picker_map.dart';
 import 'package:app/features/route/domain/models/route_stop.dart';
-import 'package:latlong2/latlong.dart';
 import 'package:app/features/route/domain/models/stop_status.dart';
 import 'package:app/features/route/presentation/providers/route_repository_provider.dart';
 import 'package:app/features/sales/presentation/providers/sale_draft_provider.dart';
@@ -188,9 +184,6 @@ class _VisitScreenState extends ConsumerState<VisitScreen> {
                           customerName: stop.customer.name,
                           formattedAddress: _formatStopAddress(stop),
                           phone: stop.customer.phone,
-                          onMapPressed: stop.customer.addresses.isNotEmpty
-                              ? () => _openCustomerMap(stop)
-                              : null,
                           onWhatsAppLongPress: stop.customer.phone != null
                               ? () => _openWhatsApp(stop.customer.phone!)
                               : null,
@@ -299,47 +292,6 @@ class _VisitScreenState extends ConsumerState<VisitScreen> {
       floor: addr.floor,
       apartment: addr.apartment,
       visualReference: addr.visualReference,
-    );
-  }
-
-  Future<void> _openCustomerMap(RouteStop stop) async {
-    final addr = stop.customer.addresses.firstOrNull;
-    if (addr == null) return;
-
-    await Navigator.of(context).push<LatLng>(
-      MaterialPageRoute(
-        builder: (context) => AddressPickerMap(
-          initialLatitude: addr.latitude,
-          initialLongitude: addr.longitude,
-          initialSearchQuery:
-              (addr.neighborhood != null && addr.neighborhood!.trim().isNotEmpty)
-                  ? '${addr.street}, ${addr.neighborhood}, Salta'
-                  : '${addr.street}, Salta',
-          onSave: (latLng) async {
-            final repository = ref.read(customerRepositoryProvider);
-            final updateResult = await repository.updateAddressCoordinates(
-              addr.id,
-              latLng.latitude,
-              latLng.longitude,
-            );
-            if (!mounted) return;
-            switch (updateResult) {
-              case Success():
-                TopToast.showSuccess(
-                  context,
-                  'Ubicación del cliente guardada',
-                );
-                ref.invalidate(customerByIdProvider(stop.customer.id));
-              case Error(:final error):
-                TopToast.showError(
-                  context,
-                  'Error al guardar ubicación: $error',
-                );
-            }
-          },
-        ),
-        fullscreenDialog: true,
-      ),
     );
   }
 

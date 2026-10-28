@@ -8,14 +8,12 @@ class VisitCustomerCard extends StatelessWidget {
     required this.customerName,
     required this.formattedAddress,
     this.phone,
-    this.onMapPressed,
     this.onWhatsAppLongPress,
   });
 
   final String customerName;
   final String formattedAddress;
   final String? phone;
-  final VoidCallback? onMapPressed;
   final VoidCallback? onWhatsAppLongPress;
 
   @override
@@ -67,26 +65,6 @@ class VisitCustomerCard extends StatelessWidget {
                   ],
                 ),
               ),
-              if (onMapPressed != null) ...[
-                const SizedBox(width: 12),
-                Material(
-                  color: MarilinColors.brandBlue.withValues(alpha: 0.08),
-                  borderRadius: BorderRadius.circular(16),
-                  child: InkWell(
-                    onTap: onMapPressed,
-                    borderRadius: BorderRadius.circular(16),
-                    child: const SizedBox(
-                      width: 48,
-                      height: 48,
-                      child: Icon(
-                        Icons.location_on,
-                        color: MarilinColors.brandBlue,
-                        size: 28,
-                      ),
-                    ),
-                  ),
-                ),
-              ],
             ],
           ),
           const SizedBox(height: 16),

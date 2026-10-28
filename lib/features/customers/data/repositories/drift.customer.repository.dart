@@ -549,55 +549,6 @@ class DriftCustomerRepository implements CustomerRepository {
       return customers.values.toList();
     });
   }
-
-  @override
-  Future<Resource<void>> updateAddressCoordinates(
-    String addressId,
-    double latitude,
-    double longitude,
-  ) async {
-    try {
-      return await db.transaction(() async {
-        final address =
-            await (db.select(db.customerAddressTable)
-                  ..where((t) => t.addressId.equals(addressId)))
-                .getSingleOrNull();
-        if (address == null) {
-          return Resource<void>.error(Exception('Address not found'));
-        }
-
-        await (db.update(
-          db.customerAddressTable,
-        )..where((t) => t.addressId.equals(addressId))).write(
-          CustomerAddressTableCompanion(
-            latitude: Value(latitude),
-            longitude: Value(longitude),
-            lastModifiedDate: Value(DateTime.now()),
-          ),
-        );
-
-        final customerId = address.customerId;
-        await _queue.enqueue(
-          entity: PendingEntity.customer,
-          entityId: customerId,
-          action: PendingAction.update,
-          payload: {
-            'customerId': customerId,
-            'addresses': [
-              {
-                'addressId': addressId,
-                'latitude': latitude,
-                'longitude': longitude,
-              },
-            ],
-          },
-        );
-        return const Resource<void>.success(null);
-      });
-    } catch (e) {
-      return Resource.error(e is Exception ? e : Exception(e.toString()));
-    }
-  }
 }
 
 final driftCustomerRepositoryProvider = Provider<CustomerRepository>((ref) {
