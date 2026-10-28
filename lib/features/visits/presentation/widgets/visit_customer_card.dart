@@ -55,6 +55,8 @@ class VisitCustomerCard extends StatelessWidget {
                     Text(
                       customerName,
                       textAlign: TextAlign.center,
+                      maxLines: 2,
+                      overflow: TextOverflow.ellipsis,
                       style: TextStyle(
                         fontSize: 22,
                         fontWeight: FontWeight.w900,

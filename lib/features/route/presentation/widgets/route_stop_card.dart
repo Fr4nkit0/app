@@ -187,6 +187,8 @@ class RouteStopCard extends ConsumerWidget {
                                       children: [
                                         Text(
                                           stop.customer.name,
+                                          maxLines: 2,
+                                          overflow: TextOverflow.ellipsis,
                                           style: TextStyle(
                                             fontSize: 15,
                                             fontWeight: FontWeight.w700,

@@ -90,7 +90,7 @@ class SaleStep3Screen extends ConsumerWidget {
                               prefixText: 'Deuda previa: \$',
                             ),
                           // Client + order summary card
-                          _ClientCard(draft: draft),
+                          SaleStep3ClientCard(draft: draft),
                           const SizedBox(height: 20),
                           // Payment method grid + mixed fields
                           Padding(
@@ -145,8 +145,8 @@ class _Header extends StatelessWidget {
 
 // ─── Client + order summary card ──────────────────────────────────────────────
 
-class _ClientCard extends StatelessWidget {
-  const _ClientCard({required this.draft});
+class SaleStep3ClientCard extends StatelessWidget {
+  const SaleStep3ClientCard({super.key, required this.draft});
 
   final SaleDraftState draft;
 
@@ -168,11 +168,15 @@ class _ClientCard extends StatelessWidget {
             children: [
               Icon(Icons.person_outline, size: 15, color: tokens.primary),
               const SizedBox(width: 6),
-              Text(
-                draft.customer?.name ?? '',
-                style: Theme.of(context).textTheme.titleSmall?.copyWith(
-                  fontWeight: FontWeight.w700,
-                  color: Theme.of(context).colorScheme.primary,
+              Expanded(
+                child: Text(
+                  draft.customer?.name ?? '',
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                  style: Theme.of(context).textTheme.titleSmall?.copyWith(
+                    fontWeight: FontWeight.w700,
+                    color: Theme.of(context).colorScheme.primary,
+                  ),
                 ),
               ),
             ],
