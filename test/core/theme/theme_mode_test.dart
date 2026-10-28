@@ -38,6 +38,16 @@ void main() {
       expect(await const FlutterSecureStorage().read(key: ThemeModeController.storageKey), 'light');
     });
 
+    test('starts on the choice read before the app was drawn, with no light flash', () async {
+      FlutterSecureStorage.setMockInitialValues({ThemeModeController.storageKey: 'dark'});
+      ThemeModeController.initial = await ThemeModeController.readSaved(const FlutterSecureStorage());
+      addTearDown(() => ThemeModeController.initial = ThemeMode.system);
+      final container = ProviderContainer();
+      addTearDown(container.dispose);
+
+      expect(container.read(themeModeProvider), ThemeMode.dark);
+    });
+
     test('ignores a stored value it does not know', () async {
       FlutterSecureStorage.setMockInitialValues({ThemeModeController.storageKey: 'sepia'});
       final container = ProviderContainer();

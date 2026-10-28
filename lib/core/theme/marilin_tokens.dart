@@ -90,11 +90,11 @@ class MarilinTokens extends ThemeExtension<MarilinTokens> {
 
   /// Near-black neutral dark with frosted-glass cards: [surface] and [border]
   /// are translucent white over the dark background (no blur, so long lists
-  /// stay smooth on low-end phones). The accent is water blue (sky).
+  /// stay smooth on low-end phones). The accent is the light theme's blue.
   static const MarilinTokens dark = MarilinTokens(
     scaffoldMuted: Color(0xFF0B0D10),
     surface: Color(0x12FFFFFF),
-    brandBlue: Color(0xFF0EA5E9),
+    brandBlue: Color(0xFF3B82F6),
     brandNavy: Color(0xFFF4F5F7),
     textMuted: Color(0xFF8B929C),
     border: Color(0x1FFFFFFF),

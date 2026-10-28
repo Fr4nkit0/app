@@ -75,7 +75,7 @@ abstract final class AppTheme {
     onErrorContainer: Color(0xFF410002),
   );
 
-  // Dark: near-black neutral (no blue tint) with a water-blue accent (S7).
+  // Dark: near-black neutral (no blue tint) with the light theme's blue as accent.
   static const _Palette _dark = _Palette(
     brightness: Brightness.dark,
     tokens: MarilinTokens.dark,
@@ -89,7 +89,7 @@ abstract final class AppTheme {
     line: Color(0xFF262B33),
     lineStrong: Color(0xFF353B45),
     divider: Color(0xFF1D2127),
-    primaryContainer: Color(0xFF0C4A6E),
+    primaryContainer: Color(0xFF1E3A8A),
     secondaryContainer: Color(0xFF262B33),
     snackBar: Color(0xFF262B33),
     shadow: Color(0x59000000),
