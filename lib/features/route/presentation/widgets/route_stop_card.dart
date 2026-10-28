@@ -1,20 +1,14 @@
 import 'package:flutter/material.dart';
-import 'package:flutter_riverpod/flutter_riverpod.dart';
-import 'package:font_awesome_flutter/font_awesome_flutter.dart';
-import 'package:url_launcher/url_launcher.dart';
-import 'package:app/core/utils/avatar_utils.dart';
 import 'package:app/core/utils/address_formatter.dart';
-import 'package:app/core/widgets/debt_chip.dart';
-import 'package:app/core/widgets/product_chip.dart';
+import 'package:app/core/utils/money_formatter.dart';
 import 'package:app/features/route/domain/models/route_stop.dart';
 import 'package:app/features/route/domain/models/stop_status.dart';
 import 'package:app/features/route/presentation/widgets/stop_reschedule_label.dart';
 import 'package:app/core/theme/marilin_tokens.dart';
 import 'package:app/features/sync/domain/models/pending_change.dart';
 import 'package:app/features/sync/presentation/widgets/sync_badge_container.dart';
-import 'package:app/core/widgets/top_toast.dart';
 
-class RouteStopCard extends ConsumerWidget {
+class RouteStopCard extends StatelessWidget {
   const RouteStopCard({
     super.key,
     required this.stop,
@@ -33,11 +27,17 @@ class RouteStopCard extends ConsumerWidget {
   final bool isNext;
 
   @override
-  Widget build(BuildContext context, WidgetRef ref) {
+  Widget build(BuildContext context) {
     final isDone = stop.status == StopStatus.done;
     final isRescheduled = stop.status == StopStatus.rescheduled;
     // A rescheduled stop is closed without a delivery, like an absent one.
     final isAbsent = stop.status == StopStatus.absent || isRescheduled;
+    final hasMetaRow =
+        stop.hasScheduledTime ||
+        isNext ||
+        isDone ||
+        isAbsent ||
+        stop.customer.debtAmount > 0;
 
     // Timeline color coding
     final Color timelineColor = isDone
@@ -45,13 +45,6 @@ class RouteStopCard extends ConsumerWidget {
         : isAbsent
         ? context.marilin.vivid(MarilinColors.destructive) // Red
         : context.marilin.lineStrong; // Gray
-
-    final initials = AvatarUtils.getInitials(stop.customer.name);
-    final avatarColors = AvatarUtils.getColors(
-      stop.customer.name,
-      selected: false,
-      baseColor: AvatarUtils.getPastelColor(stop.customer.name),
-    );
 
     return Stack(
       children: [
@@ -164,254 +157,66 @@ class RouteStopCard extends ConsumerWidget {
                           child: Column(
                             crossAxisAlignment: CrossAxisAlignment.start,
                             children: [
-                              // Top line: Name + Scheduled Time
-                              Row(
-                                crossAxisAlignment: CrossAxisAlignment.start,
-                                children: [
-                                  // Pastel Avatar
-                                  Container(
-                                    width: 38,
-                                    height: 38,
-                                    decoration: BoxDecoration(
-                                      color: isDone || isAbsent
-                                          ? context.marilin.fill
-                                          : avatarColors.background,
-                                      shape: BoxShape.circle,
-                                    ),
-                                    alignment: Alignment.center,
-                                    child: Text(
-                                      initials,
-                                      style: TextStyle(
-                                        color: isDone || isAbsent
-                                            ? context.marilin.inkHint
-                                            : avatarColors.foreground,
-                                        fontWeight: FontWeight.bold,
-                                        fontSize: 14,
-                                      ),
-                                    ),
-                                  ),
-                                  const SizedBox(width: 12),
-                                  Expanded(
-                                    child: Column(
-                                      crossAxisAlignment:
-                                          CrossAxisAlignment.start,
-                                      children: [
-                                        Text(
-                                          stop.customer.name,
-                                          maxLines: 2,
-                                          overflow: TextOverflow.ellipsis,
-                                          style: TextStyle(
-                                            fontSize: 15,
-                                            fontWeight: FontWeight.w700,
-                                            color: isDone || isAbsent
-                                                ? context.marilin.inkHint
-                                                : context.marilin.ink,
-                                            decoration: isDone
-                                                ? TextDecoration.lineThrough
-                                                : null,
-                                          ),
-                                        ),
-                                        const SizedBox(height: 2),
-                                        Text(
-                                          stop.customer.addresses.isNotEmpty
-                                              ? AddressFormatter.format(
-                                                  street: stop
-                                                      .customer
-                                                      .addresses
-                                                      .first
-                                                      .street,
-                                                  neighborhood: stop
-                                                      .customer
-                                                      .addresses
-                                                      .first
-                                                      .neighborhood,
-                                                  floor: stop
-                                                      .customer
-                                                      .addresses
-                                                      .first
-                                                      .floor,
-                                                  apartment: stop
-                                                      .customer
-                                                      .addresses
-                                                      .first
-                                                      .apartment,
-                                                  visualReference: stop
-                                                      .customer
-                                                      .addresses
-                                                      .first
-                                                      .visualReference,
-                                                )
-                                              : 'Sin dirección',
-                                          style: TextStyle(
-                                            fontSize: 13,
-                                            color: context.marilin.textMuted,
-                                          ),
-                                          maxLines: 1,
-                                          overflow: TextOverflow.ellipsis,
-                                        ),
-                                        StopRescheduleLabel(stop: stop),
-                                      ],
-                                    ),
-                                  ),
-                                  // Next pill + time bubble
-                                  if (isNext) ...[
-                                    const SizedBox(width: 8),
-                                    _buildNextPill(),
-                                  ],
-                                  if (stop.hasScheduledTime) ...[
-                                    const SizedBox(width: 6),
-                                    _buildTimeBubble(
-                                      stop.scheduledAt,
-                                      isDone: isDone,
-                                      isAbsent: isAbsent,
-                                    ),
-                                  ],
-                                ],
-                              ),
-                              if (isDone || isAbsent)
-                                Align(
-                                  alignment: Alignment.centerLeft,
-                                  child: SyncBadgeContainer(
-                                    entity: PendingEntity.routeStop,
-                                    entityId: stop.id,
-                                  ),
+                              Text(
+                                stop.customer.name,
+                                maxLines: 2,
+                                overflow: TextOverflow.ellipsis,
+                                style: TextStyle(
+                                  fontSize: 15,
+                                  fontWeight: FontWeight.w700,
+                                  color: isDone || isAbsent
+                                      ? context.marilin.inkHint
+                                      : context.marilin.ink,
+                                  decoration: isDone
+                                      ? TextDecoration.lineThrough
+                                      : null,
                                 ),
-                              const SizedBox(height: 12),
-
-                              // Bottom line: Tags + Actions
-                              Row(
-                                mainAxisAlignment:
-                                    MainAxisAlignment.spaceBetween,
-                                children: [
-                                  // Chips / Badges
-                                  Expanded(
-                                    child: Wrap(
-                                      spacing: 6,
-                                      runSpacing: 4,
-                                      children: [
-                                        if (stop.customer.debtAmount > 0)
-                                          DebtChip(
-                                            amount: stop.customer.debtAmount,
-                                            padding: const EdgeInsets.symmetric(
-                                              horizontal: 8,
-                                              vertical: 4,
-                                            ),
-                                            borderRadius: BorderRadius.circular(
-                                              8,
-                                            ),
-                                            backgroundColor: context.marilin
-                                                .vivid(
-                                                  MarilinColors.destructive,
-                                                )
-                                                .withValues(alpha: 0.08),
-                                            borderColor: context.marilin.soft(
-                                              MarilinColors.destructive
-                                                  .withValues(alpha: 0.3),
-                                            ),
-                                            borderWidth: 1.0,
-                                            textColor: context.marilin.vivid(
-                                              MarilinColors.destructive,
-                                            ),
-                                            fontSize: 13,
-                                            fontWeight: FontWeight.w700,
-                                            icon: Icons.warning_amber_rounded,
-                                            iconSize: 11,
-                                            iconColor: context.marilin.vivid(
-                                              MarilinColors.destructive,
-                                            ),
-                                            prefixText: 'Deuda: ',
-                                          ),
-                                        if (stop
-                                            .customer
-                                            .productLabels
-                                            .isNotEmpty)
-                                          ProductChip(
-                                            label: stop
-                                                .customer
-                                                .productLabels
-                                                .first,
-                                            padding: const EdgeInsets.symmetric(
-                                              horizontal: 8,
-                                              vertical: 4,
-                                            ),
-                                            borderRadius: BorderRadius.circular(
-                                              8,
-                                            ),
-                                            backgroundColor: context.marilin
-                                                .vivid(MarilinColors.brandBlue)
-                                                .withValues(alpha: 0.05),
-                                            borderColor: const Color(
-                                              0xFFBAE6FD,
-                                            ),
-                                            borderWidth: 1.0,
-                                            textColor: context.marilin.vivid(
-                                              MarilinColors.brandBlue,
-                                            ),
-                                            fontSize: 12,
-                                            fontWeight: FontWeight.w700,
-                                            icon: Icons.water_drop_outlined,
-                                            iconSize: 11,
-                                            iconColor: context.marilin.vivid(
-                                              MarilinColors.brandBlue,
-                                            ),
-                                            showIcon: true,
-                                          ),
-                                      ],
-                                    ),
-                                  ),
-                                  // Mini Quick Actions
-                                  Row(
-                                    children: [
-                                      if (stop.customer.phone != null &&
-                                          stop.customer.phone!.isNotEmpty) ...[
-                                        GestureDetector(
-                                          onTap: () async {
-                                            final phone = stop.customer.phone!
-                                                .replaceAll(
-                                                  RegExp(r'[^\d]'),
-                                                  '',
-                                                );
-                                            final uri = Uri.parse(
-                                              'https://wa.me/$phone',
-                                            );
-                                            try {
-                                              await launchUrl(
-                                                uri,
-                                                mode: LaunchMode
-                                                    .externalApplication,
-                                              );
-                                            } catch (_) {
-                                              if (context.mounted) {
-                                                TopToast.showError(
-                                                  context,
-                                                  'No se pudo abrir WhatsApp',
-                                                );
-                                              }
-                                            }
-                                          },
-                                          child: Tooltip(
-                                            message: 'WhatsApp',
-                                            child: Container(
-                                              width: 44,
-                                              height: 44,
-                                              alignment: Alignment.center,
-                                              decoration: const BoxDecoration(
-                                                color: MarilinColors.success,
-                                                shape: BoxShape.circle,
-                                              ),
-                                              child: FaIcon(
-                                                FontAwesomeIcons.whatsapp,
-                                                color: Colors.white,
-                                                size: 28,
-                                              ),
-                                            ),
+                              ),
+                              const SizedBox(height: 2),
+                              Text(
+                                _addressLabel(),
+                                style: TextStyle(
+                                  fontSize: 13,
+                                  color: context.marilin.textMuted,
+                                ),
+                                maxLines: 1,
+                                overflow: TextOverflow.ellipsis,
+                              ),
+                              StopRescheduleLabel(stop: stop),
+                              if (hasMetaRow) ...[
+                                const SizedBox(height: 10),
+                                Wrap(
+                                  spacing: 8,
+                                  runSpacing: 6,
+                                  crossAxisAlignment: WrapCrossAlignment.center,
+                                  children: [
+                                    if (stop.hasScheduledTime)
+                                      _buildTimeBubble(
+                                        context,
+                                        stop.scheduledAt,
+                                        isDone: isDone,
+                                        isAbsent: isAbsent,
+                                      ),
+                                    if (isNext) _buildNextPill(),
+                                    if (isDone || isAbsent)
+                                      SyncBadgeContainer(
+                                        entity: PendingEntity.routeStop,
+                                        entityId: stop.id,
+                                      ),
+                                    if (stop.customer.debtAmount > 0)
+                                      Text(
+                                        'Debe ${formatMoney(stop.customer.debtAmount)}',
+                                        style: TextStyle(
+                                          fontSize: 13,
+                                          fontWeight: FontWeight.w700,
+                                          color: context.marilin.vivid(
+                                            MarilinColors.destructive,
                                           ),
                                         ),
-                                      ],
-                                    ],
-                                  ),
-                                ],
-                              ),
+                                      ),
+                                  ],
+                                ),
+                              ],
                             ],
                           ),
                         ),
@@ -424,6 +229,18 @@ class RouteStopCard extends ConsumerWidget {
           ),
         ),
       ],
+    );
+  }
+
+  String _addressLabel() {
+    if (stop.customer.addresses.isEmpty) return 'Sin dirección';
+    final address = stop.customer.addresses.first;
+    return AddressFormatter.format(
+      street: address.street,
+      neighborhood: address.neighborhood,
+      floor: address.floor,
+      apartment: address.apartment,
+      visualReference: address.visualReference,
     );
   }
 
@@ -446,6 +263,7 @@ class RouteStopCard extends ConsumerWidget {
   }
 
   Widget _buildTimeBubble(
+    BuildContext context,
     DateTime time, {
     required bool isDone,
     required bool isAbsent,
@@ -454,12 +272,12 @@ class RouteStopCard extends ConsumerWidget {
     final m = time.minute.toString().padLeft(2, '0');
 
     final color = isDone
-        ? Colors.grey.shade400
+        ? context.marilin.inkHint
         : isAbsent
-        ? Colors.red.shade300
+        ? context.marilin.vivid(MarilinColors.destructive)
         : MarilinColors.brandBlue;
     final bg = isDone
-        ? Colors.grey.shade100
+        ? context.marilin.fill
         : isAbsent
         ? MarilinColors.destructive.withValues(alpha: 0.12)
         : MarilinColors.brandBlue.withValues(alpha: 0.08);
