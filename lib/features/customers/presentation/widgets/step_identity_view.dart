@@ -16,16 +16,16 @@ class StepIdentityView extends StatelessWidget {
   });
 
   static OutlineInputBorder _border(BuildContext context) => OutlineInputBorder(
-        borderRadius: const BorderRadius.all(Radius.circular(12)),
-        borderSide: BorderSide(color: context.marilin.border),
-      );
+    borderRadius: const BorderRadius.all(Radius.circular(12)),
+    borderSide: BorderSide(color: context.marilin.border),
+  );
   static const _focusBorder = OutlineInputBorder(
     borderRadius: BorderRadius.all(Radius.circular(12)),
     borderSide: BorderSide(color: MarilinColors.brandBlue, width: 2),
   );
   static const _errorBorder = OutlineInputBorder(
     borderRadius: BorderRadius.all(Radius.circular(12)),
-    borderSide: BorderSide(color: Color(0xFFBF1B1B)),
+    borderSide: BorderSide(color: MarilinColors.destructive),
   );
 
   @override

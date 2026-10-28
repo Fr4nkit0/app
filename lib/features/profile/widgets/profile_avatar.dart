@@ -18,8 +18,11 @@ class ProfileAvatar extends StatelessWidget {
       width: size,
       height: size,
       decoration: BoxDecoration(
-        gradient: const LinearGradient(
-          colors: [MarilinColors.brandBlue, Color(0xFF1E88E5)],
+        gradient: LinearGradient(
+          colors: [
+            MarilinColors.brandBlue,
+            Color.lerp(MarilinColors.brandBlue, Colors.white, 0.18)!,
+          ],
           begin: Alignment.topLeft,
           end: Alignment.bottomRight,
         ),

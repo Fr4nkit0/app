@@ -41,9 +41,9 @@ class RouteStopCard extends ConsumerWidget {
 
     // Timeline color coding
     final Color timelineColor = isDone
-        ? const Color(0xFF10B981) // Green
+        ? context.marilin.vivid(MarilinColors.success) // Green
         : isAbsent
-        ? const Color(0xFFEF4444) // Red
+        ? context.marilin.vivid(MarilinColors.destructive) // Red
         : context.marilin.lineStrong; // Gray
 
     final initials = AvatarUtils.getInitials(stop.customer.name);
@@ -89,9 +89,9 @@ class RouteStopCard extends ConsumerWidget {
                     ],
                     border: Border.all(
                       color: isDone
-                          ? const Color(0xFF10B981)
+                          ? context.marilin.vivid(MarilinColors.success)
                           : isAbsent
-                          ? const Color(0xFFEF4444)
+                          ? context.marilin.vivid(MarilinColors.destructive)
                           : MarilinColors.brandBlue,
                       width: 2.5,
                     ),
@@ -101,7 +101,7 @@ class RouteStopCard extends ConsumerWidget {
                       ? const Icon(
                           Icons.check_rounded,
                           size: 16,
-                          color: Color(0xFF10B981),
+                          color: MarilinColors.success,
                         )
                       : isRescheduled
                       ? const Icon(
@@ -113,7 +113,7 @@ class RouteStopCard extends ConsumerWidget {
                       ? const Icon(
                           Icons.close_rounded,
                           size: 16,
-                          color: Color(0xFFEF4444),
+                          color: MarilinColors.destructive,
                         )
                       : Container(
                           width: 8,
@@ -142,9 +142,13 @@ class RouteStopCard extends ConsumerWidget {
                     ],
                     border: Border.all(
                       color: isDone
-                          ? context.marilin.soft(Color(0xFFE8F5E9))
+                          ? context.marilin.soft(
+                              MarilinColors.success.withValues(alpha: 0.12),
+                            )
                           : isAbsent
-                          ? context.marilin.soft(Color(0xFFFFEBEE))
+                          ? context.marilin.soft(
+                              MarilinColors.destructive.withValues(alpha: 0.12),
+                            )
                           : context.marilin.fill,
                       width: 1.5,
                     ),
@@ -295,19 +299,26 @@ class RouteStopCard extends ConsumerWidget {
                                             borderRadius: BorderRadius.circular(
                                               8,
                                             ),
-                                            backgroundColor: const Color(
-                                              0xFFEF4444,
-                                            ).withValues(alpha: 0.08),
-                                            borderColor: const Color(
-                                              0xFFFFCDD2,
+                                            backgroundColor: context.marilin
+                                                .vivid(
+                                                  MarilinColors.destructive,
+                                                )
+                                                .withValues(alpha: 0.08),
+                                            borderColor: context.marilin.soft(
+                                              MarilinColors.destructive
+                                                  .withValues(alpha: 0.3),
                                             ),
                                             borderWidth: 1.0,
-                                            textColor: const Color(0xFFEF4444),
+                                            textColor: context.marilin.vivid(
+                                              MarilinColors.destructive,
+                                            ),
                                             fontSize: 13,
                                             fontWeight: FontWeight.w700,
                                             icon: Icons.warning_amber_rounded,
                                             iconSize: 11,
-                                            iconColor: const Color(0xFFEF4444),
+                                            iconColor: context.marilin.vivid(
+                                              MarilinColors.destructive,
+                                            ),
                                             prefixText: 'Deuda: ',
                                           ),
                                         if (stop
@@ -326,19 +337,23 @@ class RouteStopCard extends ConsumerWidget {
                                             borderRadius: BorderRadius.circular(
                                               8,
                                             ),
-                                            backgroundColor: const Color(
-                                              0xFF0369A1,
-                                            ).withValues(alpha: 0.05),
+                                            backgroundColor: context.marilin
+                                                .vivid(MarilinColors.brandBlue)
+                                                .withValues(alpha: 0.05),
                                             borderColor: const Color(
                                               0xFFBAE6FD,
                                             ),
                                             borderWidth: 1.0,
-                                            textColor: const Color(0xFF0369A1),
+                                            textColor: context.marilin.vivid(
+                                              MarilinColors.brandBlue,
+                                            ),
                                             fontSize: 12,
                                             fontWeight: FontWeight.w700,
                                             icon: Icons.water_drop_outlined,
                                             iconSize: 11,
-                                            iconColor: const Color(0xFF0369A1),
+                                            iconColor: context.marilin.vivid(
+                                              MarilinColors.brandBlue,
+                                            ),
                                             showIcon: true,
                                           ),
                                       ],
@@ -381,7 +396,7 @@ class RouteStopCard extends ConsumerWidget {
                                               height: 44,
                                               alignment: Alignment.center,
                                               decoration: const BoxDecoration(
-                                                color: Color(0xFF25D366),
+                                                color: MarilinColors.success,
                                                 shape: BoxShape.circle,
                                               ),
                                               child: FaIcon(
@@ -446,7 +461,7 @@ class RouteStopCard extends ConsumerWidget {
     final bg = isDone
         ? Colors.grey.shade100
         : isAbsent
-        ? Color(0xFFFFEBEE)
+        ? MarilinColors.destructive.withValues(alpha: 0.12)
         : MarilinColors.brandBlue.withValues(alpha: 0.08);
 
     return Container(

@@ -249,8 +249,14 @@ class _CustomerProfileScreenState extends ConsumerState<CustomerProfileScreen> {
                       Expanded(
                         child: Material(
                           color: balance > 0
-                              ? context.marilin.soft(Color(0xFFFEF2F2))
-                              : context.marilin.soft(Color(0xFFECFDF5)),
+                              ? context.marilin.soft(
+                                  MarilinColors.destructive.withValues(
+                                    alpha: 0.12,
+                                  ),
+                                )
+                              : context.marilin.soft(
+                                  MarilinColors.success.withValues(alpha: 0.12),
+                                ),
                           borderRadius: BorderRadius.circular(16),
                           child: InkWell(
                             borderRadius: BorderRadius.circular(16),
@@ -268,8 +274,16 @@ class _CustomerProfileScreenState extends ConsumerState<CustomerProfileScreen> {
                                 borderRadius: BorderRadius.circular(16),
                                 border: Border.all(
                                   color: balance > 0
-                                      ? context.marilin.soft(Color(0xFFFEE2E2))
-                                      : const Color(0xFFA7F3D0),
+                                      ? context.marilin.soft(
+                                          MarilinColors.destructive.withValues(
+                                            alpha: 0.12,
+                                          ),
+                                        )
+                                      : context.marilin.soft(
+                                          MarilinColors.success.withValues(
+                                            alpha: 0.3,
+                                          ),
+                                        ),
                                 ),
                               ),
                               child: Column(
@@ -298,8 +312,12 @@ class _CustomerProfileScreenState extends ConsumerState<CustomerProfileScreen> {
                                                         .monetization_on_outlined),
                                         size: 16,
                                         color: balance > 0
-                                            ? const Color(0xFFEF4444)
-                                            : const Color(0xFF10B981),
+                                            ? context.marilin.vivid(
+                                                MarilinColors.destructive,
+                                              )
+                                            : context.marilin.vivid(
+                                                MarilinColors.success,
+                                              ),
                                       ),
                                     ],
                                   ),
@@ -314,8 +332,12 @@ class _CustomerProfileScreenState extends ConsumerState<CustomerProfileScreen> {
                                       fontSize: 22,
                                       fontWeight: FontWeight.w800,
                                       color: balance > 0
-                                          ? const Color(0xFFEF4444)
-                                          : const Color(0xFF10B981),
+                                          ? context.marilin.vivid(
+                                              MarilinColors.destructive,
+                                            )
+                                          : context.marilin.vivid(
+                                              MarilinColors.success,
+                                            ),
                                     ),
                                   ),
                                   const SizedBox(height: 4),
@@ -981,7 +1003,9 @@ class _ProfileContainerReturnDialogState
                                 }
                               : null,
                           icon: const Icon(Icons.remove_circle_outline),
-                          color: const Color(0xFFEF4444),
+                          color: context.marilin.vivid(
+                            MarilinColors.destructive,
+                          ),
                         ),
                         SizedBox(
                           width: 32,
@@ -1048,7 +1072,7 @@ class _ProfileContainerReturnDialogState
                 context,
                 message: 'Retorno de envases registrado',
                 icon: Icons.check_circle_rounded,
-                color: const Color(0xFF10B981),
+                color: context.marilin.vivid(MarilinColors.success),
               );
             }
           },

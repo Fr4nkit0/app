@@ -1,3 +1,4 @@
+import 'package:app/core/theme/marilin_tokens.dart';
 import 'package:app/core/utils/money_formatter.dart';
 import 'package:flutter/material.dart';
 
@@ -9,9 +10,9 @@ class DebtChip extends StatelessWidget {
     this.padding = const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
     this.borderRadius,
     this.backgroundColor,
-    this.borderColor = const Color(0xFFBF1B1B),
+    this.borderColor = MarilinColors.destructive,
     this.borderWidth = 1.5,
-    this.textColor = const Color(0xFFBF1B1B),
+    this.textColor = MarilinColors.destructive,
     this.fontSize = 12,
     this.fontWeight = FontWeight.w600,
     this.icon,

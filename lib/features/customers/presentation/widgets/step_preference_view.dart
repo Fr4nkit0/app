@@ -110,9 +110,15 @@ class _EmptyState extends StatelessWidget {
       child: Container(
         padding: const EdgeInsets.all(24),
         decoration: BoxDecoration(
-          color: context.marilin.soft(Color(0xFFEFF6FF)),
+          color: context.marilin.soft(
+            MarilinColors.brandBlue.withValues(alpha: 0.12),
+          ),
           borderRadius: BorderRadius.circular(14),
-          border: Border.all(color: context.marilin.soft(Color(0xFFBFDBFE))),
+          border: Border.all(
+            color: context.marilin.soft(
+              MarilinColors.brandBlue.withValues(alpha: 0.3),
+            ),
+          ),
         ),
         child: Column(
           children: [
@@ -245,12 +251,14 @@ class _PreferenceSummaryCard extends StatelessWidget {
                   width: 48,
                   height: 48,
                   decoration: BoxDecoration(
-                    color: context.marilin.soft(Color(0xFFFFF0F0)),
+                    color: context.marilin.soft(
+                      MarilinColors.destructive.withValues(alpha: 0.12),
+                    ),
                     borderRadius: BorderRadius.circular(8),
                   ),
                   child: const Icon(
                     Icons.delete_outline_rounded,
-                    color: Color(0xFFBF1B1B),
+                    color: MarilinColors.destructive,
                     size: 22,
                   ),
                 ),
@@ -463,14 +471,20 @@ class _PreferenceDialogState extends State<_PreferenceDialog> {
                 width: double.infinity,
                 padding: const EdgeInsets.all(10),
                 decoration: BoxDecoration(
-                  color: context.marilin.soft(Color(0xFFFEF2F2)),
+                  color: context.marilin.soft(
+                    MarilinColors.destructive.withValues(alpha: 0.12),
+                  ),
                   borderRadius: BorderRadius.circular(8),
-                  border: Border.all(color: const Color(0xFFFCA5A5)),
+                  border: Border.all(
+                    color: context.marilin.soft(
+                      MarilinColors.destructive.withValues(alpha: 0.3),
+                    ),
+                  ),
                 ),
                 child: Text(
                   _errorMessage!,
                   style: const TextStyle(
-                    color: Color(0xFFB91C1C),
+                    color: MarilinColors.destructive,
                     fontWeight: FontWeight.w600,
                     fontSize: 13,
                   ),

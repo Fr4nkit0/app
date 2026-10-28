@@ -167,7 +167,7 @@ class _QuantityStepper extends StatelessWidget {
           icon: Icons.remove_rounded,
           onTap: onDecrement,
           active: quantity > 0,
-          primary: const Color(0xFFBF1B1B),
+          primary: context.marilin.vivid(MarilinColors.destructive),
           cs: cs,
         ),
         InkWell(

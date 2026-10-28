@@ -99,7 +99,7 @@ class _DebtPaymentDialogState extends State<DebtPaymentDialog> {
             const Icon(
               Icons.warning_amber_rounded,
               size: 16,
-              color: Color(0xFFD32F2F),
+              color: MarilinColors.destructive,
             ),
             const SizedBox(width: 6),
             const Text(
@@ -107,7 +107,7 @@ class _DebtPaymentDialogState extends State<DebtPaymentDialog> {
               style: TextStyle(
                 fontWeight: FontWeight.w700,
                 fontSize: 13,
-                color: Color(0xFFD32F2F),
+                color: MarilinColors.destructive,
               ),
             ),
           ],
@@ -122,7 +122,9 @@ class _DebtPaymentDialogState extends State<DebtPaymentDialog> {
           Icon(
             isCovered ? Icons.check_circle_outline : Icons.info_outline,
             size: 16,
-            color: isCovered ? primary : const Color(0xFFE65100),
+            color: isCovered
+                ? primary
+                : context.marilin.vivid(MarilinColors.warning),
           ),
           const SizedBox(width: 6),
           Text(
@@ -130,7 +132,9 @@ class _DebtPaymentDialogState extends State<DebtPaymentDialog> {
             style: TextStyle(
               fontWeight: FontWeight.w700,
               fontSize: 13,
-              color: isCovered ? primary : const Color(0xFFE65100),
+              color: isCovered
+                  ? primary
+                  : context.marilin.vivid(MarilinColors.warning),
             ),
           ),
         ],

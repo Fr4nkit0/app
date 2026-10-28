@@ -113,7 +113,7 @@ class VisitCustomerCard extends StatelessWidget {
                 Container(
                   padding: const EdgeInsets.all(6),
                   decoration: const BoxDecoration(
-                    color: Color(0xFF25D366),
+                    color: MarilinColors.success,
                     shape: BoxShape.circle,
                   ),
                   child: const FaIcon(

@@ -29,29 +29,29 @@ class StepAddressView extends StatelessWidget {
   });
 
   static OutlineInputBorder _border(BuildContext context) => OutlineInputBorder(
-        borderRadius: const BorderRadius.all(Radius.circular(12)),
-        borderSide: BorderSide(color: context.marilin.border),
-      );
+    borderRadius: const BorderRadius.all(Radius.circular(12)),
+    borderSide: BorderSide(color: context.marilin.border),
+  );
   static const _focusBorder = OutlineInputBorder(
     borderRadius: BorderRadius.all(Radius.circular(12)),
     borderSide: BorderSide(color: MarilinColors.brandBlue, width: 2),
   );
   static const _errorBorder = OutlineInputBorder(
     borderRadius: BorderRadius.all(Radius.circular(12)),
-    borderSide: BorderSide(color: Color(0xFFBF1B1B)),
+    borderSide: BorderSide(color: MarilinColors.destructive),
   );
 
   /// The form's fields, in the current theme's colors.
   static InputDecoration _decoration(BuildContext context) => InputDecoration(
-        filled: true,
-        fillColor: context.marilin.surface,
-        contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 16),
-        border: _border(context),
-        enabledBorder: _border(context),
-        focusedBorder: _focusBorder,
-        errorBorder: _errorBorder,
-        focusedErrorBorder: _errorBorder,
-      );
+    filled: true,
+    fillColor: context.marilin.surface,
+    contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 16),
+    border: _border(context),
+    enabledBorder: _border(context),
+    focusedBorder: _focusBorder,
+    errorBorder: _errorBorder,
+    focusedErrorBorder: _errorBorder,
+  );
 
   @override
   Widget build(BuildContext context) {
@@ -90,7 +90,8 @@ class StepAddressView extends StatelessWidget {
           FormField<String>(
             key: ValueKey(neighborhood),
             initialValue: neighborhood.isEmpty ? null : neighborhood,
-            validator: (v) => (v == null || v.isEmpty) ? 'El barrio es requerido' : null,
+            validator: (v) =>
+                (v == null || v.isEmpty) ? 'El barrio es requerido' : null,
             autovalidateMode: AutovalidateMode.onUserInteraction,
             builder: (FormFieldState<String> fieldState) {
               return GestureDetector(
@@ -99,7 +100,9 @@ class StepAddressView extends StatelessWidget {
                     context: context,
                     isScrollControlled: true,
                     shape: const RoundedRectangleBorder(
-                      borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
+                      borderRadius: BorderRadius.vertical(
+                        top: Radius.circular(20),
+                      ),
                     ),
                     builder: (context) => NeighborhoodSearchBottomSheet(
                       onSelected: (val) {
@@ -118,10 +121,14 @@ class StepAddressView extends StatelessWidget {
                     errorText: fieldState.errorText,
                   ),
                   child: Text(
-                    neighborhood.isEmpty ? 'Seleccionar barrio...' : neighborhood,
+                    neighborhood.isEmpty
+                        ? 'Seleccionar barrio...'
+                        : neighborhood,
                     style: TextStyle(
                       fontSize: 16,
-                      color: neighborhood.isEmpty ? context.marilin.inkHint : Colors.black,
+                      color: neighborhood.isEmpty
+                          ? context.marilin.inkHint
+                          : Colors.black,
                     ),
                   ),
                 ),
@@ -135,10 +142,9 @@ class StepAddressView extends StatelessWidget {
                 child: TextFormField(
                   initialValue: floor,
                   onChanged: onFloorChanged,
-                  decoration: _decoration(context).copyWith(
-                    labelText: 'Piso',
-                    hintText: 'Ej. 3',
-                  ),
+                  decoration: _decoration(
+                    context,
+                  ).copyWith(labelText: 'Piso', hintText: 'Ej. 3'),
                 ),
               ),
               const SizedBox(width: 12),

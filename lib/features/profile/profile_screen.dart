@@ -235,7 +235,7 @@ class _SignOutBlock extends StatelessWidget {
           Container(
             padding: const EdgeInsets.all(12),
             decoration: BoxDecoration(
-              color: tokens.soft(const Color(0xFFFFEDD5)),
+              color: tokens.soft(MarilinColors.accent.withValues(alpha: 0.12)),
               borderRadius: BorderRadius.circular(12),
             ),
             child: Row(

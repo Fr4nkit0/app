@@ -181,19 +181,25 @@ class CustomerListTile extends ConsumerWidget {
                                   vertical: 4,
                                 ),
                                 borderRadius: BorderRadius.circular(8),
-                                backgroundColor: const Color(
-                                  0xFFEF4444,
-                                ).withValues(alpha: 0.08),
+                                backgroundColor: context.marilin
+                                    .vivid(MarilinColors.destructive)
+                                    .withValues(alpha: 0.08),
                                 borderColor: context.marilin.soft(
-                                  Color(0xFFFFCDD2),
+                                  MarilinColors.destructive.withValues(
+                                    alpha: 0.3,
+                                  ),
                                 ),
                                 borderWidth: 1.0,
-                                textColor: const Color(0xFFEF4444),
+                                textColor: context.marilin.vivid(
+                                  MarilinColors.destructive,
+                                ),
                                 fontSize: 13,
                                 fontWeight: FontWeight.w700,
                                 icon: Icons.warning_amber_rounded,
                                 iconSize: 11,
-                                iconColor: const Color(0xFFEF4444),
+                                iconColor: context.marilin.vivid(
+                                  MarilinColors.destructive,
+                                ),
                                 prefixText: 'Deuda: ',
                               ),
                             ...customer.productLabels
@@ -237,7 +243,7 @@ class CustomerListTile extends ConsumerWidget {
                                     height: 44,
                                     alignment: Alignment.center,
                                     decoration: const BoxDecoration(
-                                      color: Color(0xFF25D366),
+                                      color: MarilinColors.success,
                                       shape: BoxShape.circle,
                                     ),
                                     child: FaIcon(

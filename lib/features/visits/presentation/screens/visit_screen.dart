@@ -626,10 +626,14 @@ class _VisitScreenState extends ConsumerState<VisitScreen> {
 
   Widget _buildDoneStateBanner(StopStatus status) {
     final isDone = status == StopStatus.done;
-    final color = isDone ? const Color(0xFF10B981) : const Color(0xFFEF4444);
+    final color = isDone
+        ? context.marilin.vivid(MarilinColors.success)
+        : context.marilin.vivid(MarilinColors.destructive);
     final bg = isDone
-        ? context.marilin.soft(Color(0xFFE8F5E9))
-        : context.marilin.soft(Color(0xFFFFEBEE));
+        ? context.marilin.soft(MarilinColors.success.withValues(alpha: 0.12))
+        : context.marilin.soft(
+            MarilinColors.destructive.withValues(alpha: 0.12),
+          );
 
     return Container(
       padding: const EdgeInsets.all(16),
@@ -678,23 +682,31 @@ class _VisitScreenState extends ConsumerState<VisitScreen> {
     switch (sale.paymentMethod) {
       case PaymentMethod.cash:
         methodText = 'EFECTIVO';
-        badgeColor = const Color(0xFF10B981);
-        badgeBg = context.marilin.soft(Color(0xFFE8F5E9));
+        badgeColor = context.marilin.vivid(MarilinColors.success);
+        badgeBg = context.marilin.soft(
+          MarilinColors.success.withValues(alpha: 0.12),
+        );
         break;
       case PaymentMethod.transfer:
         methodText = 'TRANSFERENCIA';
-        badgeColor = const Color(0xFF8B5CF6);
-        badgeBg = const Color(0xFFF3E8FF);
+        badgeColor = context.marilin.inkSecondary;
+        badgeBg = context.marilin.soft(
+          MarilinColors.brandNavy.withValues(alpha: 0.08),
+        );
         break;
       case PaymentMethod.credit:
         methodText = 'A CRÉDITO';
-        badgeColor = const Color(0xFFF97316);
-        badgeBg = context.marilin.soft(Color(0xFFFFF7ED));
+        badgeColor = context.marilin.vivid(MarilinColors.accent);
+        badgeBg = context.marilin.soft(
+          MarilinColors.accent.withValues(alpha: 0.12),
+        );
         break;
       case PaymentMethod.mixed:
         methodText = 'MIXTO';
-        badgeColor = const Color(0xFF2563EB);
-        badgeBg = context.marilin.soft(Color(0xFFEFF6FF));
+        badgeColor = context.marilin.vivid(MarilinColors.brandBlue);
+        badgeBg = context.marilin.soft(
+          MarilinColors.brandBlue.withValues(alpha: 0.12),
+        );
         break;
       case PaymentMethod.route:
         methodText = 'RUTA';
@@ -712,12 +724,14 @@ class _VisitScreenState extends ConsumerState<VisitScreen> {
             Container(
               padding: const EdgeInsets.all(4),
               decoration: BoxDecoration(
-                color: context.marilin.soft(Color(0xFFEFF6FF)),
+                color: context.marilin.soft(
+                  MarilinColors.brandBlue.withValues(alpha: 0.12),
+                ),
                 shape: BoxShape.circle,
               ),
               child: const Icon(
                 Icons.check,
-                color: Color(0xFF2563EB),
+                color: MarilinColors.brandBlue,
                 size: 14,
               ),
             ),
@@ -847,23 +861,27 @@ class _VisitScreenState extends ConsumerState<VisitScreen> {
     return Container(
       padding: const EdgeInsets.all(12),
       decoration: BoxDecoration(
-        color: context.marilin.soft(Color(0xFFEFF6FF)),
+        color: context.marilin.soft(
+          MarilinColors.brandBlue.withValues(alpha: 0.12),
+        ),
         borderRadius: BorderRadius.circular(10),
         border: Border.all(
-          color: context.marilin.soft(Color(0xFFBFDBFE)),
+          color: context.marilin.soft(
+            MarilinColors.brandBlue.withValues(alpha: 0.3),
+          ),
           width: 1,
         ),
       ),
       child: const Row(
         children: [
-          Icon(Icons.info_outline, color: Color(0xFF2563EB), size: 16),
+          Icon(Icons.info_outline, color: MarilinColors.brandBlue, size: 16),
           SizedBox(width: 8),
           Expanded(
             child: Text(
               'La visita se marcará como completada al finalizar.',
               style: TextStyle(
                 fontSize: 12,
-                color: Color(0xFF1E40AF),
+                color: MarilinColors.brandBlue,
                 fontWeight: FontWeight.w600,
               ),
             ),

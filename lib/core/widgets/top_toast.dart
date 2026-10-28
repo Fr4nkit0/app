@@ -39,7 +39,7 @@ class TopToast {
       context,
       message: message,
       icon: Icons.check_circle_rounded,
-      color: const Color(0xFF10B981), // Beautiful emerald green
+      color: MarilinColors.success, // Beautiful emerald green
       duration: duration,
     );
   }
@@ -53,7 +53,7 @@ class TopToast {
       context,
       message: message,
       icon: Icons.error_outline_rounded,
-      color: const Color(0xFFEF4444), // Vibrant red
+      color: MarilinColors.destructive, // Vibrant red
       duration: duration,
     );
   }
@@ -67,7 +67,7 @@ class TopToast {
       context,
       message: message,
       icon: Icons.warning_amber_rounded,
-      color: const Color(0xFFF59E0B), // Vibrant amber/orange
+      color: MarilinColors.warning, // Vibrant amber/orange
       duration: duration,
     );
   }

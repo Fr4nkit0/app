@@ -112,8 +112,8 @@ class AgreementCard extends StatelessWidget {
   }
 
   static (String, Color) _chip(AgreementStatus status) => switch (status) {
-    AgreementStatus.inForce => ('Vigente', const Color(0xFF15803D)),
-    AgreementStatus.ended => ('Finalizado', Color(0xFF64748B)),
+    AgreementStatus.inForce => ('Vigente', MarilinColors.success),
+    AgreementStatus.ended => ('Finalizado', MarilinColors.textMuted),
     AgreementStatus.future => ('Futuro', MarilinColors.brandBlue),
   };
 

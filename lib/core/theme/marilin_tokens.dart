@@ -11,6 +11,7 @@ abstract final class MarilinColors {
   static const Color success = Color(0xFF10B981);
   static const Color destructive = Color(0xFFDC2626);
   static const Color accent = Color(0xFFEA580C);
+  static const Color warning = Color(0xFFF59E0B);
 }
 
 /// Semantic design tokens for Marilin mobile (Premium SaaS / SURFACE.md).
@@ -27,6 +28,7 @@ class MarilinTokens extends ThemeExtension<MarilinTokens> {
     required this.success,
     required this.destructive,
     required this.accent,
+    required this.warning,
     this.isDark = false,
   });
 
@@ -39,6 +41,7 @@ class MarilinTokens extends ThemeExtension<MarilinTokens> {
   final Color success;
   final Color destructive;
   final Color accent;
+  final Color warning;
 
   /// Whether these are the dark-theme tokens; picks the neutral roles below.
   final bool isDark;
@@ -46,12 +49,15 @@ class MarilinTokens extends ThemeExtension<MarilinTokens> {
   /// Main text and icons (the navy of the light theme).
   Color get ink => brandNavy;
 
-  Color get inkSecondary => isDark ? const Color(0xFFC9CDD4) : const Color(0xFF334155);
+  Color get inkSecondary =>
+      isDark ? const Color(0xFFC9CDD4) : const Color(0xFF334155);
 
   /// Hints and placeholders.
-  Color get inkHint => isDark ? const Color(0xFF5E6570) : const Color(0xFF9CA3AF);
+  Color get inkHint =>
+      isDark ? const Color(0xFF5E6570) : const Color(0xFF9CA3AF);
 
-  Color get lineStrong => isDark ? const Color(0xFF353B45) : const Color(0xFFD1D5DB);
+  Color get lineStrong =>
+      isDark ? const Color(0xFF353B45) : const Color(0xFFD1D5DB);
 
   /// Subtle fills behind chips, rows and inputs.
   Color get fill => isDark ? const Color(0xFF1D2127) : const Color(0xFFF1F5F9);
@@ -86,6 +92,7 @@ class MarilinTokens extends ThemeExtension<MarilinTokens> {
     success: MarilinColors.success,
     destructive: MarilinColors.destructive,
     accent: MarilinColors.accent,
+    warning: MarilinColors.warning,
   );
 
   /// Near-black neutral dark with solid cards one step lighter than the
@@ -100,6 +107,7 @@ class MarilinTokens extends ThemeExtension<MarilinTokens> {
     success: Color(0xFF34D399),
     destructive: Color(0xFFF87171),
     accent: Color(0xFFFB923C),
+    warning: Color(0xFFFBBF24),
     isDark: true,
   );
 
@@ -108,17 +116,14 @@ class MarilinTokens extends ThemeExtension<MarilinTokens> {
   }
 
   TextStyle get titleLarge => TextStyle(
-        fontSize: 22,
-        fontWeight: FontWeight.w900,
-        color: brandNavy,
-        letterSpacing: 0.3,
-      );
+    fontSize: 22,
+    fontWeight: FontWeight.w900,
+    color: brandNavy,
+    letterSpacing: 0.3,
+  );
 
-  TextStyle get subtitle => TextStyle(
-        fontSize: 13,
-        fontWeight: FontWeight.w600,
-        color: textMuted,
-      );
+  TextStyle get subtitle =>
+      TextStyle(fontSize: 13, fontWeight: FontWeight.w600, color: textMuted);
 
   @override
   MarilinTokens copyWith({
@@ -131,6 +136,7 @@ class MarilinTokens extends ThemeExtension<MarilinTokens> {
     Color? success,
     Color? destructive,
     Color? accent,
+    Color? warning,
   }) {
     return MarilinTokens(
       scaffoldMuted: scaffoldMuted ?? this.scaffoldMuted,
@@ -142,6 +148,7 @@ class MarilinTokens extends ThemeExtension<MarilinTokens> {
       success: success ?? this.success,
       destructive: destructive ?? this.destructive,
       accent: accent ?? this.accent,
+      warning: warning ?? this.warning,
       isDark: isDark,
     );
   }
@@ -159,6 +166,7 @@ class MarilinTokens extends ThemeExtension<MarilinTokens> {
       success: Color.lerp(success, other.success, t)!,
       destructive: Color.lerp(destructive, other.destructive, t)!,
       accent: Color.lerp(accent, other.accent, t)!,
+      warning: Color.lerp(warning, other.warning, t)!,
       isDark: t < 0.5 ? isDark : other.isDark,
     );
   }
