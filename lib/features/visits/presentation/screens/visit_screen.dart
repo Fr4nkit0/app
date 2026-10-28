@@ -66,6 +66,7 @@ class _VisitScreenState extends ConsumerState<VisitScreen> {
   // Reschedules happen later the same day (ADR 0002).
   TimeOfDay? _rescheduleTime;
   RescheduleTimeError? _rescheduleError;
+  bool _isClosing = false;
   final TextEditingController _noteController = TextEditingController();
 
   bool get _isRescheduleSelected =>
@@ -257,6 +258,7 @@ class _VisitScreenState extends ConsumerState<VisitScreen> {
                   hasSales: hasSales,
                   isSaleSelected: _isSaleSelected,
                   hasSoloResult: _selectedOutcome != null,
+                  isBusy: _isClosing,
                   onBackToRoute: () => Navigator.of(context).pop(),
                   onPrimaryPressed: () => _onVisitFooterPrimary(
                     stop,
@@ -411,6 +413,8 @@ class _VisitScreenState extends ConsumerState<VisitScreen> {
       return;
     }
 
+    if (_isClosing) return;
+
     final outcome = _selectedOutcome;
     final triggersReschedule =
         !hasSales && (outcome?.triggersReschedule ?? false);
@@ -428,39 +432,33 @@ class _VisitScreenState extends ConsumerState<VisitScreen> {
       }
     }
 
+    final customerName = stop.customer.name;
     late final String toastMessage;
     late final IconData toastIcon;
     late final Color toastColor;
 
     if (hasSales) {
-      toastMessage = 'Visita finalizada - Venta registrada';
+      toastMessage = 'Venta registrada · $customerName';
       toastIcon = Icons.check_circle_rounded;
       toastColor = MarilinColors.success;
     } else if (triggersReschedule) {
-      toastMessage = 'Visita finalizada - ${outcome!.name}';
+      final at = rescheduleAt!;
+      final time =
+          '${at.hour.toString().padLeft(2, '0')}:'
+          '${at.minute.toString().padLeft(2, '0')}';
+      toastMessage = 'Reprogramada $time · $customerName';
       toastIcon = Icons.calendar_today_outlined;
       toastColor = MarilinColors.brandBlue;
     } else {
-      toastMessage = 'Visita finalizada - ${outcome?.name ?? 'Sin resultado'}';
+      toastMessage = 'Visita cerrada · $customerName';
       toastIcon = Icons.check_circle_rounded;
       toastColor = MarilinColors.success;
     }
 
-    if (!mounted) return;
-    Navigator.of(context).pop();
-
-    WidgetsBinding.instance.addPostFrameCallback((_) {
-      TopToast.show(
-        context,
-        message: toastMessage,
-        icon: toastIcon,
-        color: toastColor,
-      );
-    });
-
     final visitType = _isSaleSelected ? VisitType.sale : VisitType.visit;
 
-    await ref
+    setState(() => _isClosing = true);
+    final result = await ref
         .read(completeVisitUseCaseProvider)
         .execute(
           stopId: stop.id,
@@ -473,6 +471,37 @@ class _VisitScreenState extends ConsumerState<VisitScreen> {
               : null,
           rescheduleAt: rescheduleAt,
         );
+    if (!mounted) return;
+
+    switch (result) {
+      case Success():
+        // The toast outlives this screen, so it uses the navigator's context.
+        final navigator = Navigator.of(context);
+        navigator.pop();
+        WidgetsBinding.instance.addPostFrameCallback((_) {
+          if (!navigator.mounted) return;
+          TopToast.show(
+            navigator.context,
+            message: toastMessage,
+            icon: toastIcon,
+            color: toastColor,
+            duration: const Duration(seconds: 4),
+          );
+        });
+      case Error(:final error):
+        setState(() {
+          _isClosing = false;
+          if (error is RescheduleTimeException) _rescheduleError = error.reason;
+        });
+        if (error is! RescheduleTimeException) {
+          TopToast.show(
+            context,
+            message: 'No se guardó la visita. Reintentá.',
+            icon: Icons.error_outline,
+            color: MarilinColors.destructive,
+          );
+        }
+    }
   }
 
   /// The chosen reschedule time on [now]'s day, or null when none is chosen.
