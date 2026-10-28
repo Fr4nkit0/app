@@ -466,13 +466,22 @@ class _SectionLabel extends StatelessWidget {
 
 // ─── Footer with "Confirmar" button ──────────────────────────────────────────
 
-class _Footer extends ConsumerWidget {
+class _Footer extends ConsumerStatefulWidget {
   const _Footer({required this.draft});
 
   final SaleDraftState draft;
 
   @override
-  Widget build(BuildContext context, WidgetRef ref) {
+  ConsumerState<_Footer> createState() => _FooterState();
+}
+
+class _FooterState extends ConsumerState<_Footer> {
+  bool _busy = false;
+
+  SaleDraftState get draft => widget.draft;
+
+  @override
+  Widget build(BuildContext context) {
     final tokens = Theme.of(context).extension<SalesTokens>()!;
     return Container(
       decoration: BoxDecoration(
@@ -492,7 +501,7 @@ class _Footer extends ConsumerWidget {
           Expanded(
             flex: 4,
             child: OutlinedButton(
-              onPressed: () => Navigator.of(context).pop(),
+              onPressed: _busy ? null : () => Navigator.of(context).pop(),
               style: OutlinedButton.styleFrom(
                 foregroundColor: Theme.of(context).colorScheme.primary,
                 side: BorderSide(
@@ -521,7 +530,7 @@ class _Footer extends ConsumerWidget {
                 );
 
                 return FilledButton(
-                  onPressed: draft.canConfirm
+                  onPressed: draft.canConfirm && !_busy
                       ? () async {
                           final hasContainers = draft.items.any(
                             (item) => item.product.containerType != null,
@@ -537,7 +546,22 @@ class _Footer extends ConsumerWidget {
                           );
 
                           Future<void> handleCommit() async {
-                            await ref.read(saleDraftProvider.notifier).commit();
+                            if (_busy) return;
+                            setState(() => _busy = true);
+                            try {
+                              await ref
+                                  .read(saleDraftProvider.notifier)
+                                  .commit();
+                            } catch (_) {
+                              if (context.mounted) {
+                                setState(() => _busy = false);
+                                TopToast.showError(
+                                  context,
+                                  'No se guardó la venta. Reintentá.',
+                                );
+                              }
+                              return;
+                            }
                             if (visitId != null) {
                               ref.invalidate(visitMovementsProvider(visitId));
                             }
@@ -606,10 +630,22 @@ class _Footer extends ConsumerWidget {
                       borderRadius: BorderRadius.circular(12),
                     ),
                   ),
-                  child: const Text(
-                    'Confirmar',
-                    style: TextStyle(fontWeight: FontWeight.w800, fontSize: 15),
-                  ),
+                  child: _busy
+                      ? const SizedBox(
+                          width: 20,
+                          height: 20,
+                          child: CircularProgressIndicator(
+                            strokeWidth: 2.5,
+                            color: Colors.white,
+                          ),
+                        )
+                      : const Text(
+                          'Confirmar',
+                          style: TextStyle(
+                            fontWeight: FontWeight.w800,
+                            fontSize: 15,
+                          ),
+                        ),
                 );
               },
             ),

@@ -1,4 +1,5 @@
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:app/core/utils/resource.dart';
 import 'package:uuid/uuid.dart';
 import 'package:app/features/customers/domain/models/customer.dart';
 import 'package:app/features/sales/domain/models/payment_method.dart';
@@ -112,9 +113,12 @@ class SaleDraft extends Notifier<SaleDraftState> {
       draft.visitId,
     );
 
-    await ref
+    final result = await ref
         .read(registerSaleUseCaseProvider)
         .execute(sale, containerMovements: movements);
+
+    // A failed sale keeps the draft so the driver can retry.
+    if (result is Error<void>) throw result.error;
 
     // The customer balance moves with the sale and its settling payments
     // (see CustomerBalanceStore); nothing to update here.
