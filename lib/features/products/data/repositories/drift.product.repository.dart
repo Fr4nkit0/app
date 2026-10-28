@@ -45,7 +45,7 @@ class DriftProductRepository implements ProductRepository {
       for (final a in (await agreements.get()).where(inForce)) {
         final current = byProduct[a.productId];
         // Two overlapping agreements: the most recent one wins.
-        if (current == null || a.validFrom.compareTo(current.validFrom) > 0) {
+        if (current == null || _wins(a, current)) {
           byProduct[a.productId] = a;
         }
       }
@@ -65,6 +65,21 @@ class DriftProductRepository implements ProductRepository {
             p,
       ];
     });
+  }
+
+  /// The server's rule: latest valid_from, then highest server id. An
+  /// agreement not synced yet counts as the highest, since the server will
+  /// give it the next id.
+  static bool _wins(
+    CustomerAgreementTableData a,
+    CustomerAgreementTableData current,
+  ) {
+    final byDate = a.validFrom
+        .substring(0, 10)
+        .compareTo(current.validFrom.substring(0, 10));
+    if (byDate != 0) return byDate > 0;
+    if (a.serverId == null) return current.serverId != null;
+    return current.serverId != null && a.serverId! > current.serverId!;
   }
 
   static String _dateOnly(DateTime d) =>
