@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:app/core/theme/sales_tokens.dart';
 import 'package:app/features/products/domain/models/product.dart';
+import 'package:app/core/theme/marilin_tokens.dart';
 
 /// Pure presentational widget for a product row with quantity stepper.
 /// Has zero Riverpod dependency — all state and actions come from the parent.
@@ -29,12 +30,12 @@ class ProductQuantityRow extends StatelessWidget {
       duration: const Duration(milliseconds: 200),
       margin: const EdgeInsets.fromLTRB(16, 4, 16, 8),
       decoration: BoxDecoration(
-        color: hasQuantity ? primary.withValues(alpha: 0.05) : Colors.white,
+        color: hasQuantity ? primary.withValues(alpha: 0.05) : context.marilin.surface,
         borderRadius: BorderRadius.circular(16),
         border: Border.all(
           color: hasQuantity
               ? primary.withValues(alpha: 0.4)
-              : Colors.grey.shade200,
+              : context.marilin.border,
           width: hasQuantity ? 1.5 : 1,
         ),
         boxShadow: [
@@ -81,7 +82,7 @@ class ProductQuantityRow extends StatelessWidget {
                       style: TextStyle(
                         fontSize: 15,
                         fontWeight: FontWeight.w800,
-                        color: hasQuantity ? primary : const Color(0xFF0F172A),
+                        color: hasQuantity ? primary : context.marilin.ink,
                       ),
                     ),
                     const SizedBox(height: 3),

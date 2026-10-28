@@ -70,11 +70,11 @@ class _CreateCustomerScreenState extends ConsumerState<CreateCustomerScreen> {
     });
 
     return Scaffold(
-      backgroundColor: Colors.white,
+      backgroundColor: context.marilin.surface,
       appBar: AppBar(
         title: const Text('Nuevo Cliente'),
-        backgroundColor: Colors.white,
-        foregroundColor: const Color(0xFF0D1B3E),
+        backgroundColor: context.marilin.surface,
+        foregroundColor: context.marilin.ink,
       ),
       body: SafeArea(
         child: Column(
@@ -137,7 +137,7 @@ class _CreateCustomerScreenState extends ConsumerState<CreateCustomerScreen> {
             // Footer fijo con sombra
             Container(
               decoration: BoxDecoration(
-                color: Colors.white,
+                color: context.marilin.surface,
                 boxShadow: [
                   BoxShadow(
                     color: Colors.black.withValues(alpha: 0.06),

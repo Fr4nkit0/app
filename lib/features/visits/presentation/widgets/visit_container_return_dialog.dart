@@ -42,9 +42,9 @@ class _StandaloneContainerReturnDialogState
           mainAxisSize: MainAxisSize.min,
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            const Text(
+            Text(
               'Ajustá la cantidad de envases vacíos que devuelve el cliente.',
-              style: TextStyle(color: Colors.grey, fontSize: 14),
+              style: TextStyle(color: context.marilin.textMuted, fontSize: 14),
             ),
             const SizedBox(height: 16),
             ...['BIDON_20L', 'SIFON_2L'].map((type) {

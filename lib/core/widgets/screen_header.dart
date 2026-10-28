@@ -53,7 +53,7 @@ class ScreenHeader extends StatelessWidget {
                         child: Container(
                           padding: const EdgeInsets.all(8),
                           decoration: BoxDecoration(
-                            color: const Color(0xFFF1F5F9),
+                            color: context.marilin.fill,
                             borderRadius: BorderRadius.circular(12),
                             border: Border.all(color: tokens.border, width: 1),
                           ),

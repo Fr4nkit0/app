@@ -75,18 +75,18 @@ class _CustomerProfileScreenState extends ConsumerState<CustomerProfileScreen> {
     List<HistoryEntry> customerHistory,
   ) {
     return Scaffold(
-      backgroundColor: const Color(0xFFF8FAFC),
+      backgroundColor: context.marilin.fill,
       appBar: AppBar(
-        title: const Text(
+        title: Text(
           'Perfil de Cliente',
           style: TextStyle(
             fontWeight: FontWeight.w800,
             fontSize: 18,
-            color: Color(0xFF0D1B3E),
+            color: context.marilin.ink,
           ),
         ),
-        backgroundColor: Colors.white,
-        foregroundColor: const Color(0xFF0D1B3E),
+        backgroundColor: context.marilin.surface,
+        foregroundColor: context.marilin.ink,
         elevation: 0,
         scrolledUnderElevation: 0.5,
       ),
@@ -122,7 +122,7 @@ class _CustomerProfileScreenState extends ConsumerState<CustomerProfileScreen> {
 
   Widget _buildProfileHeader(dynamic customer) {
     return Container(
-      color: Colors.white,
+      color: context.marilin.surface,
       width: double.infinity,
       padding: const EdgeInsets.only(top: 24, bottom: 20),
       child: Column(
@@ -147,10 +147,10 @@ class _CustomerProfileScreenState extends ConsumerState<CustomerProfileScreen> {
           const SizedBox(height: 16),
           Text(
             customer.name,
-            style: const TextStyle(
+            style: TextStyle(
               fontSize: 24,
               fontWeight: FontWeight.w800,
-              color: Color(0xFF0D1B3E),
+              color: context.marilin.ink,
             ),
           ),
           const SizedBox(height: 10),
@@ -167,16 +167,16 @@ class _CustomerProfileScreenState extends ConsumerState<CustomerProfileScreen> {
               child: Row(
                 mainAxisSize: MainAxisSize.min,
                 children: [
-                  const Icon(
+                  Icon(
                     Icons.phone_outlined,
                     size: 16,
-                    color: Color(0xFF0D1B3E),
+                    color: context.marilin.ink,
                   ),
                   const SizedBox(width: 8),
                   Text(
                     customer.phone!,
-                    style: const TextStyle(
-                      color: Color(0xFF0D1B3E),
+                    style: TextStyle(
+                      color: context.marilin.ink,
                       fontWeight: FontWeight.w600,
                       fontSize: 14,
                     ),
@@ -237,7 +237,7 @@ class _CustomerProfileScreenState extends ConsumerState<CustomerProfileScreen> {
                     children: [
                       Expanded(
                         child: Material(
-                          color: balance > 0 ? const Color(0xFFFEF2F2) : const Color(0xFFECFDF5),
+                          color: balance > 0 ? context.marilin.soft(Color(0xFFFEF2F2)) : context.marilin.soft(Color(0xFFECFDF5)),
                           borderRadius: BorderRadius.circular(16),
                           child: InkWell(
                             borderRadius: BorderRadius.circular(16),
@@ -328,7 +328,7 @@ class _CustomerProfileScreenState extends ConsumerState<CustomerProfileScreen> {
                                 borderRadius: BorderRadius.circular(16),
                                 border: Border.all(
                                   color: balance > 0
-                                      ? const Color(0xFFFEE2E2)
+                                      ? context.marilin.soft(Color(0xFFFEE2E2))
                                       : const Color(0xFFA7F3D0),
                                 ),
                               ),
@@ -399,7 +399,7 @@ class _CustomerProfileScreenState extends ConsumerState<CustomerProfileScreen> {
                       const SizedBox(width: 12),
                       Flexible(
                         child: Material(
-                          color: Colors.white,
+                          color: context.marilin.surface,
                           borderRadius: BorderRadius.circular(16),
                           child: InkWell(
                             borderRadius: BorderRadius.circular(16),
@@ -413,12 +413,12 @@ class _CustomerProfileScreenState extends ConsumerState<CustomerProfileScreen> {
                               padding: const EdgeInsets.all(14),
                               decoration: BoxDecoration(
                                 borderRadius: BorderRadius.circular(16),
-                                border: Border.all(color: const Color(0xFFE2E8F0)),
+                                border: Border.all(color: context.marilin.border),
                               ),
                               child: Column(
                                 crossAxisAlignment: CrossAxisAlignment.start,
                                 children: [
-                                  const Row(
+                                  Row(
                                     mainAxisAlignment: MainAxisAlignment.spaceBetween,
                                     children: [
                                       Text(
@@ -426,7 +426,7 @@ class _CustomerProfileScreenState extends ConsumerState<CustomerProfileScreen> {
                                         style: TextStyle(
                                           fontSize: 12,
                                           fontWeight: FontWeight.w600,
-                                          color: Color(0xFF0D1B3E),
+                                          color: context.marilin.ink,
                                         ),
                                       ),
                                       Icon(
@@ -485,7 +485,7 @@ class _CustomerProfileScreenState extends ConsumerState<CustomerProfileScreen> {
                                       'Sin comodatos',
                                       style: TextStyle(
                                         fontSize: 13,
-                                        color: Colors.grey.shade500,
+                                        color: context.marilin.textMuted,
                                         fontStyle: FontStyle.italic,
                                       ),
                                     ),
@@ -510,12 +510,12 @@ class _CustomerProfileScreenState extends ConsumerState<CustomerProfileScreen> {
   Widget _buildTabBar() {
     final tabs = ['Historial', 'Preferencias', 'Acuerdos', 'Datos'];
     return Container(
-      color: Colors.white,
+      color: context.marilin.surface,
       padding: const EdgeInsets.symmetric(horizontal: 16),
       child: Container(
-        decoration: const BoxDecoration(
+        decoration: BoxDecoration(
           border: Border(
-            bottom: BorderSide(color: Color(0xFFE2E8F0), width: 1.5),
+            bottom: BorderSide(color: context.marilin.border, width: 1.5),
           ),
         ),
         child: Row(
@@ -551,7 +551,7 @@ class _CustomerProfileScreenState extends ConsumerState<CustomerProfileScreen> {
                           : FontWeight.w500,
                       color: isSelected
                           ? MarilinColors.brandBlue
-                          : Colors.grey.shade500,
+                          : context.marilin.textMuted,
                     ),
                   ),
                 ),
@@ -614,9 +614,9 @@ class _CustomerProfileScreenState extends ConsumerState<CustomerProfileScreen> {
       child: Container(
         padding: const EdgeInsets.all(16),
         decoration: BoxDecoration(
-          color: Colors.white,
+          color: context.marilin.surface,
           borderRadius: BorderRadius.circular(16),
-          border: Border.all(color: const Color(0xFFE2E8F0)),
+          border: Border.all(color: context.marilin.border),
           boxShadow: [
             BoxShadow(
               color: Colors.black.withValues(alpha: 0.015),
@@ -628,7 +628,7 @@ class _CustomerProfileScreenState extends ConsumerState<CustomerProfileScreen> {
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            const Row(
+            Row(
               children: [
                 Icon(
                   Icons.schedule_outlined,
@@ -641,12 +641,12 @@ class _CustomerProfileScreenState extends ConsumerState<CustomerProfileScreen> {
                   style: TextStyle(
                     fontSize: 15,
                     fontWeight: FontWeight.w700,
-                    color: Color(0xFF0D1B3E),
+                    color: context.marilin.ink,
                   ),
                 ),
               ],
             ),
-            const Divider(height: 24, color: Color(0xFFE2E8F0)),
+            Divider(height: 24, color: context.marilin.border),
             ...customer.preferences.map((pref) {
               final day = _dayName(pref.dayOfWeek);
               return Padding(
@@ -667,18 +667,18 @@ class _CustomerProfileScreenState extends ConsumerState<CustomerProfileScreen> {
                         children: [
                           Text(
                             '$day: ',
-                            style: const TextStyle(
+                            style: TextStyle(
                               fontWeight: FontWeight.w700,
                               fontSize: 14,
-                              color: Color(0xFF0D1B3E),
+                              color: context.marilin.ink,
                             ),
                           ),
                           Text(
                             'de ${pref.timeWindowStart} a ${pref.timeWindowEnd ?? ''} hs',
-                            style: const TextStyle(
+                            style: TextStyle(
                               fontSize: 14,
                               fontWeight: FontWeight.w500,
-                              color: Color(0xFF4B5563),
+                              color: context.marilin.inkSecondary,
                             ),
                           ),
                         ],
@@ -709,14 +709,14 @@ class _CustomerProfileScreenState extends ConsumerState<CustomerProfileScreen> {
           Container(
             padding: const EdgeInsets.all(16),
             decoration: BoxDecoration(
-              color: Colors.white,
+              color: context.marilin.surface,
               borderRadius: BorderRadius.circular(16),
-              border: Border.all(color: const Color(0xFFE2E8F0)),
+              border: Border.all(color: context.marilin.border),
             ),
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                const Row(
+                Row(
                   children: [
                     Icon(
                       Icons.location_on_outlined,
@@ -729,12 +729,12 @@ class _CustomerProfileScreenState extends ConsumerState<CustomerProfileScreen> {
                       style: TextStyle(
                         fontSize: 15,
                         fontWeight: FontWeight.w700,
-                        color: Color(0xFF0D1B3E),
+                        color: context.marilin.ink,
                       ),
                     ),
                   ],
                 ),
-                const Divider(height: 24, color: Color(0xFFE2E8F0)),
+                Divider(height: 24, color: context.marilin.border),
                 if (addr != null) ...[
                   Text(
                     AddressFormatter.format(
@@ -744,10 +744,10 @@ class _CustomerProfileScreenState extends ConsumerState<CustomerProfileScreen> {
                       apartment: addr.apartment,
                       visualReference: addr.visualReference,
                     ),
-                    style: const TextStyle(
+                    style: TextStyle(
                       fontSize: 15,
                       fontWeight: FontWeight.w700,
-                      color: Color(0xFF0D1B3E),
+                      color: context.marilin.ink,
                     ),
                   ),
                   if (addr.latitude != null && addr.longitude != null) ...[
@@ -770,7 +770,7 @@ class _CustomerProfileScreenState extends ConsumerState<CustomerProfileScreen> {
                 ] else
                   Text(
                     'Sin dirección cargada',
-                    style: TextStyle(color: Colors.grey.shade500),
+                    style: TextStyle(color: context.marilin.textMuted),
                   ),
               ],
             ),
@@ -782,14 +782,14 @@ class _CustomerProfileScreenState extends ConsumerState<CustomerProfileScreen> {
           Container(
             padding: const EdgeInsets.all(16),
             decoration: BoxDecoration(
-              color: Colors.white,
+              color: context.marilin.surface,
               borderRadius: BorderRadius.circular(16),
-              border: Border.all(color: const Color(0xFFE2E8F0)),
+              border: Border.all(color: context.marilin.border),
             ),
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                const Row(
+                Row(
                   children: [
                     Icon(
                       Icons.person_outline_rounded,
@@ -802,18 +802,18 @@ class _CustomerProfileScreenState extends ConsumerState<CustomerProfileScreen> {
                       style: TextStyle(
                         fontSize: 15,
                         fontWeight: FontWeight.w700,
-                        color: Color(0xFF0D1B3E),
+                        color: context.marilin.ink,
                       ),
                     ),
                   ],
                 ),
-                const Divider(height: 24, color: Color(0xFFE2E8F0)),
+                Divider(height: 24, color: context.marilin.border),
                 _buildDataRow(
                   label: 'Teléfono',
                   value: customer.phone ?? 'No registrado',
                   icon: Icons.phone_android_rounded,
                 ),
-                const Divider(height: 16, color: Color(0xFFF1F5F9)),
+                Divider(height: 16, color: context.marilin.fill),
                 _buildDataRow(
                   label: 'Frecuencia de compra',
                   value: customer.isFrequent
@@ -840,7 +840,7 @@ class _CustomerProfileScreenState extends ConsumerState<CustomerProfileScreen> {
   }) {
     return Row(
       children: [
-        Icon(icon, size: 18, color: Colors.grey.shade400),
+        Icon(icon, size: 18, color: context.marilin.inkHint),
         const SizedBox(width: 12),
         Expanded(
           child: Column(
@@ -851,7 +851,7 @@ class _CustomerProfileScreenState extends ConsumerState<CustomerProfileScreen> {
                 style: TextStyle(
                   fontSize: 11,
                   fontWeight: FontWeight.w600,
-                  color: Colors.grey.shade400,
+                  color: context.marilin.inkHint,
                 ),
               ),
               const SizedBox(height: 2),
@@ -860,7 +860,7 @@ class _CustomerProfileScreenState extends ConsumerState<CustomerProfileScreen> {
                 style: TextStyle(
                   fontSize: 14,
                   fontWeight: FontWeight.w600,
-                  color: valueColor ?? const Color(0xFF0D1B3E),
+                  color: valueColor ?? context.marilin.ink,
                 ),
               ),
             ],
@@ -876,7 +876,7 @@ class _CustomerProfileScreenState extends ConsumerState<CustomerProfileScreen> {
     required int count,
   }) {
     final hasStock = count > 0;
-    final color = hasStock ? MarilinColors.brandBlue : Colors.grey.shade400;
+    final color = hasStock ? MarilinColors.brandBlue : context.marilin.inkHint;
 
     return Row(
       children: [
@@ -885,7 +885,7 @@ class _CustomerProfileScreenState extends ConsumerState<CustomerProfileScreen> {
           decoration: BoxDecoration(
             color: hasStock
                 ? MarilinColors.brandBlue.withValues(alpha: 0.08)
-                : Colors.grey.shade100,
+                : context.marilin.fill,
             shape: BoxShape.circle,
           ),
           child: Icon(icon, size: 14, color: color),
@@ -897,7 +897,7 @@ class _CustomerProfileScreenState extends ConsumerState<CustomerProfileScreen> {
             style: TextStyle(
               fontSize: 12,
               fontWeight: FontWeight.w600,
-              color: hasStock ? const Color(0xFF0D1B3E) : Colors.grey.shade500,
+              color: hasStock ? context.marilin.ink : context.marilin.textMuted,
             ),
           ),
         ),
@@ -924,21 +924,21 @@ class _CustomerProfileScreenState extends ConsumerState<CustomerProfileScreen> {
       child: Column(
         mainAxisSize: MainAxisSize.min,
         children: [
-          Icon(icon, size: 48, color: Colors.grey.shade300),
+          Icon(icon, size: 48, color: context.marilin.lineStrong),
           const SizedBox(height: 16),
           Text(
             title,
-            style: const TextStyle(
+            style: TextStyle(
               fontSize: 15,
               fontWeight: FontWeight.w700,
-              color: Color(0xFF0D1B3E),
+              color: context.marilin.ink,
             ),
           ),
           const SizedBox(height: 6),
           Text(
             subtitle,
             textAlign: TextAlign.center,
-            style: TextStyle(fontSize: 13, color: Colors.grey.shade500),
+            style: TextStyle(fontSize: 13, color: context.marilin.textMuted),
           ),
         ],
       ),
@@ -980,9 +980,9 @@ class _ProfileContainerReturnDialogState
           mainAxisSize: MainAxisSize.min,
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            const Text(
+            Text(
               'Ajustá la cantidad de envases vacíos que devuelve el cliente.',
-              style: TextStyle(color: Colors.grey, fontSize: 14),
+              style: TextStyle(color: context.marilin.textMuted, fontSize: 14),
             ),
             const SizedBox(height: 16),
             ...['BIDON_20L', 'SIFON_2L'].map((type) {

@@ -115,7 +115,7 @@ class _VisitScreenState extends ConsumerState<VisitScreen> {
         }
 
         return Scaffold(
-          backgroundColor: MarilinColors.scaffoldMuted,
+          backgroundColor: context.marilin.scaffoldMuted,
           appBar: AppBar(
             centerTitle: true,
             leading: IconButton(
@@ -159,7 +159,7 @@ class _VisitScreenState extends ConsumerState<VisitScreen> {
                 ),
               ],
             ),
-            backgroundColor: MarilinColors.surface,
+            backgroundColor: context.marilin.surface,
             elevation: 0,
             scrolledUnderElevation: 0,
           ),
@@ -268,12 +268,12 @@ class _VisitScreenState extends ConsumerState<VisitScreen> {
           ),
         );
       },
-      loading: () => const Scaffold(
-        backgroundColor: Colors.white,
+      loading: () => Scaffold(
+        backgroundColor: context.marilin.surface,
         body: Center(child: CircularProgressIndicator()),
       ),
-      error: (e, _) => const Scaffold(
-        backgroundColor: Colors.white,
+      error: (e, _) => Scaffold(
+        backgroundColor: context.marilin.surface,
         body: Center(
           child: Text('Error al cargar la información de la visita'),
         ),
@@ -512,7 +512,7 @@ class _VisitScreenState extends ConsumerState<VisitScreen> {
             if (outcomes.isEmpty) {
               return Text(
                 'No hay resultados disponibles. Sincronizá la ruta.',
-                style: TextStyle(fontSize: 13, color: Colors.grey.shade600),
+                style: TextStyle(fontSize: 13, color: context.marilin.inkSecondary),
               );
             }
             return Row(
@@ -606,17 +606,17 @@ class _VisitScreenState extends ConsumerState<VisitScreen> {
       child: OutlinedButton(
         style: OutlinedButton.styleFrom(
           backgroundColor: !isEnabled
-              ? Colors.grey.shade100
+              ? context.marilin.fill
               : (isSelected
                     ? activeColor.withValues(alpha: 0.06)
-                    : Colors.white),
+                    : context.marilin.surface),
           foregroundColor: !isEnabled
-              ? Colors.grey.shade400
-              : (isSelected ? activeColor : const Color(0xFF4B5563)),
+              ? context.marilin.inkHint
+              : (isSelected ? activeColor : context.marilin.inkSecondary),
           side: BorderSide(
             color: !isEnabled
-                ? Colors.grey.shade300
-                : (isSelected ? activeColor : const Color(0xFFD1D5DB)),
+                ? context.marilin.lineStrong
+                : (isSelected ? activeColor : context.marilin.lineStrong),
             width: isSelected ? 1.5 : 1,
           ),
           padding: const EdgeInsets.symmetric(vertical: 12),
@@ -633,8 +633,8 @@ class _VisitScreenState extends ConsumerState<VisitScreen> {
               icon,
               size: 18,
               color: !isEnabled
-                  ? Colors.grey.shade400
-                  : (isSelected ? activeColor : const Color(0xFF4B5563)),
+                  ? context.marilin.inkHint
+                  : (isSelected ? activeColor : context.marilin.inkSecondary),
             ),
             const SizedBox(height: 4),
             Text(
@@ -643,8 +643,8 @@ class _VisitScreenState extends ConsumerState<VisitScreen> {
                 fontSize: 12,
                 fontWeight: FontWeight.bold,
                 color: !isEnabled
-                    ? Colors.grey.shade400
-                    : (isSelected ? activeColor : const Color(0xFF4B5563)),
+                    ? context.marilin.inkHint
+                    : (isSelected ? activeColor : context.marilin.inkSecondary),
               ),
             ),
           ],
@@ -656,7 +656,7 @@ class _VisitScreenState extends ConsumerState<VisitScreen> {
   Widget _buildDoneStateBanner(StopStatus status) {
     final isDone = status == StopStatus.done;
     final color = isDone ? const Color(0xFF10B981) : const Color(0xFFEF4444);
-    final bg = isDone ? const Color(0xFFE8F5E9) : const Color(0xFFFFEBEE);
+    final bg = isDone ? context.marilin.soft(Color(0xFFE8F5E9)) : context.marilin.soft(Color(0xFFFFEBEE));
 
     return Container(
       padding: const EdgeInsets.all(16),
@@ -699,14 +699,14 @@ class _VisitScreenState extends ConsumerState<VisitScreen> {
 
     // Payment method text and color
     String methodText = '';
-    Color badgeColor = Colors.grey;
-    Color badgeBg = Colors.grey.shade100;
+    Color badgeColor = context.marilin.textMuted;
+    Color badgeBg = context.marilin.fill;
 
     switch (sale.paymentMethod) {
       case PaymentMethod.cash:
         methodText = 'EFECTIVO';
         badgeColor = const Color(0xFF10B981);
-        badgeBg = const Color(0xFFE8F5E9);
+        badgeBg = context.marilin.soft(Color(0xFFE8F5E9));
         break;
       case PaymentMethod.transfer:
         methodText = 'TRANSFERENCIA';
@@ -716,17 +716,17 @@ class _VisitScreenState extends ConsumerState<VisitScreen> {
       case PaymentMethod.credit:
         methodText = 'A CRÉDITO';
         badgeColor = const Color(0xFFF97316);
-        badgeBg = const Color(0xFFFFF7ED);
+        badgeBg = context.marilin.soft(Color(0xFFFFF7ED));
         break;
       case PaymentMethod.mixed:
         methodText = 'MIXTO';
         badgeColor = const Color(0xFF2563EB);
-        badgeBg = const Color(0xFFEFF6FF);
+        badgeBg = context.marilin.soft(Color(0xFFEFF6FF));
         break;
       case PaymentMethod.route:
         methodText = 'RUTA';
-        badgeColor = const Color(0xFF0D1B3E);
-        badgeBg = const Color(0xFFF1F5F9);
+        badgeColor = context.marilin.ink;
+        badgeBg = context.marilin.fill;
         break;
     }
 
@@ -738,8 +738,8 @@ class _VisitScreenState extends ConsumerState<VisitScreen> {
           children: [
             Container(
               padding: const EdgeInsets.all(4),
-              decoration: const BoxDecoration(
-                color: Color(0xFFEFF6FF),
+              decoration: BoxDecoration(
+                color: context.marilin.soft(Color(0xFFEFF6FF)),
                 shape: BoxShape.circle,
               ),
               child: const Icon(
@@ -749,12 +749,12 @@ class _VisitScreenState extends ConsumerState<VisitScreen> {
               ),
             ),
             const SizedBox(width: 8),
-            const Text(
+            Text(
               'Venta registrada',
               style: TextStyle(
                 fontSize: 14,
                 fontWeight: FontWeight.bold,
-                color: Color(0xFF0D1B3E),
+                color: context.marilin.ink,
               ),
             ),
           ],
@@ -765,12 +765,12 @@ class _VisitScreenState extends ConsumerState<VisitScreen> {
           width: double.infinity,
           padding: const EdgeInsets.all(16),
           decoration: BoxDecoration(
-            color: Colors.white,
+            color: context.marilin.surface,
             borderRadius: BorderRadius.circular(16),
-            border: Border.all(color: const Color(0xFFE2E8F0), width: 1),
+            border: Border.all(color: context.marilin.border, width: 1),
             boxShadow: [
               BoxShadow(
-                color: const Color(0xFF0F172A).withValues(alpha: 0.02),
+                color: context.marilin.ink.withValues(alpha: 0.02),
                 blurRadius: 8,
                 offset: const Offset(0, 4),
               ),
@@ -786,10 +786,10 @@ class _VisitScreenState extends ConsumerState<VisitScreen> {
                   children: [
                     Text(
                       itemsDesc,
-                      style: const TextStyle(
+                      style: TextStyle(
                         fontSize: 15,
                         fontWeight: FontWeight.w700,
-                        color: Color(0xFF0D1B3E),
+                        color: context.marilin.ink,
                         height: 1.3,
                       ),
                     ),
@@ -820,10 +820,10 @@ class _VisitScreenState extends ConsumerState<VisitScreen> {
               // Right: Total amount
               Text(
                 '\$${sale.total.toStringAsFixed(0)}',
-                style: const TextStyle(
+                style: TextStyle(
                   fontSize: 20,
                   fontWeight: FontWeight.w900,
-                  color: Color(0xFF0D1B3E),
+                  color: context.marilin.ink,
                   letterSpacing: -0.5,
                 ),
               ),
@@ -865,9 +865,9 @@ class _VisitScreenState extends ConsumerState<VisitScreen> {
     return Container(
       padding: const EdgeInsets.all(12),
       decoration: BoxDecoration(
-        color: const Color(0xFFEFF6FF),
+        color: context.marilin.soft(Color(0xFFEFF6FF)),
         borderRadius: BorderRadius.circular(10),
-        border: Border.all(color: const Color(0xFFBFDBFE), width: 1),
+        border: Border.all(color: context.marilin.soft(Color(0xFFBFDBFE)), width: 1),
       ),
       child: const Row(
         children: [

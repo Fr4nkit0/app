@@ -28,18 +28,18 @@ class CoreSearchBar extends StatelessWidget {
       onChanged: onChanged,
       decoration: InputDecoration(
         hintText: hintText ?? 'Buscar por nombre, teléfono o dirección...',
-        hintStyle: TextStyle(color: Colors.grey.shade400, fontSize: 14),
+        hintStyle: TextStyle(color: context.marilin.inkHint, fontSize: 14),
         prefixIcon:
             prefixIcon ??
-            Icon(Icons.search, color: Colors.grey.shade400, size: 20),
+            Icon(Icons.search, color: context.marilin.inkHint, size: 20),
         suffixIcon: onClear != null
             ? IconButton(
-                icon: Icon(Icons.clear, color: Colors.grey.shade500, size: 20),
+                icon: Icon(Icons.clear, color: context.marilin.textMuted, size: 20),
                 onPressed: onClear,
               )
             : null,
         filled: true,
-        fillColor: fillColor ?? Colors.grey.shade100,
+        fillColor: fillColor ?? context.marilin.fill,
         contentPadding: const EdgeInsets.symmetric(
           horizontal: 16,
           vertical: 12,

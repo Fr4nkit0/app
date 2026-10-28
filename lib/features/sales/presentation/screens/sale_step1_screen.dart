@@ -105,7 +105,7 @@ class _SaleStep1ScreenState extends ConsumerState<SaleStep1Screen> {
 
     return Scaffold(
       primary: false,
-      backgroundColor: MarilinColors.scaffoldMuted,
+      backgroundColor: context.marilin.scaffoldMuted,
       body: Column(
         children: [
           Expanded(
@@ -370,7 +370,7 @@ class _SelectedMode extends ConsumerWidget {
                     style: TextStyle(
                       fontSize: 11,
                       fontWeight: FontWeight.w700,
-                      color: Colors.grey.shade500,
+                      color: context.marilin.textMuted,
                       letterSpacing: 0.8,
                     ),
                   ),
@@ -456,7 +456,7 @@ class _HabitualOrderCard extends StatelessWidget {
                 ),
                 Text(
                   labels.join(' · '),
-                  style: TextStyle(fontSize: 12, color: Colors.grey.shade600),
+                  style: TextStyle(fontSize: 12, color: context.marilin.inkSecondary),
                 ),
               ],
             ),
@@ -492,13 +492,13 @@ class _EmptyState extends StatelessWidget {
       child: Column(
         mainAxisAlignment: MainAxisAlignment.center,
         children: [
-          Icon(Icons.search_off, size: 48, color: Colors.grey.shade300),
+          Icon(Icons.search_off, size: 48, color: context.marilin.lineStrong),
           const SizedBox(height: 16),
           Text(
             'Sin resultados para "$query"',
             style: TextStyle(
               fontWeight: FontWeight.w700,
-              color: Colors.grey.shade600,
+              color: context.marilin.inkSecondary,
               fontSize: 15,
             ),
             textAlign: TextAlign.center,
@@ -506,7 +506,7 @@ class _EmptyState extends StatelessWidget {
           const SizedBox(height: 8),
           Text(
             '¿Buscás por teléfono o dirección?',
-            style: TextStyle(color: Colors.grey.shade400, fontSize: 13),
+            style: TextStyle(color: context.marilin.inkHint, fontSize: 13),
             textAlign: TextAlign.center,
           ),
         ],
@@ -530,7 +530,7 @@ class _SectionHeader extends StatelessWidget {
         style: TextStyle(
           fontSize: 11,
           fontWeight: FontWeight.w700,
-          color: Colors.grey.shade500,
+          color: context.marilin.textMuted,
           letterSpacing: 0.8,
         ),
       ),
@@ -557,8 +557,8 @@ class _StickyFooter extends StatelessWidget {
     final enabled = onTap != null;
     return Container(
       decoration: BoxDecoration(
-        color: Colors.white,
-        border: Border(top: BorderSide(color: Colors.grey.shade200, width: 1)),
+        color: context.marilin.surface,
+        border: Border(top: BorderSide(color: context.marilin.border, width: 1)),
         boxShadow: [
           BoxShadow(
             color: Colors.black.withValues(alpha: 0.05),
@@ -579,7 +579,7 @@ class _StickyFooter extends StatelessWidget {
                 Text(
                   '${draft.items.length} producto${draft.items.length != 1 ? 's' : ''}',
                   style: TextStyle(
-                    color: Colors.grey.shade500,
+                    color: context.marilin.textMuted,
                     fontSize: 14,
                     fontWeight: FontWeight.w600,
                   ),
@@ -606,8 +606,8 @@ class _StickyFooter extends StatelessWidget {
               style: FilledButton.styleFrom(
                 backgroundColor: enabled
                     ? tokens.primary
-                    : Colors.grey.shade200,
-                foregroundColor: enabled ? Colors.white : Colors.grey.shade400,
+                    : context.marilin.border,
+                foregroundColor: enabled ? Colors.white : context.marilin.inkHint,
                 minimumSize: const Size(double.infinity, 56),
                 elevation: enabled ? 4 : 0,
                 shadowColor: tokens.primary.withValues(alpha: 0.4),

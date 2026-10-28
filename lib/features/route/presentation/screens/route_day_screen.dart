@@ -116,7 +116,7 @@ class _RouteDayScreenState extends ConsumerState<RouteDayScreen> {
                               Text(
                                 'Cargando más paradas...',
                                 style: TextStyle(
-                                  color: Colors.grey.shade500,
+                                  color: context.marilin.textMuted,
                                   fontSize: 13,
                                   fontWeight: FontWeight.w500,
                                 ),
@@ -308,24 +308,24 @@ class _RouteHeader extends ConsumerWidget {
                       style: Theme.of(context).textTheme.headlineMedium
                           ?.copyWith(
                             fontWeight: FontWeight.w900,
-                            color: MarilinColors.brandNavy,
+                            color: context.marilin.ink,
                             fontSize: 26,
                           ),
                     ),
                     const SizedBox(height: 3),
                     Row(
                       children: [
-                        const Icon(
+                        Icon(
                           Icons.local_shipping_outlined,
                           size: 14,
-                          color: Colors.grey,
+                          color: context.marilin.textMuted,
                         ),
                         const SizedBox(width: 5),
                         Text(
                           'Buen día de reparto',
                           style: Theme.of(context).textTheme.bodyMedium
                               ?.copyWith(
-                                color: Colors.grey.shade600,
+                                color: context.marilin.inkSecondary,
                                 fontWeight: FontWeight.w600,
                               ),
                         ),
@@ -361,9 +361,9 @@ class _ProgressSection extends StatelessWidget {
       child: Container(
         padding: const EdgeInsets.all(16),
         decoration: BoxDecoration(
-          color: Colors.white,
+          color: context.marilin.surface,
           borderRadius: BorderRadius.circular(20),
-          border: Border.all(color: const Color(0xFFE5E7EB), width: 1.5),
+          border: Border.all(color: context.marilin.border, width: 1.5),
           boxShadow: [
             BoxShadow(
               color: MarilinColors.brandBlue.withValues(alpha: 0.04),
@@ -381,7 +381,7 @@ class _ProgressSection extends StatelessWidget {
                 Text(
                   'Progreso de la jornada',
                   style: Theme.of(context).textTheme.labelLarge?.copyWith(
-                    color: const Color(0xFF0D1B3E),
+                    color: context.marilin.ink,
                     fontWeight: FontWeight.w900,
                     fontSize: 14,
                   ),
@@ -402,7 +402,7 @@ class _ProgressSection extends StatelessWidget {
               child: LinearProgressIndicator(
                 value: progress,
                 minHeight: 8,
-                backgroundColor: const Color(0xFFE5E7EB),
+                backgroundColor: context.marilin.border,
                 valueColor: AlwaysStoppedAnimation(MarilinColors.brandBlue),
               ),
             ),
@@ -425,7 +425,7 @@ class _ProgressSection extends StatelessWidget {
                     value: '$done',
                     icon: Icons.check_circle_outline_rounded,
                     iconColor: const Color(0xFF2E7D32),
-                    bgColor: const Color(0xFFE8F5E9),
+                    bgColor: context.marilin.soft(Color(0xFFE8F5E9)),
                   ),
                 ),
                 const SizedBox(width: 8),
@@ -435,7 +435,7 @@ class _ProgressSection extends StatelessWidget {
                     value: '$pending',
                     icon: Icons.pending_actions_rounded,
                     iconColor: const Color(0xFFE65100),
-                    bgColor: const Color(0xFFFFF3E0),
+                    bgColor: context.marilin.soft(Color(0xFFFFF3E0)),
                   ),
                 ),
               ],

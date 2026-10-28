@@ -167,10 +167,10 @@ class _DebtPaymentDialogState extends State<DebtPaymentDialog> {
                   const SizedBox(width: 10),
                   Text(
                     'Pagar deuda',
-                    style: const TextStyle(
+                    style: TextStyle(
                       fontSize: 18,
                       fontWeight: FontWeight.w800,
-                      color: Color(0xFF0D1B3E),
+                      color: context.marilin.ink,
                     ),
                   ),
                 ],
@@ -178,10 +178,10 @@ class _DebtPaymentDialogState extends State<DebtPaymentDialog> {
               const SizedBox(height: 4),
               Text(
                 'Deuda total: \$${widget.totalDebt.toStringAsFixed(0)}',
-                style: const TextStyle(
+                style: TextStyle(
                   fontSize: 14,
                   fontWeight: FontWeight.w600,
-                  color: Color(0xFF9CA3AF),
+                  color: context.marilin.inkHint,
                 ),
               ),
               const SizedBox(height: 20),
@@ -211,7 +211,7 @@ class _DebtPaymentDialogState extends State<DebtPaymentDialog> {
                   style: TextStyle(
                     fontSize: 11,
                     fontWeight: FontWeight.w700,
-                    color: Colors.grey.shade500,
+                    color: context.marilin.textMuted,
                     letterSpacing: 0.8,
                   ),
                 ),
@@ -260,12 +260,12 @@ class _DebtPaymentDialogState extends State<DebtPaymentDialog> {
                         ),
                         side: const BorderSide(color: SalesTokens.muted),
                       ),
-                      child: const Text(
+                      child: Text(
                         'Cancelar',
                         style: TextStyle(
                           fontWeight: FontWeight.w700,
                           fontSize: 15,
-                          color: Color(0xFF0D1B3E),
+                          color: context.marilin.ink,
                         ),
                       ),
                     ),
@@ -276,7 +276,7 @@ class _DebtPaymentDialogState extends State<DebtPaymentDialog> {
                       onPressed: _canConfirm ? _confirm : null,
                       style: FilledButton.styleFrom(
                         backgroundColor: tokens.primary,
-                        disabledBackgroundColor: Colors.grey.shade200,
+                        disabledBackgroundColor: context.marilin.border,
                         padding: const EdgeInsets.symmetric(vertical: 14),
                         shape: RoundedRectangleBorder(
                           borderRadius: BorderRadius.circular(12),
@@ -310,10 +310,10 @@ class _DebtPaymentDialogState extends State<DebtPaymentDialog> {
         duration: const Duration(milliseconds: 150),
         padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 10),
         decoration: BoxDecoration(
-          color: isSelected ? primary : Colors.grey.shade50,
+          color: isSelected ? primary : context.marilin.fill,
           borderRadius: BorderRadius.circular(12),
           border: Border.all(
-            color: isSelected ? primary : Colors.grey.shade200,
+            color: isSelected ? primary : context.marilin.border,
             width: isSelected ? 2 : 1,
           ),
         ),
@@ -376,18 +376,18 @@ class _AmountField extends StatelessWidget {
         labelText: label,
         prefixText: '\$ ',
         filled: true,
-        fillColor: Colors.grey.shade50,
+        fillColor: context.marilin.fill,
         contentPadding: const EdgeInsets.symmetric(
           horizontal: 16,
           vertical: 14,
         ),
         border: OutlineInputBorder(
           borderRadius: BorderRadius.circular(10),
-          borderSide: BorderSide(color: Colors.grey.shade200),
+          borderSide: BorderSide(color: context.marilin.border),
         ),
         enabledBorder: OutlineInputBorder(
           borderRadius: BorderRadius.circular(10),
-          borderSide: BorderSide(color: Colors.grey.shade200),
+          borderSide: BorderSide(color: context.marilin.border),
         ),
         focusedBorder: OutlineInputBorder(
           borderRadius: BorderRadius.circular(10),

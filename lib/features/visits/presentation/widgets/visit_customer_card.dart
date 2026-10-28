@@ -21,12 +21,12 @@ class VisitCustomerCard extends StatelessWidget {
     return Container(
       padding: const EdgeInsets.all(20),
       decoration: BoxDecoration(
-        color: MarilinColors.surface,
+        color: context.marilin.surface,
         borderRadius: BorderRadius.circular(20),
-        border: Border.all(color: MarilinColors.border, width: 1.5),
+        border: Border.all(color: context.marilin.border, width: 1.5),
         boxShadow: [
           BoxShadow(
-            color: MarilinColors.brandNavy.withValues(alpha: 0.04),
+            color: context.marilin.ink.withValues(alpha: 0.04),
             blurRadius: 16,
             offset: const Offset(0, 8),
           ),
@@ -47,7 +47,7 @@ class VisitCustomerCard extends StatelessWidget {
                       style: TextStyle(
                         fontSize: 10,
                         fontWeight: FontWeight.w800,
-                        color: MarilinColors.textMuted.withValues(alpha: 0.9),
+                        color: context.marilin.textMuted.withValues(alpha: 0.9),
                         letterSpacing: 1.0,
                       ),
                     ),
@@ -55,10 +55,10 @@ class VisitCustomerCard extends StatelessWidget {
                     Text(
                       customerName,
                       textAlign: TextAlign.center,
-                      style: const TextStyle(
+                      style: TextStyle(
                         fontSize: 22,
                         fontWeight: FontWeight.w900,
-                        color: MarilinColors.brandNavy,
+                        color: context.marilin.ink,
                         letterSpacing: -0.5,
                       ),
                     ),
@@ -68,7 +68,7 @@ class VisitCustomerCard extends StatelessWidget {
             ],
           ),
           const SizedBox(height: 16),
-          Divider(height: 1, color: MarilinColors.border.withValues(alpha: 0.6)),
+          Divider(height: 1, color: context.marilin.border.withValues(alpha: 0.6)),
           const SizedBox(height: 16),
           Row(
             children: [
@@ -88,10 +88,10 @@ class VisitCustomerCard extends StatelessWidget {
               Expanded(
                 child: Text(
                   formattedAddress,
-                  style: const TextStyle(
+                  style: TextStyle(
                     fontSize: 14,
                     fontWeight: FontWeight.w600,
-                    color: Color(0xFF475569),
+                    color: context.marilin.inkSecondary,
                   ),
                 ),
               ),
@@ -119,10 +119,10 @@ class VisitCustomerCard extends StatelessWidget {
                     onLongPress: onWhatsAppLongPress,
                     child: Text(
                       phone!,
-                      style: const TextStyle(
+                      style: TextStyle(
                         fontSize: 14,
                         fontWeight: FontWeight.w600,
-                        color: Color(0xFF475569),
+                        color: context.marilin.inkSecondary,
                       ),
                     ),
                   ),

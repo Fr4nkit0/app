@@ -28,10 +28,10 @@ class StepAddressView extends StatelessWidget {
     required this.onVisualReferenceChanged,
   });
 
-  static const _border = OutlineInputBorder(
-    borderRadius: BorderRadius.all(Radius.circular(12)),
-    borderSide: BorderSide(color: Color(0xFFE5E7EB)),
-  );
+  static OutlineInputBorder _border(BuildContext context) => OutlineInputBorder(
+        borderRadius: const BorderRadius.all(Radius.circular(12)),
+        borderSide: BorderSide(color: context.marilin.border),
+      );
   static const _focusBorder = OutlineInputBorder(
     borderRadius: BorderRadius.all(Radius.circular(12)),
     borderSide: BorderSide(color: MarilinColors.brandBlue, width: 2),
@@ -41,16 +41,17 @@ class StepAddressView extends StatelessWidget {
     borderSide: BorderSide(color: Color(0xFFBF1B1B)),
   );
 
-  static const _decoration = InputDecoration(
-    filled: true,
-    fillColor: Colors.white,
-    contentPadding: EdgeInsets.symmetric(horizontal: 16, vertical: 16),
-    border: _border,
-    enabledBorder: _border,
-    focusedBorder: _focusBorder,
-    errorBorder: _errorBorder,
-    focusedErrorBorder: _errorBorder,
-  );
+  /// The form's fields, in the current theme's colors.
+  static InputDecoration _decoration(BuildContext context) => InputDecoration(
+        filled: true,
+        fillColor: context.marilin.surface,
+        contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 16),
+        border: _border(context),
+        enabledBorder: _border(context),
+        focusedBorder: _focusBorder,
+        errorBorder: _errorBorder,
+        focusedErrorBorder: _errorBorder,
+      );
 
   @override
   Widget build(BuildContext context) {
@@ -66,9 +67,9 @@ class StepAddressView extends StatelessWidget {
             ).textTheme.titleLarge?.copyWith(fontWeight: FontWeight.w800),
           ),
           const SizedBox(height: 4),
-          const Text(
+          Text(
             '¿Dónde hacemos las entregas?',
-            style: TextStyle(color: Color(0xFF9CA3AF), fontSize: 14),
+            style: TextStyle(color: context.marilin.inkHint, fontSize: 14),
           ),
           const SizedBox(height: 28),
           TextFormField(
@@ -79,7 +80,7 @@ class StepAddressView extends StatelessWidget {
             autovalidateMode: AutovalidateMode.onUserInteraction,
             validator: (v) =>
                 (v == null || v.isEmpty) ? 'La calle es requerida' : null,
-            decoration: _decoration.copyWith(
+            decoration: _decoration(context).copyWith(
               labelText: 'Calle y altura / Manzana',
               hintText: 'Ej. San Martín 1234 o Mza 45',
               prefixIcon: const Icon(Icons.location_on_outlined, size: 20),
@@ -109,7 +110,7 @@ class StepAddressView extends StatelessWidget {
                   );
                 },
                 child: InputDecorator(
-                  decoration: _decoration.copyWith(
+                  decoration: _decoration(context).copyWith(
                     labelText: 'Barrio',
                     hintText: 'Seleccionar barrio',
                     prefixIcon: const Icon(Icons.home_work_outlined, size: 20),
@@ -120,7 +121,7 @@ class StepAddressView extends StatelessWidget {
                     neighborhood.isEmpty ? 'Seleccionar barrio...' : neighborhood,
                     style: TextStyle(
                       fontSize: 16,
-                      color: neighborhood.isEmpty ? Colors.grey.shade400 : Colors.black,
+                      color: neighborhood.isEmpty ? context.marilin.inkHint : Colors.black,
                     ),
                   ),
                 ),
@@ -134,7 +135,7 @@ class StepAddressView extends StatelessWidget {
                 child: TextFormField(
                   initialValue: floor,
                   onChanged: onFloorChanged,
-                  decoration: _decoration.copyWith(
+                  decoration: _decoration(context).copyWith(
                     labelText: 'Piso',
                     hintText: 'Ej. 3',
                   ),
@@ -146,7 +147,7 @@ class StepAddressView extends StatelessWidget {
                   initialValue: apartment,
                   onChanged: onApartmentChanged,
                   textCapitalization: TextCapitalization.characters,
-                  decoration: _decoration.copyWith(
+                  decoration: _decoration(context).copyWith(
                     labelText: 'Depto / Lote',
                     hintText: 'Ej. A o Lote 12',
                   ),
@@ -160,7 +161,7 @@ class StepAddressView extends StatelessWidget {
             onChanged: onVisualReferenceChanged,
             maxLines: 2,
             textCapitalization: TextCapitalization.sentences,
-            decoration: _decoration.copyWith(
+            decoration: _decoration(context).copyWith(
               labelText: 'Referencia visual (opcional)',
               hintText: 'Ej. Portón negro, rejas blancas',
               prefixIcon: const Icon(Icons.remove_red_eye_outlined, size: 20),

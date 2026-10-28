@@ -68,21 +68,21 @@ class _EmptyAgreements extends StatelessWidget {
       child: Column(
         mainAxisSize: MainAxisSize.min,
         children: [
-          Icon(Icons.handshake_outlined, size: 48, color: Colors.grey.shade300),
+          Icon(Icons.handshake_outlined, size: 48, color: context.marilin.lineStrong),
           const SizedBox(height: 16),
-          const Text(
+          Text(
             'Sin acuerdos',
             style: TextStyle(
               fontSize: 15,
               fontWeight: FontWeight.w700,
-              color: Color(0xFF0D1B3E),
+              color: context.marilin.ink,
             ),
           ),
           const SizedBox(height: 6),
           Text(
             'Este cliente no tiene acuerdos de precio.',
             textAlign: TextAlign.center,
-            style: TextStyle(fontSize: 13, color: Colors.grey.shade500),
+            style: TextStyle(fontSize: 13, color: context.marilin.textMuted),
           ),
         ],
       ),
@@ -107,7 +107,7 @@ class AgreementCard extends StatelessWidget {
 
   static (String, Color) _chip(AgreementStatus status) => switch (status) {
     AgreementStatus.inForce => ('Vigente', const Color(0xFF15803D)),
-    AgreementStatus.ended => ('Finalizado', const Color(0xFF64748B)),
+    AgreementStatus.ended => ('Finalizado', Color(0xFF64748B)),
     AgreementStatus.future => ('Futuro', MarilinColors.brandBlue),
   };
 
@@ -121,9 +121,9 @@ class AgreementCard extends StatelessWidget {
     return Container(
       padding: const EdgeInsets.all(16),
       decoration: BoxDecoration(
-        color: Colors.white,
+        color: context.marilin.surface,
         borderRadius: BorderRadius.circular(16),
-        border: Border.all(color: const Color(0xFFE2E8F0)),
+        border: Border.all(color: context.marilin.border),
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
@@ -133,10 +133,10 @@ class AgreementCard extends StatelessWidget {
               Expanded(
                 child: Text(
                   agreement.productName,
-                  style: const TextStyle(
+                  style: TextStyle(
                     fontSize: 15,
                     fontWeight: FontWeight.w700,
-                    color: Color(0xFF0D1B3E),
+                    color: context.marilin.ink,
                   ),
                 ),
               ),
@@ -160,22 +160,22 @@ class AgreementCard extends StatelessWidget {
           const SizedBox(height: 6),
           Text(
             formatMoney(agreement.unitPrice),
-            style: const TextStyle(
+            style: TextStyle(
               fontSize: 18,
               fontWeight: FontWeight.w800,
-              color: Color(0xFF0D1B3E),
+              color: context.marilin.ink,
             ),
           ),
           const SizedBox(height: 4),
           Text(
             validity,
-            style: TextStyle(fontSize: 13, color: Colors.grey.shade600),
+            style: TextStyle(fontSize: 13, color: context.marilin.inkSecondary),
           ),
           if (agreement.reason != null) ...[
             const SizedBox(height: 4),
             Text(
               agreement.reason!,
-              style: TextStyle(fontSize: 13, color: Colors.grey.shade600),
+              style: TextStyle(fontSize: 13, color: context.marilin.inkSecondary),
             ),
           ],
           if (!agreement.isSynced) ...[

@@ -74,7 +74,7 @@ class StepPreferenceView extends StatelessWidget {
             '¿Cuándo entregamos?',
             style: Theme.of(
               context,
-            ).textTheme.bodyMedium?.copyWith(color: const Color(0xFF9CA3AF)),
+            ).textTheme.bodyMedium?.copyWith(color: context.marilin.inkHint),
           ),
           const SizedBox(height: 20),
           if (preferences.isEmpty)
@@ -110,9 +110,9 @@ class _EmptyState extends StatelessWidget {
       child: Container(
         padding: const EdgeInsets.all(24),
         decoration: BoxDecoration(
-          color: const Color(0xFFEFF6FF),
+          color: context.marilin.soft(Color(0xFFEFF6FF)),
           borderRadius: BorderRadius.circular(14),
-          border: Border.all(color: const Color(0xFFBFDBFE)),
+          border: Border.all(color: context.marilin.soft(Color(0xFFBFDBFE))),
         ),
         child: Column(
           children: [
@@ -193,9 +193,9 @@ class _PreferenceSummaryCard extends StatelessWidget {
       child: Container(
         padding: const EdgeInsets.all(14),
         decoration: BoxDecoration(
-          color: Colors.white,
+          color: context.marilin.surface,
           borderRadius: BorderRadius.circular(12),
-          border: Border.all(color: const Color(0xFFE5E7EB)),
+          border: Border.all(color: context.marilin.border),
         ),
         child: Row(
           children: [
@@ -219,16 +219,16 @@ class _PreferenceSummaryCard extends StatelessWidget {
                 children: [
                   Text(
                     dayLabel,
-                    style: const TextStyle(
+                    style: TextStyle(
                       fontWeight: FontWeight.w700,
                       fontSize: 14,
-                      color: Color(0xFF0D1B3E),
+                      color: context.marilin.ink,
                     ),
                   ),
                   const SizedBox(height: 2),
                   Text(
                     '${preference.timeWindowStart} — ${preference.timeWindowEnd ?? '--:--'}',
-                    style: TextStyle(fontSize: 13, color: Colors.grey.shade500),
+                    style: TextStyle(fontSize: 13, color: context.marilin.textMuted),
                   ),
                 ],
               ),
@@ -240,7 +240,7 @@ class _PreferenceSummaryCard extends StatelessWidget {
                 width: 32,
                 height: 32,
                 decoration: BoxDecoration(
-                  color: const Color(0xFFFFF0F0),
+                  color: context.marilin.soft(Color(0xFFFFF0F0)),
                   borderRadius: BorderRadius.circular(8),
                 ),
                 child: const Icon(
@@ -379,10 +379,10 @@ class _PreferenceDialogState extends State<_PreferenceDialog> {
                 const SizedBox(width: 10),
                 Text(
                   isEdit ? 'Editar horario' : 'Agregar Preferencia Horaria',
-                  style: const TextStyle(
+                  style: TextStyle(
                     fontSize: 18,
                     fontWeight: FontWeight.w800,
-                    color: Color(0xFF0D1B3E),
+                    color: context.marilin.ink,
                   ),
                 ),
               ],
@@ -398,11 +398,11 @@ class _PreferenceDialogState extends State<_PreferenceDialog> {
                   });
                 }
               },
-              decoration: const InputDecoration(
+              decoration: InputDecoration(
                 labelText: 'Día de entrega',
                 prefixIcon: Icon(Icons.calendar_today_rounded, size: 18),
                 filled: true,
-                fillColor: Colors.white,
+                fillColor: context.marilin.surface,
                 contentPadding: EdgeInsets.symmetric(
                   horizontal: 12,
                   vertical: 12,
@@ -412,7 +412,7 @@ class _PreferenceDialogState extends State<_PreferenceDialog> {
                 ),
                 enabledBorder: OutlineInputBorder(
                   borderRadius: BorderRadius.all(Radius.circular(10)),
-                  borderSide: BorderSide(color: Color(0xFFE5E7EB)),
+                  borderSide: BorderSide(color: context.marilin.border),
                 ),
                 focusedBorder: OutlineInputBorder(
                   borderRadius: BorderRadius.all(Radius.circular(10)),
@@ -451,7 +451,7 @@ class _PreferenceDialogState extends State<_PreferenceDialog> {
                 width: double.infinity,
                 padding: const EdgeInsets.all(10),
                 decoration: BoxDecoration(
-                  color: const Color(0xFFFEF2F2),
+                  color: context.marilin.soft(Color(0xFFFEF2F2)),
                   borderRadius: BorderRadius.circular(8),
                   border: Border.all(color: const Color(0xFFFCA5A5)),
                 ),
@@ -475,7 +475,7 @@ class _PreferenceDialogState extends State<_PreferenceDialog> {
                       onPressed: () => Navigator.of(context).pop(),
                       style: OutlinedButton.styleFrom(
                         //foregroundBuilder: Colors.,
-                        //backgroundColor: const Color(0xFFE5E7EB),
+                        //backgroundColor: const context.marilin.border,
                         padding: const EdgeInsets.symmetric(vertical: 14),
                         shape: RoundedRectangleBorder(
                           borderRadius: BorderRadius.circular(12),
@@ -540,7 +540,7 @@ class _TimeSelector extends StatelessWidget {
           labelText: label,
           prefixIcon: const Icon(Icons.access_time_rounded, size: 18),
           filled: true,
-          fillColor: Colors.white,
+          fillColor: context.marilin.surface,
           contentPadding: const EdgeInsets.symmetric(
             horizontal: 12,
             vertical: 12,
@@ -548,9 +548,9 @@ class _TimeSelector extends StatelessWidget {
           border: const OutlineInputBorder(
             borderRadius: BorderRadius.all(Radius.circular(10)),
           ),
-          enabledBorder: const OutlineInputBorder(
+          enabledBorder: OutlineInputBorder(
             borderRadius: BorderRadius.all(Radius.circular(10)),
-            borderSide: BorderSide(color: Color(0xFFE5E7EB)),
+            borderSide: BorderSide(color: context.marilin.border),
           ),
         ),
         child: Text(
