@@ -99,12 +99,12 @@ class ProductQuantityRow extends StatelessWidget {
                     const SizedBox(height: 3),
                     Text(
                       !product.hasPrice
-                          ? 'Sin precio'
+                          ? 'Sin precio · no se puede vender'
                           : product.agreementId == null
                           ? '${formatMoney(product.price)} c/u'
                           : '${formatMoney(product.price)} c/u · acuerdo',
                       style: TextStyle(
-                        fontSize: 12,
+                        fontSize: 13,
                         fontWeight: FontWeight.w600,
                         color: hasQuantity
                             ? primary.withValues(alpha: 0.8)

@@ -148,7 +148,7 @@ void main() {
         ),
       );
 
-      expect(find.text('Sin precio'), findsOneWidget);
+      expect(find.text('Sin precio · no se puede vender'), findsOneWidget);
       await tester.tap(find.byIcon(Icons.add_rounded));
       expect(incrementCalled, 0);
     });

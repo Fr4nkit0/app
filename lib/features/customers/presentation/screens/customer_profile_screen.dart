@@ -2,7 +2,6 @@ import 'package:app/core/utils/money_formatter.dart';
 import 'package:flutter/material.dart';
 import 'package:app/core/theme/marilin_tokens.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import 'package:app/core/theme/marilin_tokens.dart';
 import 'package:url_launcher/url_launcher.dart';
 import 'package:app/core/utils/avatar_utils.dart';
 import 'package:app/core/utils/address_formatter.dart';
@@ -99,15 +98,18 @@ class _CustomerProfileScreenState extends ConsumerState<CustomerProfileScreen> {
         elevation: 0,
         scrolledUnderElevation: 0.5,
       ),
-      body: SingleChildScrollView(
-        child: Column(
-          children: [
-            _buildProfileHeader(customer),
-            const SizedBox(height: 16),
-            _buildTabBar(),
-            _buildTabContent(customer, customerHistory),
-            const SizedBox(height: 80),
-          ],
+      body: SafeArea(
+        top: false,
+        child: SingleChildScrollView(
+          child: Column(
+            children: [
+              _buildProfileHeader(customer),
+              const SizedBox(height: 16),
+              _buildTabBar(),
+              _buildTabContent(customer, customerHistory),
+              const SizedBox(height: 80),
+            ],
+          ),
         ),
       ),
       floatingActionButton: FloatingActionButton.extended(
@@ -729,17 +731,17 @@ class _CustomerProfileScreenState extends ConsumerState<CustomerProfileScreen> {
                     const SizedBox(height: 8),
                     Row(
                       children: [
-                        const Icon(
+                        Icon(
                           Icons.check_circle,
                           size: 16,
-                          color: Colors.green,
+                          color: context.marilin.success,
                         ),
                         const SizedBox(width: 8),
                         Text(
-                          'Ubicación fijada (${addr.latitude!.toStringAsFixed(6)}, ${addr.longitude!.toStringAsFixed(6)})',
-                          style: const TextStyle(
+                          'Ubicación fijada',
+                          style: TextStyle(
                             fontSize: 13,
-                            color: Colors.green,
+                            color: context.marilin.success,
                             fontWeight: FontWeight.w500,
                           ),
                         ),

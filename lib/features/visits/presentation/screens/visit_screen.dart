@@ -34,7 +34,6 @@ import 'package:app/features/visits/presentation/widgets/visit_debt_banner.dart'
 import 'package:app/features/visits/presentation/widgets/visit_custody_banner.dart';
 import 'package:app/features/visits/presentation/widgets/visit_reschedule_time_field.dart';
 import 'package:app/features/visits/domain/reschedule_time.dart';
-import 'package:app/features/payments/presentation/providers/payment_repository_provider.dart';
 
 final stopSalesProvider = StreamProvider.family<List<Sale>, String>((
   ref,
