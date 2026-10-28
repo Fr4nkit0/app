@@ -1,3 +1,4 @@
+import 'package:app/core/utils/money_formatter.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:url_launcher/url_launcher.dart';
@@ -798,7 +799,7 @@ class _VisitScreenState extends ConsumerState<VisitScreen> {
               const SizedBox(width: 12),
               // Right: Total amount
               Text(
-                '\$${sale.total.toStringAsFixed(0)}',
+                formatMoney(sale.total),
                 style: TextStyle(
                   fontSize: 20,
                   fontWeight: FontWeight.w900,

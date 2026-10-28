@@ -1,3 +1,4 @@
+import 'package:app/core/utils/money_formatter.dart';
 import 'dart:async';
 
 import 'package:flutter/material.dart';
@@ -38,7 +39,9 @@ class ProductQuantityRow extends StatelessWidget {
       duration: const Duration(milliseconds: 200),
       margin: const EdgeInsets.fromLTRB(16, 4, 16, 8),
       decoration: BoxDecoration(
-        color: hasQuantity ? primary.withValues(alpha: 0.05) : context.marilin.surface,
+        color: hasQuantity
+            ? primary.withValues(alpha: 0.05)
+            : context.marilin.surface,
         borderRadius: BorderRadius.circular(16),
         border: Border.all(
           color: hasQuantity
@@ -98,8 +101,8 @@ class ProductQuantityRow extends StatelessWidget {
                       !product.hasPrice
                           ? 'Sin precio'
                           : product.agreementId == null
-                          ? '\$${product.price.toStringAsFixed(0)} c/u'
-                          : '\$${product.price.toStringAsFixed(0)} c/u · acuerdo',
+                          ? '${formatMoney(product.price)} c/u'
+                          : '${formatMoney(product.price)} c/u · acuerdo',
                       style: TextStyle(
                         fontSize: 12,
                         fontWeight: FontWeight.w600,

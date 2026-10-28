@@ -92,7 +92,7 @@ void main() {
     expect(find.text('Finalizado'), findsOneWidget);
     expect(find.text('Futuro'), findsOneWidget);
     expect(find.text('Agua 20L'), findsNWidgets(3));
-    expect(find.text('\$1200'), findsOneWidget);
+    expect(find.text('\$1.200'), findsOneWidget);
     expect(find.text('Mayorista'), findsOneWidget);
     expect(find.text('Pendiente de sincronizar'), findsOneWidget);
     // In force first.

@@ -1,3 +1,4 @@
+import 'package:app/core/utils/money_formatter.dart';
 import 'package:flutter/material.dart';
 
 class DebtChip extends StatelessWidget {
@@ -16,8 +17,7 @@ class DebtChip extends StatelessWidget {
     this.icon,
     this.iconSize = 16,
     this.iconColor,
-    this.prefixText = 'Deuda: \$',
-    this.useRawAmountFormatting = false,
+    this.prefixText = 'Deuda: ',
   });
 
   final double amount;
@@ -34,7 +34,6 @@ class DebtChip extends StatelessWidget {
   final double iconSize;
   final Color? iconColor;
   final String prefixText;
-  final bool useRawAmountFormatting;
 
   @override
   Widget build(BuildContext context) {
@@ -57,7 +56,7 @@ class DebtChip extends StatelessWidget {
             const SizedBox(width: 4),
           ],
           Text(
-            '$prefixText${useRawAmountFormatting ? amount.toString() : _formatAmount(amount)}',
+            '$prefixText${formatMoney(amount)}',
             style: TextStyle(
               color: textColor,
               fontSize: fontSize,
@@ -67,16 +66,5 @@ class DebtChip extends StatelessWidget {
         ],
       ),
     );
-  }
-
-  String _formatAmount(double value) {
-    final intVal = value.toInt();
-    final str = intVal.toString();
-    final buffer = StringBuffer();
-    for (var i = 0; i < str.length; i++) {
-      if (i > 0 && (str.length - i) % 3 == 0) buffer.write('.');
-      buffer.write(str[i]);
-    }
-    return buffer.toString();
   }
 }

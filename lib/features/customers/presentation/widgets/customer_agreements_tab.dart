@@ -1,3 +1,4 @@
+import 'package:app/core/utils/money_formatter.dart';
 import 'package:app/core/theme/marilin_tokens.dart';
 import 'package:app/core/widgets/error_state.dart';
 import 'package:app/features/customers/domain/models/customer_agreement.dart';
@@ -104,10 +105,6 @@ class AgreementCard extends StatelessWidget {
   const AgreementCard({super.key, required this.agreement});
 
   final CustomerAgreement agreement;
-
-  static String formatMoney(double value) => value == value.roundToDouble()
-      ? '\$${value.toStringAsFixed(0)}'
-      : '\$${value.toStringAsFixed(2).replaceAll('.', ',')}';
 
   static String formatDate(String day) {
     final p = day.split('-');

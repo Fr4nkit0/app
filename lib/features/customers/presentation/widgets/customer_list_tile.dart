@@ -193,7 +193,7 @@ class CustomerListTile extends ConsumerWidget {
                                 icon: Icons.warning_amber_rounded,
                                 iconSize: 11,
                                 iconColor: const Color(0xFFEF4444),
-                                prefixText: 'Deuda: \$',
+                                prefixText: 'Deuda: ',
                               ),
                             ...customer.productLabels
                                 .take(2) // Max 2 tags to avoid overflow

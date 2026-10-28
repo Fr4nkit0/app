@@ -69,7 +69,7 @@ void main() {
           ),
         ),
       );
-      expect(find.text('\$1200 c/u · acuerdo'), findsOneWidget);
+      expect(find.text('\$1.200 c/u · acuerdo'), findsOneWidget);
     });
 
     testWidgets('calls onIncrement when + button is tapped', (tester) async {

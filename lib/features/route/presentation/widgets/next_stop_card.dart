@@ -1,3 +1,4 @@
+import 'package:app/core/utils/money_formatter.dart';
 import 'package:flutter/material.dart';
 import 'package:url_launcher/url_launcher.dart';
 import 'package:app/core/theme/marilin_tokens.dart';
@@ -107,7 +108,7 @@ class NextStopCard extends StatelessWidget {
                     children: [
                       if (customer.debtAmount > 0)
                         Text(
-                          'Debe \$${_formatAmount(customer.debtAmount)}',
+                          'Debe ${formatMoney(customer.debtAmount)}',
                           style: TextStyle(
                             fontSize: 14,
                             fontWeight: FontWeight.w700,
@@ -155,17 +156,6 @@ class NextStopCard extends StatelessWidget {
         ),
       ),
     );
-  }
-
-  /// Thousands separated with dots, no decimals (same as the debt chip).
-  static String _formatAmount(double value) {
-    final digits = value.toInt().toString();
-    final buffer = StringBuffer();
-    for (var i = 0; i < digits.length; i++) {
-      if (i > 0 && (digits.length - i) % 3 == 0) buffer.write('.');
-      buffer.write(digits[i]);
-    }
-    return buffer.toString();
   }
 }
 

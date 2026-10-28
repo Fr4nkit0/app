@@ -89,13 +89,13 @@ void main() {
   testWidgets('the amount is 40sp', (tester) async {
     await pumpScreen(tester, _draft());
 
-    final amount = tester.widget<Text>(find.text('\$3000').first);
+    final amount = tester.widget<Text>(find.text('\$3.000').first);
     expect(amount.style?.fontSize, 40);
   });
 
   testWidgets('previous debt is a quiet line, not a chip', (tester) async {
     await pumpScreen(tester, _draft(debt: 2500));
-    expect(find.text('Debe \$2500 de antes'), findsOneWidget);
+    expect(find.text('Debe \$2.500 de antes'), findsOneWidget);
     expect(find.textContaining('Deuda previa'), findsNothing);
   });
 

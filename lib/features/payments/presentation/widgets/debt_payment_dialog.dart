@@ -1,3 +1,4 @@
+import 'package:app/core/utils/money_formatter.dart';
 import 'package:flutter/material.dart';
 import 'package:app/core/theme/marilin_tokens.dart';
 import 'package:app/features/payments/presentation/widgets/amount_field.dart';
@@ -125,9 +126,7 @@ class _DebtPaymentDialogState extends State<DebtPaymentDialog> {
           ),
           const SizedBox(width: 6),
           Text(
-            isCovered
-                ? '✓ Cubierto'
-                : 'Restante: \$${_remaining.toStringAsFixed(2)}',
+            isCovered ? '✓ Cubierto' : 'Restante: ${formatMoney(_remaining)}',
             style: TextStyle(
               fontWeight: FontWeight.w700,
               fontSize: 13,
@@ -177,7 +176,7 @@ class _DebtPaymentDialogState extends State<DebtPaymentDialog> {
               ),
               const SizedBox(height: 4),
               Text(
-                'Deuda total: \$${widget.totalDebt.toStringAsFixed(0)}',
+                'Deuda total: ${formatMoney(widget.totalDebt)}',
                 style: TextStyle(
                   fontSize: 14,
                   fontWeight: FontWeight.w600,

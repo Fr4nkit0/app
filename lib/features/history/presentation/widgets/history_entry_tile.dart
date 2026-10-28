@@ -1,3 +1,4 @@
+import 'package:app/core/utils/money_formatter.dart';
 import 'package:flutter/material.dart';
 import 'package:app/core/theme/marilin_tokens.dart';
 import 'package:app/core/utils/avatar_utils.dart';
@@ -5,20 +6,6 @@ import 'package:app/features/history/domain/models/history_entry.dart';
 import 'package:app/features/history/domain/models/history_entry_type.dart';
 import 'package:app/features/sync/domain/models/pending_change.dart';
 import 'package:app/features/sync/presentation/widgets/sync_badge.dart';
-
-String _formatArsAmount(double amount) {
-  final rounded = amount.round();
-  final digits = rounded.abs().toString();
-  final buffer = StringBuffer();
-  for (var i = 0; i < digits.length; i++) {
-    if (i > 0 && (digits.length - i) % 3 == 0) {
-      buffer.write('.');
-    }
-    buffer.write(digits[i]);
-  }
-  final body = buffer.toString();
-  return rounded < 0 ? '-\$$body' : '\$$body';
-}
 
 class HistoryEntryTile extends StatelessWidget {
   const HistoryEntryTile({super.key, required this.entry});
@@ -141,7 +128,7 @@ class HistoryEntryTile extends StatelessWidget {
               children: [
                 if (showAmount)
                   Text(
-                    _formatArsAmount(entry.amount!),
+                    formatMoney(entry.amount!),
                     style: TextStyle(
                       fontSize: 14,
                       fontWeight: FontWeight.w900,

@@ -1,3 +1,4 @@
+import 'package:app/core/utils/money_formatter.dart';
 import 'package:flutter/material.dart';
 import 'package:app/core/theme/marilin_tokens.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
@@ -307,10 +308,10 @@ class _CustomerProfileScreenState extends ConsumerState<CustomerProfileScreen> {
                                   const SizedBox(height: 12),
                                   Text(
                                     balance > 0
-                                        ? '\$${balance.toStringAsFixed(0)}'
+                                        ? formatMoney(balance)
                                         : (balance == 0
-                                              ? '\$0'
-                                              : '\$${(-balance).toStringAsFixed(0)}'),
+                                              ? formatMoney(0)
+                                              : formatMoney(-balance)),
                                     style: TextStyle(
                                       fontSize: 22,
                                       fontWeight: FontWeight.w800,
@@ -322,10 +323,10 @@ class _CustomerProfileScreenState extends ConsumerState<CustomerProfileScreen> {
                                   const SizedBox(height: 4),
                                   Text(
                                     balance > 0
-                                        ? 'Deuda: \$${balance.toStringAsFixed(0)}'
+                                        ? 'Deuda: ${formatMoney(balance)}'
                                         : (balance == 0
                                               ? 'Al día'
-                                              : 'Saldo a favor: \$${(-balance).toStringAsFixed(0)}'),
+                                              : 'Saldo a favor: ${formatMoney(-balance)}'),
                                     style: TextStyle(
                                       fontSize: 13,
                                       color: balance > 0

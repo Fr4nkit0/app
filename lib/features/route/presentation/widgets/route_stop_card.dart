@@ -307,7 +307,7 @@ class RouteStopCard extends ConsumerWidget {
                                             icon: Icons.warning_amber_rounded,
                                             iconSize: 11,
                                             iconColor: const Color(0xFFEF4444),
-                                            prefixText: 'Deuda: \$',
+                                            prefixText: 'Deuda: ',
                                           ),
                                         if (stop
                                             .customer

@@ -52,16 +52,13 @@ void main() {
               textColor: Colors.blue,
               fontSize: 14,
               fontWeight: FontWeight.bold,
-              prefixText: 'PRE-DEBT: \$',
-              useRawAmountFormatting: true,
+              prefixText: 'PRE-DEBT: ',
             ),
           ),
         ),
       );
 
-      // Verify the formatted text is not raw since useRawAmountFormatting formats double directly using toStringAsFixed or just double.
-      // Wait, let's see: we expect "PRE-DEBT: $2500.50" or similar depending on the raw formatting implementation.
-      expect(find.textContaining('PRE-DEBT: \$'), findsOneWidget);
+      expect(find.text('PRE-DEBT: \$2.500,50'), findsOneWidget);
 
       final container = tester.widget<Container>(find.byType(Container));
       expect(container.margin, equals(const EdgeInsets.all(8)));

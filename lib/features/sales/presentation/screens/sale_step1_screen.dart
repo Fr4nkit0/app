@@ -1,3 +1,4 @@
+import 'package:app/core/utils/money_formatter.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:app/core/theme/marilin_tokens.dart';
@@ -604,7 +605,7 @@ class _StickyFooter extends StatelessWidget {
                   ),
                 ),
                 Text(
-                  'Total: \$${draft.total.toStringAsFixed(0)}',
+                  'Total: ${formatMoney(draft.total)}',
                   style: TextStyle(
                     fontWeight: FontWeight.w900,
                     color: tokens.primary,

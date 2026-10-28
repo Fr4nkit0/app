@@ -1,3 +1,4 @@
+import 'package:app/core/utils/money_formatter.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:app/core/theme/sales_tokens.dart';
@@ -143,7 +144,7 @@ class _TotalBlock extends StatelessWidget {
             ),
           ),
           Text(
-            '\$${draft.total.toStringAsFixed(0)}',
+            formatMoney(draft.total),
             style: TextStyle(
               fontSize: 40,
               fontWeight: FontWeight.w900,
@@ -158,7 +159,7 @@ class _TotalBlock extends StatelessWidget {
                 Icon(Icons.history_rounded, size: 16, color: muted),
                 const SizedBox(width: 6),
                 Text(
-                  'Debe \$${debt.toStringAsFixed(0)} de antes',
+                  'Debe ${formatMoney(debt)} de antes',
                   style: TextStyle(
                     fontSize: 14,
                     fontWeight: FontWeight.w600,
@@ -212,7 +213,7 @@ class SaleStep3ClientCard extends StatelessWidget {
                     ),
                   ),
                   Text(
-                    '\$${item.subtotal.toStringAsFixed(0)}',
+                    formatMoney(item.subtotal),
                     style: Theme.of(context).textTheme.bodySmall?.copyWith(
                       fontWeight: FontWeight.w700,
                       fontFeatures: tokens.tabularStyle.fontFeatures,
@@ -429,9 +430,7 @@ class _RemainingIndicator extends StatelessWidget {
           ),
           const SizedBox(width: 6),
           Text(
-            isCovered
-                ? '✓ Cubierto'
-                : 'Falta: \$${remaining.toStringAsFixed(2)}',
+            isCovered ? '✓ Cubierto' : 'Falta: ${formatMoney(remaining)}',
             style: TextStyle(
               fontWeight: FontWeight.w700,
               fontSize: 13,
