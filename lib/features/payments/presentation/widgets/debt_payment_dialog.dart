@@ -42,8 +42,8 @@ class _DebtPaymentDialogState extends State<DebtPaymentDialog> {
 
   bool get _canConfirm {
     if (_selectedMethod == null) return false;
-    final cash = double.tryParse(_cashController.text) ?? 0;
-    final transfer = double.tryParse(_transferController.text) ?? 0;
+    final cash = AmountField.parseAmount(_cashController.text) ?? 0;
+    final transfer = AmountField.parseAmount(_transferController.text) ?? 0;
     switch (_selectedMethod) {
       case 'Efectivo':
         return cash > 0 && cash <= widget.totalDebt + 0.01;
@@ -58,8 +58,8 @@ class _DebtPaymentDialogState extends State<DebtPaymentDialog> {
   }
 
   double get _remaining {
-    final cash = double.tryParse(_cashController.text) ?? 0;
-    final transfer = double.tryParse(_transferController.text) ?? 0;
+    final cash = AmountField.parseAmount(_cashController.text) ?? 0;
+    final transfer = AmountField.parseAmount(_transferController.text) ?? 0;
     switch (_selectedMethod) {
       case 'Efectivo':
         return widget.totalDebt - cash;
@@ -341,8 +341,8 @@ class _DebtPaymentDialogState extends State<DebtPaymentDialog> {
   }
 
   void _confirm() {
-    final cash = double.tryParse(_cashController.text);
-    final transfer = double.tryParse(_transferController.text);
+    final cash = AmountField.parseAmount(_cashController.text);
+    final transfer = AmountField.parseAmount(_transferController.text);
 
     Navigator.of(context).pop(
       DebtPaymentResult(

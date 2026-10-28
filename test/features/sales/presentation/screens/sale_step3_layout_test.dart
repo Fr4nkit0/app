@@ -139,4 +139,28 @@ void main() {
     expect(find.text('Total'), findsNothing);
     expect(find.text('Kiosco Norte'), findsOneWidget); // header subtitle only
   });
+
+  testWidgets('quick chips fill the mixed fields with the total', (
+    tester,
+  ) async {
+    await pumpScreen(
+      tester,
+      _draft().copyWith(paymentMethod: PaymentMethod.mixed),
+    );
+
+    String textOf(String label) => tester
+        .widget<TextField>(find.widgetWithText(TextField, label))
+        .controller!
+        .text;
+
+    await tester.tap(find.text('Todo en efectivo'));
+    await tester.pump();
+    expect(textOf('Efectivo'), '3000');
+    expect(textOf('Transferencia'), '0');
+
+    await tester.tap(find.text('Todo por transferencia'));
+    await tester.pump();
+    expect(textOf('Efectivo'), '0');
+    expect(textOf('Transferencia'), '3000');
+  });
 }

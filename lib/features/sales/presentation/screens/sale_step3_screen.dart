@@ -353,19 +353,31 @@ class _MixedAmountsSectionState extends ConsumerState<_MixedAmountsSection> {
   }
 
   void _onCashChanged(String value) {
-    final cash = double.tryParse(value);
-    final transfer = double.tryParse(_transferController.text);
+    final cash = AmountField.parseAmount(value);
+    final transfer = AmountField.parseAmount(_transferController.text);
     ref
         .read(saleDraftProvider.notifier)
         .setMixedAmounts(cash: cash, transfer: transfer);
   }
 
   void _onTransferChanged(String value) {
-    final cash = double.tryParse(_cashController.text);
-    final transfer = double.tryParse(value);
+    final cash = AmountField.parseAmount(_cashController.text);
+    final transfer = AmountField.parseAmount(value);
     ref
         .read(saleDraftProvider.notifier)
         .setMixedAmounts(cash: cash, transfer: transfer);
+  }
+
+  void _fillAll({required bool cash}) {
+    final total = widget.draft.total;
+    final text = total == total.roundToDouble()
+        ? total.toStringAsFixed(0)
+        : total.toStringAsFixed(2);
+    _cashController.text = cash ? text : '0';
+    _transferController.text = cash ? '0' : text;
+    ref
+        .read(saleDraftProvider.notifier)
+        .setMixedAmounts(cash: cash ? total : 0, transfer: cash ? 0 : total);
   }
 
   @override
@@ -383,6 +395,21 @@ class _MixedAmountsSectionState extends ConsumerState<_MixedAmountsSection> {
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
                   _SectionLabel('MONTOS MIXTOS'),
+                  const SizedBox(height: 10),
+                  Wrap(
+                    spacing: 8,
+                    runSpacing: 8,
+                    children: [
+                      ActionChip(
+                        label: const Text('Todo en efectivo'),
+                        onPressed: () => _fillAll(cash: true),
+                      ),
+                      ActionChip(
+                        label: const Text('Todo por transferencia'),
+                        onPressed: () => _fillAll(cash: false),
+                      ),
+                    ],
+                  ),
                   const SizedBox(height: 10),
                   AmountField(
                     focusColor: primary,
