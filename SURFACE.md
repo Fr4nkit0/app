@@ -33,7 +33,7 @@ Una paleta prístina, profesional y vibrante:
 
 ## Riesgos a Evitar en Flutter
 * **Material Clásico:** Es fácil caer en el aspecto estándar de "Android 2018" si se usan los componentes por defecto sin ajustar el tema. Se debe sobreescribir el `ThemeData` para imponer `elevation: 0`, colores planos y redondeos grandes.
-* **Oscuridad:** El usuario detesta el look oscuro/industrial. Todo debe sentirse luminoso y espacioso.
+* **Oscuridad:** El tema claro es el predeterminado y debe sentirse luminoso y espacioso. Existe un tema oscuro opcional (elegible en el perfil): neutro, casi negro, con el mismo azul de acento y tarjetas sólidas un paso más claras que el fondo. Nunca industrial ni con tinte azulado.
 
 ---
 *Contrato estético registrado para asegurar consistencia absoluta entre la Web y la App.*
