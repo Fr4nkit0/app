@@ -332,7 +332,7 @@ class _CustomerProfileScreenState extends ConsumerState<CustomerProfileScreen> {
                                           TopToast.show(
                                             context,
                                             message:
-                                                'Error al registrar pago: ${res.error}',
+                                                'No se guardó el pago. Reintentá.',
                                             icon: Icons.error_outline,
                                             color: const Color(0xFFDC2626),
                                           );

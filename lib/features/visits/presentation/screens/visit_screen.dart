@@ -390,7 +390,7 @@ class _VisitScreenState extends ConsumerState<VisitScreen> {
       case Error(:final error):
         TopToast.show(
           context,
-          message: 'Error al registrar pago: $error',
+          message: 'No se guardó el pago. Reintentá.',
           icon: Icons.error_outline,
           color: MarilinColors.destructive,
         );
