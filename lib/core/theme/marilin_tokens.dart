@@ -27,6 +27,7 @@ class MarilinTokens extends ThemeExtension<MarilinTokens> {
     required this.success,
     required this.destructive,
     required this.accent,
+    this.isDark = false,
   });
 
   final Color scaffoldMuted;
@@ -38,6 +39,25 @@ class MarilinTokens extends ThemeExtension<MarilinTokens> {
   final Color success;
   final Color destructive;
   final Color accent;
+
+  /// Whether these are the dark-theme tokens; picks the neutral roles below.
+  final bool isDark;
+
+  /// Main text and icons (the navy of the light theme).
+  Color get ink => brandNavy;
+
+  Color get inkSecondary => isDark ? const Color(0xFFCBD5E1) : const Color(0xFF334155);
+
+  /// Hints and placeholders.
+  Color get inkHint => isDark ? const Color(0xFF64748B) : const Color(0xFF9CA3AF);
+
+  Color get lineStrong => isDark ? const Color(0xFF475569) : const Color(0xFFD1D5DB);
+
+  /// Subtle fills behind chips, rows and inputs.
+  Color get fill => isDark ? const Color(0xFF334155) : const Color(0xFFF1F5F9);
+
+  /// A pastel status background: as is in light, a faint wash of it in dark.
+  Color soft(Color pastel) => isDark ? pastel.withValues(alpha: 0.14) : pastel;
 
   static const MarilinTokens light = MarilinTokens(
     scaffoldMuted: MarilinColors.scaffoldMuted,
@@ -62,6 +82,7 @@ class MarilinTokens extends ThemeExtension<MarilinTokens> {
     success: Color(0xFF34D399),
     destructive: Color(0xFFF87171),
     accent: Color(0xFFFB923C),
+    isDark: true,
   );
 
   static MarilinTokens of(BuildContext context) {
@@ -103,6 +124,7 @@ class MarilinTokens extends ThemeExtension<MarilinTokens> {
       success: success ?? this.success,
       destructive: destructive ?? this.destructive,
       accent: accent ?? this.accent,
+      isDark: isDark,
     );
   }
 
@@ -119,6 +141,12 @@ class MarilinTokens extends ThemeExtension<MarilinTokens> {
       success: Color.lerp(success, other.success, t)!,
       destructive: Color.lerp(destructive, other.destructive, t)!,
       accent: Color.lerp(accent, other.accent, t)!,
+      isDark: t < 0.5 ? isDark : other.isDark,
     );
   }
+}
+
+/// `context.marilin.surface`: the current theme's tokens.
+extension MarilinThemeContext on BuildContext {
+  MarilinTokens get marilin => MarilinTokens.of(this);
 }
