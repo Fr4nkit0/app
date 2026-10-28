@@ -18,12 +18,16 @@ class RouteStopCard extends ConsumerWidget {
     required this.onTap,
     this.isFirst = false,
     this.isLast = false,
+    this.isNext = false,
   });
 
   final RouteStop stop;
   final VoidCallback onTap;
   final bool isFirst;
   final bool isLast;
+
+  /// Marks the stop shown in the next-stop hero with a small pill.
+  final bool isNext;
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
@@ -242,13 +246,19 @@ class RouteStopCard extends ConsumerWidget {
                                       ],
                                     ),
                                   ),
-                                  // Time bubble
-                                  if (stop.hasScheduledTime)
+                                  // Next pill + time bubble
+                                  if (isNext) ...[
+                                    const SizedBox(width: 8),
+                                    _buildNextPill(),
+                                  ],
+                                  if (stop.hasScheduledTime) ...[
+                                    const SizedBox(width: 6),
                                     _buildTimeBubble(
                                       stop.scheduledAt,
                                       isDone: isDone,
                                       isAbsent: isAbsent,
                                     ),
+                                  ],
                                 ],
                               ),
                               const SizedBox(height: 12),
@@ -396,6 +406,24 @@ class RouteStopCard extends ConsumerWidget {
           ),
         ),
       ],
+    );
+  }
+
+  Widget _buildNextPill() {
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
+      decoration: BoxDecoration(
+        color: MarilinColors.brandBlue.withValues(alpha: 0.12),
+        borderRadius: BorderRadius.circular(20),
+      ),
+      child: const Text(
+        'Próxima',
+        style: TextStyle(
+          fontSize: 13,
+          fontWeight: FontWeight.w700,
+          color: MarilinColors.brandBlue,
+        ),
+      ),
     );
   }
 

@@ -7,7 +7,10 @@ import 'package:app/features/route/domain/models/route_stop.dart';
 import 'package:app/features/route/domain/models/stop_status.dart';
 import 'package:app/features/route/presentation/providers/route_repository_provider.dart';
 import 'package:app/features/visits/presentation/screens/visit_screen.dart';
+import 'package:app/features/route/presentation/widgets/next_stop_card.dart';
+import 'package:app/features/route/presentation/widgets/route_progress_line.dart';
 import 'package:app/features/route/presentation/widgets/route_stop_card.dart';
+import 'package:app/features/inventory/presentation/providers/inventory_repository_provider.dart';
 import 'package:app/features/auth/auth_controller.dart';
 import 'package:app/features/profile/profile_screen.dart';
 import 'package:app/features/profile/widgets/profile_avatar.dart';
@@ -54,6 +57,7 @@ class _RouteDayScreenState extends ConsumerState<RouteDayScreen> {
   Widget build(BuildContext context) {
     final stopsAsync = ref.watch(routeDayProvider);
     final allStopsAsync = ref.watch(routeAllStopsProvider);
+    final nextStop = ref.watch(nextStopProvider);
     final isSyncRunning = ref.watch(syncRunningProvider).value ?? false;
 
     return Scaffold(
@@ -68,7 +72,26 @@ class _RouteDayScreenState extends ConsumerState<RouteDayScreen> {
               controller: _scrollController,
               slivers: [
                 SliverToBoxAdapter(child: _RouteHeader(stops: allStops)),
-                SliverToBoxAdapter(child: _ProgressSection(stops: allStops)),
+                if (allStops.isNotEmpty)
+                  SliverToBoxAdapter(
+                    child: Padding(
+                      padding: const EdgeInsets.fromLTRB(20, 16, 20, 0),
+                      child: nextStop != null
+                          ? _NextStopHero(stop: nextStop)
+                          : RouteDoneCard(closedCount: allStops.length),
+                    ),
+                  ),
+                SliverToBoxAdapter(
+                  child: Padding(
+                    padding: const EdgeInsets.fromLTRB(20, 16, 20, 0),
+                    child: RouteProgressLine(
+                      done: allStops
+                          .where((s) => s.status != StopStatus.pending)
+                          .length,
+                      total: allStops.length,
+                    ),
+                  ),
+                ),
                 if (allStops.isEmpty)
                   SliverFillRemaining(
                     // Taller than what is left on a small phone: scroll instead of overflowing.
@@ -88,13 +111,14 @@ class _RouteDayScreenState extends ConsumerState<RouteDayScreen> {
                   )
                 else ...[
                   SliverPadding(
-                    padding: const EdgeInsets.symmetric(vertical: 8),
+                    padding: const EdgeInsets.only(top: 8, bottom: 8),
                     sliver: SliverList(
                       delegate: SliverChildBuilderDelegate(
                         (context, i) => RouteStopCard(
                           stop: stops[i],
                           isFirst: i == 0,
                           isLast: i == stops.length - 1 && isFullyLoaded,
+                          isNext: stops[i].id == nextStop?.id,
                           onTap: () => Navigator.of(context).push(
                             MaterialPageRoute(
                               builder: (_) => VisitScreen(stopId: stops[i].id),
@@ -300,162 +324,29 @@ class _RouteHeader extends ConsumerWidget {
   }
 }
 
-// ─── Barra de progreso ────────────────────────────────────────────────────────
+// ─── Next stop hero ───────────────────────────────────────────────────────────
 
-class _ProgressSection extends StatelessWidget {
-  const _ProgressSection({required this.stops});
+class _NextStopHero extends ConsumerWidget {
+  const _NextStopHero({required this.stop});
 
-  final List<RouteStop> stops;
-
-  @override
-  Widget build(BuildContext context) {
-    final done = stops.where((s) => s.status != StopStatus.pending).length;
-    final total = stops.length;
-    final pending = total - done;
-    final progress = total == 0 ? 0.0 : done / total;
-
-    return Padding(
-      padding: const EdgeInsets.fromLTRB(20, 16, 20, 16),
-      child: Container(
-        padding: const EdgeInsets.all(16),
-        decoration: BoxDecoration(
-          color: context.marilin.surface,
-          borderRadius: BorderRadius.circular(20),
-          border: Border.all(color: context.marilin.border, width: 1.5),
-          boxShadow: [
-            BoxShadow(
-              color: MarilinColors.brandBlue.withValues(alpha: 0.04),
-              blurRadius: 20,
-              offset: const Offset(0, 8),
-            ),
-          ],
-        ),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Row(
-              mainAxisAlignment: MainAxisAlignment.spaceBetween,
-              children: [
-                Text(
-                  'Progreso de la jornada',
-                  style: Theme.of(context).textTheme.labelLarge?.copyWith(
-                    color: context.marilin.ink,
-                    fontWeight: FontWeight.w900,
-                    fontSize: 14,
-                  ),
-                ),
-                Text(
-                  '${(progress * 100).toInt()}% completado',
-                  style: const TextStyle(
-                    color: MarilinColors.brandBlue,
-                    fontWeight: FontWeight.w900,
-                    fontSize: 13,
-                  ),
-                ),
-              ],
-            ),
-            const SizedBox(height: 10),
-            ClipRRect(
-              borderRadius: BorderRadius.circular(6),
-              child: LinearProgressIndicator(
-                value: progress,
-                minHeight: 8,
-                backgroundColor: context.marilin.border,
-                valueColor: AlwaysStoppedAnimation(MarilinColors.brandBlue),
-              ),
-            ),
-            const SizedBox(height: 16),
-            Row(
-              children: [
-                Expanded(
-                  child: _StatCard(
-                    title: 'Total',
-                    value: '$total',
-                    icon: Icons.inventory_2_outlined,
-                    iconColor: MarilinColors.brandBlue,
-                    bgColor: context.marilin.soft(const Color(0xFFE3F2FD)),
-                  ),
-                ),
-                const SizedBox(width: 8),
-                Expanded(
-                  child: _StatCard(
-                    title: 'Completas',
-                    value: '$done',
-                    icon: Icons.check_circle_outline_rounded,
-                    iconColor: const Color(0xFF2E7D32),
-                    bgColor: context.marilin.soft(Color(0xFFE8F5E9)),
-                  ),
-                ),
-                const SizedBox(width: 8),
-                Expanded(
-                  child: _StatCard(
-                    title: 'Pendientes',
-                    value: '$pending',
-                    icon: Icons.pending_actions_rounded,
-                    iconColor: const Color(0xFFE65100),
-                    bgColor: context.marilin.soft(Color(0xFFFFF3E0)),
-                  ),
-                ),
-              ],
-            ),
-          ],
-        ),
-      ),
-    );
-  }
-}
-
-class _StatCard extends StatelessWidget {
-  const _StatCard({
-    required this.title,
-    required this.value,
-    required this.icon,
-    required this.iconColor,
-    required this.bgColor,
-  });
-
-  final String title;
-  final String value;
-  final IconData icon;
-  final Color iconColor;
-  final Color bgColor;
+  final RouteStop stop;
 
   @override
-  Widget build(BuildContext context) {
-    final iconColor = context.marilin.vivid(this.iconColor);
-    return Container(
-      padding: const EdgeInsets.symmetric(vertical: 10, horizontal: 8),
-      decoration: BoxDecoration(
-        // Multiply, not replace: the dark tint is already translucent.
-        color: bgColor.withValues(alpha: bgColor.a * 0.7),
-        borderRadius: BorderRadius.circular(12),
-        border: Border.all(color: bgColor, width: 1),
-      ),
-      child: Column(
-        children: [
-          Icon(icon, size: 20, color: iconColor),
-          const SizedBox(height: 4),
-          Text(
-            value,
-            style: TextStyle(
-              fontSize: 16,
-              fontWeight: FontWeight.w900,
-              color: iconColor,
-            ),
-          ),
-          Text(
-            title,
-            style: TextStyle(
-              fontSize: 13,
-              fontWeight: FontWeight.w700,
-              color: iconColor.withValues(alpha: 0.8),
-              letterSpacing: 0.2,
-            ),
-            maxLines: 1,
-            overflow: TextOverflow.ellipsis,
-          ),
-        ],
-      ),
+  Widget build(BuildContext context, WidgetRef ref) {
+    // Loading or error: the custody item is simply absent.
+    final custody =
+        ref
+            .watch(customerContainerBalancesProvider(stop.customer.id))
+            .value
+            ?.fold<int>(0, (sum, b) => sum + b.quantity) ??
+        0;
+
+    return NextStopCard(
+      stop: stop,
+      custodyCount: custody,
+      onTap: () => Navigator.of(
+        context,
+      ).push(MaterialPageRoute(builder: (_) => VisitScreen(stopId: stop.id))),
     );
   }
 }
