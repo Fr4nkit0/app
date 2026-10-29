@@ -12,8 +12,8 @@ void main() {
         const MaterialApp(home: Scaffold(body: DebtChip(amount: 1500))),
       );
 
-      // Default border color is MarilinColors.destructive, text is "Deuda: $1.500"
-      expect(find.text('Deuda: \$1.500'), findsOneWidget);
+      // Default border color is MarilinColors.destructive, text is "Debe $1.500"
+      expect(find.text('Debe \$1.500'), findsOneWidget);
 
       final container = tester.widget<Container>(find.byType(Container));
       final decoration = container.decoration as BoxDecoration?;

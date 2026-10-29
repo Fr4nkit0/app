@@ -352,7 +352,7 @@ class _CustomerProfileScreenState extends ConsumerState<CustomerProfileScreen> {
                                   const SizedBox(height: 4),
                                   Text(
                                     balance > 0
-                                        ? 'Deuda: ${formatMoney(balance)}'
+                                        ? 'Debe ${formatMoney(balance)}'
                                         : (balance == 0
                                               ? 'Al día'
                                               : 'Saldo a favor: ${formatMoney(-balance)}'),

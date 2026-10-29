@@ -17,7 +17,7 @@ class RouteProgressLine extends StatelessWidget {
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
         Text(
-          '$done de $total paradas · $pending pendientes',
+          '$done de $total paradas · $pending ${pending == 1 ? 'pendiente' : 'pendientes'}',
           style: TextStyle(
             fontSize: 14,
             fontWeight: FontWeight.w700,

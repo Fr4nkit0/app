@@ -41,20 +41,12 @@ class VisitDebtBanner extends StatelessWidget {
               const SizedBox(width: 10),
               Expanded(
                 child: Text(
-                  'Deuda pendiente',
+                  'Debe ${formatMoney(debtAmount)}',
                   style: TextStyle(
-                    fontSize: 13,
-                    fontWeight: FontWeight.w700,
-                    color: MarilinColors.destructive.withValues(alpha: 0.9),
+                    fontSize: 15,
+                    fontWeight: FontWeight.w900,
+                    color: MarilinColors.destructive,
                   ),
-                ),
-              ),
-              Text(
-                formatMoney(-debtAmount),
-                style: TextStyle(
-                  fontSize: 15,
-                  fontWeight: FontWeight.w900,
-                  color: MarilinColors.destructive,
                 ),
               ),
               if (interactive) ...[
