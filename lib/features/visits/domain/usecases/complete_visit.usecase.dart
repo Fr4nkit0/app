@@ -2,7 +2,7 @@ import 'package:uuid/uuid.dart';
 
 import 'package:app/core/errors/domain_failure.dart';
 import 'package:app/core/usecases/transaction_runner.dart';
-import 'package:app/features/route/data/repositories/repositories/route.repository.dart';
+import 'package:app/features/route/data/repositories/route.repository.dart';
 import 'package:app/features/route/domain/models/stop_status.dart';
 import 'package:app/features/visits/data/repositories/visit.repository.dart';
 import 'package:app/features/visits/domain/models/visit.dart';

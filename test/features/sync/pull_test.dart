@@ -8,7 +8,7 @@ import 'package:app/features/customers/data/repositories/drift.customer.reposito
 import 'package:app/features/inventory/data/repositories/inventory.repository.dart';
 import 'package:app/features/inventory/domain/models/container_movement.dart';
 import 'package:app/features/products/data/repositories/drift.product.repository.dart';
-import 'package:app/features/route/data/repositories/repositories/drift_route_repository.dart';
+import 'package:app/features/route/data/repositories/drift_route_repository.dart';
 import 'package:app/features/visits/data/repositories/drift_visit.repository.dart';
 import 'package:app/features/sync/data/repositories/pending_change.repository.dart';
 import 'package:app/features/sync/domain/models/pending_change.dart';

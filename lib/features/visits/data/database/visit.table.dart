@@ -1,6 +1,6 @@
 import 'package:drift/drift.dart';
 import 'package:app/core/services/database_mixins.dart';
-import 'package:app/features/route/data/repositories/database/route.stop.table.dart';
+import 'package:app/features/route/data/database/route.stop.table.dart';
 import 'package:app/features/customers/data/database/customer.table.dart';
 import 'visit_outcome.table.dart';
 

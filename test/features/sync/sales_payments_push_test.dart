@@ -11,7 +11,7 @@ import 'package:app/features/inventory/domain/models/container_movement.dart';
 import 'package:app/features/payments/data/repositories/payment.repository.dart';
 import 'package:app/features/payments/domain/models/payment.dart';
 import 'package:app/features/products/domain/models/product.dart';
-import 'package:app/features/route/data/repositories/repositories/drift_route_repository.dart';
+import 'package:app/features/route/data/repositories/drift_route_repository.dart';
 import 'package:app/features/sales/data/repositories/drift.sale.repository.dart';
 import 'package:app/features/sales/domain/models/payment_method.dart';
 import 'package:app/features/sales/domain/models/sale.dart';

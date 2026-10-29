@@ -2,7 +2,7 @@ import 'package:drift/drift.dart';
 import 'package:app/core/services/database_mixins.dart';
 import 'package:app/features/customers/data/database/customer.table.dart';
 import 'package:app/features/visits/data/database/visit.table.dart';
-import 'package:app/features/route/data/repositories/database/route.table.dart';
+import 'package:app/features/route/data/database/route.table.dart';
 import 'package:app/features/products/data/database/product.table.dart';
 
 class ContainerMovementTable extends Table with Timestamps {

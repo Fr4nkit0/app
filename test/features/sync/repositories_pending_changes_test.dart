@@ -11,7 +11,7 @@ import 'package:app/features/customers/domain/models/customer.address.dart';
 import 'package:app/features/customers/domain/models/customer.preference.dart';
 import 'package:app/features/inventory/data/repositories/inventory.repository.dart';
 import 'package:app/features/products/domain/models/product.dart';
-import 'package:app/features/route/data/repositories/repositories/drift_route_repository.dart';
+import 'package:app/features/route/data/repositories/drift_route_repository.dart';
 import 'package:app/features/route/domain/models/stop_status.dart';
 import 'package:app/features/sales/data/repositories/drift.sale.repository.dart';
 import 'package:app/features/sales/domain/models/payment_method.dart';
