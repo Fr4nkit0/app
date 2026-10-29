@@ -4,6 +4,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:app/core/errors/domain_failure.dart';
+import 'package:app/core/providers/clock_provider.dart';
 import 'package:app/core/theme/marilin_tokens.dart';
 import 'package:app/features/customers/domain/models/customer.dart';
 import 'package:app/features/inventory/presentation/providers/inventory_repository_provider.dart';
@@ -45,6 +46,10 @@ class _FakeCompleteVisit implements CompleteVisitUseCase {
 }
 
 const _name = 'Kiosco Norte';
+
+/// Late at night, so a default time one hour ahead must not fall on the
+/// next day (L8).
+final _now = DateTime(2026, 10, 28, 22, 10);
 const _absent = VisitOutcome(
   id: 1,
   code: 'absent',
@@ -96,6 +101,7 @@ Future<_FakeCompleteVisit> _pumpVisit(
   await tester.pumpWidget(
     ProviderScope(
       overrides: [
+        clockProvider.overrideWithValue(() => _now),
         completeVisitUseCaseProvider.overrideWithValue(fake),
         routeStopByIdProvider('s-1').overrideWithValue(_stop),
         customerBalanceProvider('c-1').overrideWith((_) => Stream.value(0.0)),
@@ -239,8 +245,7 @@ void main() {
     await tester.tap(find.text('OK'));
     await tester.pumpAndSettle();
 
-    final label = find.textContaining('Hoy, ');
-    final time = tester.widget<Text>(label).data!.replaceFirst('Hoy, ', '');
+    expect(find.text('Hoy, 23:10'), findsOneWidget);
 
     await tester.tap(_primary);
     await tester.pump();
@@ -249,9 +254,9 @@ void main() {
     await tester.pump(const Duration(milliseconds: 400));
     await tester.pump(const Duration(milliseconds: 400));
 
-    expect(fake.lastRescheduleAt, isNotNull);
+    expect(fake.lastRescheduleAt, DateTime(2026, 10, 28, 23, 10));
     expect(find.byType(VisitScreen), findsNothing);
-    expect(find.text('Reprogramada $time · $_name'), findsOneWidget);
+    expect(find.text('Reprogramada 23:10 · $_name'), findsOneWidget);
 
     await tester.pump(const Duration(seconds: 5));
   });

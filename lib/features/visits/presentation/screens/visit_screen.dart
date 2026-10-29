@@ -1,5 +1,4 @@
 import 'package:app/core/utils/money_formatter.dart';
-import 'package:app/core/errors/domain_failure.dart';
 import 'package:app/core/presentation/failure_message.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
@@ -16,9 +15,7 @@ import 'package:app/features/sales/domain/models/sale.dart';
 import 'package:app/features/sales/domain/models/payment_method.dart';
 import 'package:app/features/sales/presentation/providers/sale_repository_provider.dart';
 import 'package:app/features/visits/domain/models/visit_outcome.dart';
-import 'package:app/features/visits/domain/models/visit_type.dart';
 import 'package:app/features/visits/presentation/providers/visit_repository_provider.dart';
-import 'package:app/features/visits/presentation/providers/complete_visit_usecase_provider.dart';
 import 'package:app/features/inventory/presentation/providers/inventory_repository_provider.dart';
 import 'package:app/features/payments/presentation/providers/payment_repository_provider.dart';
 import 'package:app/features/payments/presentation/register_debt_payment.dart';
@@ -33,7 +30,7 @@ import 'package:app/features/visits/presentation/widgets/visit_customer_card.dar
 import 'package:app/features/visits/presentation/widgets/visit_debt_banner.dart';
 import 'package:app/features/visits/presentation/widgets/visit_custody_banner.dart';
 import 'package:app/features/visits/presentation/widgets/visit_reschedule_time_field.dart';
-import 'package:app/features/visits/domain/reschedule_time.dart';
+import 'package:app/features/visits/presentation/providers/visit_session.dart';
 
 class VisitScreen extends ConsumerStatefulWidget {
   const VisitScreen({super.key, required this.stopId});
@@ -45,16 +42,10 @@ class VisitScreen extends ConsumerStatefulWidget {
 }
 
 class _VisitScreenState extends ConsumerState<VisitScreen> {
-  bool _isSaleSelected = false;
-  VisitOutcome? _selectedOutcome; // null initially so they have to select one!
-  // Reschedules happen later the same day (ADR 0002).
-  TimeOfDay? _rescheduleTime;
-  RescheduleTimeError? _rescheduleError;
-  bool _isClosing = false;
   final TextEditingController _noteController = TextEditingController();
 
-  bool get _isRescheduleSelected =>
-      _selectedOutcome?.triggersReschedule ?? false;
+  VisitSession get _session =>
+      ref.read(visitSessionProvider(widget.stopId).notifier);
 
   @override
   void dispose() {
@@ -78,27 +69,10 @@ class _VisitScreenState extends ConsumerState<VisitScreen> {
 
     final isDone = stop.status != StopStatus.pending;
     final salesAsync = ref.watch(stopSalesProvider(widget.stopId));
-    final visitMovementsAsync = ref.watch(
-      visitMovementsProvider(widget.stopId),
-    );
-    final visitPaymentsAsync = ref.watch(visitPaymentsProvider(widget.stopId));
+    final session = ref.watch(visitSessionProvider(widget.stopId));
 
     return salesAsync.when(
       data: (sales) {
-        final hasSales = sales.isNotEmpty;
-        final hasReturns = visitMovementsAsync.maybeWhen(
-          data: (movements) => movements.any((m) => m.returnedQuantity > 0),
-          orElse: () => false,
-        );
-        final hasPayments = visitPaymentsAsync.maybeWhen(
-          data: (payments) => payments.isNotEmpty,
-          orElse: () => false,
-        );
-
-        if ((hasReturns || hasPayments) && _isRescheduleSelected) {
-          _selectedOutcome = null;
-        }
-
         return Scaffold(
           backgroundColor: context.marilin.scaffoldMuted,
           appBar: AppBar(
@@ -197,7 +171,7 @@ class _VisitScreenState extends ConsumerState<VisitScreen> {
                         VisitCustodyBanner(stop: stop),
                         const SizedBox(height: 24),
                         if (!isDone) ...[
-                          if (hasSales) ...[
+                          if (session.hasSales) ...[
                             const VisitSectionHeader(
                               title: 'Registro',
                               subtitle: 'Ventas cargadas en esta parada',
@@ -215,21 +189,16 @@ class _VisitScreenState extends ConsumerState<VisitScreen> {
                               subtitle: 'Venta o visita sin entrega',
                             ),
                             VisitModeSelector(
-                              isSaleSelected: _isSaleSelected,
-                              onSelectSale: () =>
-                                  setState(() => _isSaleSelected = true),
-                              onSelectVisit: () =>
-                                  setState(() => _isSaleSelected = false),
+                              isSaleSelected: session.isSaleSelected,
+                              onSelectSale: _session.selectSaleMode,
+                              onSelectVisit: _session.selectVisitMode,
                             ),
                             const SizedBox(height: 20),
                             AnimatedSize(
                               duration: const Duration(milliseconds: 250),
                               curve: Curves.easeInOut,
-                              child: !_isSaleSelected
-                                  ? _buildSoloVisitSubSection(
-                                      hasReturns: hasReturns,
-                                      hasPayments: hasPayments,
-                                    )
+                              child: !session.isSaleSelected
+                                  ? _buildSoloVisitSubSection(session)
                                   : const SizedBox.shrink(),
                             ),
                           ],
@@ -245,16 +214,12 @@ class _VisitScreenState extends ConsumerState<VisitScreen> {
                 // Unified Sticky Footer
                 VisitStickyFooter(
                   isDone: isDone,
-                  hasSales: hasSales,
-                  isSaleSelected: _isSaleSelected,
-                  hasSoloResult: _selectedOutcome != null,
-                  isBusy: _isClosing,
+                  hasSales: session.hasSales,
+                  isSaleSelected: session.isSaleSelected,
+                  hasSoloResult: session.canClose,
+                  isBusy: session.isClosing,
                   onBackToRoute: () => Navigator.of(context).pop(),
-                  onPrimaryPressed: () => _onVisitFooterPrimary(
-                    stop,
-                    hasSales: hasSales,
-                    hasReturns: hasReturns,
-                  ),
+                  onPrimaryPressed: () => _onVisitFooterPrimary(stop),
                 ),
               ],
             ),
@@ -309,12 +274,8 @@ class _VisitScreenState extends ConsumerState<VisitScreen> {
     }
   }
 
-  Future<void> _onVisitFooterPrimary(
-    RouteStop stop, {
-    required bool hasSales,
-    required bool hasReturns,
-  }) async {
-    if (!hasSales && _isSaleSelected) {
+  Future<void> _onVisitFooterPrimary(RouteStop stop) async {
+    if (ref.read(visitSessionProvider(widget.stopId)).startsSale) {
       ref
           .read(saleDraftProvider.notifier)
           .selectCustomer(stop.customer, visitId: stop.id);
@@ -325,91 +286,43 @@ class _VisitScreenState extends ConsumerState<VisitScreen> {
       return;
     }
 
-    if (_isClosing) return;
-
-    final outcome = _selectedOutcome;
-    final triggersReschedule =
-        !hasSales && (outcome?.triggersReschedule ?? false);
-    final nextStatus = triggersReschedule ? StopStatus.absent : StopStatus.done;
-
-    DateTime? rescheduleAt;
-    if (triggersReschedule) {
-      rescheduleAt = _rescheduleDateTime(DateTime.now());
-      final error = rescheduleAt == null
-          ? RescheduleTimeError.notLater
-          : checkRescheduleTime(now: DateTime.now(), at: rescheduleAt);
-      if (error != null) {
-        setState(() => _rescheduleError = error);
-        return;
-      }
-    }
-
     final customerName = stop.customer.name;
-    late final String toastMessage;
-    late final IconData toastIcon;
-    late final Color toastColor;
-
-    if (hasSales) {
-      toastMessage = 'Venta registrada · $customerName';
-      toastIcon = Icons.check_circle_rounded;
-      toastColor = MarilinColors.success;
-    } else if (triggersReschedule) {
-      final at = rescheduleAt!;
-      final time =
-          '${at.hour.toString().padLeft(2, '0')}:'
-          '${at.minute.toString().padLeft(2, '0')}';
-      toastMessage = 'Reprogramada $time · $customerName';
-      toastIcon = Icons.calendar_today_outlined;
-      toastColor = MarilinColors.brandBlue;
-    } else {
-      toastMessage = 'Visita cerrada · $customerName';
-      toastIcon = Icons.check_circle_rounded;
-      toastColor = MarilinColors.success;
-    }
-
-    final visitType = _isSaleSelected ? VisitType.sale : VisitType.visit;
-
-    setState(() => _isClosing = true);
-    try {
-      await ref
-          .read(completeVisitUseCaseProvider)
-          .execute(
-            stopId: stop.id,
-            customerId: stop.customer.id,
-            visitType: visitType,
-            nextStatus: nextStatus,
-            outcomeId: hasSales ? null : outcome?.id,
-            observations: _noteController.text.isNotEmpty
-                ? _noteController.text
-                : null,
-            rescheduleAt: rescheduleAt,
-          );
-    } catch (error) {
-      if (!mounted) return;
-      // The time can stop being valid while the close is saved.
-      final rescheduleError = error is ValidationFailure && rescheduleAt != null
-          ? checkRescheduleTime(now: DateTime.now(), at: rescheduleAt)
-          : null;
-      if (rescheduleError != null) {
-        setState(() {
-          _isClosing = false;
-          _rescheduleError = rescheduleError;
-        });
-        return;
-      }
-      setState(() => _isClosing = false);
-      TopToast.show(
-        context,
-        message: failureMessage(
-          error,
-          fallback: 'No se guardó la visita. Reintentá.',
-        ),
-        icon: Icons.error_outline,
-        color: MarilinColors.destructive,
-      );
-      return;
-    }
+    final result = await _session.close(observations: _noteController.text);
     if (!mounted) return;
+
+    final String toastMessage;
+    final IconData toastIcon;
+    final Color toastColor;
+    switch (result) {
+      case VisitCloseRejected():
+        return;
+      case VisitCloseFailed(:final error):
+        TopToast.show(
+          context,
+          message: failureMessage(
+            error,
+            fallback: 'No se guardó la visita. Reintentá.',
+          ),
+          icon: Icons.error_outline,
+          color: MarilinColors.destructive,
+        );
+        return;
+      case VisitClosedWithSales():
+        toastMessage = 'Venta registrada · $customerName';
+        toastIcon = Icons.check_circle_rounded;
+        toastColor = MarilinColors.success;
+      case VisitRescheduled(:final at):
+        final time =
+            '${at.hour.toString().padLeft(2, '0')}:'
+            '${at.minute.toString().padLeft(2, '0')}';
+        toastMessage = 'Reprogramada $time · $customerName';
+        toastIcon = Icons.calendar_today_outlined;
+        toastColor = MarilinColors.brandBlue;
+      case VisitClosed():
+        toastMessage = 'Visita cerrada · $customerName';
+        toastIcon = Icons.check_circle_rounded;
+        toastColor = MarilinColors.success;
+    }
 
     // The toast outlives this screen, so it uses the navigator's context.
     final navigator = Navigator.of(context);
@@ -426,40 +339,17 @@ class _VisitScreenState extends ConsumerState<VisitScreen> {
     });
   }
 
-  /// The chosen reschedule time on [now]'s day, or null when none is chosen.
-  DateTime? _rescheduleDateTime(DateTime now) {
-    final time = _rescheduleTime;
-    if (time == null) return null;
-    return DateTime(now.year, now.month, now.day, time.hour, time.minute);
-  }
-
   Future<void> _pickRescheduleTime() async {
-    final now = DateTime.now();
     final picked = await showTimePicker(
       context: context,
-      initialTime:
-          _rescheduleTime ??
-          TimeOfDay.fromDateTime(now.add(const Duration(hours: 1))),
+      initialTime: _session.initialRescheduleTime(),
       helpText: 'Hora de la nueva parada (hoy)',
     );
     if (picked == null || !mounted) return;
-    final at = DateTime(
-      now.year,
-      now.month,
-      now.day,
-      picked.hour,
-      picked.minute,
-    );
-    setState(() {
-      _rescheduleTime = picked;
-      _rescheduleError = checkRescheduleTime(now: DateTime.now(), at: at);
-    });
+    _session.setRescheduleTime(picked);
   }
 
-  Widget _buildSoloVisitSubSection({
-    required bool hasReturns,
-    required bool hasPayments,
-  }) {
+  Widget _buildSoloVisitSubSection(VisitSessionState session) {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
@@ -487,11 +377,8 @@ class _VisitScreenState extends ConsumerState<VisitScreen> {
                   Expanded(
                     child: _buildResultButton(
                       outcome,
-                      isEnabled: isVisitOutcomeEnabled(
-                        outcome,
-                        hasReturns: hasReturns,
-                        hasPayments: hasPayments,
-                      ),
+                      isSelected: session.selectedOutcome?.id == outcome.id,
+                      isEnabled: session.isOutcomeEnabled(outcome),
                     ),
                   ),
                 ],
@@ -502,10 +389,10 @@ class _VisitScreenState extends ConsumerState<VisitScreen> {
         const SizedBox(height: 20),
 
         // Reschedule Form Wheel
-        if (_isRescheduleSelected) ...[
+        if (session.isRescheduleSelected) ...[
           VisitRescheduleTimeField(
-            selected: _rescheduleTime,
-            error: _rescheduleError,
+            selected: session.rescheduleTime,
+            error: session.rescheduleError,
             onTap: _pickRescheduleTime,
           ),
         ],
@@ -515,7 +402,7 @@ class _VisitScreenState extends ConsumerState<VisitScreen> {
         TextField(
           controller: _noteController,
           decoration: InputDecoration(
-            labelText: _isRescheduleSelected
+            labelText: session.isRescheduleSelected
                 ? 'Nota de reprogramación (opcional)'
                 : 'Observaciones de la visita (opcional)',
             hintText: 'Ej: No tenía plata / Dejar el lunes sin falta...',
@@ -524,7 +411,7 @@ class _VisitScreenState extends ConsumerState<VisitScreen> {
           maxLines: 2,
         ),
 
-        if (_isRescheduleSelected) ...[
+        if (session.isRescheduleSelected) ...[
           const SizedBox(height: 12),
           Container(
             padding: const EdgeInsets.all(12),
@@ -558,10 +445,13 @@ class _VisitScreenState extends ConsumerState<VisitScreen> {
     );
   }
 
-  Widget _buildResultButton(VisitOutcome outcome, {bool isEnabled = true}) {
+  Widget _buildResultButton(
+    VisitOutcome outcome, {
+    required bool isSelected,
+    bool isEnabled = true,
+  }) {
     final label = outcome.name;
     final icon = visitOutcomeIcon(outcome);
-    final isSelected = _selectedOutcome?.id == outcome.id;
     final activeColor = MarilinColors.brandBlue;
 
     return SizedBox(
@@ -586,9 +476,7 @@ class _VisitScreenState extends ConsumerState<VisitScreen> {
             borderRadius: BorderRadius.circular(12),
           ),
         ),
-        onPressed: isEnabled
-            ? () => setState(() => _selectedOutcome = outcome)
-            : null,
+        onPressed: isEnabled ? () => _session.selectOutcome(outcome) : null,
         child: Column(
           children: [
             Icon(
