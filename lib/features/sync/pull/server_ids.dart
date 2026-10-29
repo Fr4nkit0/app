@@ -16,6 +16,7 @@ class ServerIds {
   final _addresses = <int, String>{};
   final _routes = <int, String>{};
   final _stops = <int, String>{};
+  final _visits = <int, String>{};
 
   void recordCustomer(int serverId, String localId) =>
       _customers[serverId] = localId;
@@ -25,6 +26,7 @@ class ServerIds {
       _addresses[serverId] = localId;
   void recordRoute(int serverId, String localId) => _routes[serverId] = localId;
   void recordStop(int serverId, String localId) => _stops[serverId] = localId;
+  void recordVisit(int serverId, String localId) => _visits[serverId] = localId;
 
   Future<String?> customer(int? serverId) => _resolve(
     serverId,
@@ -56,6 +58,14 @@ class ServerIds {
     (id) async => (await (_db.select(
       _db.routeStopTable,
     )..where((t) => t.serverId.equals(id))).getSingleOrNull())?.routeStopId,
+  );
+
+  Future<String?> visit(int? serverId) => _resolve(
+    serverId,
+    _visits,
+    (id) async => (await (_db.select(
+      _db.visitTable,
+    )..where((t) => t.serverId.equals(id))).getSingleOrNull())?.visitId,
   );
 
   Future<RouteTableData?> route(int? serverId) async {

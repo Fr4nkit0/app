@@ -7,12 +7,16 @@ class Unsent {
   const Unsent({
     required this.customers,
     required this.stops,
-    required this.hasSales,
+    required this.visits,
+    required this.sales,
   });
 
   final Set<String> customers;
   final Set<String> stops;
-  final bool hasSales;
+  final Set<String> visits;
+  final Set<String> sales;
+
+  bool get hasSales => sales.isNotEmpty;
 
   /// Reads the queue; a stop with an unsent visit counts as unsent.
   static Future<Unsent> load(AppDatabase db) async {
@@ -41,7 +45,8 @@ class Unsent {
     return Unsent(
       customers: ids(PendingEntity.customer),
       stops: stops,
-      hasSales: ids(PendingEntity.sale).isNotEmpty,
+      visits: visitIds,
+      sales: ids(PendingEntity.sale),
     );
   }
 }
