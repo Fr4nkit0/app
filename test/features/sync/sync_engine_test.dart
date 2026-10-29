@@ -139,7 +139,11 @@ void main() {
   });
   tearDown(() => db.close());
 
-  Future<void> createCustomer(String id, {String name = 'Kiosco Norte'}) async {
+  Future<void> createCustomer(
+    String id, {
+    String name = 'Kiosco Norte',
+    String? floor = '2',
+  }) async {
     await customers.saveCustomer(
       Customer(
         id: id,
@@ -149,7 +153,7 @@ void main() {
           CustomerAddress(
             id: 'addr-$id',
             street: 'Av Belgrano 100',
-            floor: '2',
+            floor: floor,
             isPrimary: true,
             latitude: -24.785,
             longitude: -65.411,
@@ -221,12 +225,26 @@ void main() {
     expect(record['address'], {
       'street': 'Av Belgrano 100',
       'apartment': null,
-      'floor': 2,
+      'floor': '2',
       'visual_reference': null,
       'neighborhood': null,
       'latitude': -24.785,
       'longitude': -65.411,
     });
+  });
+
+  test('pushes a free-text floor as typed and a blank floor as null', () async {
+    await createCustomer('c-1', floor: ' PB ');
+    await createCustomer('c-2', floor: '  ');
+
+    await engine.runCycle();
+
+    final records = (server.pushBodies.single['customers'] as List)
+        .cast<Map>();
+    Map addressOf(String uuid) =>
+        records.singleWhere((r) => r['uuid'] == uuid)['address'] as Map;
+    expect(addressOf('c-1')['floor'], 'PB');
+    expect(addressOf('c-2')['floor'], isNull);
   });
 
   test(

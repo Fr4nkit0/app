@@ -59,6 +59,12 @@ class CustomerPusher implements EntityPusher {
         .write(CustomerTableCompanion(serverId: Value(serverId)));
   }
 
+  /// The floor travels as typed ("PB", "3"); a blank floor travels as null.
+  static String? _floor(String? floor) {
+    final trimmed = floor?.trim();
+    return trimmed == null || trimmed.isEmpty ? null : trimmed;
+  }
+
   Future<Json> _body(CustomerTableData customer) async {
     final addresses =
         await (_db.select(_db.customerAddressTable)
@@ -89,10 +95,7 @@ class CustomerPusher implements EntityPusher {
       'address': {
         'street': address?.street,
         'apartment': address?.apartment,
-        // The server stores the floor as a number; free text cannot travel.
-        'floor': address?.floor == null
-            ? null
-            : int.tryParse(address!.floor!.trim()),
+        'floor': _floor(address?.floor),
         'visual_reference': address?.visualReference,
         'neighborhood': address?.neighborhood,
         'latitude': address?.latitude,

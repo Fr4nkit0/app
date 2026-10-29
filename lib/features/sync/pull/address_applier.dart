@@ -33,9 +33,10 @@ class AddressApplier implements PullApplier {
     }
   }
 
-  /// An address created on the street has no server id yet; the server's
-  /// primary address of the same customer is that one, so it gets linked
-  /// instead of duplicated.
+  /// An address created on the street has no server id yet. The server keeps
+  /// one address per customer, built from the address the customer push sent,
+  /// so the server address is linked to that local row instead of duplicated,
+  /// whether or not either side marks it as primary.
   Future<void> _upsert(Json a, String customerId, PullContext context) async {
     final keepLocal = context.unsent.customers.contains(customerId);
     final serverId = a['id'] as int;
@@ -43,16 +44,13 @@ class AddressApplier implements PullApplier {
         await (_db.select(
           _db.customerAddressTable,
         )..where((t) => t.serverId.equals(serverId))).getSingleOrNull() ??
-        (a['is_primary'] == true
-            ? await _unlinkedPrimaryAddress(customerId)
-            : null);
+        await _unlinkedPushedAddress(customerId);
     final fields = CustomerAddressTableCompanion(
       customerId: Value(customerId),
       street: Value(a['street'] as String?),
       apartment: Value(a['apartment'] as String?),
-      // The server stores the floor as an integer column, so a free-text floor
-      // ("PB") comes back as null; keep the device's value until the server
-      // can store text.
+      // Older server rows stored the floor as an integer, so a free-text floor
+      // ("PB") could come back as null; keep the device's value then.
       floor: a['floor'] == null && _isFreeTextFloor(existing?.floor)
           ? const Value.absent()
           : Value(a['floor']?.toString()),
@@ -86,7 +84,9 @@ class AddressApplier implements PullApplier {
       floor.trim().isNotEmpty &&
       int.tryParse(floor.trim()) == null;
 
-  Future<CustomerAddressTableData?> _unlinkedPrimaryAddress(
+  /// The unlinked address the customer push sends: same selection and order
+  /// as `CustomerPusher`.
+  Future<CustomerAddressTableData?> _unlinkedPushedAddress(
     String customerId,
   ) async =>
       (await (_db.select(_db.customerAddressTable)
@@ -94,8 +94,12 @@ class AddressApplier implements PullApplier {
                   (t) =>
                       t.customerId.equals(customerId) &
                       t.serverId.isNull() &
-                      t.isPrimary.equals(true),
+                      t.enabled.equals(true),
                 )
+                ..orderBy([
+                  (t) => OrderingTerm.desc(t.isPrimary),
+                  (t) => OrderingTerm.asc(t.createdAt),
+                ])
                 ..limit(1))
               .get())
           .firstOrNull;
