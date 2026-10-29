@@ -70,6 +70,11 @@ class CustomerAccount {
     return {for (final row in rows) row.customerId: row.currentBalance};
   }
 
+  /// The table to list in a custom query's `readsFrom` so it follows the
+  /// balances it reads back with [balanceIn].
+  ResultSetImplementation<HasResultSet, dynamic> get watchedTable =>
+      _db.customerBalanceTable;
+
   /// Left-joins a query to the account of [customerId], so a watched query
   /// also follows the balance; read it back with [balanceIn].
   Join balanceJoin(Expression<String> customerId) => leftOuterJoin(

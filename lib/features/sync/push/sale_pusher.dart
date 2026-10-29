@@ -8,7 +8,9 @@ import 'references.dart';
 
 /// Sales with their lines, each at the unit price the sale draft set.
 class SalePusher implements EntityPusher, RejectionAware {
-  SalePusher(this._db) : _account = CustomerAccount(_db);
+  SalePusher(this._db, {DateTime Function()? today})
+    : _account = CustomerAccount(_db),
+      _today = today ?? DateTime.now;
 
   static const missing = 'La venta ya no existe en el dispositivo.';
   static const empty = 'La venta no tiene productos.';
@@ -16,6 +18,7 @@ class SalePusher implements EntityPusher, RejectionAware {
       'Producto desconocido: $name. Sincronizá el catálogo primero.';
 
   final AppDatabase _db;
+  final DateTime Function() _today;
   final CustomerAccount _account;
 
   @override
@@ -41,15 +44,20 @@ class SalePusher implements EntityPusher, RejectionAware {
         rejections.add(LocalRejection(ids, missing));
         continue;
       }
-      final lines = await (_db.select(_db.saleItemTable).join([
-        innerJoin(
-          _db.productTable,
-          _db.productTable.productId.equalsExp(_db.saleItemTable.productId),
-        ),
-      ])
-            ..where(_db.saleItemTable.saleId.equals(saleId))
-            ..orderBy([OrderingTerm.asc(_db.saleItemTable.rowId)]))
-          .get();
+      // Its visit is still open: it waits so it travels linked to it.
+      if (await awaitsOpenVisit(_db, sale.visitId, today: _today())) continue;
+      final lines =
+          await (_db.select(_db.saleItemTable).join([
+                  innerJoin(
+                    _db.productTable,
+                    _db.productTable.productId.equalsExp(
+                      _db.saleItemTable.productId,
+                    ),
+                  ),
+                ])
+                ..where(_db.saleItemTable.saleId.equals(saleId))
+                ..orderBy([OrderingTerm.asc(_db.saleItemTable.rowId)]))
+              .get();
       if (lines.isEmpty) {
         rejections.add(LocalRejection(ids, empty));
         continue;
@@ -73,7 +81,11 @@ class SalePusher implements EntityPusher, RejectionAware {
             'uuid': saleId,
             ...await customerReference(_db, sale.customerId),
             if (visit != null)
-              ...reference('visit', serverId: visit.serverId, uuid: visit.visitId),
+              ...reference(
+                'visit',
+                serverId: visit.serverId,
+                uuid: visit.visitId,
+              ),
             'date': sale.saleDate.toUtc().toIso8601String(),
             'total': sale.totalAmount,
             'is_credit_sale': sale.paymentMethod == 'credit',
@@ -82,9 +94,7 @@ class SalePusher implements EntityPusher, RejectionAware {
               for (final l in lines)
                 {
                   'product_id': l.readTable(_db.productTable).serverId,
-                  ...await _agreementReference(
-                    l.readTable(_db.saleItemTable),
-                  ),
+                  ...await _agreementReference(l.readTable(_db.saleItemTable)),
                   'quantity': l.readTable(_db.saleItemTable).quantity,
                   'unit_price': l.readTable(_db.saleItemTable).unitPrice,
                 },
@@ -102,10 +112,9 @@ class SalePusher implements EntityPusher, RejectionAware {
     final uuid = line.agreementUuid;
     var serverId = line.agreementServerId;
     if (serverId == null && uuid != null) {
-      serverId = (await (_db.select(_db.customerAgreementTable)
-                ..where((t) => t.agreementId.equals(uuid)))
-              .getSingleOrNull())
-          ?.serverId;
+      serverId = (await (_db.select(
+        _db.customerAgreementTable,
+      )..where((t) => t.agreementId.equals(uuid))).getSingleOrNull())?.serverId;
     }
     if (uuid == null) return {'customer_agreement_id': serverId};
     return reference('customer_agreement', serverId: serverId, uuid: uuid);

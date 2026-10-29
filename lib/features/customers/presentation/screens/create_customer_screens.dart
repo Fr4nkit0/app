@@ -7,6 +7,7 @@ import '../providers/customer_form_provider.dart';
 import '../widgets/step_identity_view.dart';
 import '../widgets/step_address_view.dart';
 import '../widgets/step_preference_view.dart';
+import '../widgets/discard_customer_dialog.dart';
 import 'package:app/core/widgets/core_horizontal_stepper.dart';
 
 class CreateCustomerScreen extends ConsumerStatefulWidget {
@@ -69,7 +70,7 @@ class _CreateCustomerScreenState extends ConsumerState<CreateCustomerScreen> {
       }
     });
 
-    return Scaffold(
+    final screen = Scaffold(
       backgroundColor: context.marilin.surface,
       appBar: AppBar(
         title: const Text('Nuevo Cliente'),
@@ -195,6 +196,17 @@ class _CreateCustomerScreenState extends ConsumerState<CreateCustomerScreen> {
           ],
         ),
       ),
+    );
+
+    return PopScope<Object?>(
+      // Back (system or app bar) only drops typed data once the driver confirms.
+      canPop: !formState.hasEnteredData || formState.isSuccess,
+      onPopInvokedWithResult: (didPop, _) async {
+        if (didPop) return;
+        final navigator = Navigator.of(context);
+        if (await confirmDiscardCustomer(context)) navigator.pop();
+      },
+      child: screen,
     );
   }
 }

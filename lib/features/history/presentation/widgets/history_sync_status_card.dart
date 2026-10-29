@@ -29,6 +29,10 @@ class HistorySyncStatusCard extends StatelessWidget {
     }
     return switch (status.lastResult!) {
       SyncCycleResult.success => 'Sincronizado a las ${_time(at)}',
+      SyncCycleResult.offline =>
+        'Sin conexión · ${status.pendingCount} '
+            '${status.pendingCount == 1 ? 'guardado' : 'guardados'} '
+            'en el teléfono',
       SyncCycleResult.failure => 'Falló a las ${_time(at)}',
     };
   }
@@ -41,8 +45,11 @@ class HistorySyncStatusCard extends StatelessWidget {
         status.lastResult == SyncCycleResult.success &&
         status.pendingCount == 0 &&
         status.rejectedCount == 0;
+    final offline = !isRunning && status.lastResult == SyncCycleResult.offline;
     final accent = failed
         ? tokens.destructive
+        : offline
+        ? tokens.inkSecondary
         : upToDate
         ? tokens.success
         : tokens.brandBlue;
@@ -64,7 +71,7 @@ class HistorySyncStatusCard extends StatelessWidget {
             children: [
               _SyncIconBadge(
                 isSyncing: isRunning,
-                icon: failed
+                icon: failed || offline
                     ? Icons.cloud_off_rounded
                     : upToDate
                     ? Icons.cloud_done_rounded

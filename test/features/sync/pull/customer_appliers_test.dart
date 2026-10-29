@@ -102,6 +102,45 @@ void main() {
       },
     );
 
+    for (final serverPrimary in [true, false]) {
+      test(
+        'links an address created on the device without the primary flag '
+        '(server is_primary: $serverPrimary)',
+        () async {
+          await seedCustomer(db, id: 'cust-1', serverId: 11);
+          await db
+              .into(db.customerAddressTable)
+              .insert(
+                CustomerAddressTableCompanion.insert(
+                  addressId: const Value('addr-local'),
+                  customerId: const Value('cust-1'),
+                  street: const Value('Belgrano 100'),
+                  floor: const Value('PB'),
+                ),
+              );
+          final context = await pullContext(db);
+
+          await AddressApplier(db).applyChanges({
+            'customer_addresses': [
+              {
+                'id': 111,
+                'customer_id': 11,
+                'street': 'Belgrano 100',
+                'floor': 'PB',
+                'is_primary': serverPrimary,
+              },
+            ],
+          }, context);
+
+          final rows = await db.select(db.customerAddressTable).get();
+          expect(rows, hasLength(1));
+          expect(rows.single.addressId, 'addr-local');
+          expect(rows.single.serverId, 111);
+          expect(rows.single.floor, 'PB');
+        },
+      );
+    }
+
     test(
       'only links the server id of a customer with unsent changes',
       () async {

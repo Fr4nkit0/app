@@ -13,7 +13,8 @@ import 'references.dart';
 /// movement's own uuid and the return under a uuid derived from it, so a
 /// retry sends the very same uuids.
 class ContainerMovementPusher implements EntityPusher {
-  ContainerMovementPusher(this._db);
+  ContainerMovementPusher(this._db, {DateTime Function()? today})
+    : _today = today ?? DateTime.now;
 
   static const missing = 'El movimiento de envases ya no existe.';
   static const empty = 'El movimiento de envases no tiene cantidad.';
@@ -21,6 +22,7 @@ class ContainerMovementPusher implements EntityPusher {
       'Tipo de envase desconocido: $code. Sincronizá el catálogo primero.';
 
   final AppDatabase _db;
+  final DateTime Function() _today;
 
   @override
   PendingEntity get entity => PendingEntity.containerMovement;
@@ -41,20 +43,26 @@ class ContainerMovementPusher implements EntityPusher {
 
     final records = <PushRecord>[];
     final rejections = <LocalRejection>[];
-    for (final MapEntry(key: movementId, value: ids)
-        in idsByMovement.entries) {
-      final movement = await (_db.select(
-        _db.containerMovementTable,
-      )..where((t) => t.containerMovementId.equals(movementId))).getSingleOrNull();
+    for (final MapEntry(key: movementId, value: ids) in idsByMovement.entries) {
+      final movement =
+          await (_db.select(_db.containerMovementTable)
+                ..where((t) => t.containerMovementId.equals(movementId)))
+              .getSingleOrNull();
       if (movement == null) {
         rejections.add(LocalRejection(ids, missing));
+        continue;
+      }
+      // Its visit is still open: it waits so it travels linked to it.
+      if (await awaitsOpenVisit(_db, movement.visitId, today: _today())) {
         continue;
       }
       final type = await (_db.select(
         _db.containerTypeTable,
       )..where((t) => t.code.equals(movement.containerType))).getSingleOrNull();
       if (type == null) {
-        rejections.add(LocalRejection(ids, unknownType(movement.containerType)));
+        rejections.add(
+          LocalRejection(ids, unknownType(movement.containerType)),
+        );
         continue;
       }
       if (movement.deliveredQuantity <= 0 && movement.returnedQuantity <= 0) {
@@ -110,9 +118,10 @@ class ContainerMovementPusher implements EntityPusher {
   }
 
   Future<Json> _common(ContainerMovementTableData movement, int typeId) async {
-    final customer = await (_db.select(
-      _db.customerTable,
-    )..where((t) => t.customerId.equals(movement.customerId))).getSingleOrNull();
+    final customer =
+        await (_db.select(_db.customerTable)
+              ..where((t) => t.customerId.equals(movement.customerId)))
+            .getSingleOrNull();
     final visit = await resolveVisit(_db, movement.visitId);
     return {
       ...reference(

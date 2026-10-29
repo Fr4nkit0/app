@@ -7,6 +7,7 @@ import 'package:app/core/utils/avatar_utils.dart';
 import 'package:app/core/utils/address_formatter.dart';
 import 'package:app/features/customers/domain/models/customer.dart';
 import 'package:app/features/customers/presentation/providers/customer_count_provider.dart';
+import 'package:app/features/customers/presentation/screens/edit_customer_screen.dart';
 import 'package:app/features/customers/presentation/widgets/customer_agreements_tab.dart';
 import 'package:app/features/history/domain/models/history_entry.dart';
 import 'package:app/features/history/presentation/providers/history_list_provider.dart';
@@ -98,6 +99,17 @@ class _CustomerProfileScreenState extends ConsumerState<CustomerProfileScreen> {
         foregroundColor: context.marilin.ink,
         elevation: 0,
         scrolledUnderElevation: 0.5,
+        actions: [
+          IconButton(
+            tooltip: 'Editar',
+            icon: const Icon(Icons.edit_outlined),
+            onPressed: () => Navigator.of(context).push(
+              MaterialPageRoute(
+                builder: (_) => EditCustomerScreen(customer: customer),
+              ),
+            ),
+          ),
+        ],
       ),
       body: SafeArea(
         top: false,
@@ -352,7 +364,7 @@ class _CustomerProfileScreenState extends ConsumerState<CustomerProfileScreen> {
                                   const SizedBox(height: 4),
                                   Text(
                                     balance > 0
-                                        ? 'Deuda: ${formatMoney(balance)}'
+                                        ? 'Debe ${formatMoney(balance)}'
                                         : (balance == 0
                                               ? 'Al día'
                                               : 'Saldo a favor: ${formatMoney(-balance)}'),

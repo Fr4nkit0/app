@@ -4,6 +4,7 @@ import 'package:flutter_riverpod/misc.dart' show Override;
 import 'package:app/core/errors/domain_failure.dart';
 import 'package:app/core/usecases/drift_transaction_runner.dart';
 import 'package:app/features/customers/domain/models/customer.dart';
+import 'package:app/features/customers/domain/models/customer_edit.dart';
 import 'package:app/features/customers/data/repositories/customer.repository.dart';
 import 'package:app/features/customers/presentation/providers/customer_form_state.dart';
 import 'package:app/features/customers/presentation/providers/customer_form_provider.dart';
@@ -30,9 +31,7 @@ class FakeCustomerRepository implements CustomerRepository {
   }
 
   @override
-  Future<void> updateCustomer(Customer customer) => throw UnimplementedError();
-  @override
-  Future<void> deleteCustomer(String customerId) => throw UnimplementedError();
+  Future<void> editCustomer(CustomerEdit edit) => throw UnimplementedError();
   @override
   Future<Customer?> getCustomerById(String id) => throw UnimplementedError();
   @override

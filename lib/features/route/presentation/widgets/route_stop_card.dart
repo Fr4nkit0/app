@@ -7,6 +7,7 @@ import 'package:app/features/route/presentation/widgets/stop_reschedule_label.da
 import 'package:app/core/theme/marilin_tokens.dart';
 import 'package:app/features/sync/domain/models/pending_change.dart';
 import 'package:app/features/sync/presentation/widgets/sync_badge_container.dart';
+import 'package:app/features/visits/presentation/visit_outcome_display.dart';
 
 class RouteStopCard extends StatelessWidget {
   const RouteStopCard({
@@ -32,6 +33,10 @@ class RouteStopCard extends StatelessWidget {
     final isRescheduled = stop.status == StopStatus.rescheduled;
     // A rescheduled stop is closed without a delivery, like an absent one.
     final isAbsent = stop.status == StopStatus.absent || isRescheduled;
+    final visit = stop.visit;
+    final visitLine = visit == null || stop.status == StopStatus.pending
+        ? null
+        : visitSummaryLine(visit);
     final hasMetaRow =
         stop.hasScheduledTime ||
         isNext ||
@@ -183,6 +188,19 @@ class RouteStopCard extends StatelessWidget {
                                 overflow: TextOverflow.ellipsis,
                               ),
                               StopRescheduleLabel(stop: stop),
+                              if (visitLine != null) ...[
+                                const SizedBox(height: 4),
+                                Text(
+                                  visitLine,
+                                  maxLines: 2,
+                                  overflow: TextOverflow.ellipsis,
+                                  style: TextStyle(
+                                    fontSize: 13,
+                                    fontWeight: FontWeight.w600,
+                                    color: context.marilin.inkSecondary,
+                                  ),
+                                ),
+                              ],
                               if (hasMetaRow) ...[
                                 const SizedBox(height: 10),
                                 Wrap(

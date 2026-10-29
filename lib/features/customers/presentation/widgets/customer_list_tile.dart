@@ -199,7 +199,7 @@ class CustomerListTile extends ConsumerWidget {
                                 iconColor: context.marilin.vivid(
                                   MarilinColors.destructive,
                                 ),
-                                prefixText: 'Deuda: ',
+                                prefixText: 'Debe ',
                               ),
                             ...customer.productLabels
                                 .take(2) // Max 2 tags to avoid overflow

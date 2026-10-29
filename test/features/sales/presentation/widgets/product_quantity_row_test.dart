@@ -153,4 +153,48 @@ void main() {
       expect(incrementCalled, 0);
     });
   });
+
+  group('ProductQuantityRow truck stock warning', () {
+    Product stocked(int available) => Product(
+      id: 'p1',
+      name: 'Agua 20L',
+      unitLabel: 'bidón',
+      price: 1500,
+      available: available,
+    );
+
+    testWidgets('warns when the quantity exceeds the truck stock and still '
+        'allows adding more', (tester) async {
+      var increments = 0;
+      await tester.pumpWidget(
+        _wrap(
+          ProductQuantityRow(
+            product: stocked(3),
+            quantity: 5,
+            onIncrement: () => increments++,
+            onDecrement: () {},
+          ),
+        ),
+      );
+
+      expect(find.text('Solo quedan 3 en el camión'), findsOneWidget);
+      await tester.tap(find.byIcon(Icons.add_rounded));
+      expect(increments, 1);
+    });
+
+    testWidgets('shows no warning within the truck stock', (tester) async {
+      await tester.pumpWidget(
+        _wrap(
+          ProductQuantityRow(
+            product: stocked(3),
+            quantity: 3,
+            onIncrement: () {},
+            onDecrement: () {},
+          ),
+        ),
+      );
+
+      expect(find.textContaining('Solo quedan'), findsNothing);
+    });
+  });
 }

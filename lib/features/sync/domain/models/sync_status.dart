@@ -2,6 +2,9 @@ import 'package:flutter/foundation.dart';
 
 enum SyncCycleResult {
   success('success'),
+
+  /// The cycle could not reach the server: the changes stay on the phone.
+  offline('offline'),
   failure('failure');
 
   const SyncCycleResult(this.wireName);

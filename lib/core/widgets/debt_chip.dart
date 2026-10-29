@@ -18,7 +18,7 @@ class DebtChip extends StatelessWidget {
     this.icon,
     this.iconSize = 16,
     this.iconColor,
-    this.prefixText = 'Deuda: ',
+    this.prefixText = 'Debe ',
   });
 
   final double amount;

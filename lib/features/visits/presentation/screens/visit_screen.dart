@@ -16,7 +16,10 @@ import 'package:app/features/sales/domain/models/payment_method.dart';
 import 'package:app/features/sales/presentation/providers/sale_repository_provider.dart';
 import 'package:app/features/visits/domain/models/visit_outcome.dart';
 import 'package:app/features/visits/presentation/providers/visit_repository_provider.dart';
+import 'package:app/features/inventory/domain/models/container_movement.dart';
+import 'package:app/features/inventory/domain/models/container_type.dart';
 import 'package:app/features/inventory/presentation/providers/inventory_repository_provider.dart';
+import 'package:app/features/payments/domain/models/payment.dart';
 import 'package:app/features/payments/presentation/providers/payment_repository_provider.dart';
 import 'package:app/features/payments/presentation/register_debt_payment.dart';
 import 'package:app/core/theme/marilin_tokens.dart';
@@ -29,6 +32,8 @@ import 'package:app/features/visits/presentation/widgets/visit_mode_selector.dar
 import 'package:app/features/visits/presentation/widgets/visit_customer_card.dart';
 import 'package:app/features/visits/presentation/widgets/visit_debt_banner.dart';
 import 'package:app/features/visits/presentation/widgets/visit_custody_banner.dart';
+import 'package:app/features/visits/presentation/widgets/visit_outcome_banner.dart';
+import 'package:app/features/visits/presentation/widgets/visit_record_tile.dart';
 import 'package:app/features/visits/presentation/widgets/visit_reschedule_time_field.dart';
 import 'package:app/features/visits/presentation/providers/visit_session.dart';
 
@@ -72,9 +77,36 @@ class _VisitScreenState extends ConsumerState<VisitScreen> {
     final isDone = stop.status != StopStatus.pending;
     final salesAsync = ref.watch(stopSalesProvider(widget.stopId));
     final session = ref.watch(visitSessionProvider(widget.stopId));
+    // Payments that settle a sale are part of that sale's card.
+    final payments = [
+      for (final payment
+          in ref.watch(visitPaymentsProvider(widget.stopId)).value ??
+              const <Payment>[])
+        if (payment.saleId == null) payment,
+    ];
+    final returns = [
+      for (final movement
+          in ref.watch(visitMovementsProvider(widget.stopId)).value ??
+              const <ContainerMovement>[])
+        if (movement.returnedQuantity > 0) movement,
+    ];
+    final containerLabels = <String, String>{
+      for (final type
+          in ref.watch(containerTypesProvider).value ?? const <ContainerType>[])
+        type.code: type.label,
+    };
 
     return salesAsync.when(
       data: (sales) {
+        final records = [
+          ...sales.map(_buildRegisteredSaleCard),
+          ...payments.map(_buildPaymentRecord),
+          if (returns.isNotEmpty) _buildReturnRecord(returns, containerLabels),
+        ];
+        const recordsHeader = VisitSectionHeader(
+          title: 'Registro',
+          subtitle: 'Ventas, cobros y devoluciones de esta parada',
+        );
         return Scaffold(
           backgroundColor: context.marilin.scaffoldMuted,
           appBar: AppBar(
@@ -174,18 +206,18 @@ class _VisitScreenState extends ConsumerState<VisitScreen> {
                         const SizedBox(height: 24),
                         if (!isDone) ...[
                           if (session.hasSales) ...[
-                            const VisitSectionHeader(
-                              title: 'Registro',
-                              subtitle: 'Ventas cargadas en esta parada',
-                            ),
-                            ...sales.map(
-                              (sale) => _buildRegisteredSaleCard(sale),
-                            ),
+                            recordsHeader,
+                            ...records,
                             const SizedBox(height: 16),
                             _buildAddAnotherSaleButton(stop),
                             const SizedBox(height: 20),
                             _buildInfoBanner(),
                           ] else ...[
+                            if (records.isNotEmpty) ...[
+                              recordsHeader,
+                              ...records,
+                              const SizedBox(height: 12),
+                            ],
                             const VisitSectionHeader(
                               title: 'Acción',
                               subtitle: 'Venta o visita sin entrega',
@@ -206,7 +238,12 @@ class _VisitScreenState extends ConsumerState<VisitScreen> {
                           ],
                         ] else ...[
                           const VisitSectionHeader(title: 'Estado'),
-                          _buildDoneStateBanner(stop.status),
+                          VisitOutcomeBanner(stop: stop),
+                          if (records.isNotEmpty) ...[
+                            const SizedBox(height: 24),
+                            recordsHeader,
+                            ...records,
+                          ],
                         ],
                         const SizedBox(height: 8),
                       ],
@@ -505,47 +542,39 @@ class _VisitScreenState extends ConsumerState<VisitScreen> {
     );
   }
 
-  Widget _buildDoneStateBanner(StopStatus status) {
-    final isDone = status == StopStatus.done;
-    final color = isDone
-        ? context.marilin.vivid(MarilinColors.success)
-        : context.marilin.vivid(MarilinColors.destructive);
-    final bg = isDone
-        ? context.marilin.soft(MarilinColors.success.withValues(alpha: 0.12))
-        : context.marilin.soft(
-            MarilinColors.destructive.withValues(alpha: 0.12),
-          );
+  Widget _buildPaymentRecord(Payment payment) {
+    return VisitRecordTile(
+      icon: Icons.payments_outlined,
+      title: 'Cobro registrado',
+      detail: switch (payment.type) {
+        PaymentType.cash => 'Efectivo',
+        PaymentType.transfer => 'Transferencia',
+        PaymentType.credit => 'Crédito',
+      },
+      amount: formatMoney(payment.amount),
+    );
+  }
 
-    return Container(
-      padding: const EdgeInsets.all(16),
-      decoration: BoxDecoration(
-        color: bg,
-        borderRadius: BorderRadius.circular(16),
-        border: Border.all(color: color.withValues(alpha: 0.2)),
-      ),
-      child: Row(
-        mainAxisAlignment: MainAxisAlignment.center,
-        children: [
-          Icon(
-            isDone ? Icons.check_circle_rounded : Icons.person_off_rounded,
-            color: color,
-            size: 24,
-          ),
-          const SizedBox(width: 10),
-          Text(
-            isDone
-                ? 'Parada completada con éxito'
-                : status == StopStatus.rescheduled
-                ? 'Visita reprogramada para hoy'
-                : 'Cliente ausente en esta visita',
-            style: TextStyle(
-              fontWeight: FontWeight.bold,
-              fontSize: 14,
-              color: color,
-            ),
-          ),
-        ],
-      ),
+  Widget _buildReturnRecord(
+    List<ContainerMovement> returns,
+    Map<String, String> containerLabels,
+  ) {
+    final returnedByType = <String, int>{};
+    for (final movement in returns) {
+      returnedByType.update(
+        movement.containerType,
+        (quantity) => quantity + movement.returnedQuantity,
+        ifAbsent: () => movement.returnedQuantity,
+      );
+    }
+    return VisitRecordTile(
+      icon: Icons.inventory_2_outlined,
+      title: 'Devolución de envases',
+      detail: [
+        for (final MapEntry(key: type, value: quantity)
+            in returnedByType.entries)
+          '$quantity × ${containerLabels[type] ?? type}',
+      ].join('\n'),
     );
   }
 

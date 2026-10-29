@@ -14,6 +14,7 @@ import 'package:app/features/inventory/presentation/providers/inventory_reposito
 import 'package:app/features/auth/auth_controller.dart';
 import 'package:app/features/profile/profile_screen.dart';
 import 'package:app/features/profile/widgets/profile_avatar.dart';
+import 'package:app/features/sync/domain/models/sync_status.dart';
 import 'package:app/features/sync/presentation/providers/sync_providers.dart';
 import 'package:app/features/sync/presentation/widgets/sync_status_button_container.dart';
 
@@ -59,6 +60,11 @@ class _RouteDayScreenState extends ConsumerState<RouteDayScreen> {
     final allStopsAsync = ref.watch(routeAllStopsProvider);
     final nextStop = ref.watch(nextStopProvider);
     final isSyncRunning = ref.watch(syncRunningProvider).value ?? false;
+    // Without a cycle that reached the server, an empty day means today's
+    // route was never downloaded, not that the server has none.
+    final lastSyncResult = ref.watch(syncStatusProvider).value?.lastResult;
+    final routeNotDownloaded =
+        lastSyncResult == null || lastSyncResult == SyncCycleResult.offline;
 
     return Scaffold(
       body: SafeArea(
@@ -97,10 +103,15 @@ class _RouteDayScreenState extends ConsumerState<RouteDayScreen> {
                     // Taller than what is left on a small phone: scroll instead of overflowing.
                     hasScrollBody: false,
                     child: EmptyState(
-                      icon: Icons.route_outlined,
-                      title: 'Sin paradas por ahora',
-                      message:
-                          'Cuando la ruta del día esté cargada, va a aparecer acá.',
+                      icon: routeNotDownloaded
+                          ? Icons.cloud_off_outlined
+                          : Icons.route_outlined,
+                      title: routeNotDownloaded
+                          ? 'Falta la ruta de hoy'
+                          : 'Sin paradas por ahora',
+                      message: routeNotDownloaded
+                          ? 'Conectate a internet para descargar la ruta de hoy.'
+                          : 'Cuando la ruta del día esté cargada, va a aparecer acá.',
                       actionLabel: isSyncRunning
                           ? 'Sincronizando…'
                           : 'Sincronizar ahora',

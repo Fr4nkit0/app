@@ -58,12 +58,13 @@ void main() {
     String id = 'sale-test-1',
     List<SaleItem>? items,
     String? visitId,
+    double total = 13000.0,
   }) {
     return Sale(
       id: id,
       customer: testCustomer,
       items: items ?? [const SaleItem(product: testProduct, quantity: 2)],
-      total: 13000.0,
+      total: total,
       paymentMethod: PaymentMethod.cash,
       date: DateTime.now(),
       visitId: visitId,
@@ -111,6 +112,7 @@ void main() {
             quantity: 3,
           ),
         ],
+        total: 11000.0,
       );
       await sut.execute(sale);
 
@@ -210,6 +212,26 @@ void main() {
   // ───────────────────────────────────────────────────────────────
   // Scenario F1b — empty items rejected
   // ───────────────────────────────────────────────────────────────
+
+  group('execute — total must match the items', () {
+    test('throws a ValidationFailure and writes nothing when the total '
+        'differs from quantity x unit price', () async {
+      await expectLater(
+        sut.execute(makeSale(total: 13000.01)),
+        throwsA(isA<ValidationFailure>()),
+      );
+
+      expect(await db.select(db.saleTable).get(), isEmpty);
+      expect(await db.select(db.saleItemTable).get(), isEmpty);
+      expect(await db.select(db.pendingChangeTable).get(), isEmpty);
+      expect(await db.select(db.paymentTable).get(), isEmpty);
+    });
+
+    test('accepts a difference within the server tolerance of 0.005',
+        () async {
+      await expectLater(sut.execute(makeSale(total: 13000.004)), completes);
+    });
+  });
 
   group('execute — empty items', () {
     test('F1b: throws a ValidationFailure when items is empty', () async {

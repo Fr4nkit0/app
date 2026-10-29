@@ -107,14 +107,18 @@ void main() {
   });
 
   test('lists a price agreement created on the street', () async {
-    await db.into(db.productTable).insert(
+    await db
+        .into(db.productTable)
+        .insert(
           ProductTableCompanion.insert(
             productId: const Value('p-1'),
             name: 'Agua 20L',
             price: 1500,
           ),
         );
-    await db.into(db.customerAgreementTable).insert(
+    await db
+        .into(db.customerAgreementTable)
+        .insert(
           CustomerAgreementTableCompanion.insert(
             agreementId: const Value('a-1'),
             customerId: 'cus-1',
@@ -156,6 +160,181 @@ void main() {
     await queue.markRejected(id, 'Precio inválido');
 
     await expectation;
+  });
+
+  group('a visited stop', () {
+    setUp(() async {
+      await db
+          .into(db.routeTable)
+          .insert(
+            RouteTableCompanion.insert(
+              routeId: const Value('r-1'),
+              route_date: '2026-10-29',
+            ),
+          );
+      await db
+          .into(db.routeStopTable)
+          .insert(
+            RouteStopTableCompanion.insert(
+              routeStopId: const Value('stop-1'),
+              routeId: 'r-1',
+              customerId: 'cus-1',
+              sequence: 1,
+              scheduledAt: DateTime(2026, 10, 29, 9),
+            ),
+          );
+      await db
+          .into(db.visitOutcomeTable)
+          .insert(
+            VisitOutcomeTableCompanion.insert(
+              id: const Value(2),
+              code: const Value('refused'),
+              name: 'No quiso',
+            ),
+          );
+    });
+
+    Future<void> recordVisit({int? outcomeId, String? observations}) async {
+      await db
+          .into(db.visitTable)
+          .insert(
+            VisitTableCompanion.insert(
+              visitId: const Value('visit-1'),
+              routeStopId: 'stop-1',
+              customerId: 'cus-1',
+              visitType: 'visit',
+              outcomeId: Value(outcomeId),
+              observations: Value(observations),
+              arrived_at: DateTime(2026, 10, 29, 10),
+            ),
+          );
+      await queue.enqueue(
+        entity: PendingEntity.visit,
+        entityId: 'visit-1',
+        action: PendingAction.insert,
+      );
+    }
+
+    test('a visit row shows its outcome', () async {
+      await recordVisit(outcomeId: 2);
+
+      final entry = (await sut.watchHistory().first).single;
+
+      expect(entry.type, HistoryEntryType.visit);
+      expect(entry.description, 'No quiso');
+    });
+
+    test('a visit row shows its outcome before the observations', () async {
+      await recordVisit(outcomeId: 2, observations: 'Volver el lunes');
+
+      final entry = (await sut.watchHistory().first).single;
+
+      expect(entry.description, 'No quiso · Volver el lunes');
+    });
+
+    test('a visit without outcome keeps the generic label', () async {
+      await recordVisit();
+
+      final entry = (await sut.watchHistory().first).single;
+
+      expect(entry.description, 'Visita registrada');
+    });
+
+    test('the stop update that duplicates the visit is not listed', () async {
+      await queue.enqueue(
+        entity: PendingEntity.routeStop,
+        entityId: 'stop-1',
+        action: PendingAction.update,
+      );
+      await recordVisit(outcomeId: 2);
+
+      final entries = await sut.watchHistory().first;
+
+      expect(entries.map((e) => e.type), [HistoryEntryType.visit]);
+    });
+
+    test('a reschedule of the visited stop is still listed', () async {
+      await queue.enqueue(
+        entity: PendingEntity.routeStop,
+        entityId: 'stop-1',
+        action: PendingAction.update,
+      );
+      await db
+          .into(db.routeStopTable)
+          .insert(
+            RouteStopTableCompanion.insert(
+              routeStopId: const Value('stop-2'),
+              routeId: 'r-1',
+              customerId: 'cus-1',
+              sequence: 2,
+              scheduledAt: DateTime(2026, 10, 29, 16),
+              rescheduledFromStopId: const Value('stop-1'),
+            ),
+          );
+      await queue.enqueue(
+        entity: PendingEntity.routeStop,
+        entityId: 'stop-2',
+        action: PendingAction.insert,
+      );
+      await recordVisit();
+
+      final entries = await sut.watchHistory().first;
+
+      expect(entries.map((e) => e.description), [
+        'Visita registrada',
+        'Parada reprogramada',
+      ]);
+    });
+  });
+
+  test('a stop update without a visit is still listed', () async {
+    await queue.enqueue(
+      entity: PendingEntity.routeStop,
+      entityId: 'stop-9',
+      action: PendingAction.update,
+    );
+
+    final entry = (await sut.watchHistory().first).single;
+
+    expect(entry.description, 'Parada actualizada');
+  });
+
+  test('a credit sale is marked as credit', () async {
+    await db
+        .into(db.saleTable)
+        .insert(
+          SaleTableCompanion.insert(
+            saleId: const Value('sale-1'),
+            customerId: 'cus-1',
+            totalAmount: 1900,
+            paymentMethod: 'credit',
+            quantity: 1,
+            shipping_amount: 0,
+          ),
+        );
+    await queue.enqueue(
+      entity: PendingEntity.sale,
+      entityId: 'sale-1',
+      action: PendingAction.insert,
+    );
+
+    final entry = (await sut.watchHistory().first).single;
+
+    expect(entry.description, 'Venta a crédito');
+    expect(entry.amount, 1900);
+  });
+
+  test('a cash sale keeps the generic label', () async {
+    await insertSale('sale-1', 4500);
+    await queue.enqueue(
+      entity: PendingEntity.sale,
+      entityId: 'sale-1',
+      action: PendingAction.insert,
+    );
+
+    final entry = (await sut.watchHistory().first).single;
+
+    expect(entry.description, 'Venta registrada');
   });
 
   test('is empty when the driver has recorded nothing', () async {

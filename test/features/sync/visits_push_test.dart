@@ -266,6 +266,7 @@ void main() {
   test(
     'a movement whose return the server rejects stays rejected with its reason',
     () async {
+      await recordVisit();
       await recordMovement(delivered: 2, returned: 1);
       server.answer = (entity, r) => r['movement_type'] == 'RETURNED'
           ? {

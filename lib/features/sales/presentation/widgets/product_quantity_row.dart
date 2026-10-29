@@ -34,6 +34,10 @@ class ProductQuantityRow extends StatelessWidget {
     final cs = Theme.of(context).colorScheme;
     final hasQuantity = quantity > 0;
     final primary = tokens.primary;
+    final available = product.available;
+    // Selling over the truck stock is allowed (the truck may carry more than
+    // the app knows); the driver is only warned.
+    final overStock = available != null && quantity > available;
 
     return AnimatedContainer(
       duration: const Duration(milliseconds: 200),
@@ -112,6 +116,17 @@ class ProductQuantityRow extends StatelessWidget {
                         fontFeatures: tokens.tabularStyle.fontFeatures,
                       ),
                     ),
+                    if (overStock) ...[
+                      const SizedBox(height: 3),
+                      Text(
+                        'Solo quedan ${available < 0 ? 0 : available} en el camión',
+                        style: TextStyle(
+                          fontSize: 12,
+                          fontWeight: FontWeight.w700,
+                          color: cs.error,
+                        ),
+                      ),
+                    ],
                   ],
                 ),
               ),

@@ -1,13 +1,17 @@
 import 'dart:async';
 
 import 'package:dio/dio.dart';
+import 'package:drift/drift.dart' show Value;
 import 'package:drift/native.dart';
 import 'package:flutter_test/flutter_test.dart';
 
 import 'package:app/core/services/database.helper.dart';
+import 'package:app/core/usecases/drift_transaction_runner.dart';
 import 'package:app/features/customers/data/repositories/drift.customer.repository.dart';
 import 'package:app/features/customers/domain/models/customer.dart';
 import 'package:app/features/customers/domain/models/customer.address.dart';
+import 'package:app/features/customers/domain/models/customer_edit.dart';
+import 'package:app/features/customers/domain/usecases/edit.customer.usecase.dart';
 import 'package:app/features/sync/data/repositories/pending_change.repository.dart';
 import 'package:app/features/sync/domain/models/pending_change.dart';
 import 'package:app/features/sync/domain/models/sync_status.dart';
@@ -61,6 +65,7 @@ class _FakeServer {
   Map<String, List<Map<String, dynamic>>> pullRows = {};
   PushAnswer? answer;
   bool dropNextPushResponse = false;
+  bool failNextPushWithServerError = false;
   Completer<void>? holdPush;
   int _nextId = 500;
 
@@ -91,6 +96,10 @@ class _FakeServer {
         final body = Map<String, dynamic>.from(options.data as Map);
         pushBodies.add(body);
         if (holdPush != null) await holdPush!.future;
+        if (failNextPushWithServerError) {
+          failNextPushWithServerError = false;
+          return FakeHttpAdapter.json(500, {'message': 'boom'});
+        }
         final customers = [
           for (final r in (body['customers'] as List? ?? const []))
             (answer ?? accept)(Map<String, dynamic>.from(r as Map)),
@@ -139,7 +148,11 @@ void main() {
   });
   tearDown(() => db.close());
 
-  Future<void> createCustomer(String id, {String name = 'Kiosco Norte'}) async {
+  Future<void> createCustomer(
+    String id, {
+    String name = 'Kiosco Norte',
+    String? floor = '2',
+  }) async {
     await customers.saveCustomer(
       Customer(
         id: id,
@@ -149,7 +162,7 @@ void main() {
           CustomerAddress(
             id: 'addr-$id',
             street: 'Av Belgrano 100',
-            floor: '2',
+            floor: floor,
             isPrimary: true,
             latitude: -24.785,
             longitude: -65.411,
@@ -219,14 +232,29 @@ void main() {
     expect(record['phone_number'], '387-c-1');
     expect(DateTime.parse(record['modified_at'] as String).isUtc, isTrue);
     expect(record['address'], {
+      'uuid': 'addr-c-1',
       'street': 'Av Belgrano 100',
       'apartment': null,
-      'floor': 2,
+      'floor': '2',
       'visual_reference': null,
       'neighborhood': null,
       'latitude': -24.785,
       'longitude': -65.411,
     });
+  });
+
+  test('pushes a free-text floor as typed and a blank floor as null', () async {
+    await createCustomer('c-1', floor: ' PB ');
+    await createCustomer('c-2', floor: '  ');
+
+    await engine.runCycle();
+
+    final records = (server.pushBodies.single['customers'] as List)
+        .cast<Map>();
+    Map addressOf(String uuid) =>
+        records.singleWhere((r) => r['uuid'] == uuid)['address'] as Map;
+    expect(addressOf('c-1')['floor'], 'PB');
+    expect(addressOf('c-2')['floor'], isNull);
   });
 
   test(
@@ -277,6 +305,65 @@ void main() {
     expect(record['server_id'], 501);
     expect(record['name'], 'Kiosco Norte 2');
   });
+
+  test(
+    'a customer edited through the use case travels with its server id, '
+    'the new values and a later modified_at',
+    () async {
+      await createCustomer('c-1');
+      final before = DateTime.utc(2026, 1, 1);
+      await db.update(db.customerTable).write(
+        CustomerTableCompanion(lastModifiedDate: Value(before)),
+      );
+      await db.update(db.customerAddressTable).write(
+        CustomerAddressTableCompanion(lastModifiedDate: Value(before)),
+      );
+      await engine.runCycle();
+      final first = (server.pushBodies.last['customers'] as List).single as Map;
+
+      await EditCustomerUseCase(
+        customerRepository: customers,
+        transaction: driftTransactionRunner(db),
+      ).execute(
+        const CustomerEdit(
+          customerId: 'c-1',
+          name: 'Kiosco Sur',
+          phone: '3874009988',
+          street: 'Mitre 50',
+          neighborhood: 'Tres Cerritos',
+          apartment: 'B',
+          floor: 'PB',
+          visualReference: 'Portón verde',
+        ),
+      );
+      await engine.runCycle();
+
+      final record = (server.pushBodies.last['customers'] as List).single as Map;
+      expect(record['uuid'], 'c-1');
+      expect(record['server_id'], 501);
+      expect(record['name'], 'Kiosco Sur');
+      expect(record['phone_number'], '3874009988');
+      expect(record['address'], {
+        // The address edited in place keeps its uuid.
+        'uuid': 'addr-c-1',
+        'street': 'Mitre 50',
+        'apartment': 'B',
+        'floor': 'PB',
+        'visual_reference': 'Portón verde',
+        'neighborhood': 'Tres Cerritos',
+        'latitude': -24.785,
+        'longitude': -65.411,
+      });
+      expect(
+        DateTime.parse(record['modified_at'] as String).isAfter(
+          DateTime.parse(first['modified_at'] as String),
+        ),
+        isTrue,
+      );
+      expect(await db.select(db.customerAddressTable).get(), hasLength(1));
+      expect(await queue.countPending(), 0);
+    },
+  );
 
   test(
     'a rejected customer keeps the reason and is not sent again by later cycles',
@@ -332,7 +419,7 @@ void main() {
 
       final failed = await engine.runCycle();
 
-      expect(failed.lastResult, SyncCycleResult.failure);
+      expect(failed.lastResult, SyncCycleResult.offline);
       expect(failed.pendingCount, 1);
       expect((await localCustomer('c-1')).serverId, isNull);
       expect(server.calls, [
@@ -353,6 +440,32 @@ void main() {
       expect((await localCustomer('c-1')).serverId, 501);
     },
   );
+
+  test(
+    'a cycle without connection is recorded as offline, not as a failure',
+    () async {
+      await createCustomer('c-1');
+      server.dropNextPushResponse = true;
+
+      final status = await engine.runCycle();
+
+      expect(status.lastResult, SyncCycleResult.offline);
+      expect(status.lastError, isNull);
+      expect(status.pendingCount, 1);
+      expect(await engine.watchStatus().first, status);
+    },
+  );
+
+  test('a server error keeps the cycle recorded as a failure', () async {
+    await createCustomer('c-1');
+    server.failNextPushWithServerError = true;
+
+    final status = await engine.runCycle();
+
+    expect(status.lastResult, SyncCycleResult.failure);
+    expect(status.lastError, 'El servidor respondió 500.');
+    expect(status.pendingCount, 1);
+  });
 
   test(
     'a change made while the push is in flight stays pending for the next cycle',
@@ -401,10 +514,24 @@ void main() {
   );
 
   test(
-    'a locally deleted customer is rejected with a reason instead of being sent',
+    'a customer delete queued by an older app is rejected with a reason instead of being sent',
     () async {
       await createCustomer('c-1');
-      await customers.deleteCustomer('c-1');
+      // The app no longer deletes customers; this is what an older version left.
+      await (db.delete(db.customerPreferenceTable)
+            ..where((t) => t.customerId.equals('c-1')))
+          .go();
+      await (db.delete(db.customerAddressTable)
+            ..where((t) => t.customerId.equals('c-1')))
+          .go();
+      await (db.delete(db.customerTable)
+            ..where((t) => t.customerId.equals('c-1')))
+          .go();
+      await queue.enqueue(
+        entity: PendingEntity.customer,
+        entityId: 'c-1',
+        action: PendingAction.delete,
+      );
 
       await engine.runCycle();
 

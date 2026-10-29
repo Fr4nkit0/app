@@ -12,6 +12,8 @@ import 'entity_pusher.dart';
 class CustomerPusher implements EntityPusher {
   CustomerPusher(this._db);
 
+  /// The app no longer deletes customers; a delete still queued by an older
+  /// version finds no local row and is rejected with this reason.
   static const deletionNotSynced =
       'La baja de clientes no se sincroniza con el servidor.';
 
@@ -59,6 +61,12 @@ class CustomerPusher implements EntityPusher {
         .write(CustomerTableCompanion(serverId: Value(serverId)));
   }
 
+  /// The floor travels as typed ("PB", "3"); a blank floor travels as null.
+  static String? _floor(String? floor) {
+    final trimmed = floor?.trim();
+    return trimmed == null || trimmed.isEmpty ? null : trimmed;
+  }
+
   Future<Json> _body(CustomerTableData customer) async {
     final addresses =
         await (_db.select(_db.customerAddressTable)
@@ -87,12 +95,11 @@ class CustomerPusher implements EntityPusher {
       'phone_number': customer.phone,
       'modified_at': modifiedAt.toUtc().toIso8601String(),
       'address': {
+        // Lets a later address edit reach the same server row.
+        'uuid': address?.addressId,
         'street': address?.street,
         'apartment': address?.apartment,
-        // The server stores the floor as a number; free text cannot travel.
-        'floor': address?.floor == null
-            ? null
-            : int.tryParse(address!.floor!.trim()),
+        'floor': _floor(address?.floor),
         'visual_reference': address?.visualReference,
         'neighborhood': address?.neighborhood,
         'latitude': address?.latitude,

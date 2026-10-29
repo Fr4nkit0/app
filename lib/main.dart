@@ -1,11 +1,11 @@
 import 'dart:async';
 
 import 'package:flutter/material.dart';
+import 'package:flutter_localizations/flutter_localizations.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 import 'package:app/core/theme/app.theme.dart';
 import 'package:app/core/theme/theme_mode_controller.dart';
-import 'package:app/features/customers/presentation/providers/customer_count_provider.dart';
 import 'package:app/features/customers/presentation/screens/customer_list_screen.dart';
 import 'package:app/features/history/presentation/screens/history_screen.dart';
 import 'package:app/features/route/presentation/screens/route_day_screen.dart';
@@ -48,6 +48,10 @@ class MarilinApp extends ConsumerWidget {
       darkTheme: AppTheme.darkTheme,
       // The phone's theme unless the driver picked one in the profile.
       themeMode: ref.watch(themeModeProvider),
+      // Pickers and dialogs from Material speak the driver's language.
+      locale: const Locale('es', 'AR'),
+      supportedLocales: const [Locale('es', 'AR'), Locale('es'), Locale('en')],
+      localizationsDelegates: GlobalMaterialLocalizations.delegates,
       home: const AuthWrapper(),
     );
   }
@@ -100,8 +104,6 @@ class _RootShellState extends ConsumerState<_RootShell> {
 
   @override
   Widget build(BuildContext context) {
-    final customerCount = ref.watch(customerCountProvider);
-
     // The sync cycle (push, then bootstrap or pull) runs on open, on return
     // to the foreground, when connectivity comes back and periodically.
     return SyncTriggersHost(
@@ -118,29 +120,23 @@ class _RootShellState extends ConsumerState<_RootShell> {
         bottomNavigationBar: NavigationBar(
           selectedIndex: _selectedIndex,
           onDestinationSelected: _onTabChanged,
-          destinations: [
-            const NavigationDestination(
+          destinations: const [
+            NavigationDestination(
               icon: Icon(Icons.route_outlined),
               selectedIcon: Icon(Icons.route),
               label: 'Ruta',
             ),
             NavigationDestination(
-              icon: _BadgedIcon(
-                icon: const Icon(Icons.people_outline),
-                count: customerCount.value ?? 0,
-              ),
-              selectedIcon: _BadgedIcon(
-                icon: const Icon(Icons.people),
-                count: customerCount.value ?? 0,
-              ),
+              icon: Icon(Icons.people_outline),
+              selectedIcon: Icon(Icons.people),
               label: 'Clientes',
             ),
-            const NavigationDestination(
+            NavigationDestination(
               icon: Icon(Icons.point_of_sale_outlined),
               selectedIcon: Icon(Icons.point_of_sale),
               label: 'Venta',
             ),
-            const NavigationDestination(
+            NavigationDestination(
               icon: Icon(Icons.history_outlined),
               selectedIcon: Icon(Icons.history),
               label: 'Historial',
@@ -149,20 +145,5 @@ class _RootShellState extends ConsumerState<_RootShell> {
         ),
       ),
     );
-  }
-}
-
-// ─── Badge helper ─────────────────────────────────────────────────────────────
-
-class _BadgedIcon extends StatelessWidget {
-  const _BadgedIcon({required this.icon, required this.count});
-
-  final Widget icon;
-  final int count;
-
-  @override
-  Widget build(BuildContext context) {
-    if (count == 0) return icon;
-    return Badge.count(count: count, child: icon);
   }
 }

@@ -28,6 +28,17 @@ abstract class CustomerFormState with _$CustomerFormState {
 
   const CustomerFormState._();
 
+  /// Whether leaving now would throw away something the driver typed.
+  bool get hasEnteredData => [
+    name,
+    phone,
+    street,
+    neighborhood,
+    apartment,
+    floor,
+    visualReference,
+  ].any((field) => field.trim().isNotEmpty);
+
   bool get isIdentityValid => name.isNotEmpty;
 
   bool get isAddressValid => street.isNotEmpty && neighborhood.isNotEmpty;

@@ -25,8 +25,13 @@ class RegisterSaleUseCase {
   final InventoryRepository _inventoryRepo;
   final TransactionRunner _transaction;
 
+  /// The server rejects a sale whose total differs from its items by more
+  /// than this; such a sale would stay stuck in the outbox.
+  static const totalTolerance = 0.005;
+
   /// Records [sale], its settling payments and [containerMovements] in one
-  /// unit of work. Throws [ValidationFailure] for a sale without items.
+  /// unit of work. Throws [ValidationFailure] for a sale without items or
+  /// whose total does not match its items.
   Future<void> execute(
     Sale sale, {
     Payment? payment,
@@ -34,6 +39,12 @@ class RegisterSaleUseCase {
   }) async {
     if (sale.items.isEmpty) {
       throw const ValidationFailure('La venta no tiene productos.');
+    }
+    final itemsTotal = sale.items.fold<double>(0, (sum, i) => sum + i.subtotal);
+    if ((sale.total - itemsTotal).abs() > totalTolerance) {
+      throw const ValidationFailure(
+        'El total de la venta no coincide con sus productos.',
+      );
     }
     await _transaction(() async {
       await _saleRepo.saveSale(sale);

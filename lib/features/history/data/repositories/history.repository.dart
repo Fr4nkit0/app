@@ -3,6 +3,7 @@ import 'package:drift/drift.dart';
 import 'package:app/core/services/database.helper.dart';
 import 'package:app/features/history/domain/models/history_entry.dart';
 import 'package:app/features/history/domain/models/history_entry_type.dart';
+import 'package:app/features/sales/domain/models/payment_method.dart';
 import 'package:app/features/sync/domain/models/pending_change.dart';
 
 abstract class HistoryRepository {
@@ -36,12 +37,24 @@ class DriftHistoryRepository implements HistoryRepository {
           .add(row.entityId);
     }
     final details = await _loadDetails(idsByEntity);
+    // Closing a visit also queues a stop update; the visit row already says
+    // what happened at that stop.
+    final visitedStops = {
+      for (final id in idsByEntity[PendingEntity.visit] ?? const <String>{})
+        ?details[_key(PendingEntity.visit, id)]?.routeStopId,
+    };
     final names = await _customerNames({
       ...details.values.map((d) => d.customerId).whereType<String>(),
       ...?idsByEntity[PendingEntity.customer],
     });
 
-    return rows.map((row) {
+    final shown = rows.where(
+      (row) =>
+          !(row.entity == PendingEntity.routeStop.wireName &&
+              row.action == PendingAction.update.wireName &&
+              visitedStops.contains(row.entityId)),
+    );
+    return shown.map((row) {
       final entity = PendingEntity.fromWire(row.entity);
       final action = PendingAction.fromWire(row.action);
       final detail = entity == PendingEntity.customer
@@ -86,20 +99,31 @@ class DriftHistoryRepository implements HistoryRepository {
     final rows = await (_db.select(
       _db.routeStopTable,
     )..where((t) => t.routeStopId.isIn(ids))).get();
-    return {for (final r in rows) r.routeStopId: _Detail(customerId: r.customerId)};
+    return {
+      for (final r in rows) r.routeStopId: _Detail(customerId: r.customerId),
+    };
   }
 
   Future<Map<String, _Detail>> _visits(Set<String> ids) async {
-    final rows = await (_db.select(
-      _db.visitTable,
-    )..where((t) => t.visitId.isIn(ids))).get();
-    return {
-      for (final r in rows)
-        r.visitId: _Detail(
-          customerId: r.customerId,
-          description: _nonBlank(r.observations),
-        ),
-    };
+    final query = _db.select(_db.visitTable).join([
+      leftOuterJoin(
+        _db.visitOutcomeTable,
+        _db.visitOutcomeTable.id.equalsExp(_db.visitTable.outcomeId),
+      ),
+    ])..where(_db.visitTable.visitId.isIn(ids));
+    final details = <String, _Detail>{};
+    for (final row in await query.get()) {
+      final visit = row.readTable(_db.visitTable);
+      details[visit.visitId] = _Detail(
+        customerId: visit.customerId,
+        routeStopId: visit.routeStopId,
+        description: _joinNonBlank([
+          row.readTableOrNull(_db.visitOutcomeTable)?.name,
+          visit.observations,
+        ]),
+      );
+    }
+    return details;
   }
 
   Future<Map<String, _Detail>> _containerMovements(Set<String> ids) async {
@@ -122,7 +146,13 @@ class DriftHistoryRepository implements HistoryRepository {
     )..where((t) => t.saleId.isIn(ids))).get();
     return {
       for (final r in rows)
-        r.saleId: _Detail(customerId: r.customerId, amount: r.totalAmount),
+        r.saleId: _Detail(
+          customerId: r.customerId,
+          amount: r.totalAmount,
+          description: r.paymentMethod == PaymentMethod.credit.name
+              ? 'Venta a crédito'
+              : null,
+        ),
     };
   }
 
@@ -164,6 +194,11 @@ class DriftHistoryRepository implements HistoryRepository {
   static String? _nonBlank(String? value) =>
       value == null || value.trim().isEmpty ? null : value;
 
+  static String? _joinNonBlank(List<String?> values) {
+    final parts = values.map(_nonBlank).whereType<String>();
+    return parts.isEmpty ? null : parts.join(' · ');
+  }
+
   static HistoryEntryType _typeOf(PendingEntity entity) => switch (entity) {
     PendingEntity.customer => HistoryEntryType.customer,
     PendingEntity.routeStop => HistoryEntryType.routeStop,
@@ -191,9 +226,17 @@ class DriftHistoryRepository implements HistoryRepository {
 }
 
 class _Detail {
-  const _Detail({this.customerId, this.amount, this.description});
+  const _Detail({
+    this.customerId,
+    this.routeStopId,
+    this.amount,
+    this.description,
+  });
 
   final String? customerId;
+
+  /// Stop a visit was made at; only set for visits.
+  final String? routeStopId;
   final double? amount;
   final String? description;
 }

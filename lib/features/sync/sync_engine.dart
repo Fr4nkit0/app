@@ -1,4 +1,5 @@
 import 'dart:async';
+import 'dart:io';
 
 import 'package:dio/dio.dart';
 import 'package:drift/drift.dart';
@@ -33,7 +34,7 @@ class SyncEngine {
        _db = db,
        _sync = sync,
        _queue = DriftPendingChangeRepository(db),
-       _pushers = pushers ?? defaultPushers(db),
+       _pushers = pushers ?? defaultPushers(db, today: now ?? DateTime.now),
        _now = now ?? DateTime.now;
 
   static const lastCycleAtKey = 'last_cycle_at';
@@ -41,14 +42,17 @@ class SyncEngine {
   static const lastCycleErrorKey = 'last_cycle_error';
 
   /// Entity pushers in the server's dependency order.
-  static List<EntityPusher> defaultPushers(AppDatabase db) => [
+  static List<EntityPusher> defaultPushers(
+    AppDatabase db, {
+    DateTime Function()? today,
+  }) => [
     CustomerPusher(db),
     AgreementPusher(db),
     RouteStopPusher(db),
     VisitPusher(db),
-    ContainerMovementPusher(db),
-    SalePusher(db),
-    PaymentPusher(db),
+    ContainerMovementPusher(db, today: today),
+    SalePusher(db, today: today),
+    PaymentPusher(db, today: today),
   ];
 
   final Dio _dio;
@@ -92,7 +96,11 @@ class SyncEngine {
       }
       await _recordCycle(SyncCycleResult.success, null);
     } catch (e) {
-      await _recordCycle(SyncCycleResult.failure, _describe(e));
+      if (_isOffline(e)) {
+        await _recordCycle(SyncCycleResult.offline, null);
+      } else {
+        await _recordCycle(SyncCycleResult.failure, _describe(e));
+      }
     }
     return status();
   }
@@ -241,6 +249,21 @@ class SyncEngine {
         await put(lastCycleResultKey, result.wireName);
         await put(lastCycleErrorKey, error ?? '');
       });
+
+  /// Whether [error] means the server could not be reached at all, as
+  /// opposed to a server that answered with an error.
+  static bool _isOffline(Object error) => switch (error) {
+    DioException(
+      type:
+          DioExceptionType.connectionError ||
+          DioExceptionType.connectionTimeout ||
+          DioExceptionType.sendTimeout ||
+          DioExceptionType.receiveTimeout,
+    ) =>
+      true,
+    DioException(error: SocketException()) => true,
+    _ => false,
+  };
 
   static String _describe(Object error) => switch (error) {
     DioException(type: DioExceptionType.badResponse, :final response) =>

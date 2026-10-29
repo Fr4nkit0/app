@@ -8,6 +8,7 @@ import 'package:app/features/route/data/repositories/drift_route_repository.dart
 import 'package:app/features/route/data/repositories/route.repository.dart';
 import 'package:app/features/route/domain/models/route_stop.dart';
 import 'package:app/features/route/domain/models/stop_status.dart';
+import 'package:app/features/sales/domain/models/payment_method.dart';
 
 void main() {
   late AppDatabase db;
@@ -414,6 +415,27 @@ void main() {
       },
     );
 
+    test('the original stop carries the time it was rescheduled to', () async {
+      await insertRoute('route-today', todayStr);
+      final now = DateTime.now();
+      await insertStop(
+        stopId: 'stop-1',
+        routeId: 'route-today',
+        customerId: 'mock-customer-1',
+        scheduledAt: DateTime(now.year, now.month, now.day, 9, 0),
+      );
+      final at = DateTime(now.year, now.month, now.day, 16, 30);
+
+      await sut.rescheduleStop('stop-1', at);
+
+      final stops = await sut.watchDayStops().first;
+      expect(stops.singleWhere((s) => s.id == 'stop-1').rescheduledToAt, at);
+      expect(
+        stops.singleWhere((s) => s.id != 'stop-1').rescheduledToAt,
+        isNull,
+      );
+    });
+
     test('a stop that was not rescheduled carries no link', () async {
       await insertRoute('route-today', todayStr);
       final now = DateTime.now();
@@ -429,6 +451,139 @@ void main() {
 
       expect(stop.rescheduledFromStopId, isNull);
       expect(stop.rescheduledFromAt, isNull);
+    });
+  });
+
+  group('watchDayStops — visit summary', () {
+    Future<void> closedStop(String stopId, {int? outcomeId}) async {
+      final now = DateTime.now();
+      await insertStop(
+        stopId: stopId,
+        routeId: 'route-today',
+        customerId: 'mock-customer-1',
+        status: 'done',
+        scheduledAt: DateTime(now.year, now.month, now.day, 9, 0),
+      );
+      await db
+          .into(db.visitTable)
+          .insert(
+            VisitTableCompanion.insert(
+              routeStopId: stopId,
+              customerId: 'mock-customer-1',
+              visitType: outcomeId == null ? 'sale' : 'visit',
+              outcomeId: drift.Value(outcomeId),
+              arrived_at: now,
+            ),
+          );
+    }
+
+    Future<void> sale(String id, String stopId, double total, String method) =>
+        db
+            .into(db.saleTable)
+            .insert(
+              SaleTableCompanion.insert(
+                saleId: drift.Value(id),
+                customerId: 'mock-customer-1',
+                totalAmount: total,
+                paymentMethod: method,
+                quantity: 0,
+                shipping_amount: 0,
+                visitId: drift.Value(stopId),
+              ),
+            );
+
+    Future<void> payment(String stopId, double amount, {String? saleId}) => db
+        .into(db.paymentTable)
+        .insert(
+          PaymentTableCompanion.insert(
+            customerId: 'mock-customer-1',
+            amount: amount,
+            paymentMethod: 'EFECTIVO',
+            visitId: drift.Value(stopId),
+            saleId: drift.Value(saleId),
+          ),
+        );
+
+    Future<void> containerReturn(String stopId, String type, int qty) => db
+        .into(db.containerMovementTable)
+        .insert(
+          ContainerMovementTableCompanion.insert(
+            customerId: 'mock-customer-1',
+            containerType: type,
+            deliveredQuantity: 1,
+            returnedQuantity: qty,
+            visitId: drift.Value(stopId),
+          ),
+        );
+
+    setUp(() async {
+      await insertRoute('route-today', todayStr);
+      await db
+          .into(db.visitOutcomeTable)
+          .insert(
+            VisitOutcomeTableCompanion.insert(
+              id: drift.Value(2),
+              code: const drift.Value('refused'),
+              name: 'No quiso',
+            ),
+          );
+    });
+
+    test('a sale visit sums its sales and their methods, without the '
+        'payments that settle them', () async {
+      await closedStop('stop-1');
+      await sale('sale-1', 'stop-1', 5000, 'cash');
+      await sale('sale-2', 'stop-1', 700, 'cash');
+      await payment('stop-1', 5000, saleId: 'sale-1');
+
+      final visit = (await sut.watchDayStops().first).single.visit!;
+
+      expect(visit.outcome, isNull);
+      expect(visit.salesTotal, 5700);
+      expect(visit.saleMethods, [PaymentMethod.cash]);
+      expect(visit.collected, 0);
+      expect(visit.returned, 0);
+    });
+
+    test('a visit without sale carries its outcome, the payments and the '
+        'containers returned', () async {
+      await closedStop('stop-1', outcomeId: 2);
+      await payment('stop-1', 2000);
+      await containerReturn('stop-1', 'BIDON_20L', 2);
+      await containerReturn('stop-1', 'SIFON_2L', 1);
+
+      final visit = (await sut.watchDayStops().first).single.visit!;
+
+      expect(visit.outcome?.name, 'No quiso');
+      expect(visit.outcome?.code, 'refused');
+      expect(visit.hasSales, isFalse);
+      expect(visit.collected, 2000);
+      expect(visit.returned, 3);
+    });
+
+    test('a stop without a visit has no summary', () async {
+      final now = DateTime.now();
+      await insertStop(
+        stopId: 'stop-1',
+        routeId: 'route-today',
+        customerId: 'mock-customer-1',
+        scheduledAt: DateTime(now.year, now.month, now.day, 9, 0),
+      );
+
+      expect((await sut.watchDayStops().first).single.visit, isNull);
+    });
+
+    test('re-emits when a record of the visit is written', () async {
+      await closedStop('stop-1', outcomeId: 2);
+      final emissions = <List<RouteStop>>[];
+      final sub = sut.watchDayStops().listen(emissions.add);
+      addTearDown(sub.cancel);
+      await Future.delayed(const Duration(milliseconds: 30));
+
+      await payment('stop-1', 2000);
+      await Future.delayed(const Duration(milliseconds: 30));
+
+      expect(emissions.last.single.visit?.collected, 2000);
     });
   });
 }
