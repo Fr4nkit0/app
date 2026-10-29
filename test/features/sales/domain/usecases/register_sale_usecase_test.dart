@@ -1,10 +1,12 @@
 import 'package:drift/native.dart';
 import 'package:flutter_test/flutter_test.dart';
 
+import 'package:app/core/errors/domain_failure.dart';
 import 'package:app/core/services/database.helper.dart';
-import 'package:app/core/utils/resource.dart';
+import 'package:app/core/usecases/drift_transaction_runner.dart';
 import 'package:app/features/customers/domain/models/customer.dart';
 import 'package:app/features/inventory/data/repositories/inventory.repository.dart';
+import 'package:app/features/inventory/domain/models/container_movement.dart';
 import 'package:app/features/payments/data/repositories/payment.repository.dart';
 import 'package:app/features/payments/domain/models/payment.dart';
 import 'package:app/features/products/domain/models/product.dart';
@@ -44,7 +46,7 @@ void main() {
       saleRepo: saleRepo,
       paymentRepo: paymentRepo,
       inventoryRepo: inventoryRepo,
-      db: db,
+      transaction: driftTransactionRunner(db),
     );
   });
 
@@ -73,10 +75,8 @@ void main() {
   // ───────────────────────────────────────────────────────────────
 
   group('execute — success', () {
-    test('F1a: returns Resource.success(null) for sale with 1 item', () async {
-      final result = await sut.execute(makeSale());
-
-      expect(result, isA<Success<void>>());
+    test('F1a: completes for a sale with 1 item', () async {
+      await expectLater(sut.execute(makeSale()), completes);
     });
 
     test('F1a: SaleTable has 1 row after execute', () async {
@@ -212,17 +212,47 @@ void main() {
   // ───────────────────────────────────────────────────────────────
 
   group('execute — empty items', () {
-    test('F1b: returns Resource.error when items is empty', () async {
-      final result = await sut.execute(makeSale(items: []));
-
-      expect(result, isA<Error<void>>());
+    test('F1b: throws a ValidationFailure when items is empty', () async {
+      await expectLater(
+        sut.execute(makeSale(items: [])),
+        throwsA(isA<ValidationFailure>()),
+      );
     });
 
     test('F1b: SaleTable stays empty when items is empty', () async {
-      await sut.execute(makeSale(items: []));
+      await expectLater(sut.execute(makeSale(items: [])), throwsException);
 
       final rows = await db.select(db.saleTable).get();
       expect(rows, isEmpty);
+    });
+  });
+
+  group('execute — atomic', () {
+    test('a failing second write leaves no rows and no pending changes', () async {
+      ContainerMovement movement() => ContainerMovement(
+            id: 'same-movement-id',
+            customerId: testCustomer.id,
+            containerType: 'JUG',
+            deliveredQuantity: 2,
+            returnedQuantity: 0,
+            createdAt: DateTime(2026),
+          );
+
+      // The second movement reuses the id, so it fails after the sale, its
+      // payment and the first movement were written.
+      await expectLater(
+        sut.execute(makeSale(), containerMovements: [movement(), movement()]),
+        throwsA(isA<StorageFailure>()),
+      );
+
+      expect(await db.select(db.saleTable).get(), isEmpty);
+      expect(await db.select(db.saleItemTable).get(), isEmpty);
+      expect(await db.select(db.paymentTable).get(), isEmpty);
+      expect(await db.select(db.customerAccountEntryTable).get(), isEmpty);
+      expect(await db.select(db.customerBalanceTable).get(), isEmpty);
+      expect(await db.select(db.containerMovementTable).get(), isEmpty);
+      expect(await db.select(db.customerContainerBalanceTable).get(), isEmpty);
+      expect(await db.select(db.pendingChangeTable).get(), isEmpty);
     });
   });
 }

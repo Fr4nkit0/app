@@ -1,7 +1,7 @@
 import 'dart:async';
 
+import 'package:app/core/errors/domain_failure.dart';
 import 'package:app/core/theme/app.theme.dart';
-import 'package:app/core/utils/resource.dart';
 import 'package:app/features/customers/domain/models/customer.dart';
 import 'package:app/features/inventory/domain/models/container_movement.dart';
 import 'package:app/features/inventory/domain/models/customer_container_balance.dart';
@@ -24,12 +24,12 @@ import '../../../../support/container_types.dart';
 import '../../../../support/real_fonts.dart';
 
 class _FakeRegisterSale implements RegisterSaleUseCase {
-  Completer<Resource<void>> completer = Completer<Resource<void>>();
+  Completer<void> completer = Completer<void>();
   int calls = 0;
   List<ContainerMovement>? movements;
 
   @override
-  Future<Resource<void>> execute(
+  Future<void> execute(
     Sale sale, {
     Payment? payment,
     List<ContainerMovement>? containerMovements,
@@ -149,7 +149,7 @@ void main() {
     );
     expect(tester.widget<OutlinedButton>(backButton).onPressed, isNull);
 
-    fake.completer.complete(const Resource.success(null));
+    fake.completer.complete();
     await tester.pumpAndSettle(const Duration(seconds: 4));
   });
 
@@ -159,7 +159,7 @@ void main() {
 
     await tester.tap(confirmButton);
     await tester.pump();
-    fake.completer.complete(Resource.error(Exception('db exploded')));
+    fake.completer.completeError(StorageFailure(Exception('db exploded')));
     await tester.pump();
     await tester.pump(const Duration(milliseconds: 400));
 
@@ -173,13 +173,31 @@ void main() {
     await tester.pumpAndSettle(const Duration(seconds: 6));
   });
 
+  testWidgets('a sale the rules reject shows the rule message', (tester) async {
+    await pumpScreen(tester);
+
+    await tester.tap(confirmButton);
+    await tester.pump();
+    fake.completer.completeError(
+      const ValidationFailure('La venta no tiene productos.'),
+    );
+    await tester.pump();
+    await tester.pump(const Duration(milliseconds: 400));
+
+    expect(find.byType(SaleStep3Screen), findsOneWidget);
+    expect(find.text('La venta no tiene productos.'), findsOneWidget);
+    expect(find.text('No se guardó la venta. Reintentá.'), findsNothing);
+
+    await tester.pumpAndSettle(const Duration(seconds: 6));
+  });
+
   testWidgets('a saved sale without a visit goes back to the first route '
       'with the success toast', (tester) async {
     await pumpScreen(tester);
 
     await tester.tap(confirmButton);
     await tester.pump();
-    fake.completer.complete(const Resource.success(null));
+    fake.completer.complete();
     await tester.pump();
     await tester.pump(const Duration(milliseconds: 1000));
 
@@ -231,7 +249,7 @@ void main() {
     expect(movement.deliveredQuantity, 2);
     expect(movement.returnedQuantity, 1);
 
-    fake.completer.complete(const Resource.success(null));
+    fake.completer.complete();
     await tester.pumpAndSettle(const Duration(seconds: 4));
   });
 }

@@ -1,4 +1,5 @@
 import 'package:app/core/utils/money_formatter.dart';
+import 'package:app/core/presentation/failure_message.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:app/core/theme/sales_tokens.dart';
@@ -587,12 +588,16 @@ class _FooterState extends ConsumerState<_Footer> {
                               await ref
                                   .read(saleDraftProvider.notifier)
                                   .commit();
-                            } catch (_) {
+                            } catch (e) {
                               if (context.mounted) {
                                 setState(() => _busy = false);
                                 TopToast.showError(
                                   context,
-                                  'No se guardó la venta. Reintentá.',
+                                  failureMessage(
+                                    e,
+                                    fallback:
+                                        'No se guardó la venta. Reintentá.',
+                                  ),
                                 );
                               }
                               return;

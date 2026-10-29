@@ -1,7 +1,7 @@
 import 'package:uuid/uuid.dart';
 
-import 'package:app/core/services/database.helper.dart';
-import 'package:app/core/utils/resource.dart';
+import 'package:app/core/errors/domain_failure.dart';
+import 'package:app/core/usecases/transaction_runner.dart';
 import 'package:app/features/inventory/data/repositories/inventory.repository.dart';
 import 'package:app/features/inventory/domain/models/container_movement.dart';
 import 'package:app/features/payments/data/repositories/payment.repository.dart';
@@ -14,47 +14,40 @@ class RegisterSaleUseCase {
     required SaleRepository saleRepo,
     required PaymentRepository paymentRepo,
     required InventoryRepository inventoryRepo,
-    required AppDatabase db,
+    required TransactionRunner transaction,
   }) : _saleRepo = saleRepo,
        _paymentRepo = paymentRepo,
        _inventoryRepo = inventoryRepo,
-       _db = db;
+       _transaction = transaction;
 
   final SaleRepository _saleRepo;
   final PaymentRepository _paymentRepo;
   final InventoryRepository _inventoryRepo;
-  final AppDatabase _db;
+  final TransactionRunner _transaction;
 
-  Future<Resource<void>> execute(
+  /// Records [sale], its settling payments and [containerMovements] in one
+  /// unit of work. Throws [ValidationFailure] for a sale without items.
+  Future<void> execute(
     Sale sale, {
     Payment? payment,
     List<ContainerMovement>? containerMovements,
   }) async {
     if (sale.items.isEmpty) {
-      return Resource.error(Exception('Sale must contain at least one item'));
+      throw const ValidationFailure('La venta no tiene productos.');
     }
-    try {
-      await _db.transaction(() async {
-        final saleResult = await _saleRepo.saveSale(sale);
-        if (saleResult is Error) {
-          throw saleResult.error;
-        }
+    await _transaction(() async {
+      await _saleRepo.saveSale(sale);
 
-        final payments = [?payment, ...settlingPayments(sale)];
-        if (payments.isNotEmpty) {
-          await _paymentRepo.recordPayments(payments);
+      final payments = [?payment, ...settlingPayments(sale)];
+      if (payments.isNotEmpty) {
+        await _paymentRepo.recordPayments(payments);
+      }
+      if (containerMovements != null) {
+        for (final movement in containerMovements) {
+          await _inventoryRepo.recordContainerMovement(movement);
         }
-        if (containerMovements != null) {
-          for (final movement in containerMovements) {
-            await _inventoryRepo.recordContainerMovement(movement);
-          }
-        }
-      });
-
-      return const Resource.success(null);
-    } on Exception catch (e) {
-      return Resource.error(e);
-    }
+      }
+    });
   }
 
   /// The payments that settle [sale] on the spot, linked to it: the server

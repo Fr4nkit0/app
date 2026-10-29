@@ -4,6 +4,7 @@ import 'package:drift/native.dart';
 import 'package:flutter_test/flutter_test.dart';
 
 import 'package:app/core/services/database.helper.dart';
+import 'package:app/core/usecases/drift_transaction_runner.dart';
 import 'package:app/core/utils/resource.dart';
 import 'package:app/features/customers/data/repositories/drift.customer_agreement.repository.dart';
 import 'package:app/features/customers/domain/models/customer.dart';
@@ -130,9 +131,9 @@ void main() {
       saleRepo: DriftSaleRepository(db),
       paymentRepo: DriftPaymentRepository(db),
       inventoryRepo: DriftInventoryRepository(db),
-      db: db,
+      transaction: driftTransactionRunner(db),
     );
-    final result = await registerSale.execute(
+    await registerSale.execute(
       Sale(
         id: 'sale-1',
         customer: Customer(
@@ -147,7 +148,6 @@ void main() {
         date: DateTime.utc(2026, 10, 22, 12),
       ),
     );
-    expect(result, isA<Success<void>>());
   }
 
   test('an agreement travels after customers and before sales', () async {

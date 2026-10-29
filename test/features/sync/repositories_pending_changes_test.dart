@@ -2,7 +2,9 @@ import 'package:drift/drift.dart' as drift;
 import 'package:drift/native.dart';
 import 'package:flutter_test/flutter_test.dart';
 
+import 'package:app/core/errors/domain_failure.dart';
 import 'package:app/core/services/database.helper.dart';
+import 'package:app/core/usecases/drift_transaction_runner.dart';
 import 'package:app/features/customers/data/repositories/drift.customer.repository.dart';
 import 'package:app/features/customers/domain/models/customer.dart';
 import 'package:app/features/customers/domain/models/customer.address.dart';
@@ -220,12 +222,17 @@ void main() {
       expect((change.payload?['items'] as List).length, 1);
     });
 
-    test('a failed sale leaves nothing in the queue', () async {
+    test('a failed sale in a unit of work leaves nothing in the queue', () async {
       final sut = DriftSaleRepository(db);
       await sut.saveSale(makeSale('sale-dupe', PaymentMethod.cash));
       await queue.markSent([(await queue.getPending()).single.id]);
 
-      await sut.saveSale(makeSale('sale-dupe', PaymentMethod.cash));
+      await expectLater(
+        driftTransactionRunner(db)(
+          () => sut.saveSale(makeSale('sale-dupe', PaymentMethod.cash)),
+        ),
+        throwsA(isA<StorageFailure>()),
+      );
 
       expect(await queue.getPending(), isEmpty);
     });
