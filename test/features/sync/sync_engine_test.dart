@@ -1,13 +1,17 @@
 import 'dart:async';
 
 import 'package:dio/dio.dart';
+import 'package:drift/drift.dart' show Value;
 import 'package:drift/native.dart';
 import 'package:flutter_test/flutter_test.dart';
 
 import 'package:app/core/services/database.helper.dart';
+import 'package:app/core/usecases/drift_transaction_runner.dart';
 import 'package:app/features/customers/data/repositories/drift.customer.repository.dart';
 import 'package:app/features/customers/domain/models/customer.dart';
 import 'package:app/features/customers/domain/models/customer.address.dart';
+import 'package:app/features/customers/domain/models/customer_edit.dart';
+import 'package:app/features/customers/domain/usecases/edit.customer.usecase.dart';
 import 'package:app/features/sync/data/repositories/pending_change.repository.dart';
 import 'package:app/features/sync/domain/models/pending_change.dart';
 import 'package:app/features/sync/domain/models/sync_status.dart';
@@ -228,6 +232,7 @@ void main() {
     expect(record['phone_number'], '387-c-1');
     expect(DateTime.parse(record['modified_at'] as String).isUtc, isTrue);
     expect(record['address'], {
+      'uuid': 'addr-c-1',
       'street': 'Av Belgrano 100',
       'apartment': null,
       'floor': '2',
@@ -300,6 +305,65 @@ void main() {
     expect(record['server_id'], 501);
     expect(record['name'], 'Kiosco Norte 2');
   });
+
+  test(
+    'a customer edited through the use case travels with its server id, '
+    'the new values and a later modified_at',
+    () async {
+      await createCustomer('c-1');
+      final before = DateTime.utc(2026, 1, 1);
+      await db.update(db.customerTable).write(
+        CustomerTableCompanion(lastModifiedDate: Value(before)),
+      );
+      await db.update(db.customerAddressTable).write(
+        CustomerAddressTableCompanion(lastModifiedDate: Value(before)),
+      );
+      await engine.runCycle();
+      final first = (server.pushBodies.last['customers'] as List).single as Map;
+
+      await EditCustomerUseCase(
+        customerRepository: customers,
+        transaction: driftTransactionRunner(db),
+      ).execute(
+        const CustomerEdit(
+          customerId: 'c-1',
+          name: 'Kiosco Sur',
+          phone: '3874009988',
+          street: 'Mitre 50',
+          neighborhood: 'Tres Cerritos',
+          apartment: 'B',
+          floor: 'PB',
+          visualReference: 'Portón verde',
+        ),
+      );
+      await engine.runCycle();
+
+      final record = (server.pushBodies.last['customers'] as List).single as Map;
+      expect(record['uuid'], 'c-1');
+      expect(record['server_id'], 501);
+      expect(record['name'], 'Kiosco Sur');
+      expect(record['phone_number'], '3874009988');
+      expect(record['address'], {
+        // The address edited in place keeps its uuid.
+        'uuid': 'addr-c-1',
+        'street': 'Mitre 50',
+        'apartment': 'B',
+        'floor': 'PB',
+        'visual_reference': 'Portón verde',
+        'neighborhood': 'Tres Cerritos',
+        'latitude': -24.785,
+        'longitude': -65.411,
+      });
+      expect(
+        DateTime.parse(record['modified_at'] as String).isAfter(
+          DateTime.parse(first['modified_at'] as String),
+        ),
+        isTrue,
+      );
+      expect(await db.select(db.customerAddressTable).get(), hasLength(1));
+      expect(await queue.countPending(), 0);
+    },
+  );
 
   test(
     'a rejected customer keeps the reason and is not sent again by later cycles',

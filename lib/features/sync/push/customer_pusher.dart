@@ -95,6 +95,8 @@ class CustomerPusher implements EntityPusher {
       'phone_number': customer.phone,
       'modified_at': modifiedAt.toUtc().toIso8601String(),
       'address': {
+        // Lets a later address edit reach the same server row.
+        'uuid': address?.addressId,
         'street': address?.street,
         'apartment': address?.apartment,
         'floor': _floor(address?.floor),

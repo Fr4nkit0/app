@@ -3,6 +3,7 @@ import 'package:app/core/utils/string_utils.dart';
 import 'package:app/features/customers/data/repositories/customer.repository.dart';
 import 'package:app/features/customers/domain/models/customer.dart';
 import 'package:app/features/customers/domain/models/customer.address.dart';
+import 'package:app/features/customers/domain/models/customer_edit.dart';
 import 'package:app/features/customers/domain/models/customer.preference.dart';
 import 'package:app/core/services/database.helper.dart';
 import 'package:app/features/payments/data/repositories/customer_account.dart';
@@ -107,70 +108,82 @@ class DriftCustomerRepository implements CustomerRepository {
     );
   }
 
+  /// The address is edited in place, keeping its id and server id, so the
+  /// pull keeps it linked instead of adding a second one. Preferences, other
+  /// addresses and coordinates are left as they are: they do not travel.
   @override
-  Future<void> updateCustomer(Customer customer) async {
-    final existing = await (db.select(
-      db.customerTable,
-    )..where((t) => t.customerId.equals(customer.id))).getSingleOrNull();
-
-    if (existing == null) throw const NotFoundFailure('customer');
-
-    await db
-        .into(db.customerTable)
-        .insertOnConflictUpdate(
-          CustomerTableCompanion.insert(
-            customerId: Value(customer.id),
-            name: customer.name,
-            phone: Value(customer.phone),
-            lastModifiedDate: Value(DateTime.now()),
+  Future<void> editCustomer(CustomerEdit edit) async {
+    final now = DateTime.now();
+    final updated =
+        await (db.update(
+          db.customerTable,
+        )..where((t) => t.customerId.equals(edit.customerId))).write(
+          CustomerTableCompanion(
+            name: Value(edit.name),
+            phone: Value(edit.phone),
+            lastModifiedDate: Value(now),
           ),
         );
+    if (updated == 0) throw const NotFoundFailure('customer');
 
-    await (db.delete(
-      db.customerAddressTable,
-    )..where((t) => t.customerId.equals(customer.id))).go();
-    for (final address in customer.addresses) {
+    final fields = CustomerAddressTableCompanion(
+      street: Value(edit.street),
+      neighborhood: Value(edit.neighborhood),
+      apartment: Value(edit.apartment),
+      floor: Value(edit.floor),
+      visualReference: Value(edit.visualReference),
+      lastModifiedDate: Value(now),
+    );
+    final address = await _pushedAddress(edit.customerId);
+    if (address == null) {
       await db
           .into(db.customerAddressTable)
           .insert(
-            CustomerAddressTableCompanion.insert(
-              addressId: Value(address.id),
-              customerId: Value(customer.id),
-              street: Value(address.street),
-              apartment: Value(address.apartment),
-              floor: Value(address.floor),
-              visualReference: Value(address.visualReference),
-              isPrimary: Value(address.isPrimary),
-              latitude: Value(address.latitude),
-              longitude: Value(address.longitude),
-              neighborhood: Value(address.neighborhood),
+            fields.copyWith(
+              customerId: Value(edit.customerId),
+              isPrimary: const Value(true),
             ),
           );
+    } else {
+      await (db.update(db.customerAddressTable)
+            ..where((t) => t.addressId.equals(address.addressId)))
+          .write(fields);
     }
 
-    await (db.delete(
-      db.customerPreferenceTable,
-    )..where((t) => t.customerId.equals(customer.id))).go();
-    for (final pref in customer.preferences) {
-      await db
-          .into(db.customerPreferenceTable)
-          .insert(
-            CustomerPreferenceTableCompanion.insert(
-              customerPreferenceId: Value(pref.id),
-              customerId: Value(customer.id),
-              dayOfWeek: Value(pref.dayOfWeek),
-              timeWindowStart: pref.timeWindowStart,
-              timeWindowEnd: Value(pref.timeWindowEnd),
-            ),
-          );
-    }
     await _queue.enqueue(
       entity: PendingEntity.customer,
-      entityId: customer.id,
+      entityId: edit.customerId,
       action: PendingAction.update,
-      payload: _payload(customer),
+      payload: {
+        'customerId': edit.customerId,
+        'name': edit.name,
+        'phone': edit.phone,
+        'address': {
+          'street': edit.street,
+          'neighborhood': edit.neighborhood,
+          'apartment': edit.apartment,
+          'floor': edit.floor,
+          'visualReference': edit.visualReference,
+        },
+      },
     );
   }
+
+  /// The address the customer push sends: same selection and order as
+  /// `CustomerPusher`.
+  Future<CustomerAddressTableData?> _pushedAddress(String customerId) async =>
+      (await (db.select(db.customerAddressTable)
+                ..where(
+                  (t) =>
+                      t.customerId.equals(customerId) & t.enabled.equals(true),
+                )
+                ..orderBy([
+                  (t) => OrderingTerm.desc(t.isPrimary),
+                  (t) => OrderingTerm.asc(t.createdAt),
+                ])
+                ..limit(1))
+              .get())
+          .firstOrNull;
 
   @override
   Future<Customer?> getCustomerById(String id) async {

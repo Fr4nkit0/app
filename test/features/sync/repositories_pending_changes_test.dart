@@ -9,6 +9,7 @@ import 'package:app/features/customers/data/repositories/drift.customer.reposito
 import 'package:app/features/customers/domain/models/customer.dart';
 import 'package:app/features/customers/domain/models/customer.address.dart';
 import 'package:app/features/customers/domain/models/customer.preference.dart';
+import 'package:app/features/customers/domain/models/customer_edit.dart';
 import 'package:app/features/inventory/data/repositories/inventory.repository.dart';
 import 'package:app/features/products/domain/models/product.dart';
 import 'package:app/features/route/data/repositories/drift_route_repository.dart';
@@ -50,6 +51,9 @@ void main() {
         ],
         preferences: const [],
       );
+
+  CustomerEdit editOf({String id = 'cust-1', String name = 'Carlos Gomez'}) =>
+      CustomerEdit(customerId: id, name: name, street: 'Av. Belgrano 1200');
 
   group('customers', () {
     late DriftCustomerRepository sut;
@@ -102,7 +106,7 @@ void main() {
     test('editing a customer queues an update with the new data', () async {
       await sut.saveCustomer(makeCustomer());
 
-      await sut.updateCustomer(makeCustomer(name: 'Carlos Edited'));
+      await sut.editCustomer(editOf(name: 'Carlos Edited'));
 
       final change = (await queue.getPending()).last;
       expect(change.action, PendingAction.update);
@@ -116,7 +120,7 @@ void main() {
         CustomerTableCompanion(lastModifiedDate: drift.Value(longAgo)),
       );
 
-      await sut.updateCustomer(makeCustomer(name: 'Carlos Edited'));
+      await sut.editCustomer(editOf(name: 'Carlos Edited'));
 
       final row = await db.select(db.customerTable).getSingle();
       expect(row.lastModifiedDate.isAfter(longAgo), isTrue);
@@ -124,7 +128,7 @@ void main() {
 
     test('a failed edit of a missing customer queues nothing', () async {
       await expectLater(
-        sut.updateCustomer(makeCustomer(id: 'ghost')),
+        sut.editCustomer(editOf(id: 'ghost')),
         throwsA(isA<NotFoundFailure>()),
       );
 
