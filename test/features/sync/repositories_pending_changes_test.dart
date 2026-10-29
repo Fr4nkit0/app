@@ -133,7 +133,10 @@ void main() {
     });
 
     test('a failed edit of a missing customer queues nothing', () async {
-      await sut.updateCustomer(makeCustomer(id: 'ghost'));
+      await expectLater(
+        sut.updateCustomer(makeCustomer(id: 'ghost')),
+        throwsA(isA<NotFoundFailure>()),
+      );
 
       expect(await queue.getPending(), isEmpty);
     });

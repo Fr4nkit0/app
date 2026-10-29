@@ -7,7 +7,8 @@ import 'package:app/features/customers/presentation/providers/customer_form_prov
 import 'package:app/features/customers/presentation/providers/customer_repository_provider.dart';
 import 'package:app/features/customers/presentation/screens/create_customer_screens.dart';
 
-import '../providers/customer_form_provider_test.dart' show FakeCustomerRepository;
+import '../providers/customer_form_provider_test.dart'
+    show FakeCustomerRepository, fakeCustomerSaving;
 
 void main() {
   testWidgets('saving a new customer closes the form and returns that customer', (tester) async {
@@ -16,7 +17,10 @@ void main() {
 
     await tester.pumpWidget(
       ProviderScope(
-        overrides: [customerRepositoryProvider.overrideWithValue(FakeCustomerRepository())],
+        overrides: [
+          customerRepositoryProvider.overrideWithValue(FakeCustomerRepository()),
+          ...fakeCustomerSaving,
+        ],
         child: MaterialApp(
           home: Consumer(
             builder: (context, ref, _) {

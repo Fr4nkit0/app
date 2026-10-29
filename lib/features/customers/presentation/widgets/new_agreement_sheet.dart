@@ -1,7 +1,7 @@
-import 'package:app/core/utils/resource.dart';
+import 'package:app/core/presentation/failure_message.dart';
 import 'package:app/core/widgets/top_toast.dart';
 import 'package:app/features/customers/data/repositories/customer_agreement.repository.dart';
-import 'package:app/features/customers/data/repositories/drift.customer_agreement.repository.dart';
+import 'package:app/features/customers/presentation/providers/customer_usecase_providers.dart';
 import 'package:app/features/customers/presentation/widgets/customer_agreements_tab.dart';
 import 'package:app/features/products/presentation/providers/product_list_provider.dart';
 import 'package:flutter/material.dart';
@@ -79,25 +79,29 @@ class _NewAgreementSheetState extends ConsumerState<NewAgreementSheet> {
   Future<void> _save() async {
     if (!_formKey.currentState!.validate()) return;
     setState(() => _saving = true);
-    final result = await ref
-        .read(driftCustomerAgreementRepositoryProvider)
-        .create(
-          customerId: widget.customerId,
-          productId: _productId!,
-          unitPrice: _parsePrice(_price.text)!,
-          validFrom: _iso(_validFrom),
-          validTo: _validTo == null ? null : _iso(_validTo!),
-          reason: _reason.text,
-        );
-    if (!mounted) return;
-    switch (result) {
-      case Success():
-        Navigator.of(context).pop();
-        TopToast.showSuccess(context, 'Acuerdo creado');
-      case Error():
-        setState(() => _saving = false);
-        TopToast.showError(context, 'No se guardó el acuerdo. Reintentá.');
+    try {
+      await ref
+          .read(createCustomerAgreementUseCaseProvider)
+          .execute(
+            customerId: widget.customerId,
+            productId: _productId!,
+            unitPrice: _parsePrice(_price.text)!,
+            validFrom: _iso(_validFrom),
+            validTo: _validTo == null ? null : _iso(_validTo!),
+            reason: _reason.text,
+          );
+    } catch (e) {
+      if (!mounted) return;
+      setState(() => _saving = false);
+      TopToast.showError(
+        context,
+        failureMessage(e, fallback: 'No se guardó el acuerdo. Reintentá.'),
+      );
+      return;
     }
+    if (!mounted) return;
+    Navigator.of(context).pop();
+    TopToast.showSuccess(context, 'Acuerdo creado');
   }
 
   static double? _parsePrice(String text) =>

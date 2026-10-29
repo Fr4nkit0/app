@@ -5,7 +5,6 @@ import 'package:flutter_test/flutter_test.dart';
 
 import 'package:app/core/services/database.helper.dart';
 import 'package:app/core/usecases/drift_transaction_runner.dart';
-import 'package:app/core/utils/resource.dart';
 import 'package:app/features/customers/data/repositories/drift.customer_agreement.repository.dart';
 import 'package:app/features/customers/domain/models/customer.dart';
 import 'package:app/features/inventory/data/repositories/inventory.repository.dart';
@@ -108,8 +107,8 @@ void main() {
     String? validTo,
     String? reason,
     double price = 1200,
-  }) async {
-    final result = await agreements.create(
+  }) {
+    return agreements.create(
       customerId: 'c-1',
       productId: 'p-1',
       unitPrice: price,
@@ -117,7 +116,6 @@ void main() {
       validTo: validTo,
       reason: reason,
     );
-    return (result as Success<String>).value;
   }
 
   Future<void> syncCustomer() => (db.update(db.customerTable)

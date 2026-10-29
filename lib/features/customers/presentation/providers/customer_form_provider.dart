@@ -1,10 +1,9 @@
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import 'package:app/core/utils/resource.dart';
+import 'package:app/core/presentation/failure_message.dart';
 import 'package:app/features/customers/domain/models/customer.dart';
 import 'package:app/features/customers/domain/models/customer.address.dart';
 import 'package:app/features/customers/domain/models/customer.preference.dart';
-import 'package:app/features/customers/domain/usecases/create.customer.usecase.dart';
-import 'package:app/features/customers/presentation/providers/customer_repository_provider.dart';
+import 'package:app/features/customers/presentation/providers/customer_usecase_providers.dart';
 import 'package:uuid/uuid.dart';
 
 import 'customer_form_state.dart';
@@ -134,9 +133,6 @@ class CustomerForm extends Notifier<CustomerFormState> {
     state = state.copyWith(isSubmitting: true, errorMessage: null);
 
     try {
-      final repository = ref.read(customerRepositoryProvider);
-      final useCase = CreateCustomerUseCase(customerRepository: repository);
-
       final customerId = const Uuid().v4();
       final addressId = const Uuid().v4();
 
@@ -163,23 +159,21 @@ class CustomerForm extends Notifier<CustomerFormState> {
             .toList(),
       );
 
-      final result = await useCase.execute(customer);
+      await ref.read(createCustomerUseCaseProvider).execute(customer);
 
-      switch (result) {
-        case Success():
-          state = state.copyWith(
-            isSubmitting: false,
-            isSuccess: true,
-            createdCustomer: customer,
-          );
-        case Error(:final error):
-          state = state.copyWith(
-            isSubmitting: false,
-            errorMessage: error.toString(),
-          );
-      }
+      state = state.copyWith(
+        isSubmitting: false,
+        isSuccess: true,
+        createdCustomer: customer,
+      );
     } catch (e) {
-      state = state.copyWith(isSubmitting: false, errorMessage: e.toString());
+      state = state.copyWith(
+        isSubmitting: false,
+        errorMessage: failureMessage(
+          e,
+          fallback: 'No se guardó el cliente. Reintentá.',
+        ),
+      );
     }
   }
 }

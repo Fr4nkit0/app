@@ -1,5 +1,5 @@
 import 'dart:async';
-import 'package:app/core/utils/resource.dart';
+import 'package:app/core/errors/domain_failure.dart';
 import 'package:app/core/utils/string_utils.dart';
 import 'package:app/features/customers/data/repositories/customer.repository.dart';
 import 'package:app/features/customers/domain/models/customer.dart';
@@ -31,31 +31,25 @@ class MockCustomerRepository implements CustomerRepository {
   }
 
   @override
-  Future<Resource<Customer?>> getCustomerById(String id) async {
-    final customer = _customers.where((c) => c.id == id).firstOrNull;
-    return Resource.success(customer);
-  }
+  Future<Customer?> getCustomerById(String id) async =>
+      _customers.where((c) => c.id == id).firstOrNull;
 
   @override
-  Future<Resource<void>> updateCustomer(Customer customer) async {
+  Future<void> updateCustomer(Customer customer) async {
     final idx = _customers.indexWhere((c) => c.id == customer.id);
-    if (idx < 0) {
-      return Resource.error(Exception('Customer not found'));
-    }
+    if (idx < 0) throw const NotFoundFailure('customer');
     _customers[idx] = customer;
     _controller.add(_customers);
-    return const Resource.success(null);
   }
 
   @override
-  Future<Resource<void>> deleteCustomer(String customerId) async {
+  Future<void> deleteCustomer(String customerId) async {
     final before = _customers.length;
     _customers.removeWhere((c) => c.id == customerId);
     if (_customers.length < before) {
       _controller.add(_customers);
       _countController.add(_customers.length);
     }
-    return const Resource.success(null);
   }
 
   @override
@@ -103,7 +97,7 @@ class MockCustomerRepository implements CustomerRepository {
   }
 
   @override
-  Future<Resource<void>> saveCustomer(Customer customer) async {
+  Future<void> saveCustomer(Customer customer) async {
     final idx = _customers.indexWhere((c) => c.id == customer.id);
     if (idx >= 0) {
       _customers[idx] = customer;
@@ -112,7 +106,6 @@ class MockCustomerRepository implements CustomerRepository {
     }
     _controller.add(_customers);
     _countController.add(_customers.length);
-    return const Resource.success(null);
   }
 
   static List<Customer> _buildInitialCustomers() => [

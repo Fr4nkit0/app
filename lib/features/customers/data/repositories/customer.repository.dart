@@ -1,11 +1,15 @@
-import 'package:app/core/utils/resource.dart';
+import 'package:app/core/errors/domain_failure.dart';
 import 'package:app/features/customers/domain/models/customer.dart';
 
 abstract class CustomerRepository {
-  Future<Resource<void>> saveCustomer(Customer customer);
-  Future<Resource<Customer?>> getCustomerById(String id);
-  Future<Resource<void>> updateCustomer(Customer customer);
-  Future<Resource<void>> deleteCustomer(String customerId);
+  // Writes queue their pending change; run them inside a use case's unit
+  // of work.
+  Future<void> saveCustomer(Customer customer);
+  Future<Customer?> getCustomerById(String id);
+
+  /// Throws [NotFoundFailure] when the customer does not exist.
+  Future<void> updateCustomer(Customer customer);
+  Future<void> deleteCustomer(String customerId);
   Stream<int> watchCustomerCount();
   Stream<List<Customer>> watchAllCustomers();
   Future<List<Customer>> getCustomersPage({

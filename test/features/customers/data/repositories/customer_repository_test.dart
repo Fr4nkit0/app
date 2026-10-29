@@ -1,7 +1,6 @@
 import 'package:flutter_test/flutter_test.dart';
 import 'package:drift/native.dart';
 import 'package:app/core/services/database.helper.dart';
-import 'package:app/core/utils/resource.dart';
 import 'package:app/features/customers/data/repositories/drift.customer.repository.dart';
 import 'package:app/features/customers/data/repositories/mock_customer_repository.dart';
 import 'package:app/features/customers/domain/models/customer.dart';
@@ -37,12 +36,9 @@ void main() {
         preferences: [],
       );
 
-      final saveResult = await repo.saveCustomer(customer);
-      expect(saveResult, isA<Success<void>>());
+      await repo.saveCustomer(customer);
 
-      final getResult = await repo.getCustomerById('cust-1');
-      expect(getResult, isA<Success<Customer?>>());
-      final fetchedCustomer = (getResult as Success<Customer?>).value;
+      final fetchedCustomer = await repo.getCustomerById('cust-1');
       expect(fetchedCustomer, isNotNull);
       expect(fetchedCustomer!.addresses.first.neighborhood, 'Centro');
     });
@@ -62,12 +58,9 @@ void main() {
         preferences: [],
       );
 
-      final saveResult = await repo.saveCustomer(customer);
-      expect(saveResult, isA<Success<void>>());
+      await repo.saveCustomer(customer);
 
-      final getResult = await repo.getCustomerById('cust-2');
-      expect(getResult, isA<Success<Customer?>>());
-      final fetchedCustomer = (getResult as Success<Customer?>).value;
+      final fetchedCustomer = await repo.getCustomerById('cust-2');
       expect(fetchedCustomer, isNotNull);
       expect(fetchedCustomer!.addresses.first.neighborhood, isNull);
     });

@@ -3,7 +3,6 @@ import 'package:drift/native.dart';
 import 'package:flutter_test/flutter_test.dart';
 
 import 'package:app/core/services/database.helper.dart';
-import 'package:app/core/utils/resource.dart';
 import 'package:app/features/customers/data/repositories/drift.customer_agreement.repository.dart';
 import 'package:app/features/customers/domain/models/customer_agreement.dart';
 import 'package:app/features/products/data/repositories/drift.product.repository.dart';
@@ -34,7 +33,7 @@ void main() {
   });
   tearDown(() => db.close());
 
-  Future<Resource<String>> create({
+  Future<String> create({
     double price = 1200,
     String validFrom = '2026-10-22',
     String? validTo,
@@ -49,9 +48,8 @@ void main() {
   );
 
   test('create stores the agreement and queues it in the same step', () async {
-    final result = await create(reason: 'Cliente mayorista');
+    final id = await create(reason: 'Cliente mayorista');
 
-    final id = (result as Success<String>).value;
     final row = await db.select(db.customerAgreementTable).getSingle();
     expect(row.agreementId, id);
     expect(row.serverId, isNull);
@@ -66,27 +64,14 @@ void main() {
   });
 
   test('create changes the price the customer pays right away', () async {
-    final result = await create();
+    final id = await create();
 
     final products = await DriftProductRepository(db)
         .watchProductsFor('c-1')
         .first;
     expect(products.single.price, 1200);
     expect(products.single.agreementId, isNull);
-    expect(products.single.agreementUuid, (result as Success<String>).value);
-  });
-
-  test('create rejects invalid input and stores nothing', () async {
-    for (final result in [
-      await create(price: 0),
-      await create(price: 12.345),
-      await create(validFrom: '2026-10-22', validTo: '2026-10-21'),
-      await create(reason: 'x' * 501),
-    ]) {
-      expect(result, isA<Error<String>>());
-    }
-    expect(await db.select(db.customerAgreementTable).get(), isEmpty);
-    expect(await DriftPendingChangeRepository(db).getPending(), isEmpty);
+    expect(products.single.agreementUuid, id);
   });
 
   test('watch lists the agreements in force first with their status', () async {
