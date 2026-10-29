@@ -2,7 +2,7 @@ import 'package:drift/drift.dart';
 import 'package:uuid/uuid.dart';
 
 import 'package:app/core/services/database.helper.dart';
-import 'package:app/features/payments/data/repositories/customer_balance.store.dart';
+import 'package:app/features/payments/data/repositories/customer_account.dart';
 import 'package:app/features/payments/domain/models/customer_account_entry.dart';
 import 'package:app/features/payments/domain/models/payment.dart';
 import 'package:app/features/sync/data/repositories/pending_change.repository.dart';
@@ -25,11 +25,11 @@ class DriftPaymentRepository implements PaymentRepository {
   DriftPaymentRepository(AppDatabase db)
     : _db = db,
       _queue = DriftPendingChangeRepository(db),
-      _balances = CustomerBalanceStore(db);
+      _account = CustomerAccount(db);
 
   final AppDatabase _db;
   final PendingChangeRepository _queue;
-  final CustomerBalanceStore _balances;
+  final CustomerAccount _account;
 
   @override
   Future<void> recordPayment(Payment payment) async {
@@ -105,20 +105,13 @@ class DriftPaymentRepository implements PaymentRepository {
         );
       }
 
-      await _balances.adjust(
-        customerId,
-        -totalAmount,
-        lastEntryId: lastEntryId,
-      );
+      await _account.post(customerId, -totalAmount, lastEntryId: lastEntryId);
     }
   }
 
   @override
   Stream<double> watchCustomerBalance(String customerId) {
-    return (_db.select(_db.customerBalanceTable)
-          ..where((t) => t.customerId.equals(customerId)))
-        .watchSingleOrNull()
-        .map((row) => row?.currentBalance ?? 0.0);
+    return _account.watchBalance(customerId);
   }
 
   @override

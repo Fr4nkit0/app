@@ -2,7 +2,7 @@ import 'package:drift/drift.dart';
 import 'package:uuid/uuid.dart';
 import 'package:app/core/services/database.helper.dart';
 import 'package:app/features/customers/domain/models/customer.dart';
-import 'package:app/features/payments/data/repositories/customer_balance.store.dart';
+import 'package:app/features/payments/data/repositories/customer_account.dart';
 import 'package:app/features/products/domain/models/product.dart';
 import 'package:app/features/sales/data/repositories/sale.repository.dart';
 import 'package:app/features/sales/domain/models/payment_method.dart';
@@ -15,11 +15,11 @@ class DriftSaleRepository implements SaleRepository {
   DriftSaleRepository(AppDatabase db)
     : _db = db,
       _queue = DriftPendingChangeRepository(db),
-      _balances = CustomerBalanceStore(db);
+      _account = CustomerAccount(db);
 
   final AppDatabase _db;
   final PendingChangeRepository _queue;
-  final CustomerBalanceStore _balances;
+  final CustomerAccount _account;
 
   @override
   Stream<List<Sale>> watchVisitSales(String visitId) {
@@ -151,7 +151,7 @@ class DriftSaleRepository implements SaleRepository {
             description: Value(isCredit ? 'Credit sale' : 'Sale'),
           ),
         );
-    await _balances.adjust(sale.customer.id, sale.total, lastEntryId: entryId);
+    await _account.post(sale.customer.id, sale.total, lastEntryId: entryId);
 
     await _queue.enqueue(
       entity: PendingEntity.sale,

@@ -5,6 +5,7 @@ import 'package:app/features/customers/domain/models/customer.dart';
 import 'package:app/features/customers/domain/models/customer.address.dart';
 import 'package:app/features/customers/domain/models/customer.preference.dart';
 import 'package:app/core/services/database.helper.dart';
+import 'package:app/features/payments/data/repositories/customer_account.dart';
 import 'package:app/features/sync/data/repositories/pending_change.repository.dart';
 import 'package:app/features/sync/domain/models/pending_change.dart';
 import 'package:drift/drift.dart';
@@ -13,8 +14,11 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 class DriftCustomerRepository implements CustomerRepository {
   final AppDatabase db;
   final PendingChangeRepository _queue;
+  final CustomerAccount _account;
 
-  DriftCustomerRepository(this.db) : _queue = DriftPendingChangeRepository(db);
+  DriftCustomerRepository(this.db)
+    : _queue = DriftPendingChangeRepository(db),
+      _account = CustomerAccount(db);
 
   static Map<String, dynamic> _payload(Customer customer) => {
     'customerId': customer.id,
@@ -202,10 +206,7 @@ class DriftCustomerRepository implements CustomerRepository {
       db.customerPreferenceTable,
     )..where((t) => t.customerId.equals(id))).get();
 
-    final balanceData = await (db.select(
-      db.customerBalanceTable,
-    )..where((t) => t.customerId.equals(id))).getSingleOrNull();
-    final debtAmount = balanceData?.currentBalance ?? 0.0;
+    final debtAmount = await _account.balanceOf(id);
 
     final customer = Customer(
       id: customerData.customerId,
@@ -265,9 +266,7 @@ class DriftCustomerRepository implements CustomerRepository {
           ..where((t) => t.customerId.isIn(customerIds) & t.enabled.equals(true)))
         .get();
 
-    final balances = await (db.select(
-      db.customerBalanceTable,
-    )..where((t) => t.customerId.isIn(customerIds))).get();
+    final balanceMap = await _account.balancesOf(customerIds);
 
     final addrMap = <String, List<CustomerAddressTableData>>{};
     for (final a in addresses) {
@@ -277,11 +276,6 @@ class DriftCustomerRepository implements CustomerRepository {
     final prefMap = <String, List<CustomerPreferenceTableData>>{};
     for (final p in preferences) {
       prefMap.putIfAbsent(p.customerId, () => []).add(p);
-    }
-
-    final balanceMap = <String, double>{};
-    for (final b in balances) {
-      balanceMap[b.customerId] = b.currentBalance;
     }
 
     return customerRows.map((row) {
@@ -337,9 +331,7 @@ class DriftCustomerRepository implements CustomerRepository {
           ..where((t) => t.customerId.isIn(customerIds) & t.enabled.equals(true)))
         .get();
 
-    final balances = await (db.select(
-      db.customerBalanceTable,
-    )..where((t) => t.customerId.isIn(customerIds))).get();
+    final balanceMap = await _account.balancesOf(customerIds);
 
     final addrMap = <String, List<CustomerAddressTableData>>{};
     for (final a in addresses) {
@@ -349,11 +341,6 @@ class DriftCustomerRepository implements CustomerRepository {
     final prefMap = <String, List<CustomerPreferenceTableData>>{};
     for (final p in preferences) {
       prefMap.putIfAbsent(p.customerId, () => []).add(p);
-    }
-
-    final balanceMap = <String, double>{};
-    for (final b in balances) {
-      balanceMap[b.customerId] = b.currentBalance;
     }
 
     return customerRows.map((row) {
@@ -451,12 +438,7 @@ class DriftCustomerRepository implements CustomerRepository {
             ) &
             db.customerPreferenceTable.enabled.equals(true),
       ),
-      leftOuterJoin(
-        db.customerBalanceTable,
-        db.customerBalanceTable.customerId.equalsExp(
-          db.customerTable.customerId,
-        ),
-      ),
+      _account.balanceJoin(db.customerTable.customerId),
     ])..where(db.customerTable.enabled.equals(true));
 
     return query.watch().map((rows) {
@@ -468,7 +450,6 @@ class DriftCustomerRepository implements CustomerRepository {
         final customerData = row.readTable(db.customerTable);
         final addressData = row.readTableOrNull(db.customerAddressTable);
         final prefData = row.readTableOrNull(db.customerPreferenceTable);
-        final balanceData = row.readTableOrNull(db.customerBalanceTable);
 
         final cid = customerData.customerId;
 
@@ -477,7 +458,7 @@ class DriftCustomerRepository implements CustomerRepository {
             id: cid,
             name: customerData.name,
             phone: customerData.phone,
-            debtAmount: balanceData?.currentBalance ?? 0.0,
+            debtAmount: _account.balanceIn(row),
             addresses: [],
             preferences: [],
           );

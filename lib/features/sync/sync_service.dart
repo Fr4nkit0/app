@@ -4,7 +4,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../core/network/dio_client.dart';
 import '../../core/services/database.helper.dart';
-import '../payments/data/repositories/customer_balance.store.dart';
+import '../payments/data/repositories/customer_account.dart';
 import 'domain/models/pending_change.dart';
 
 typedef Json = Map<String, dynamic>;
@@ -32,14 +32,14 @@ class _Unsent {
 class SyncService {
   SyncService(this._dio, this._db, {DateTime Function()? today})
     : _today = today ?? DateTime.now,
-      _balances = CustomerBalanceStore(_db);
+      _account = CustomerAccount(_db);
 
   static const pullCursorKey = 'pull_cursor';
 
   final Dio _dio;
   final AppDatabase _db;
   final DateTime Function() _today;
-  final CustomerBalanceStore _balances;
+  final CustomerAccount _account;
 
   /// True on the first run (no cursor) or when no stored route is today's.
   Future<bool> needsBootstrap() async {
@@ -253,7 +253,7 @@ class SyncService {
     for (final b in rows['customer_balances'] ?? const <Json>[]) {
       final customerId = await _localCustomerId(b['customer_id'] as int?);
       if (customerId == null) continue;
-      await _balances.replaceWithServer(
+      await _account.reconcile(
         customerId,
         _toDouble(b['current_balance']),
         serverId: b['id'] as int,
@@ -549,7 +549,7 @@ class SyncService {
 
       final balance = c['balance'] as Json?;
       if (balance != null) {
-        await _balances.replaceWithServer(
+        await _account.reconcile(
           localId,
           _toDouble(balance['current_balance']),
         );
