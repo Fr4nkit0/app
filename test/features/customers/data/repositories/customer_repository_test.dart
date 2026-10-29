@@ -1,3 +1,5 @@
+import 'dart:io';
+
 import 'package:flutter_test/flutter_test.dart';
 import 'package:drift/native.dart';
 import 'package:app/core/services/database.helper.dart';
@@ -125,5 +127,15 @@ void main() {
       final results3 = await driftRepo.searchCustomers(query: 'ramon', page: 0, pageSize: 10);
       expect(results3.length, 2);
     });
+  });
+
+  test('the app cannot delete a customer: the server rejects every delete', () {
+    final offenders = [
+      for (final f in Directory('lib').listSync(recursive: true))
+        if (f is File && f.path.endsWith('.dart') && f.readAsStringSync().contains('deleteCustomer'))
+          f.path,
+    ];
+
+    expect(offenders, isEmpty);
   });
 }

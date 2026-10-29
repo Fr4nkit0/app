@@ -9,7 +9,6 @@ abstract class CustomerRepository {
 
   /// Throws [NotFoundFailure] when the customer does not exist.
   Future<void> updateCustomer(Customer customer);
-  Future<void> deleteCustomer(String customerId);
   Stream<int> watchCustomerCount();
   Stream<List<Customer>> watchAllCustomers();
   Future<List<Customer>> getCustomersPage({

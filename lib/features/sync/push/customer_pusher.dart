@@ -12,6 +12,8 @@ import 'entity_pusher.dart';
 class CustomerPusher implements EntityPusher {
   CustomerPusher(this._db);
 
+  /// The app no longer deletes customers; a delete still queued by an older
+  /// version finds no local row and is rejected with this reason.
   static const deletionNotSynced =
       'La baja de clientes no se sincroniza con el servidor.';
 

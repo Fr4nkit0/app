@@ -122,16 +122,6 @@ void main() {
       expect(row.lastModifiedDate.isAfter(longAgo), isTrue);
     });
 
-    test('deleting a customer queues a delete', () async {
-      await sut.saveCustomer(makeCustomer());
-
-      await sut.deleteCustomer('cust-1');
-
-      final change = (await queue.getPending()).last;
-      expect(change.action, PendingAction.delete);
-      expect(change.entityId, 'cust-1');
-    });
-
     test('a failed edit of a missing customer queues nothing', () async {
       await expectLater(
         sut.updateCustomer(makeCustomer(id: 'ghost')),

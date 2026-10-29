@@ -51,6 +51,7 @@ class StepIdentityView extends StatelessWidget {
             initialValue: name,
             onChanged: onNameChanged,
             textCapitalization: TextCapitalization.words,
+            textInputAction: TextInputAction.next,
             autofocus: true,
             autovalidateMode: AutovalidateMode.onUserInteraction,
             validator: (v) =>
@@ -77,6 +78,7 @@ class StepIdentityView extends StatelessWidget {
             initialValue: phone,
             onChanged: onPhoneChanged,
             keyboardType: TextInputType.phone,
+            textInputAction: TextInputAction.done,
             decoration: InputDecoration(
               labelText: 'Teléfono (opcional)',
               hintText: 'Ej. 387-555-0101',

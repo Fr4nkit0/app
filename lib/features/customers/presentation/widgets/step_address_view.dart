@@ -76,6 +76,8 @@ class StepAddressView extends StatelessWidget {
             initialValue: street,
             onChanged: onStreetChanged,
             textCapitalization: TextCapitalization.words,
+            // The neighborhood is picked from a list, so the keyboard skips it.
+            textInputAction: TextInputAction.next,
             autofocus: true,
             autovalidateMode: AutovalidateMode.onUserInteraction,
             validator: (v) =>
@@ -142,6 +144,7 @@ class StepAddressView extends StatelessWidget {
                 child: TextFormField(
                   initialValue: floor,
                   onChanged: onFloorChanged,
+                  textInputAction: TextInputAction.next,
                   decoration: _decoration(
                     context,
                   ).copyWith(labelText: 'Piso', hintText: 'Ej. 3'),
@@ -152,6 +155,7 @@ class StepAddressView extends StatelessWidget {
                 child: TextFormField(
                   initialValue: apartment,
                   onChanged: onApartmentChanged,
+                  textInputAction: TextInputAction.next,
                   textCapitalization: TextCapitalization.characters,
                   decoration: _decoration(context).copyWith(
                     labelText: 'Depto / Lote',

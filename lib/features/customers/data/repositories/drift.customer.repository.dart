@@ -173,24 +173,6 @@ class DriftCustomerRepository implements CustomerRepository {
   }
 
   @override
-  Future<void> deleteCustomer(String customerId) async {
-    await (db.delete(
-      db.customerPreferenceTable,
-    )..where((t) => t.customerId.equals(customerId))).go();
-    await (db.delete(
-      db.customerAddressTable,
-    )..where((t) => t.customerId.equals(customerId))).go();
-    await (db.delete(
-      db.customerTable,
-    )..where((t) => t.customerId.equals(customerId))).go();
-    await _queue.enqueue(
-      entity: PendingEntity.customer,
-      entityId: customerId,
-      action: PendingAction.delete,
-    );
-  }
-
-  @override
   Future<Customer?> getCustomerById(String id) async {
     final customerData = await (db.select(
       db.customerTable,

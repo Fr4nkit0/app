@@ -173,17 +173,17 @@ class _ThemeCard extends StatelessWidget {
             segments: const [
               ButtonSegment(
                 value: ThemeMode.system,
-                label: Text('Sistema'),
+                label: _SegmentLabel('Sistema'),
                 icon: Icon(Icons.brightness_auto_rounded),
               ),
               ButtonSegment(
                 value: ThemeMode.light,
-                label: Text('Claro'),
+                label: _SegmentLabel('Claro'),
                 icon: Icon(Icons.light_mode_rounded),
               ),
               ButtonSegment(
                 value: ThemeMode.dark,
-                label: Text('Oscuro'),
+                label: _SegmentLabel('Oscuro'),
                 icon: Icon(Icons.dark_mode_rounded),
               ),
             ],
@@ -213,6 +213,22 @@ class _ThemeCard extends StatelessWidget {
           ),
         ],
       ),
+    );
+  }
+}
+
+/// A theme label kept on one line: on a narrow phone or with a large font it
+/// shrinks instead of breaking the word.
+class _SegmentLabel extends StatelessWidget {
+  const _SegmentLabel(this.text);
+
+  final String text;
+
+  @override
+  Widget build(BuildContext context) {
+    return FittedBox(
+      fit: BoxFit.scaleDown,
+      child: Text(text, maxLines: 1, softWrap: false),
     );
   }
 }

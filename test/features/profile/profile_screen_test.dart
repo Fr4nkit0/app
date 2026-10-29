@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/rendering.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 import 'package:flutter_test/flutter_test.dart';
@@ -13,6 +14,8 @@ import 'package:app/features/route/presentation/providers/route_repository_provi
 import 'package:app/features/route/presentation/screens/route_day_screen.dart';
 import 'package:app/features/sync/domain/models/sync_status.dart';
 import 'package:app/features/sync/presentation/providers/sync_providers.dart';
+
+import '../../support/real_fonts.dart';
 
 class _SignedIn extends AuthController {
   @override
@@ -92,6 +95,27 @@ void main() {
     expect(container.read(themeModeProvider), ThemeMode.dark);
     expect(await const FlutterSecureStorage().read(key: ThemeModeController.storageKey), 'dark');
   });
+
+  for (final (width, scale) in [(360.0, 1.0), (411.0, 1.0), (360.0, 1.3)]) {
+    testWidgets('the theme labels stay on one line at ${width.toInt()} dp, text x$scale', (tester) async {
+      expect(await loadRealFonts(), isTrue, reason: 'Roboto was not found in the Flutter SDK cache');
+      await tester.binding.setSurfaceSize(Size(width, 800));
+      addTearDown(() => tester.binding.setSurfaceSize(null));
+      tester.platformDispatcher.textScaleFactorTestValue = scale;
+      addTearDown(tester.platformDispatcher.clearTextScaleFactorTestValue);
+
+      await pumpProfile(tester);
+
+      // "Claro" is short enough to never wrap: the other labels match its height.
+      final oneLine = tester.getSize(find.text('Claro')).height;
+      for (final label in ['Sistema', 'Oscuro']) {
+        final paragraph = tester.renderObject<RenderParagraph>(find.text(label));
+        expect(paragraph.size.height, oneLine, reason: '$label wraps');
+        expect(paragraph.didExceedMaxLines, isFalse, reason: '$label is cut');
+      }
+      expect(tester.takeException(), isNull);
+    });
+  }
 
   Future<void> scrollToSignOut(WidgetTester tester) async {
     await tester.scrollUntilVisible(

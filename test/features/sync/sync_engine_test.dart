@@ -450,10 +450,24 @@ void main() {
   );
 
   test(
-    'a locally deleted customer is rejected with a reason instead of being sent',
+    'a customer delete queued by an older app is rejected with a reason instead of being sent',
     () async {
       await createCustomer('c-1');
-      await customers.deleteCustomer('c-1');
+      // The app no longer deletes customers; this is what an older version left.
+      await (db.delete(db.customerPreferenceTable)
+            ..where((t) => t.customerId.equals('c-1')))
+          .go();
+      await (db.delete(db.customerAddressTable)
+            ..where((t) => t.customerId.equals('c-1')))
+          .go();
+      await (db.delete(db.customerTable)
+            ..where((t) => t.customerId.equals('c-1')))
+          .go();
+      await queue.enqueue(
+        entity: PendingEntity.customer,
+        entityId: 'c-1',
+        action: PendingAction.delete,
+      );
 
       await engine.runCycle();
 

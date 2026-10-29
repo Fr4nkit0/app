@@ -32,8 +32,6 @@ class FakeCustomerRepository implements CustomerRepository {
   @override
   Future<void> updateCustomer(Customer customer) => throw UnimplementedError();
   @override
-  Future<void> deleteCustomer(String customerId) => throw UnimplementedError();
-  @override
   Future<Customer?> getCustomerById(String id) => throw UnimplementedError();
   @override
   Future<List<Customer>> getCustomersPage({required int page, required int pageSize}) => throw UnimplementedError();

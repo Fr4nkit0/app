@@ -117,7 +117,9 @@ class _SaleStep1ScreenState extends ConsumerState<SaleStep1Screen> {
                 children: [
                   ScreenHeader(
                     title: 'Nueva Venta',
-                    subtitle: 'Elegí el cliente para registrar la venta',
+                    subtitle: inSelectedMode
+                        ? 'Elegí los productos de la venta'
+                        : 'Elegí el cliente para registrar la venta',
                     onBackPressed: Navigator.canPop(context)
                         ? () => Navigator.of(context).pop()
                         : null,
