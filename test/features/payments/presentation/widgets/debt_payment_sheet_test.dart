@@ -1,9 +1,10 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:app/core/theme/marilin_tokens.dart';
+import 'package:app/features/payments/domain/models/payment_split.dart';
 import 'package:app/features/payments/presentation/widgets/debt_payment_sheet.dart';
 
-DebtPaymentResult? _result;
+PaymentSplit? _result;
 bool _closed = false;
 
 Future<void> _open(WidgetTester tester) async {
@@ -19,7 +20,7 @@ Future<void> _open(WidgetTester tester) async {
         body: Builder(
           builder: (context) => TextButton(
             onPressed: () async {
-              _result = await showModalBottomSheet<DebtPaymentResult>(
+              _result = await showModalBottomSheet<PaymentSplit>(
                 context: context,
                 isScrollControlled: true,
                 useSafeArea: true,
@@ -53,8 +54,7 @@ void main() {
     await tester.tap(_payFull());
     await tester.pumpAndSettle();
 
-    expect(_result!.method, 'Efectivo');
-    expect(_result!.cashAmount, 1000);
+    expect(_result, const PaymentSplit(cash: 1000));
   });
 
   testWidgets('full transfer returns Transferencia with the whole debt', (
@@ -65,8 +65,7 @@ void main() {
     await tester.tap(_payFull());
     await tester.pumpAndSettle();
 
-    expect(_result!.method, 'Transferencia');
-    expect(_result!.transferAmount, 1000);
+    expect(_result, const PaymentSplit(transfer: 1000));
   });
 
   testWidgets('partial amount returns the typed amount', (tester) async {
@@ -77,8 +76,7 @@ void main() {
     await tester.tap(_register());
     await tester.pumpAndSettle();
 
-    expect(_result!.method, 'Efectivo');
-    expect(_result!.cashAmount, 400.5);
+    expect(_result, const PaymentSplit(cash: 400.5));
   });
 
   testWidgets('mixed covering the debt enables Pagar deuda completa', (
@@ -99,9 +97,7 @@ void main() {
     await tester.tap(_payFull());
     await tester.pumpAndSettle();
 
-    expect(_result!.method, 'Mixto');
-    expect(_result!.cashAmount, 600);
-    expect(_result!.transferAmount, 400);
+    expect(_result, const PaymentSplit(cash: 600, transfer: 400));
   });
 
   testWidgets('cancel returns null', (tester) async {

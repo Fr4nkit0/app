@@ -1,4 +1,3 @@
-import 'package:app/core/utils/resource.dart';
 import 'package:app/features/customers/domain/models/customer_agreement.dart';
 
 abstract class CustomerAgreementRepository {
@@ -13,7 +12,8 @@ abstract class CustomerAgreementRepository {
 
   /// Stores a new agreement and queues it for the server; it prices sales
   /// from [validFrom] on. Dates are `YYYY-MM-DD`. Returns the agreement id.
-  Future<Resource<String>> create({
+  /// Run it inside the use case's unit of work.
+  Future<String> create({
     required String customerId,
     required String productId,
     required double unitPrice,

@@ -16,11 +16,8 @@ class VisitRescheduleTimeField extends StatelessWidget {
   final VoidCallback onTap;
   final RescheduleTimeError? error;
 
-  static String? messageFor(RescheduleTimeError? error) => switch (error) {
-    RescheduleTimeError.otherDay => 'Solo se puede reprogramar para hoy.',
-    RescheduleTimeError.notLater => 'Elegí una hora posterior a la actual.',
-    null => null,
-  };
+  static String? messageFor(RescheduleTimeError? error) =>
+      error == null ? null : rescheduleTimeMessage(error);
 
   @override
   Widget build(BuildContext context) {

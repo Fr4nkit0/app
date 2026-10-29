@@ -1,11 +1,13 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:app/core/theme/marilin_tokens.dart';
-import 'package:app/features/inventory/domain/models/customer_container_balance.dart';
+import 'package:app/features/inventory/domain/custody.dart';
+import 'package:app/features/inventory/domain/models/container_type.dart';
 import 'package:app/features/inventory/presentation/providers/inventory_repository_provider.dart';
+import 'package:app/features/inventory/presentation/widgets/container_return_dialog.dart';
+import 'package:app/features/inventory/presentation/widgets/register_container_return_dialog.dart';
 import 'package:app/features/route/domain/models/route_stop.dart';
 import 'package:app/features/route/domain/models/stop_status.dart';
-import 'package:app/features/visits/presentation/widgets/visit_container_return_dialog.dart';
 
 class VisitCustodyBanner extends ConsumerWidget {
   const VisitCustodyBanner({super.key, required this.stop});
@@ -17,32 +19,18 @@ class VisitCustodyBanner extends ConsumerWidget {
     final balancesAsync = ref.watch(
       customerContainerBalancesProvider(stop.customer.id),
     );
+    final containerTypes = ref
+        .watch(containerTypesProvider)
+        .maybeWhen(data: (types) => types, orElse: () => <ContainerType>[]);
 
     return balancesAsync.when(
       data: (balances) {
-        final bidon = balances
-            .firstWhere(
-              (b) => b.containerType == 'BIDON_20L',
-              orElse: () => CustomerContainerBalance(
-                customerId: stop.customer.id,
-                containerType: 'BIDON_20L',
-                quantity: 0,
-              ),
-            )
-            .quantity;
-        final sifon = balances
-            .firstWhere(
-              (b) => b.containerType == 'SIFON_2L',
-              orElse: () => CustomerContainerBalance(
-                customerId: stop.customer.id,
-                containerType: 'SIFON_2L',
-                quantity: 0,
-              ),
-            )
-            .quantity;
+        final custody = custodyByContainerType(balances);
 
         final isDone = stop.status != StopStatus.pending;
-        final canReturn = !isDone && (bidon > 0 || sifon > 0);
+        final canReturn =
+            !isDone &&
+            containerTypes.any((type) => (custody[type.code] ?? 0) > 0);
 
         return Material(
           color: MarilinColors.brandBlue.withValues(alpha: 0.06),
@@ -53,8 +41,10 @@ class VisitCustodyBanner extends ConsumerWidget {
                     showDialog<void>(
                       context: context,
                       barrierDismissible: false,
-                      builder: (context) =>
-                          StandaloneContainerReturnDialog(stop: stop),
+                      builder: (context) => RegisterContainerReturnDialog(
+                        customerId: stop.customer.id,
+                        visitId: stop.id,
+                      ),
                     );
                   }
                 : null,
@@ -97,7 +87,10 @@ class VisitCustodyBanner extends ConsumerWidget {
                           ),
                         ),
                         const SizedBox(height: 8),
-                        VisitContainerBadges(bidon: bidon, sifon: sifon),
+                        VisitContainerBadges(
+                          containerTypes: containerTypes,
+                          custody: custody,
+                        ),
                       ],
                     ),
                   ),
@@ -119,37 +112,34 @@ class VisitCustodyBanner extends ConsumerWidget {
   }
 }
 
-/// Containers the customer holds, side by side; on a narrow row the labels
-/// shorten so both badges stay on one line.
+/// Containers the customer holds of each catalog type, side by side; on a
+/// narrow row the labels shorten so the badges stay on one line.
 class VisitContainerBadges extends StatelessWidget {
   const VisitContainerBadges({
     super.key,
-    required this.bidon,
-    required this.sifon,
+    required this.containerTypes,
+    required this.custody,
   });
 
-  final int bidon;
-  final int sifon;
+  final List<ContainerType> containerTypes;
+
+  /// Containers held by container code; a type absent here counts as 0.
+  final Map<String, int> custody;
 
   @override
   Widget build(BuildContext context) {
     return Row(
       children: [
-        Flexible(
-          child: VisitContainerBadge(
-            icon: Icons.water_drop_outlined,
-            label: 'Bidón 20L',
-            count: bidon,
+        for (final (index, type) in containerTypes.indexed) ...[
+          if (index > 0) const SizedBox(width: 8),
+          Flexible(
+            child: VisitContainerBadge(
+              icon: containerTypeIcon(index),
+              label: type.label,
+              count: custody[type.code] ?? 0,
+            ),
           ),
-        ),
-        const SizedBox(width: 8),
-        Flexible(
-          child: VisitContainerBadge(
-            icon: Icons.local_drink_outlined,
-            label: 'Sifón 1.5L',
-            count: sifon,
-          ),
-        ),
+        ],
       ],
     );
   }

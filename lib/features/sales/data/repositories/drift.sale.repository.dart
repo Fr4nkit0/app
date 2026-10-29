@@ -1,9 +1,8 @@
 import 'package:drift/drift.dart';
 import 'package:uuid/uuid.dart';
 import 'package:app/core/services/database.helper.dart';
-import 'package:app/core/utils/resource.dart';
 import 'package:app/features/customers/domain/models/customer.dart';
-import 'package:app/features/payments/data/repositories/customer_balance.store.dart';
+import 'package:app/features/payments/data/repositories/customer_account.dart';
 import 'package:app/features/products/domain/models/product.dart';
 import 'package:app/features/sales/data/repositories/sale.repository.dart';
 import 'package:app/features/sales/domain/models/payment_method.dart';
@@ -16,20 +15,23 @@ class DriftSaleRepository implements SaleRepository {
   DriftSaleRepository(AppDatabase db)
     : _db = db,
       _queue = DriftPendingChangeRepository(db),
-      _balances = CustomerBalanceStore(db);
+      _account = CustomerAccount(db);
 
   final AppDatabase _db;
   final PendingChangeRepository _queue;
-  final CustomerBalanceStore _balances;
+  final CustomerAccount _account;
 
   @override
-  Stream<List<Sale>> watchAllSales() {
-    final query = _db.select(_db.saleTable).join([
-      innerJoin(
-        _db.customerTable,
-        _db.customerTable.customerId.equalsExp(_db.saleTable.customerId),
-      ),
-    ]);
+  Stream<List<Sale>> watchVisitSales(String visitId) {
+    final query =
+        (_db.select(
+          _db.saleTable,
+        )..where((t) => t.visitId.equals(visitId))).join([
+          innerJoin(
+            _db.customerTable,
+            _db.customerTable.customerId.equalsExp(_db.saleTable.customerId),
+          ),
+        ]);
 
     return query.watch().asyncMap((rows) async {
       final sales = <Sale>[];
@@ -97,97 +99,85 @@ class DriftSaleRepository implements SaleRepository {
   }
 
   @override
-  Future<Resource<void>> saveSale(Sale sale) async {
-    try {
-      await _db.transaction(() async {
-        await _db
-            .into(_db.saleTable)
-            .insert(
-              SaleTableCompanion.insert(
-                saleId: Value(sale.id),
-                customerId: sale.customer.id,
-                totalAmount: sale.total,
-                paymentMethod: sale.paymentMethod.name,
-                saleDate: Value(sale.date),
-                quantity: 0,
-                shipping_amount: 0,
-                visitId: Value(sale.visitId),
-                cashAmount: Value(sale.cashAmount),
-                transferAmount: Value(sale.transferAmount),
-              ),
-            );
-
-        for (final item in sale.items) {
-          await _db
-              .into(_db.saleItemTable)
-              .insert(
-                SaleItemTableCompanion.insert(
-                  saleId: sale.id,
-                  productId: item.product.id,
-                  quantity: item.quantity,
-                  unitPrice: item.product.price,
-                  subtotal: item.subtotal,
-                  agreementServerId: Value(item.product.agreementId),
-                  agreementUuid: Value(item.product.agreementUuid),
-                ),
-              );
-        }
-
-        // The server books every sale on the customer's account; a sale
-        // paid on the spot is settled by the payments linked to it.
-        final entryId = const Uuid().v4();
-        final isCredit = sale.paymentMethod == PaymentMethod.credit;
-        await _db
-            .into(_db.customerAccountEntryTable)
-            .insert(
-              CustomerAccountEntryTableCompanion.insert(
-                customerAccountEntryId: Value(entryId),
-                customerId: sale.customer.id,
-                saleId: Value(sale.id),
-                entryType: 'SALE',
-                amount: sale.total,
-                direction: 1,
-                createdAt: Value(sale.date),
-                description: Value(isCredit ? 'Credit sale' : 'Sale'),
-              ),
-            );
-        await _balances.adjust(
-          sale.customer.id,
-          sale.total,
-          lastEntryId: entryId,
+  Future<void> saveSale(Sale sale) async {
+    await _db
+        .into(_db.saleTable)
+        .insert(
+          SaleTableCompanion.insert(
+            saleId: Value(sale.id),
+            customerId: sale.customer.id,
+            totalAmount: sale.total,
+            paymentMethod: sale.paymentMethod.name,
+            saleDate: Value(sale.date),
+            quantity: 0,
+            shipping_amount: 0,
+            visitId: Value(sale.visitId),
+            cashAmount: Value(sale.cashAmount),
+            transferAmount: Value(sale.transferAmount),
+          ),
         );
 
-        await _queue.enqueue(
-          entity: PendingEntity.sale,
-          entityId: sale.id,
-          action: PendingAction.insert,
-          payload: {
-            'saleId': sale.id,
-            'customerId': sale.customer.id,
-            'total': sale.total,
-            'paymentMethod': sale.paymentMethod.name,
-            'cashAmount': sale.cashAmount,
-            'transferAmount': sale.transferAmount,
-            'visitId': sale.visitId,
-            'date': sale.date.toIso8601String(),
-            'items': [
-              for (final item in sale.items)
-                {
-                  'productId': item.product.id,
-                  'quantity': item.quantity,
-                  'unitPrice': item.product.price,
-                  'agreementId': item.product.agreementId,
-                  'agreementUuid': item.product.agreementUuid,
-                  'subtotal': item.subtotal,
-                },
-            ],
-          },
-        );
-      });
-
-      return const Resource.success(null);
-    } catch (e) {
-      return Resource.error(e is Exception ? e : Exception(e.toString()));
+    for (final item in sale.items) {
+      await _db
+          .into(_db.saleItemTable)
+          .insert(
+            SaleItemTableCompanion.insert(
+              saleId: sale.id,
+              productId: item.product.id,
+              quantity: item.quantity,
+              unitPrice: item.product.price,
+              subtotal: item.subtotal,
+              agreementServerId: Value(item.product.agreementId),
+              agreementUuid: Value(item.product.agreementUuid),
+            ),
+          );
     }
+
+    // The server books every sale on the customer's account; a sale
+    // paid on the spot is settled by the payments linked to it.
+    final entryId = const Uuid().v4();
+    final isCredit = sale.paymentMethod == PaymentMethod.credit;
+    await _db
+        .into(_db.customerAccountEntryTable)
+        .insert(
+          CustomerAccountEntryTableCompanion.insert(
+            customerAccountEntryId: Value(entryId),
+            customerId: sale.customer.id,
+            saleId: Value(sale.id),
+            entryType: 'SALE',
+            amount: sale.total,
+            direction: 1,
+            createdAt: Value(sale.date),
+            description: Value(isCredit ? 'Credit sale' : 'Sale'),
+          ),
+        );
+    await _account.post(sale.customer.id, sale.total, lastEntryId: entryId);
+
+    await _queue.enqueue(
+      entity: PendingEntity.sale,
+      entityId: sale.id,
+      action: PendingAction.insert,
+      payload: {
+        'saleId': sale.id,
+        'customerId': sale.customer.id,
+        'total': sale.total,
+        'paymentMethod': sale.paymentMethod.name,
+        'cashAmount': sale.cashAmount,
+        'transferAmount': sale.transferAmount,
+        'visitId': sale.visitId,
+        'date': sale.date.toIso8601String(),
+        'items': [
+          for (final item in sale.items)
+            {
+              'productId': item.product.id,
+              'quantity': item.quantity,
+              'unitPrice': item.product.price,
+              'agreementId': item.product.agreementId,
+              'agreementUuid': item.product.agreementUuid,
+              'subtotal': item.subtotal,
+            },
+        ],
+      },
+    );
   }
 }

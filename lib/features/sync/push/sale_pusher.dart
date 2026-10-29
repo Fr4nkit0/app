@@ -1,14 +1,14 @@
 import 'package:drift/drift.dart';
 
 import '../../../core/services/database.helper.dart';
-import '../../payments/data/repositories/customer_balance.store.dart';
+import '../../payments/data/repositories/customer_account.dart';
 import '../domain/models/pending_change.dart';
 import 'entity_pusher.dart';
 import 'references.dart';
 
 /// Sales with their lines, each at the unit price the sale draft set.
 class SalePusher implements EntityPusher, RejectionAware {
-  SalePusher(this._db) : _balances = CustomerBalanceStore(_db);
+  SalePusher(this._db) : _account = CustomerAccount(_db);
 
   static const missing = 'La venta ya no existe en el dispositivo.';
   static const empty = 'La venta no tiene productos.';
@@ -16,7 +16,7 @@ class SalePusher implements EntityPusher, RejectionAware {
       'Producto desconocido: $name. Sincronizá el catálogo primero.';
 
   final AppDatabase _db;
-  final CustomerBalanceStore _balances;
+  final CustomerAccount _account;
 
   @override
   PendingEntity get entity => PendingEntity.sale;
@@ -124,6 +124,6 @@ class SalePusher implements EntityPusher, RejectionAware {
       _db.saleTable,
     )..where((t) => t.saleId.equals(localId))).getSingleOrNull();
     if (sale == null) return;
-    await _balances.adjust(sale.customerId, -sale.totalAmount);
+    await _account.post(sale.customerId, -sale.totalAmount);
   }
 }

@@ -15,7 +15,7 @@ class ContainerMovement {
 
   final String id;
   final String customerId;
-  final String containerType; // 'BIDON_20L' | 'SIFON_2L'
+  final String containerType; // Catalog code (ContainerType.code)
   final int deliveredQuantity;
   final int returnedQuantity;
   final DateTime createdAt;

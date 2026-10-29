@@ -6,9 +6,9 @@ import 'package:path_provider/path_provider.dart';
 import '../../features/customers/data/database/customer.table.dart';
 import '../../features/customers/data/database/customer.address.table.dart';
 import '../../features/customers/data/database/customer.preference.table.dart';
-import 'package:app/features/route/data/repositories/database/route.stop.table.dart';
-import 'package:app/features/route/data/repositories/database/route.inventory.table.dart';
-import 'package:app/features/route/data/repositories/database/route.table.dart';
+import 'package:app/features/route/data/database/route.stop.table.dart';
+import 'package:app/features/route/data/database/route.inventory.table.dart';
+import 'package:app/features/route/data/database/route.table.dart';
 import 'package:app/features/products/data/database/product.table.dart';
 import 'package:app/features/visits/data/database/visit.table.dart';
 import 'package:app/features/sales/data/database/sales.table.dart';
@@ -56,7 +56,7 @@ class AppDatabase extends _$AppDatabase {
   AppDatabase([QueryExecutor? executor]) : super(executor ?? _openConnection());
 
   @override
-  int get schemaVersion => 12;
+  int get schemaVersion => 13;
 
   @override
   MigrationStrategy get migration => MigrationStrategy(
@@ -138,6 +138,9 @@ class AppDatabase extends _$AppDatabase {
       }
       if (from < 12) {
         await _addColumnIfMissing(m, saleItemTable, saleItemTable.agreementUuid);
+      }
+      if (from < 13) {
+        await _addColumnIfMissing(m, productTable, productTable.containerTypeId);
       }
     },
   );

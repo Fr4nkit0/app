@@ -2,13 +2,13 @@ import 'package:drift/native.dart';
 import 'package:drift/drift.dart' as drift;
 import 'package:flutter_test/flutter_test.dart';
 
+import 'package:app/core/errors/domain_failure.dart';
 import 'package:app/core/services/database.helper.dart';
-import 'package:app/core/utils/resource.dart';
-import 'package:app/features/route/data/repositories/repositories/drift_route_repository.dart';
-import 'package:app/features/route/data/repositories/repositories/route.repository.dart';
+import 'package:app/core/usecases/drift_transaction_runner.dart';
+import 'package:app/features/route/data/repositories/drift_route_repository.dart';
+import 'package:app/features/route/data/repositories/route.repository.dart';
 import 'package:app/features/route/domain/models/route_stop.dart';
 import 'package:app/features/route/domain/models/stop_status.dart';
-import 'package:app/features/visits/domain/reschedule_time.dart';
 import 'package:app/features/visits/data/repositories/drift_visit.repository.dart';
 import 'package:app/features/visits/data/repositories/visit.repository.dart';
 import 'package:app/features/visits/domain/models/visit.dart';
@@ -63,7 +63,11 @@ void main() {
     db = AppDatabase(NativeDatabase.memory());
     routeRepo = DriftRouteRepository(db);
     visitRepo = DriftVisitRepository(db);
-    sut = CompleteVisitUseCase(routeRepo: routeRepo, visitRepo: visitRepo);
+    sut = CompleteVisitUseCase(
+      routeRepo: routeRepo,
+      visitRepo: visitRepo,
+      transaction: driftTransactionRunner(db),
+    );
 
     // Insert a route + stop fixture.
     // Customers mock-customer-1..4 are already seeded.
@@ -127,16 +131,17 @@ void main() {
       expect((await db.select(db.visitTable).getSingle()).outcomeId, isNull);
     });
 
-    test('returns Resource.success(null) when both steps succeed', () async {
-      final result = await sut.execute(
-        stopId: 'stop-test-1',
-        customerId: 'mock-customer-1',
-        visitType: VisitType.sale,
-        nextStatus: StopStatus.done,
-        outcomeId: 1,
+    test('completes when both steps succeed', () async {
+      await expectLater(
+        sut.execute(
+          stopId: 'stop-test-1',
+          customerId: 'mock-customer-1',
+          visitType: VisitType.sale,
+          nextStatus: StopStatus.done,
+          outcomeId: 1,
+        ),
+        completes,
       );
-
-      expect(result, isA<Success<void>>());
     });
 
     test('VisitTable has 1 row after successful execute', () async {
@@ -197,14 +202,14 @@ void main() {
     CompleteVisitUseCase sutAt(DateTime clock) => CompleteVisitUseCase(
       routeRepo: routeRepo,
       visitRepo: visitRepo,
-      transaction: db.transaction,
+      transaction: driftTransactionRunner(db),
       now: () => clock,
     );
 
     Future<List<RouteStopTableData>> stops() =>
         db.select(db.routeStopTable).get();
 
-    Future<Resource<void>> reschedule(DateTime at) => sutAt(now).execute(
+    Future<void> reschedule(DateTime at) => sutAt(now).execute(
       stopId: 'stop-test-1',
       customerId: 'mock-customer-1',
       visitType: VisitType.visit,
@@ -218,9 +223,8 @@ void main() {
       () async {
         final at = DateTime(2026, 10, 19, 15, 30);
 
-        final result = await reschedule(at);
+        await reschedule(at);
 
-        expect(result, isA<Success<void>>());
         final rows = await stops();
         final original = rows.singleWhere(
           (s) => s.routeStopId == 'stop-test-1',
@@ -240,12 +244,15 @@ void main() {
     );
 
     test('another day is not allowed and changes nothing', () async {
-      final result = await reschedule(DateTime(2026, 10, 20, 10, 0));
-
-      expect(result, isA<Error<void>>());
-      expect(
-        ((result as Error<void>).error as RescheduleTimeException).reason,
-        RescheduleTimeError.otherDay,
+      await expectLater(
+        reschedule(DateTime(2026, 10, 20, 10, 0)),
+        throwsA(
+          isA<ValidationFailure>().having(
+            (e) => e.message,
+            'message',
+            'Solo se puede reprogramar para hoy.',
+          ),
+        ),
       );
       expect((await stops()).length, 1);
       expect((await stops()).single.status, 'pending');
@@ -253,12 +260,15 @@ void main() {
     });
 
     test('a past time is not allowed and changes nothing', () async {
-      final result = await reschedule(DateTime(2026, 10, 19, 7, 30));
-
-      expect(result, isA<Error<void>>());
-      expect(
-        ((result as Error<void>).error as RescheduleTimeException).reason,
-        RescheduleTimeError.notLater,
+      await expectLater(
+        reschedule(DateTime(2026, 10, 19, 7, 30)),
+        throwsA(
+          isA<ValidationFailure>().having(
+            (e) => e.message,
+            'message',
+            'Elegí una hora posterior a la actual.',
+          ),
+        ),
       );
       expect((await stops()).length, 1);
       expect(await db.select(db.visitTable).get(), isEmpty);
@@ -270,20 +280,21 @@ void main() {
         final failing = CompleteVisitUseCase(
           routeRepo: _FailingRescheduleRouteRepository(routeRepo),
           visitRepo: visitRepo,
-          transaction: db.transaction,
+          transaction: driftTransactionRunner(db),
           now: () => now,
         );
 
-        final result = await failing.execute(
-          stopId: 'stop-test-1',
-          customerId: 'mock-customer-1',
-          visitType: VisitType.visit,
-          nextStatus: StopStatus.absent,
-          outcomeId: 2,
-          rescheduleAt: DateTime(2026, 10, 19, 15, 30),
+        await expectLater(
+          failing.execute(
+            stopId: 'stop-test-1',
+            customerId: 'mock-customer-1',
+            visitType: VisitType.visit,
+            nextStatus: StopStatus.absent,
+            outcomeId: 2,
+            rescheduleAt: DateTime(2026, 10, 19, 15, 30),
+          ),
+          throwsA(isA<StorageFailure>()),
         );
-
-        expect(result, isA<Error<void>>());
         expect(await db.select(db.visitTable).get(), isEmpty);
         expect(await db.select(db.pendingChangeTable).get(), isEmpty);
       },
@@ -307,22 +318,24 @@ void main() {
   // ───────────────────────────────────────────────────────────────
 
   group('execute — recordVisit failure (F2b)', () {
-    test('returns Resource.error when recordVisit throws', () async {
+    test('throws a StorageFailure when recordVisit throws', () async {
       final failingVisitRepo = FakeFailingVisitRepository();
       final sutWithFailing = CompleteVisitUseCase(
         routeRepo: routeRepo,
         visitRepo: failingVisitRepo,
+        transaction: driftTransactionRunner(db),
       );
 
-      final result = await sutWithFailing.execute(
-        stopId: 'stop-test-1',
-        customerId: 'mock-customer-1',
-        visitType: VisitType.sale,
-        nextStatus: StopStatus.done,
-        outcomeId: 1,
+      await expectLater(
+        sutWithFailing.execute(
+          stopId: 'stop-test-1',
+          customerId: 'mock-customer-1',
+          visitType: VisitType.sale,
+          nextStatus: StopStatus.done,
+          outcomeId: 1,
+        ),
+        throwsA(isA<StorageFailure>()),
       );
-
-      expect(result, isA<Error<void>>());
     });
 
     test(
@@ -332,14 +345,18 @@ void main() {
         final sutWithFailing = CompleteVisitUseCase(
           routeRepo: routeRepo,
           visitRepo: failingVisitRepo,
+          transaction: driftTransactionRunner(db),
         );
 
-        await sutWithFailing.execute(
-          stopId: 'stop-test-1',
-          customerId: 'mock-customer-1',
-          visitType: VisitType.sale,
-          nextStatus: StopStatus.done,
-          outcomeId: 1,
+        await expectLater(
+          sutWithFailing.execute(
+            stopId: 'stop-test-1',
+            customerId: 'mock-customer-1',
+            visitType: VisitType.sale,
+            nextStatus: StopStatus.done,
+            outcomeId: 1,
+          ),
+          throwsA(isA<StorageFailure>()),
         );
 
         // markStop must NOT have been called.

@@ -4,14 +4,14 @@ import 'package:drift/native.dart';
 import 'package:flutter_test/flutter_test.dart';
 
 import 'package:app/core/services/database.helper.dart';
-import 'package:app/core/utils/resource.dart';
+import 'package:app/core/usecases/drift_transaction_runner.dart';
 import 'package:app/features/customers/domain/models/customer.dart';
 import 'package:app/features/inventory/data/repositories/inventory.repository.dart';
 import 'package:app/features/inventory/domain/models/container_movement.dart';
 import 'package:app/features/payments/data/repositories/payment.repository.dart';
 import 'package:app/features/payments/domain/models/payment.dart';
 import 'package:app/features/products/domain/models/product.dart';
-import 'package:app/features/route/data/repositories/repositories/drift_route_repository.dart';
+import 'package:app/features/route/data/repositories/drift_route_repository.dart';
 import 'package:app/features/sales/data/repositories/drift.sale.repository.dart';
 import 'package:app/features/sales/domain/models/payment_method.dart';
 import 'package:app/features/sales/domain/models/sale.dart';
@@ -151,7 +151,7 @@ void main() {
       saleRepo: DriftSaleRepository(db),
       paymentRepo: payments,
       inventoryRepo: DriftInventoryRepository(db),
-      db: db,
+      transaction: driftTransactionRunner(db),
     );
 
     // A day downloaded from the server: customer 10 owing 1000, stop 70.
@@ -225,7 +225,7 @@ void main() {
     double? cash,
     double? transfer,
   }) async {
-    final result = await registerSale.execute(
+    await registerSale.execute(
       Sale(
         id: id,
         customer: customer,
@@ -238,7 +238,6 @@ void main() {
         transferAmount: transfer,
       ),
     );
-    expect(result, isA<Success<void>>());
   }
 
   Future<void> pay({

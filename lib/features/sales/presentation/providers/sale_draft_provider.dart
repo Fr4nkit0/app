@@ -1,12 +1,11 @@
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import 'package:app/core/utils/resource.dart';
+import 'package:app/features/inventory/domain/custody.dart';
 import 'package:uuid/uuid.dart';
 import 'package:app/features/customers/domain/models/customer.dart';
 import 'package:app/features/sales/domain/models/payment_method.dart';
 import 'package:app/features/sales/domain/models/sale.dart';
 import 'package:app/features/sales/domain/models/sale_draft_state.dart';
 import 'package:app/features/sales/domain/models/sale_item.dart';
-import 'package:app/features/products/domain/models/product.dart';
 import 'package:app/features/sales/presentation/providers/register_sale_usecase_provider.dart';
 
 class SaleDraft extends Notifier<SaleDraftState> {
@@ -54,19 +53,12 @@ class SaleDraft extends Notifier<SaleDraftState> {
       }
     }
 
-    final updatedReturns = Map<String, int>.from(state.returnedContainers);
-    for (final type in ['BIDON_20L', 'SIFON_2L']) {
-      final delivered = newItems
-          .where((i) => i.product.containerType == type)
-          .fold(0, (sum, i) => sum + i.quantity);
-      if (delivered > 0) {
-        updatedReturns[type] = delivered;
-      } else {
-        updatedReturns.remove(type);
-      }
-    }
-
-    state = state.copyWith(items: newItems, returnedContainers: updatedReturns);
+    // Custody rule: by default the customer returns as many containers of
+    // each type as the sale delivers.
+    final next = state.copyWith(items: newItems);
+    state = next.copyWith(
+      returnedContainers: deliveredByContainerType(next.containerDeliveries),
+    );
   }
 
   void setReturnedQuantity(String type, int quantity) {
@@ -113,15 +105,13 @@ class SaleDraft extends Notifier<SaleDraftState> {
       draft.visitId,
     );
 
-    final result = await ref
+    // A failed sale throws and keeps the draft so the driver can retry.
+    await ref
         .read(registerSaleUseCaseProvider)
         .execute(sale, containerMovements: movements);
 
-    // A failed sale keeps the draft so the driver can retry.
-    if (result is Error<void>) throw result.error;
-
     // The customer balance moves with the sale and its settling payments
-    // (see CustomerBalanceStore); nothing to update here.
+    // (see CustomerAccount); nothing to update here.
 
     state = const SaleDraftState();
   }

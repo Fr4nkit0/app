@@ -1,5 +1,4 @@
 import 'package:app/core/services/database.helper.dart';
-import 'package:app/core/utils/resource.dart';
 import 'package:app/features/customers/data/repositories/customer_agreement.repository.dart';
 import 'package:app/features/customers/domain/models/customer_agreement.dart';
 import 'package:app/features/sync/data/repositories/pending_change.repository.dart';
@@ -66,7 +65,7 @@ class DriftCustomerAgreementRepository implements CustomerAgreementRepository {
   }
 
   @override
-  Future<Resource<String>> create({
+  Future<String> create({
     required String customerId,
     required String productId,
     required double unitPrice,
@@ -74,62 +73,35 @@ class DriftCustomerAgreementRepository implements CustomerAgreementRepository {
     String? validTo,
     String? reason,
   }) async {
-    final trimmed = reason?.trim();
-    final cleanReason = trimmed == null || trimmed.isEmpty ? null : trimmed;
-    if (unitPrice <= 0) {
-      return Resource.error(Exception('El precio debe ser mayor a 0.'));
-    }
-    // The server keeps two decimals and rejects more, which would strand the
-    // agreement in the queue while it already prices sales here.
-    if ((unitPrice * 100).roundToDouble() / 100 != unitPrice) {
-      return Resource.error(Exception('El precio admite hasta 2 decimales.'));
-    }
-    if (validTo != null && validTo.compareTo(validFrom) < 0) {
-      return Resource.error(
-        Exception('La fecha de fin no puede ser anterior al inicio.'),
-      );
-    }
-    if (cleanReason != null &&
-        cleanReason.length > CustomerAgreementRepository.maxReasonLength) {
-      return Resource.error(
-        Exception(
-          'El motivo admite hasta ${CustomerAgreementRepository.maxReasonLength} caracteres.',
-        ),
-      );
-    }
-    try {
-      final id = const Uuid().v4();
-      await db.transaction(() async {
-        await db.into(db.customerAgreementTable).insert(
-              CustomerAgreementTableCompanion.insert(
-                agreementId: Value(id),
-                customerId: customerId,
-                productId: productId,
-                unitPrice: unitPrice,
-                validFrom: validFrom,
-                validTo: Value(validTo),
-                reason: Value(cleanReason),
-              ),
-            );
-        await _queue.enqueue(
-          entity: PendingEntity.customerAgreement,
-          entityId: id,
-          action: PendingAction.insert,
-          payload: {
-            'agreementId': id,
-            'customerId': customerId,
-            'productId': productId,
-            'unitPrice': unitPrice,
-            'validFrom': validFrom,
-            'validTo': validTo,
-            'reason': cleanReason,
-          },
+    final id = const Uuid().v4();
+    await db
+        .into(db.customerAgreementTable)
+        .insert(
+          CustomerAgreementTableCompanion.insert(
+            agreementId: Value(id),
+            customerId: customerId,
+            productId: productId,
+            unitPrice: unitPrice,
+            validFrom: validFrom,
+            validTo: Value(validTo),
+            reason: Value(reason),
+          ),
         );
-      });
-      return Resource.success(id);
-    } catch (e) {
-      return Resource.error(e is Exception ? e : Exception(e.toString()));
-    }
+    await _queue.enqueue(
+      entity: PendingEntity.customerAgreement,
+      entityId: id,
+      action: PendingAction.insert,
+      payload: {
+        'agreementId': id,
+        'customerId': customerId,
+        'productId': productId,
+        'unitPrice': unitPrice,
+        'validFrom': validFrom,
+        'validTo': validTo,
+        'reason': reason,
+      },
+    );
+    return id;
   }
 }
 

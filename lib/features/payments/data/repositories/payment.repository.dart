@@ -2,7 +2,7 @@ import 'package:drift/drift.dart';
 import 'package:uuid/uuid.dart';
 
 import 'package:app/core/services/database.helper.dart';
-import 'package:app/features/payments/data/repositories/customer_balance.store.dart';
+import 'package:app/features/payments/data/repositories/customer_account.dart';
 import 'package:app/features/payments/domain/models/customer_account_entry.dart';
 import 'package:app/features/payments/domain/models/payment.dart';
 import 'package:app/features/sync/data/repositories/pending_change.repository.dart';
@@ -11,6 +11,8 @@ import 'package:app/features/sync/domain/models/pending_change.dart';
 const _uuid = Uuid();
 
 abstract class PaymentRepository {
+  /// Writes the payments, their account entries, the customer balances and
+  /// their pending changes; run it inside the use case's unit of work.
   Future<void> recordPayment(Payment payment);
   Future<void> recordPayments(List<Payment> payments);
   Stream<double> watchCustomerBalance(String customerId);
@@ -23,11 +25,11 @@ class DriftPaymentRepository implements PaymentRepository {
   DriftPaymentRepository(AppDatabase db)
     : _db = db,
       _queue = DriftPendingChangeRepository(db),
-      _balances = CustomerBalanceStore(db);
+      _account = CustomerAccount(db);
 
   final AppDatabase _db;
   final PendingChangeRepository _queue;
-  final CustomerBalanceStore _balances;
+  final CustomerAccount _account;
 
   @override
   Future<void> recordPayment(Payment payment) async {
@@ -43,82 +45,73 @@ class DriftPaymentRepository implements PaymentRepository {
       paymentsByCustomer.putIfAbsent(p.customerId, () => []).add(p);
     }
 
-    await _db.transaction(() async {
-      for (final entry in paymentsByCustomer.entries) {
-        final customerId = entry.key;
-        final customerPayments = entry.value;
+    for (final entry in paymentsByCustomer.entries) {
+      final customerId = entry.key;
+      final customerPayments = entry.value;
 
-        double totalAmount = 0.0;
-        String? lastEntryId;
+      double totalAmount = 0.0;
+      String? lastEntryId;
 
-        for (final payment in customerPayments) {
-          await _db
-              .into(_db.paymentTable)
-              .insert(
-                PaymentTableCompanion.insert(
-                  paymentId: Value(payment.id),
-                  customerId: payment.customerId,
-                  amount: payment.amount,
-                  paymentMethod: payment.type.dbValue,
-                  createdAt: Value(payment.createdAt),
-                  visitId: Value(payment.visitId),
-                  saleId: Value(payment.saleId),
-                  notes: Value(payment.notes),
-                ),
-              );
+      for (final payment in customerPayments) {
+        await _db
+            .into(_db.paymentTable)
+            .insert(
+              PaymentTableCompanion.insert(
+                paymentId: Value(payment.id),
+                customerId: payment.customerId,
+                amount: payment.amount,
+                paymentMethod: payment.type.dbValue,
+                createdAt: Value(payment.createdAt),
+                visitId: Value(payment.visitId),
+                saleId: Value(payment.saleId),
+                notes: Value(payment.notes),
+              ),
+            );
 
-          final entryId = _uuid.v4();
-          lastEntryId = entryId;
-          totalAmount += payment.amount;
+        final entryId = _uuid.v4();
+        lastEntryId = entryId;
+        totalAmount += payment.amount;
 
-          await _db
-              .into(_db.customerAccountEntryTable)
-              .insert(
-                CustomerAccountEntryTableCompanion.insert(
-                  customerAccountEntryId: Value(entryId),
-                  customerId: payment.customerId,
-                  paymentId: Value(payment.id),
-                  entryType: 'PAYMENT',
-                  amount: payment.amount,
-                  direction: -1,
-                  // createdAt mirrors the payment timestamp for deterministic ordering
-                  createdAt: Value(payment.createdAt),
-                  description: const Value('Payment recorded'),
-                ),
-              );
+        await _db
+            .into(_db.customerAccountEntryTable)
+            .insert(
+              CustomerAccountEntryTableCompanion.insert(
+                customerAccountEntryId: Value(entryId),
+                customerId: payment.customerId,
+                paymentId: Value(payment.id),
+                entryType: 'PAYMENT',
+                amount: payment.amount,
+                direction: -1,
+                // createdAt mirrors the payment timestamp for deterministic ordering
+                createdAt: Value(payment.createdAt),
+                description: const Value('Payment recorded'),
+              ),
+            );
 
-          await _queue.enqueue(
-            entity: PendingEntity.payment,
-            entityId: payment.id,
-            action: PendingAction.insert,
-            payload: {
-              'paymentId': payment.id,
-              'customerId': payment.customerId,
-              'amount': payment.amount,
-              'paymentMethod': payment.type.dbValue,
-              'visitId': payment.visitId,
-              'saleId': payment.saleId,
-              'notes': payment.notes,
-              'createdAt': payment.createdAt.toIso8601String(),
-            },
-          );
-        }
-
-        await _balances.adjust(
-          customerId,
-          -totalAmount,
-          lastEntryId: lastEntryId,
+        await _queue.enqueue(
+          entity: PendingEntity.payment,
+          entityId: payment.id,
+          action: PendingAction.insert,
+          payload: {
+            'paymentId': payment.id,
+            'customerId': payment.customerId,
+            'amount': payment.amount,
+            'paymentMethod': payment.type.dbValue,
+            'visitId': payment.visitId,
+            'saleId': payment.saleId,
+            'notes': payment.notes,
+            'createdAt': payment.createdAt.toIso8601String(),
+          },
         );
       }
-    });
+
+      await _account.post(customerId, -totalAmount, lastEntryId: lastEntryId);
+    }
   }
 
   @override
   Stream<double> watchCustomerBalance(String customerId) {
-    return (_db.select(_db.customerBalanceTable)
-          ..where((t) => t.customerId.equals(customerId)))
-        .watchSingleOrNull()
-        .map((row) => row?.currentBalance ?? 0.0);
+    return _account.watchBalance(customerId);
   }
 
   @override

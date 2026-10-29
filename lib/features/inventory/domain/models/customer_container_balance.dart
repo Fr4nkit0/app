@@ -9,7 +9,7 @@ class CustomerContainerBalance {
   });
 
   final String customerId;
-  final String containerType; // 'BIDON_20L' | 'SIFON_2L'
+  final String containerType; // Catalog code (ContainerType.code)
 
   /// Current number of containers at the customer's location.
   final int quantity;

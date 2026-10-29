@@ -1,9 +1,7 @@
 import 'package:flutter_test/flutter_test.dart';
 import 'package:drift/native.dart';
 import 'package:app/core/services/database.helper.dart';
-import 'package:app/core/utils/resource.dart';
 import 'package:app/features/customers/data/repositories/drift.customer.repository.dart';
-import 'package:app/features/customers/data/repositories/mock_customer_repository.dart';
 import 'package:app/features/customers/domain/models/customer.dart';
 import 'package:app/features/customers/domain/models/customer.address.dart';
 
@@ -37,12 +35,9 @@ void main() {
         preferences: [],
       );
 
-      final saveResult = await repo.saveCustomer(customer);
-      expect(saveResult, isA<Success<void>>());
+      await repo.saveCustomer(customer);
 
-      final getResult = await repo.getCustomerById('cust-1');
-      expect(getResult, isA<Success<Customer?>>());
-      final fetchedCustomer = (getResult as Success<Customer?>).value;
+      final fetchedCustomer = await repo.getCustomerById('cust-1');
       expect(fetchedCustomer, isNotNull);
       expect(fetchedCustomer!.addresses.first.neighborhood, 'Centro');
     });
@@ -62,42 +57,21 @@ void main() {
         preferences: [],
       );
 
-      final saveResult = await repo.saveCustomer(customer);
-      expect(saveResult, isA<Success<void>>());
+      await repo.saveCustomer(customer);
 
-      final getResult = await repo.getCustomerById('cust-2');
-      expect(getResult, isA<Success<Customer?>>());
-      final fetchedCustomer = (getResult as Success<Customer?>).value;
+      final fetchedCustomer = await repo.getCustomerById('cust-2');
       expect(fetchedCustomer, isNotNull);
       expect(fetchedCustomer!.addresses.first.neighborhood, isNull);
-    });
-  });
-
-  group('MockCustomerRepository Seeding', () {
-    test('mock customers have valid neighborhoods', () async {
-      final repo = MockCustomerRepository();
-      final customersResult = await repo.getCustomersPage(page: 0, pageSize: 10);
-      
-      expect(customersResult.isNotEmpty, isTrue);
-      for (final customer in customersResult) {
-        for (final address in customer.addresses) {
-          // Verify that initially seeded customers have non-empty neighborhood values
-          expect(address.neighborhood, isNotNull);
-          expect(address.neighborhood!.isNotEmpty, isTrue);
-        }
-      }
     });
   });
 
   group('Customer Repository Fuzzy Search', () {
     late AppDatabase db;
     late DriftCustomerRepository driftRepo;
-    late MockCustomerRepository mockRepo;
 
     setUp(() async {
       db = AppDatabase(NativeDatabase.memory());
       driftRepo = DriftCustomerRepository(db);
-      mockRepo = MockCustomerRepository();
 
       // Seed Drift repository with some test customers
       final customer1 = Customer(
@@ -150,18 +124,6 @@ void main() {
       // "ramon" matches neighborhood "San Ramón" (c-2) and name "José Ramón" (c-1)
       final results3 = await driftRepo.searchCustomers(query: 'ramon', page: 0, pageSize: 10);
       expect(results3.length, 2);
-    });
-
-    test('MockCustomerRepository.searchCustomers matches fuzzy neighborhood and diacritics', () async {
-      // "jose" matches "José García"
-      final results1 = await mockRepo.searchCustomers(query: 'jose', page: 0, pageSize: 10);
-      expect(results1.length, 1);
-      expect(results1.first.name, 'José García');
-
-      // "garcia centro" matches José García (Av. San Martín 1300, Centro)
-      final results2 = await mockRepo.searchCustomers(query: 'garcia centro', page: 0, pageSize: 10);
-      expect(results2.length, 1);
-      expect(results2.first.name, 'José García');
     });
   });
 }

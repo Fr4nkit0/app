@@ -3647,6 +3647,17 @@ class $ProductTableTable extends ProductTable
     requiredDuringInsert: false,
     defaultValue: const Constant(0),
   );
+  static const VerificationMeta _containerTypeIdMeta = const VerificationMeta(
+    'containerTypeId',
+  );
+  @override
+  late final GeneratedColumn<int> containerTypeId = GeneratedColumn<int>(
+    'container_type_id',
+    aliasedName,
+    true,
+    type: DriftSqlType.int,
+    requiredDuringInsert: false,
+  );
   @override
   List<GeneratedColumn> get $columns => [
     createdAt,
@@ -3658,6 +3669,7 @@ class $ProductTableTable extends ProductTable
     description,
     price,
     stock,
+    containerTypeId,
   ];
   @override
   String get aliasedName => _alias ?? actualTableName;
@@ -3735,6 +3747,15 @@ class $ProductTableTable extends ProductTable
         stock.isAcceptableOrUnknown(data['stock']!, _stockMeta),
       );
     }
+    if (data.containsKey('container_type_id')) {
+      context.handle(
+        _containerTypeIdMeta,
+        containerTypeId.isAcceptableOrUnknown(
+          data['container_type_id']!,
+          _containerTypeIdMeta,
+        ),
+      );
+    }
     return context;
   }
 
@@ -3780,6 +3801,10 @@ class $ProductTableTable extends ProductTable
         DriftSqlType.int,
         data['${effectivePrefix}stock'],
       )!,
+      containerTypeId: attachedDatabase.typeMapping.read(
+        DriftSqlType.int,
+        data['${effectivePrefix}container_type_id'],
+      ),
     );
   }
 
@@ -3800,6 +3825,10 @@ class ProductTableData extends DataClass
   final String? description;
   final double price;
   final int stock;
+
+  /// Server id of the product's container type (catalog `container_types`);
+  /// null when the product has none or the server did not send it.
+  final int? containerTypeId;
   const ProductTableData({
     required this.createdAt,
     required this.lastModifiedDate,
@@ -3810,6 +3839,7 @@ class ProductTableData extends DataClass
     this.description,
     required this.price,
     required this.stock,
+    this.containerTypeId,
   });
   @override
   Map<String, Expression> toColumns(bool nullToAbsent) {
@@ -3827,6 +3857,9 @@ class ProductTableData extends DataClass
     }
     map['price'] = Variable<double>(price);
     map['stock'] = Variable<int>(stock);
+    if (!nullToAbsent || containerTypeId != null) {
+      map['container_type_id'] = Variable<int>(containerTypeId);
+    }
     return map;
   }
 
@@ -3845,6 +3878,9 @@ class ProductTableData extends DataClass
           : Value(description),
       price: Value(price),
       stock: Value(stock),
+      containerTypeId: containerTypeId == null && nullToAbsent
+          ? const Value.absent()
+          : Value(containerTypeId),
     );
   }
 
@@ -3863,6 +3899,7 @@ class ProductTableData extends DataClass
       description: serializer.fromJson<String?>(json['description']),
       price: serializer.fromJson<double>(json['price']),
       stock: serializer.fromJson<int>(json['stock']),
+      containerTypeId: serializer.fromJson<int?>(json['containerTypeId']),
     );
   }
   @override
@@ -3878,6 +3915,7 @@ class ProductTableData extends DataClass
       'description': serializer.toJson<String?>(description),
       'price': serializer.toJson<double>(price),
       'stock': serializer.toJson<int>(stock),
+      'containerTypeId': serializer.toJson<int?>(containerTypeId),
     };
   }
 
@@ -3891,6 +3929,7 @@ class ProductTableData extends DataClass
     Value<String?> description = const Value.absent(),
     double? price,
     int? stock,
+    Value<int?> containerTypeId = const Value.absent(),
   }) => ProductTableData(
     createdAt: createdAt ?? this.createdAt,
     lastModifiedDate: lastModifiedDate ?? this.lastModifiedDate,
@@ -3901,6 +3940,9 @@ class ProductTableData extends DataClass
     description: description.present ? description.value : this.description,
     price: price ?? this.price,
     stock: stock ?? this.stock,
+    containerTypeId: containerTypeId.present
+        ? containerTypeId.value
+        : this.containerTypeId,
   );
   ProductTableData copyWithCompanion(ProductTableCompanion data) {
     return ProductTableData(
@@ -3917,6 +3959,9 @@ class ProductTableData extends DataClass
           : this.description,
       price: data.price.present ? data.price.value : this.price,
       stock: data.stock.present ? data.stock.value : this.stock,
+      containerTypeId: data.containerTypeId.present
+          ? data.containerTypeId.value
+          : this.containerTypeId,
     );
   }
 
@@ -3931,7 +3976,8 @@ class ProductTableData extends DataClass
           ..write('name: $name, ')
           ..write('description: $description, ')
           ..write('price: $price, ')
-          ..write('stock: $stock')
+          ..write('stock: $stock, ')
+          ..write('containerTypeId: $containerTypeId')
           ..write(')'))
         .toString();
   }
@@ -3947,6 +3993,7 @@ class ProductTableData extends DataClass
     description,
     price,
     stock,
+    containerTypeId,
   );
   @override
   bool operator ==(Object other) =>
@@ -3960,7 +4007,8 @@ class ProductTableData extends DataClass
           other.name == this.name &&
           other.description == this.description &&
           other.price == this.price &&
-          other.stock == this.stock);
+          other.stock == this.stock &&
+          other.containerTypeId == this.containerTypeId);
 }
 
 class ProductTableCompanion extends UpdateCompanion<ProductTableData> {
@@ -3973,6 +4021,7 @@ class ProductTableCompanion extends UpdateCompanion<ProductTableData> {
   final Value<String?> description;
   final Value<double> price;
   final Value<int> stock;
+  final Value<int?> containerTypeId;
   final Value<int> rowid;
   const ProductTableCompanion({
     this.createdAt = const Value.absent(),
@@ -3984,6 +4033,7 @@ class ProductTableCompanion extends UpdateCompanion<ProductTableData> {
     this.description = const Value.absent(),
     this.price = const Value.absent(),
     this.stock = const Value.absent(),
+    this.containerTypeId = const Value.absent(),
     this.rowid = const Value.absent(),
   });
   ProductTableCompanion.insert({
@@ -3996,6 +4046,7 @@ class ProductTableCompanion extends UpdateCompanion<ProductTableData> {
     this.description = const Value.absent(),
     required double price,
     this.stock = const Value.absent(),
+    this.containerTypeId = const Value.absent(),
     this.rowid = const Value.absent(),
   }) : name = Value(name),
        price = Value(price);
@@ -4009,6 +4060,7 @@ class ProductTableCompanion extends UpdateCompanion<ProductTableData> {
     Expression<String>? description,
     Expression<double>? price,
     Expression<int>? stock,
+    Expression<int>? containerTypeId,
     Expression<int>? rowid,
   }) {
     return RawValuesInsertable({
@@ -4021,6 +4073,7 @@ class ProductTableCompanion extends UpdateCompanion<ProductTableData> {
       if (description != null) 'description': description,
       if (price != null) 'price': price,
       if (stock != null) 'stock': stock,
+      if (containerTypeId != null) 'container_type_id': containerTypeId,
       if (rowid != null) 'rowid': rowid,
     });
   }
@@ -4035,6 +4088,7 @@ class ProductTableCompanion extends UpdateCompanion<ProductTableData> {
     Value<String?>? description,
     Value<double>? price,
     Value<int>? stock,
+    Value<int?>? containerTypeId,
     Value<int>? rowid,
   }) {
     return ProductTableCompanion(
@@ -4047,6 +4101,7 @@ class ProductTableCompanion extends UpdateCompanion<ProductTableData> {
       description: description ?? this.description,
       price: price ?? this.price,
       stock: stock ?? this.stock,
+      containerTypeId: containerTypeId ?? this.containerTypeId,
       rowid: rowid ?? this.rowid,
     );
   }
@@ -4081,6 +4136,9 @@ class ProductTableCompanion extends UpdateCompanion<ProductTableData> {
     if (stock.present) {
       map['stock'] = Variable<int>(stock.value);
     }
+    if (containerTypeId.present) {
+      map['container_type_id'] = Variable<int>(containerTypeId.value);
+    }
     if (rowid.present) {
       map['rowid'] = Variable<int>(rowid.value);
     }
@@ -4099,6 +4157,7 @@ class ProductTableCompanion extends UpdateCompanion<ProductTableData> {
           ..write('description: $description, ')
           ..write('price: $price, ')
           ..write('stock: $stock, ')
+          ..write('containerTypeId: $containerTypeId, ')
           ..write('rowid: $rowid')
           ..write(')'))
         .toString();
@@ -17088,6 +17147,7 @@ typedef $$ProductTableTableCreateCompanionBuilder =
       Value<String?> description,
       required double price,
       Value<int> stock,
+      Value<int?> containerTypeId,
       Value<int> rowid,
     });
 typedef $$ProductTableTableUpdateCompanionBuilder =
@@ -17101,6 +17161,7 @@ typedef $$ProductTableTableUpdateCompanionBuilder =
       Value<String?> description,
       Value<double> price,
       Value<int> stock,
+      Value<int?> containerTypeId,
       Value<int> rowid,
     });
 
@@ -17285,6 +17346,11 @@ class $$ProductTableTableFilterComposer
     builder: (column) => ColumnFilters(column),
   );
 
+  ColumnFilters<int> get containerTypeId => $composableBuilder(
+    column: $table.containerTypeId,
+    builder: (column) => ColumnFilters(column),
+  );
+
   Expression<bool> routeInventoryTableRefs(
     Expression<bool> Function($$RouteInventoryTableTableFilterComposer f) f,
   ) {
@@ -17441,6 +17507,11 @@ class $$ProductTableTableOrderingComposer
     column: $table.stock,
     builder: (column) => ColumnOrderings(column),
   );
+
+  ColumnOrderings<int> get containerTypeId => $composableBuilder(
+    column: $table.containerTypeId,
+    builder: (column) => ColumnOrderings(column),
+  );
 }
 
 class $$ProductTableTableAnnotationComposer
@@ -17482,6 +17553,11 @@ class $$ProductTableTableAnnotationComposer
 
   GeneratedColumn<int> get stock =>
       $composableBuilder(column: $table.stock, builder: (column) => column);
+
+  GeneratedColumn<int> get containerTypeId => $composableBuilder(
+    column: $table.containerTypeId,
+    builder: (column) => column,
+  );
 
   Expression<T> routeInventoryTableRefs<T extends Object>(
     Expression<T> Function($$RouteInventoryTableTableAnnotationComposer a) f,
@@ -17630,6 +17706,7 @@ class $$ProductTableTableTableManager
                 Value<String?> description = const Value.absent(),
                 Value<double> price = const Value.absent(),
                 Value<int> stock = const Value.absent(),
+                Value<int?> containerTypeId = const Value.absent(),
                 Value<int> rowid = const Value.absent(),
               }) => ProductTableCompanion(
                 createdAt: createdAt,
@@ -17641,6 +17718,7 @@ class $$ProductTableTableTableManager
                 description: description,
                 price: price,
                 stock: stock,
+                containerTypeId: containerTypeId,
                 rowid: rowid,
               ),
           createCompanionCallback:
@@ -17654,6 +17732,7 @@ class $$ProductTableTableTableManager
                 Value<String?> description = const Value.absent(),
                 required double price,
                 Value<int> stock = const Value.absent(),
+                Value<int?> containerTypeId = const Value.absent(),
                 Value<int> rowid = const Value.absent(),
               }) => ProductTableCompanion.insert(
                 createdAt: createdAt,
@@ -17665,6 +17744,7 @@ class $$ProductTableTableTableManager
                 description: description,
                 price: price,
                 stock: stock,
+                containerTypeId: containerTypeId,
                 rowid: rowid,
               ),
           withReferenceMapper: (p0) => p0

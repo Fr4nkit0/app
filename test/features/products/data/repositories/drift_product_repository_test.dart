@@ -121,4 +121,64 @@ void main() {
       expect(products.single.agreementUuid, 'a-local');
     });
   });
+
+  group('containerType', () {
+    Future<void> seedProduct(String id, String name, {int? containerTypeId}) =>
+        db.into(db.productTable).insert(
+              ProductTableCompanion.insert(
+                productId: drift.Value(id),
+                name: name,
+                price: 800.0,
+                containerTypeId: drift.Value(containerTypeId),
+              ),
+            );
+
+    setUp(() async {
+      await db.into(db.containerTypeTable).insert(
+            ContainerTypeTableCompanion.insert(
+              id: const drift.Value(7),
+              code: 'JUG_12L',
+              description: const drift.Value('Jug 12L'),
+            ),
+          );
+    });
+
+    test('is the catalog code of the product containerTypeId', () async {
+      // The name would guess another type: the catalog link wins.
+      await seedProduct('prod-1', 'Agua 20L', containerTypeId: 7);
+
+      final product = (await sut.watchAllProducts().first).single;
+
+      expect(product.containerType, 'JUG_12L');
+    });
+
+    test('is null without a containerTypeId, whatever the name says', () async {
+      await seedProduct('prod-1', 'Agua 20L');
+      await seedProduct('prod-2', 'Sifón 1.5L');
+      await seedProduct('prod-3', 'Hielo');
+
+      final products = await sut.watchAllProducts().first;
+
+      expect(
+        {for (final p in products) p.id: p.containerType},
+        {'prod-1': null, 'prod-2': null, 'prod-3': null},
+      );
+    });
+
+    test('is null when the catalog lacks the type, e.g. a disabled one', () async {
+      await seedProduct('prod-1', 'Agua 20L', containerTypeId: 99);
+
+      final product = (await sut.watchAllProducts().first).single;
+
+      expect(product.containerType, isNull);
+    });
+
+    test('is resolved for customer priced products too', () async {
+      await seedProduct('prod-1', 'Hielo', containerTypeId: 7);
+
+      final product = (await sut.watchProductsFor('cust-1').first).single;
+
+      expect(product.containerType, 'JUG_12L');
+    });
+  });
 }

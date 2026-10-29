@@ -1,10 +1,11 @@
-import 'package:app/core/utils/resource.dart';
+import 'package:app/core/errors/domain_failure.dart';
 import 'package:app/core/utils/string_utils.dart';
 import 'package:app/features/customers/data/repositories/customer.repository.dart';
 import 'package:app/features/customers/domain/models/customer.dart';
 import 'package:app/features/customers/domain/models/customer.address.dart';
 import 'package:app/features/customers/domain/models/customer.preference.dart';
 import 'package:app/core/services/database.helper.dart';
+import 'package:app/features/payments/data/repositories/customer_account.dart';
 import 'package:app/features/sync/data/repositories/pending_change.repository.dart';
 import 'package:app/features/sync/domain/models/pending_change.dart';
 import 'package:drift/drift.dart';
@@ -13,8 +14,11 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 class DriftCustomerRepository implements CustomerRepository {
   final AppDatabase db;
   final PendingChangeRepository _queue;
+  final CustomerAccount _account;
 
-  DriftCustomerRepository(this.db) : _queue = DriftPendingChangeRepository(db);
+  DriftCustomerRepository(this.db)
+    : _queue = DriftPendingChangeRepository(db),
+      _account = CustomerAccount(db);
 
   static Map<String, dynamic> _payload(Customer customer) => {
     'customerId': customer.id,
@@ -46,229 +50,197 @@ class DriftCustomerRepository implements CustomerRepository {
   };
 
   @override
-  Future<Resource<void>> saveCustomer(Customer customer) async {
-    try {
-      return await db.transaction(() async {
-        final existed =
-            await (db.select(db.customerTable)
-                  ..where((t) => t.customerId.equals(customer.id)))
-                .getSingleOrNull() !=
-            null;
-        await db
-            .into(db.customerTable)
-            .insertOnConflictUpdate(
-              CustomerTableCompanion.insert(
-                customerId: Value(customer.id),
-                name: customer.name,
-                phone: Value(customer.phone),
-                lastModifiedDate: Value(DateTime.now()),
-              ),
-            );
-        for (final address in customer.addresses) {
-          await db
-              .into(db.customerAddressTable)
-              .insertOnConflictUpdate(
-                CustomerAddressTableCompanion.insert(
-                  addressId: Value(address.id),
-                  customerId: Value(customer.id),
-                  street: Value(address.street),
-                  apartment: Value(address.apartment),
-                  floor: Value(address.floor),
-                  visualReference: Value(address.visualReference),
-                  isPrimary: Value(address.isPrimary),
-                  latitude: Value(address.latitude),
-                  longitude: Value(address.longitude),
-                  neighborhood: Value(address.neighborhood),
-                  lastModifiedDate: Value(DateTime.now()),
-                ),
-              );
-        }
-        for (final pref in customer.preferences) {
-          await db
-              .into(db.customerPreferenceTable)
-              .insertOnConflictUpdate(
-                CustomerPreferenceTableCompanion.insert(
-                  customerPreferenceId: Value(pref.id),
-                  customerId: Value(customer.id),
-                  dayOfWeek: Value(pref.dayOfWeek),
-                  timeWindowStart: pref.timeWindowStart,
-                  timeWindowEnd: Value(pref.timeWindowEnd),
-                  lastModifiedDate: Value(DateTime.now()),
-                ),
-              );
-        }
-        await _queue.enqueue(
-          entity: PendingEntity.customer,
-          entityId: customer.id,
-          action: existed ? PendingAction.update : PendingAction.insert,
-          payload: _payload(customer),
+  Future<void> saveCustomer(Customer customer) async {
+    final existed =
+        await (db.select(db.customerTable)
+              ..where((t) => t.customerId.equals(customer.id)))
+            .getSingleOrNull() !=
+        null;
+    await db
+        .into(db.customerTable)
+        .insertOnConflictUpdate(
+          CustomerTableCompanion.insert(
+            customerId: Value(customer.id),
+            name: customer.name,
+            phone: Value(customer.phone),
+            lastModifiedDate: Value(DateTime.now()),
+          ),
         );
-        return const Resource.success(null);
-      });
-    } catch (e) {
-      return Resource.error(e is Exception ? e : Exception(e.toString()));
+    for (final address in customer.addresses) {
+      await db
+          .into(db.customerAddressTable)
+          .insertOnConflictUpdate(
+            CustomerAddressTableCompanion.insert(
+              addressId: Value(address.id),
+              customerId: Value(customer.id),
+              street: Value(address.street),
+              apartment: Value(address.apartment),
+              floor: Value(address.floor),
+              visualReference: Value(address.visualReference),
+              isPrimary: Value(address.isPrimary),
+              latitude: Value(address.latitude),
+              longitude: Value(address.longitude),
+              neighborhood: Value(address.neighborhood),
+              lastModifiedDate: Value(DateTime.now()),
+            ),
+          );
     }
+    for (final pref in customer.preferences) {
+      await db
+          .into(db.customerPreferenceTable)
+          .insertOnConflictUpdate(
+            CustomerPreferenceTableCompanion.insert(
+              customerPreferenceId: Value(pref.id),
+              customerId: Value(customer.id),
+              dayOfWeek: Value(pref.dayOfWeek),
+              timeWindowStart: pref.timeWindowStart,
+              timeWindowEnd: Value(pref.timeWindowEnd),
+              lastModifiedDate: Value(DateTime.now()),
+            ),
+          );
+    }
+    await _queue.enqueue(
+      entity: PendingEntity.customer,
+      entityId: customer.id,
+      action: existed ? PendingAction.update : PendingAction.insert,
+      payload: _payload(customer),
+    );
   }
 
   @override
-  Future<Resource<void>> updateCustomer(Customer customer) async {
-    try {
-      final existing = await (db.select(
-        db.customerTable,
-      )..where((t) => t.customerId.equals(customer.id))).getSingleOrNull();
+  Future<void> updateCustomer(Customer customer) async {
+    final existing = await (db.select(
+      db.customerTable,
+    )..where((t) => t.customerId.equals(customer.id))).getSingleOrNull();
 
-      if (existing == null) {
-        return Resource.error(Exception('Customer not found'));
-      }
+    if (existing == null) throw const NotFoundFailure('customer');
 
-      return await db.transaction(() async {
-        await db
-            .into(db.customerTable)
-            .insertOnConflictUpdate(
-              CustomerTableCompanion.insert(
-                customerId: Value(customer.id),
-                name: customer.name,
-                phone: Value(customer.phone),
-                lastModifiedDate: Value(DateTime.now()),
-              ),
-            );
-
-        await (db.delete(
-          db.customerAddressTable,
-        )..where((t) => t.customerId.equals(customer.id))).go();
-        for (final address in customer.addresses) {
-          await db
-              .into(db.customerAddressTable)
-              .insert(
-                CustomerAddressTableCompanion.insert(
-                  addressId: Value(address.id),
-                  customerId: Value(customer.id),
-                  street: Value(address.street),
-                  apartment: Value(address.apartment),
-                  floor: Value(address.floor),
-                  visualReference: Value(address.visualReference),
-                  isPrimary: Value(address.isPrimary),
-                  latitude: Value(address.latitude),
-                  longitude: Value(address.longitude),
-                  neighborhood: Value(address.neighborhood),
-                ),
-              );
-        }
-
-        await (db.delete(
-          db.customerPreferenceTable,
-        )..where((t) => t.customerId.equals(customer.id))).go();
-        for (final pref in customer.preferences) {
-          await db
-              .into(db.customerPreferenceTable)
-              .insert(
-                CustomerPreferenceTableCompanion.insert(
-                  customerPreferenceId: Value(pref.id),
-                  customerId: Value(customer.id),
-                  dayOfWeek: Value(pref.dayOfWeek),
-                  timeWindowStart: pref.timeWindowStart,
-                  timeWindowEnd: Value(pref.timeWindowEnd),
-                ),
-              );
-        }
-        await _queue.enqueue(
-          entity: PendingEntity.customer,
-          entityId: customer.id,
-          action: PendingAction.update,
-          payload: _payload(customer),
+    await db
+        .into(db.customerTable)
+        .insertOnConflictUpdate(
+          CustomerTableCompanion.insert(
+            customerId: Value(customer.id),
+            name: customer.name,
+            phone: Value(customer.phone),
+            lastModifiedDate: Value(DateTime.now()),
+          ),
         );
-        return const Resource.success(null);
-      });
-    } catch (e) {
-      return Resource.error(e is Exception ? e : Exception(e.toString()));
+
+    await (db.delete(
+      db.customerAddressTable,
+    )..where((t) => t.customerId.equals(customer.id))).go();
+    for (final address in customer.addresses) {
+      await db
+          .into(db.customerAddressTable)
+          .insert(
+            CustomerAddressTableCompanion.insert(
+              addressId: Value(address.id),
+              customerId: Value(customer.id),
+              street: Value(address.street),
+              apartment: Value(address.apartment),
+              floor: Value(address.floor),
+              visualReference: Value(address.visualReference),
+              isPrimary: Value(address.isPrimary),
+              latitude: Value(address.latitude),
+              longitude: Value(address.longitude),
+              neighborhood: Value(address.neighborhood),
+            ),
+          );
     }
+
+    await (db.delete(
+      db.customerPreferenceTable,
+    )..where((t) => t.customerId.equals(customer.id))).go();
+    for (final pref in customer.preferences) {
+      await db
+          .into(db.customerPreferenceTable)
+          .insert(
+            CustomerPreferenceTableCompanion.insert(
+              customerPreferenceId: Value(pref.id),
+              customerId: Value(customer.id),
+              dayOfWeek: Value(pref.dayOfWeek),
+              timeWindowStart: pref.timeWindowStart,
+              timeWindowEnd: Value(pref.timeWindowEnd),
+            ),
+          );
+    }
+    await _queue.enqueue(
+      entity: PendingEntity.customer,
+      entityId: customer.id,
+      action: PendingAction.update,
+      payload: _payload(customer),
+    );
   }
 
   @override
-  Future<Resource<void>> deleteCustomer(String customerId) async {
-    try {
-      return await db.transaction(() async {
-        await (db.delete(
-          db.customerPreferenceTable,
-        )..where((t) => t.customerId.equals(customerId))).go();
-        await (db.delete(
-          db.customerAddressTable,
-        )..where((t) => t.customerId.equals(customerId))).go();
-        await (db.delete(
-          db.customerTable,
-        )..where((t) => t.customerId.equals(customerId))).go();
-        await _queue.enqueue(
-          entity: PendingEntity.customer,
-          entityId: customerId,
-          action: PendingAction.delete,
-        );
-        return const Resource.success(null);
-      });
-    } catch (e) {
-      return Resource.error(e is Exception ? e : Exception(e.toString()));
-    }
+  Future<void> deleteCustomer(String customerId) async {
+    await (db.delete(
+      db.customerPreferenceTable,
+    )..where((t) => t.customerId.equals(customerId))).go();
+    await (db.delete(
+      db.customerAddressTable,
+    )..where((t) => t.customerId.equals(customerId))).go();
+    await (db.delete(
+      db.customerTable,
+    )..where((t) => t.customerId.equals(customerId))).go();
+    await _queue.enqueue(
+      entity: PendingEntity.customer,
+      entityId: customerId,
+      action: PendingAction.delete,
+    );
   }
 
   @override
-  Future<Resource<Customer?>> getCustomerById(String id) async {
-    try {
-      final customerData = await (db.select(
-        db.customerTable,
-      )..where((t) => t.customerId.equals(id))).getSingleOrNull();
+  Future<Customer?> getCustomerById(String id) async {
+    final customerData = await (db.select(
+      db.customerTable,
+    )..where((t) => t.customerId.equals(id))).getSingleOrNull();
 
-      if (customerData == null) {
-        return const Resource.success(null);
-      }
+    if (customerData == null) return null;
 
-      final addresses = await (db.select(
-        db.customerAddressTable,
-      )..where((t) => t.customerId.equals(id))).get();
+    final addresses = await (db.select(
+      db.customerAddressTable,
+    )..where((t) => t.customerId.equals(id))).get();
 
-      final preferences = await (db.select(
-        db.customerPreferenceTable,
-      )..where((t) => t.customerId.equals(id))).get();
+    final preferences = await (db.select(
+      db.customerPreferenceTable,
+    )..where((t) => t.customerId.equals(id))).get();
 
-      final balanceData = await (db.select(
-        db.customerBalanceTable,
-      )..where((t) => t.customerId.equals(id))).getSingleOrNull();
-      final debtAmount = balanceData?.currentBalance ?? 0.0;
+    final debtAmount = await _account.balanceOf(id);
 
-      final customer = Customer(
-        id: customerData.customerId,
-        name: customerData.name,
-        phone: customerData.phone,
-        debtAmount: debtAmount,
-        addresses: addresses
-            .map(
-              (a) => CustomerAddress(
-                id: a.addressId,
-                street: a.street,
-                apartment: a.apartment,
-                floor: a.floor,
-                visualReference: a.visualReference,
-                isPrimary: a.isPrimary,
-                latitude: a.latitude,
-                longitude: a.longitude,
-                neighborhood: a.neighborhood,
-              ),
-            )
-            .toList(),
-        preferences: preferences
-            .map(
-              (p) => CustomerPreference(
-                id: p.customerPreferenceId,
-                dayOfWeek: p.dayOfWeek,
-                timeWindowStart: p.timeWindowStart,
-                timeWindowEnd: p.timeWindowEnd,
-              ),
-            )
-            .toList(),
-      );
+    final customer = Customer(
+      id: customerData.customerId,
+      name: customerData.name,
+      phone: customerData.phone,
+      debtAmount: debtAmount,
+      addresses: addresses
+          .map(
+            (a) => CustomerAddress(
+              id: a.addressId,
+              street: a.street,
+              apartment: a.apartment,
+              floor: a.floor,
+              visualReference: a.visualReference,
+              isPrimary: a.isPrimary,
+              latitude: a.latitude,
+              longitude: a.longitude,
+              neighborhood: a.neighborhood,
+            ),
+          )
+          .toList(),
+      preferences: preferences
+          .map(
+            (p) => CustomerPreference(
+              id: p.customerPreferenceId,
+              dayOfWeek: p.dayOfWeek,
+              timeWindowStart: p.timeWindowStart,
+              timeWindowEnd: p.timeWindowEnd,
+            ),
+          )
+          .toList(),
+    );
 
-      return Resource.success(customer);
-    } catch (e) {
-      return Resource.error(e is Exception ? e : Exception(e.toString()));
-    }
+    return customer;
   }
 
   @override
@@ -294,9 +266,7 @@ class DriftCustomerRepository implements CustomerRepository {
           ..where((t) => t.customerId.isIn(customerIds) & t.enabled.equals(true)))
         .get();
 
-    final balances = await (db.select(
-      db.customerBalanceTable,
-    )..where((t) => t.customerId.isIn(customerIds))).get();
+    final balanceMap = await _account.balancesOf(customerIds);
 
     final addrMap = <String, List<CustomerAddressTableData>>{};
     for (final a in addresses) {
@@ -306,11 +276,6 @@ class DriftCustomerRepository implements CustomerRepository {
     final prefMap = <String, List<CustomerPreferenceTableData>>{};
     for (final p in preferences) {
       prefMap.putIfAbsent(p.customerId, () => []).add(p);
-    }
-
-    final balanceMap = <String, double>{};
-    for (final b in balances) {
-      balanceMap[b.customerId] = b.currentBalance;
     }
 
     return customerRows.map((row) {
@@ -366,9 +331,7 @@ class DriftCustomerRepository implements CustomerRepository {
           ..where((t) => t.customerId.isIn(customerIds) & t.enabled.equals(true)))
         .get();
 
-    final balances = await (db.select(
-      db.customerBalanceTable,
-    )..where((t) => t.customerId.isIn(customerIds))).get();
+    final balanceMap = await _account.balancesOf(customerIds);
 
     final addrMap = <String, List<CustomerAddressTableData>>{};
     for (final a in addresses) {
@@ -378,11 +341,6 @@ class DriftCustomerRepository implements CustomerRepository {
     final prefMap = <String, List<CustomerPreferenceTableData>>{};
     for (final p in preferences) {
       prefMap.putIfAbsent(p.customerId, () => []).add(p);
-    }
-
-    final balanceMap = <String, double>{};
-    for (final b in balances) {
-      balanceMap[b.customerId] = b.currentBalance;
     }
 
     return customerRows.map((row) {
@@ -480,12 +438,7 @@ class DriftCustomerRepository implements CustomerRepository {
             ) &
             db.customerPreferenceTable.enabled.equals(true),
       ),
-      leftOuterJoin(
-        db.customerBalanceTable,
-        db.customerBalanceTable.customerId.equalsExp(
-          db.customerTable.customerId,
-        ),
-      ),
+      _account.balanceJoin(db.customerTable.customerId),
     ])..where(db.customerTable.enabled.equals(true));
 
     return query.watch().map((rows) {
@@ -497,7 +450,6 @@ class DriftCustomerRepository implements CustomerRepository {
         final customerData = row.readTable(db.customerTable);
         final addressData = row.readTableOrNull(db.customerAddressTable);
         final prefData = row.readTableOrNull(db.customerPreferenceTable);
-        final balanceData = row.readTableOrNull(db.customerBalanceTable);
 
         final cid = customerData.customerId;
 
@@ -506,7 +458,7 @@ class DriftCustomerRepository implements CustomerRepository {
             id: cid,
             name: customerData.name,
             phone: customerData.phone,
-            debtAmount: balanceData?.currentBalance ?? 0.0,
+            debtAmount: _account.balanceIn(row),
             addresses: [],
             preferences: [],
           );

@@ -2,7 +2,7 @@ import 'package:drift/drift.dart';
 import 'package:app/core/services/database_mixins.dart';
 import 'package:app/features/customers/data/database/customer.table.dart';
 import 'package:app/features/visits/data/database/visit.table.dart';
-import 'package:app/features/route/data/repositories/database/route.table.dart';
+import 'package:app/features/route/data/database/route.table.dart';
 import 'package:app/features/products/data/database/product.table.dart';
 
 class ContainerMovementTable extends Table with Timestamps {
@@ -15,7 +15,7 @@ class ContainerMovementTable extends Table with Timestamps {
     #customerId,
     onDelete: KeyAction.restrict,
   )();
-  late final containerType = text()(); // 'BIDON_20L' | 'SIFON_2L'
+  late final containerType = text()(); // Catalog code (container_types.code)
   late final deliveredQuantity = integer()();
   late final returnedQuantity = integer()();
   late final visitId = text().nullable().references(
@@ -42,7 +42,7 @@ class CustomerContainerBalanceTable extends Table with Timestamps {
     #customerId,
     onDelete: KeyAction.restrict,
   )();
-  late final containerType = text()(); // 'BIDON_20L' | 'SIFON_2L'
+  late final containerType = text()(); // Catalog code (container_types.code)
   late final quantity = integer().withDefault(const Constant(0))();
 
   @override

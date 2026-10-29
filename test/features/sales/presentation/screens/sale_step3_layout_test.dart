@@ -12,6 +12,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
 
+import '../../../../support/container_types.dart';
 import '../../../../support/real_fonts.dart';
 
 class _PreparedDraft extends SaleDraft {
@@ -62,6 +63,9 @@ void main() {
           saleDraftProvider.overrideWith(() => _PreparedDraft(draft)),
           customerContainerBalancesProvider.overrideWith(
             (ref, id) => Stream.value(const <CustomerContainerBalance>[]),
+          ),
+          containerTypesProvider.overrideWith(
+            (ref) => Stream.value(catalogContainerTypes),
           ),
         ],
         child: MaterialApp(

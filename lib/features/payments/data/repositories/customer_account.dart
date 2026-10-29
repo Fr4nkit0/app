@@ -3,19 +3,19 @@ import 'package:drift/drift.dart';
 import 'package:app/core/services/database.helper.dart';
 import 'package:app/features/sync/domain/models/pending_change.dart';
 
-/// The customer balance the driver sees: the balance downloaded from the
+/// The customer account the driver sees: the balance downloaded from the
 /// server plus the sales and minus the payments not yet sent.
 ///
-/// Every local sale or payment moves it at once, a rejected one is taken
-/// back out, and every download replaces it with the server's balance plus
-/// whatever is still pending.
-class CustomerBalanceStore {
-  CustomerBalanceStore(this._db);
+/// The only module that reads or writes the customer balance. Every local
+/// sale or payment posts a movement at once, a rejected one is posted back
+/// out, and every download reconciles it with the server's value.
+class CustomerAccount {
+  CustomerAccount(this._db);
 
   final AppDatabase _db;
 
-  /// Moves the balance of [customerId] by [delta] (positive: owes more).
-  Future<void> adjust(
+  /// Moves the account of [customerId] by [delta] (positive: owes more).
+  Future<void> post(
     String customerId,
     double delta, {
     String? lastEntryId,
@@ -46,9 +46,45 @@ class CustomerBalanceStore {
     );
   }
 
+  /// The balance of [customerId]; 0 while they have no account.
+  Stream<double> watchBalance(String customerId) {
+    return (_db.select(_db.customerBalanceTable)
+          ..where((t) => t.customerId.equals(customerId)))
+        .watchSingleOrNull()
+        .map((row) => row?.currentBalance ?? 0.0);
+  }
+
+  /// The balance of [customerId]; 0 while they have no account.
+  Future<double> balanceOf(String customerId) async =>
+      (await (_db.select(_db.customerBalanceTable)
+                ..where((t) => t.customerId.equals(customerId)))
+              .getSingleOrNull())
+          ?.currentBalance ??
+      0.0;
+
+  /// Balances keyed by customer, for the [customerIds] that have an account.
+  Future<Map<String, double>> balancesOf(Iterable<String> customerIds) async {
+    final rows = await (_db.select(
+      _db.customerBalanceTable,
+    )..where((t) => t.customerId.isIn(customerIds))).get();
+    return {for (final row in rows) row.customerId: row.currentBalance};
+  }
+
+  /// Left-joins a query to the account of [customerId], so a watched query
+  /// also follows the balance; read it back with [balanceIn].
+  Join balanceJoin(Expression<String> customerId) => leftOuterJoin(
+    _db.customerBalanceTable,
+    _db.customerBalanceTable.customerId.equalsExp(customerId),
+  );
+
+  /// The balance of a row from a query joined with [balanceJoin]; 0 when
+  /// the customer has no account.
+  double balanceIn(TypedResult row) =>
+      row.readTableOrNull(_db.customerBalanceTable)?.currentBalance ?? 0.0;
+
   /// Stores the balance the server computed for [customerId], plus the
   /// sales and minus the payments the server has not received yet.
-  Future<void> replaceWithServer(
+  Future<void> reconcile(
     String customerId,
     double serverBalance, {
     int? serverId,

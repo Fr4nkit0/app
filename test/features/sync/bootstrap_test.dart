@@ -1,9 +1,11 @@
 import 'package:dio/dio.dart';
-import 'package:drift/drift.dart' hide isNotNull;
+import 'package:drift/drift.dart' hide isNotNull, isNull;
 import 'package:drift/native.dart';
 import 'package:flutter_test/flutter_test.dart';
 
 import 'package:app/core/services/database.helper.dart';
+import 'package:app/features/inventory/data/repositories/inventory.repository.dart';
+import 'package:app/features/inventory/domain/models/container_movement.dart';
 import 'package:app/features/sync/data/repositories/pending_change.repository.dart';
 import 'package:app/features/sync/domain/models/pending_change.dart';
 import 'package:app/features/sync/sync_service.dart';
@@ -163,7 +165,10 @@ void main() {
     final products = await db.select(db.productTable).get();
     final water = products.firstWhere((p) => p.serverId == 21);
     expect(water.stock, 20);
-    expect(products.firstWhere((p) => p.serverId == 22).stock, 0);
+    expect(water.containerTypeId, 1);
+    final soda = products.firstWhere((p) => p.serverId == 22);
+    expect(soda.stock, 0);
+    expect(soda.containerTypeId, isNull);
     final load = await db.select(db.routeInventoryLoadTable).getSingle();
     expect(load.productId, water.productId);
     expect(load.quantity, 20);
@@ -323,6 +328,58 @@ void main() {
           ..where((t) => t.customerId.equals('cust-uuid-11')))
         .getSingle();
     expect(balance.currentBalance, 1500.5 + 300 - 100);
+  });
+
+  test('stores the server custody plus the container movements not yet sent', () async {
+    await service.bootstrap();
+    final inventory = DriftInventoryRepository(db);
+    for (final (id, delivered, returned) in [('mov-pending', 2, 0), ('mov-sent', 0, 1)]) {
+      await inventory.recordContainerMovement(
+        ContainerMovement(
+          id: id,
+          customerId: 'cust-uuid-11',
+          containerType: 'BIDON_20L',
+          deliveredQuantity: delivered,
+          returnedQuantity: returned,
+          createdAt: DateTime(2026, 10, 19, 10),
+        ),
+      );
+    }
+    final queue = DriftPendingChangeRepository(db);
+    // Already sent: the server custody includes it.
+    await queue.markSent([(await queue.getPending()).last.id]);
+
+    await service.bootstrap();
+
+    final custody = await db.select(db.customerContainerBalanceTable).getSingle();
+    expect(custody.quantity, 3 + 2);
+  });
+
+  test('stores the server custody while only sales are unsent', () async {
+    await service.bootstrap();
+    await (db.update(db.customerContainerBalanceTable)
+          ..where((t) => t.customerId.equals('cust-uuid-11')))
+        .write(const CustomerContainerBalanceTableCompanion(quantity: Value(99)));
+    await db.into(db.saleTable).insert(
+          SaleTableCompanion.insert(
+            saleId: const Value('sale-pending'),
+            customerId: 'cust-uuid-11',
+            totalAmount: 300,
+            paymentMethod: 'credit',
+            quantity: 0,
+            shipping_amount: 0,
+          ),
+        );
+    await DriftPendingChangeRepository(db).enqueue(
+      entity: PendingEntity.sale,
+      entityId: 'sale-pending',
+      action: PendingAction.insert,
+    );
+
+    await service.bootstrap();
+
+    final custody = await db.select(db.customerContainerBalanceTable).getSingle();
+    expect(custody.quantity, 3);
   });
 
   test('rows without an enabled flag stay enabled', () async {

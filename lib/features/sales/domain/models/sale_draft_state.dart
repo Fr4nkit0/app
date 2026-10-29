@@ -1,7 +1,7 @@
 import 'package:app/features/customers/domain/models/customer.dart';
 import 'package:app/features/sales/domain/models/payment_method.dart';
 import 'package:app/features/sales/domain/models/sale_item.dart';
-import 'package:app/features/products/domain/models/product.dart';
+import 'package:app/features/inventory/domain/custody.dart';
 import 'package:app/features/inventory/domain/models/container_movement.dart';
 import 'package:uuid/uuid.dart';
 
@@ -85,15 +85,23 @@ class SaleDraftState {
       paymentMethod != null &&
       isValidPayment;
 
+  /// The sale lines as container deliveries, for the custody rules.
+  Iterable<({String? containerType, int quantity})> get containerDeliveries =>
+      items.map(
+        (item) => (
+          containerType: item.product.containerType,
+          quantity: item.quantity,
+        ),
+      );
+
   List<ContainerMovement> toContainerMovements(
     String customerId,
     String? visitId,
   ) {
+    final deliveredByType = deliveredByContainerType(containerDeliveries);
     final movements = <ContainerMovement>[];
-    for (final type in ['BIDON_20L', 'SIFON_2L']) {
-      final delivered = items
-          .where((item) => item.product.containerType == type)
-          .fold(0, (sum, item) => sum + item.quantity);
+    for (final type in {...deliveredByType.keys, ...returnedContainers.keys}) {
+      final delivered = deliveredByType[type] ?? 0;
       final returned = returnedContainers[type] ?? 0;
       if (delivered > 0 || returned > 0) {
         movements.add(

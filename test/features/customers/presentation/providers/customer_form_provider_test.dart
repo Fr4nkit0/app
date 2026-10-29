@@ -1,27 +1,40 @@
 import 'package:flutter_test/flutter_test.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import 'package:app/core/utils/resource.dart';
+import 'package:flutter_riverpod/misc.dart' show Override;
+import 'package:app/core/errors/domain_failure.dart';
+import 'package:app/core/usecases/drift_transaction_runner.dart';
 import 'package:app/features/customers/domain/models/customer.dart';
 import 'package:app/features/customers/data/repositories/customer.repository.dart';
 import 'package:app/features/customers/presentation/providers/customer_form_state.dart';
 import 'package:app/features/customers/presentation/providers/customer_form_provider.dart';
 import 'package:app/features/customers/presentation/providers/customer_repository_provider.dart';
 
+/// Runs the unit of work inline; the fakes below have no database.
+Future<T> _inline<T>(Future<T> Function() action) => action();
+
+/// Overrides that let the customer form save without a database.
+final List<Override> fakeCustomerSaving = [
+  transactionRunnerProvider.overrideWithValue(_inline),
+];
+
 class FakeCustomerRepository implements CustomerRepository {
+  FakeCustomerRepository({this.failure});
+
+  final Object? failure;
   Customer? lastSavedCustomer;
 
   @override
-  Future<Resource<void>> saveCustomer(Customer customer) async {
+  Future<void> saveCustomer(Customer customer) async {
+    if (failure case final failure?) throw failure;
     lastSavedCustomer = customer;
-    return const Resource.success(null);
   }
 
   @override
-  Future<Resource<void>> updateCustomer(Customer customer) => throw UnimplementedError();
+  Future<void> updateCustomer(Customer customer) => throw UnimplementedError();
   @override
-  Future<Resource<void>> deleteCustomer(String customerId) => throw UnimplementedError();
+  Future<void> deleteCustomer(String customerId) => throw UnimplementedError();
   @override
-  Future<Resource<Customer?>> getCustomerById(String id) => throw UnimplementedError();
+  Future<Customer?> getCustomerById(String id) => throw UnimplementedError();
   @override
   Future<List<Customer>> getCustomersPage({required int page, required int pageSize}) => throw UnimplementedError();
   @override
@@ -77,6 +90,7 @@ void main() {
       final container = ProviderContainer(
         overrides: [
           customerRepositoryProvider.overrideWithValue(fakeRepo),
+          ...fakeCustomerSaving,
         ],
       );
       addTearDown(container.dispose);
@@ -106,6 +120,33 @@ void main() {
       // The saved customer is handed back so the sale can select it right away.
       expect(stateAfter.createdCustomer?.id, fakeRepo.lastSavedCustomer!.id);
       expect(stateAfter.createdCustomer?.name, 'Gaston');
+    });
+
+    test('a failed save keeps the form and shows the fallback copy', () async {
+      final container = ProviderContainer(
+        overrides: [
+          customerRepositoryProvider.overrideWithValue(
+            FakeCustomerRepository(
+              failure: StorageFailure(Exception('disk full')),
+            ),
+          ),
+          ...fakeCustomerSaving,
+        ],
+      );
+      addTearDown(container.dispose);
+      final notifier = container.read(customerFormProvider.notifier)
+        ..updateName('Gaston')
+        ..nextStep()
+        ..updateStreet('San Martin 100')
+        ..updateNeighborhood('Centro')
+        ..nextStep();
+
+      await notifier.submit();
+
+      final state = container.read(customerFormProvider);
+      expect(state.isSuccess, isFalse);
+      expect(state.isSubmitting, isFalse);
+      expect(state.errorMessage, 'No se guardó el cliente. Reintentá.');
     });
   });
 }
