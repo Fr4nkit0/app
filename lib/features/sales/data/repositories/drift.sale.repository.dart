@@ -131,6 +131,15 @@ class DriftSaleRepository implements SaleRepository {
               agreementUuid: Value(item.product.agreementUuid),
             ),
           );
+      // The truck stock drops locally until the next download; like the
+      // server, it has no floor.
+      await (_db.update(
+        _db.productTable,
+      )..where((t) => t.productId.equals(item.product.id))).write(
+        ProductTableCompanion.custom(
+          stock: _db.productTable.stock - Variable(item.quantity),
+        ),
+      );
     }
 
     // The server books every sale on the customer's account; a sale

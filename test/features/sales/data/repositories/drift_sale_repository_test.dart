@@ -95,4 +95,30 @@ void main() {
       await expectation;
     });
   });
+
+  group('saveSale truck stock', () {
+    Future<int> stock() async => (await (db.select(
+      db.productTable,
+    )..where((t) => t.productId.equals('p-1'))).getSingle()).stock;
+
+    test('discounts each item quantity from the product stock', () async {
+      await (db.update(db.productTable)
+            ..where((t) => t.productId.equals('p-1')))
+          .write(const ProductTableCompanion(stock: drift.Value(10)));
+
+      await sut.saveSale(sale('s-1'));
+
+      expect(await stock(), 8);
+    });
+
+    test('lets the stock go below zero, as the server does', () async {
+      await (db.update(db.productTable)
+            ..where((t) => t.productId.equals('p-1')))
+          .write(const ProductTableCompanion(stock: drift.Value(1)));
+
+      await sut.saveSale(sale('s-1'));
+
+      expect(await stock(), -1);
+    });
+  });
 }
