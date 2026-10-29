@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:app/features/customers/presentation/widgets/neighborhood_search_bottom_sheet.dart';
+import 'package:app/features/customers/domain/models/salta_neighborhoods.dart';
 
 void main() {
   group('NeighborhoodSearchBottomSheet Widget Tests', () {
@@ -16,6 +17,7 @@ void main() {
                   showModalBottomSheet(
                     context: context,
                     builder: (context) => NeighborhoodSearchBottomSheet(
+                      neighborhoods: saltaNeighborhoods,
                       onSelected: (val) {
                         selectedNeighborhood = val;
                       },
@@ -69,6 +71,7 @@ void main() {
                   showModalBottomSheet(
                     context: context,
                     builder: (context) => NeighborhoodSearchBottomSheet(
+                      neighborhoods: saltaNeighborhoods,
                       onSelected: (_) {},
                     ),
                   );

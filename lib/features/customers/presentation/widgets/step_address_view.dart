@@ -1,6 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:app/core/theme/marilin_tokens.dart';
-import 'package:app/features/customers/presentation/widgets/neighborhood_search_bottom_sheet.dart';
+import 'package:app/features/customers/presentation/widgets/neighborhood_picker_sheet.dart';
 
 class StepAddressView extends StatelessWidget {
   final String street;
@@ -106,7 +106,7 @@ class StepAddressView extends StatelessWidget {
                         top: Radius.circular(20),
                       ),
                     ),
-                    builder: (context) => NeighborhoodSearchBottomSheet(
+                    builder: (context) => NeighborhoodPickerSheet(
                       onSelected: (val) {
                         onNeighborhoodChanged(val);
                         fieldState.didChange(val);

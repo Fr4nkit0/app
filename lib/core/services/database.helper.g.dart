@@ -13430,6 +13430,254 @@ class SyncStateTableCompanion extends UpdateCompanion<SyncStateTableData> {
   }
 }
 
+class $NeighborhoodTableTable extends NeighborhoodTable
+    with TableInfo<$NeighborhoodTableTable, NeighborhoodTableData> {
+  @override
+  final GeneratedDatabase attachedDatabase;
+  final String? _alias;
+  $NeighborhoodTableTable(this.attachedDatabase, [this._alias]);
+  static const VerificationMeta _idMeta = const VerificationMeta('id');
+  @override
+  late final GeneratedColumn<int> id = GeneratedColumn<int>(
+    'id',
+    aliasedName,
+    false,
+    type: DriftSqlType.int,
+    requiredDuringInsert: false,
+  );
+  static const VerificationMeta _nameMeta = const VerificationMeta('name');
+  @override
+  late final GeneratedColumn<String> name = GeneratedColumn<String>(
+    'name',
+    aliasedName,
+    false,
+    type: DriftSqlType.string,
+    requiredDuringInsert: true,
+  );
+  static const VerificationMeta _enabledMeta = const VerificationMeta(
+    'enabled',
+  );
+  @override
+  late final GeneratedColumn<bool> enabled = GeneratedColumn<bool>(
+    'enabled',
+    aliasedName,
+    false,
+    type: DriftSqlType.bool,
+    requiredDuringInsert: false,
+    defaultConstraints: GeneratedColumn.constraintIsAlways(
+      'CHECK ("enabled" IN (0, 1))',
+    ),
+    defaultValue: const Constant(true),
+  );
+  @override
+  List<GeneratedColumn> get $columns => [id, name, enabled];
+  @override
+  String get aliasedName => _alias ?? actualTableName;
+  @override
+  String get actualTableName => $name;
+  static const String $name = 'neighborhoods';
+  @override
+  VerificationContext validateIntegrity(
+    Insertable<NeighborhoodTableData> instance, {
+    bool isInserting = false,
+  }) {
+    final context = VerificationContext();
+    final data = instance.toColumns(true);
+    if (data.containsKey('id')) {
+      context.handle(_idMeta, id.isAcceptableOrUnknown(data['id']!, _idMeta));
+    }
+    if (data.containsKey('name')) {
+      context.handle(
+        _nameMeta,
+        name.isAcceptableOrUnknown(data['name']!, _nameMeta),
+      );
+    } else if (isInserting) {
+      context.missing(_nameMeta);
+    }
+    if (data.containsKey('enabled')) {
+      context.handle(
+        _enabledMeta,
+        enabled.isAcceptableOrUnknown(data['enabled']!, _enabledMeta),
+      );
+    }
+    return context;
+  }
+
+  @override
+  Set<GeneratedColumn> get $primaryKey => {id};
+  @override
+  NeighborhoodTableData map(Map<String, dynamic> data, {String? tablePrefix}) {
+    final effectivePrefix = tablePrefix != null ? '$tablePrefix.' : '';
+    return NeighborhoodTableData(
+      id: attachedDatabase.typeMapping.read(
+        DriftSqlType.int,
+        data['${effectivePrefix}id'],
+      )!,
+      name: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}name'],
+      )!,
+      enabled: attachedDatabase.typeMapping.read(
+        DriftSqlType.bool,
+        data['${effectivePrefix}enabled'],
+      )!,
+    );
+  }
+
+  @override
+  $NeighborhoodTableTable createAlias(String alias) {
+    return $NeighborhoodTableTable(attachedDatabase, alias);
+  }
+}
+
+class NeighborhoodTableData extends DataClass
+    implements Insertable<NeighborhoodTableData> {
+  final int id;
+  final String name;
+  final bool enabled;
+  const NeighborhoodTableData({
+    required this.id,
+    required this.name,
+    required this.enabled,
+  });
+  @override
+  Map<String, Expression> toColumns(bool nullToAbsent) {
+    final map = <String, Expression>{};
+    map['id'] = Variable<int>(id);
+    map['name'] = Variable<String>(name);
+    map['enabled'] = Variable<bool>(enabled);
+    return map;
+  }
+
+  NeighborhoodTableCompanion toCompanion(bool nullToAbsent) {
+    return NeighborhoodTableCompanion(
+      id: Value(id),
+      name: Value(name),
+      enabled: Value(enabled),
+    );
+  }
+
+  factory NeighborhoodTableData.fromJson(
+    Map<String, dynamic> json, {
+    ValueSerializer? serializer,
+  }) {
+    serializer ??= driftRuntimeOptions.defaultSerializer;
+    return NeighborhoodTableData(
+      id: serializer.fromJson<int>(json['id']),
+      name: serializer.fromJson<String>(json['name']),
+      enabled: serializer.fromJson<bool>(json['enabled']),
+    );
+  }
+  @override
+  Map<String, dynamic> toJson({ValueSerializer? serializer}) {
+    serializer ??= driftRuntimeOptions.defaultSerializer;
+    return <String, dynamic>{
+      'id': serializer.toJson<int>(id),
+      'name': serializer.toJson<String>(name),
+      'enabled': serializer.toJson<bool>(enabled),
+    };
+  }
+
+  NeighborhoodTableData copyWith({int? id, String? name, bool? enabled}) =>
+      NeighborhoodTableData(
+        id: id ?? this.id,
+        name: name ?? this.name,
+        enabled: enabled ?? this.enabled,
+      );
+  NeighborhoodTableData copyWithCompanion(NeighborhoodTableCompanion data) {
+    return NeighborhoodTableData(
+      id: data.id.present ? data.id.value : this.id,
+      name: data.name.present ? data.name.value : this.name,
+      enabled: data.enabled.present ? data.enabled.value : this.enabled,
+    );
+  }
+
+  @override
+  String toString() {
+    return (StringBuffer('NeighborhoodTableData(')
+          ..write('id: $id, ')
+          ..write('name: $name, ')
+          ..write('enabled: $enabled')
+          ..write(')'))
+        .toString();
+  }
+
+  @override
+  int get hashCode => Object.hash(id, name, enabled);
+  @override
+  bool operator ==(Object other) =>
+      identical(this, other) ||
+      (other is NeighborhoodTableData &&
+          other.id == this.id &&
+          other.name == this.name &&
+          other.enabled == this.enabled);
+}
+
+class NeighborhoodTableCompanion
+    extends UpdateCompanion<NeighborhoodTableData> {
+  final Value<int> id;
+  final Value<String> name;
+  final Value<bool> enabled;
+  const NeighborhoodTableCompanion({
+    this.id = const Value.absent(),
+    this.name = const Value.absent(),
+    this.enabled = const Value.absent(),
+  });
+  NeighborhoodTableCompanion.insert({
+    this.id = const Value.absent(),
+    required String name,
+    this.enabled = const Value.absent(),
+  }) : name = Value(name);
+  static Insertable<NeighborhoodTableData> custom({
+    Expression<int>? id,
+    Expression<String>? name,
+    Expression<bool>? enabled,
+  }) {
+    return RawValuesInsertable({
+      if (id != null) 'id': id,
+      if (name != null) 'name': name,
+      if (enabled != null) 'enabled': enabled,
+    });
+  }
+
+  NeighborhoodTableCompanion copyWith({
+    Value<int>? id,
+    Value<String>? name,
+    Value<bool>? enabled,
+  }) {
+    return NeighborhoodTableCompanion(
+      id: id ?? this.id,
+      name: name ?? this.name,
+      enabled: enabled ?? this.enabled,
+    );
+  }
+
+  @override
+  Map<String, Expression> toColumns(bool nullToAbsent) {
+    final map = <String, Expression>{};
+    if (id.present) {
+      map['id'] = Variable<int>(id.value);
+    }
+    if (name.present) {
+      map['name'] = Variable<String>(name.value);
+    }
+    if (enabled.present) {
+      map['enabled'] = Variable<bool>(enabled.value);
+    }
+    return map;
+  }
+
+  @override
+  String toString() {
+    return (StringBuffer('NeighborhoodTableCompanion(')
+          ..write('id: $id, ')
+          ..write('name: $name, ')
+          ..write('enabled: $enabled')
+          ..write(')'))
+        .toString();
+  }
+}
+
 abstract class _$AppDatabase extends GeneratedDatabase {
   _$AppDatabase(QueryExecutor e) : super(e);
   $AppDatabaseManager get managers => $AppDatabaseManager(this);
@@ -13468,6 +13716,8 @@ abstract class _$AppDatabase extends GeneratedDatabase {
   late final $CustomerAgreementTableTable customerAgreementTable =
       $CustomerAgreementTableTable(this);
   late final $SyncStateTableTable syncStateTable = $SyncStateTableTable(this);
+  late final $NeighborhoodTableTable neighborhoodTable =
+      $NeighborhoodTableTable(this);
   @override
   Iterable<TableInfo<Table, Object?>> get allTables =>
       allSchemaEntities.whereType<TableInfo<Table, Object?>>();
@@ -13495,6 +13745,7 @@ abstract class _$AppDatabase extends GeneratedDatabase {
     paymentMethodTable,
     customerAgreementTable,
     syncStateTable,
+    neighborhoodTable,
   ];
   @override
   StreamQueryUpdateRules get streamUpdateRules => const StreamQueryUpdateRules([
@@ -25923,6 +26174,175 @@ typedef $$SyncStateTableTableProcessedTableManager =
       SyncStateTableData,
       PrefetchHooks Function()
     >;
+typedef $$NeighborhoodTableTableCreateCompanionBuilder =
+    NeighborhoodTableCompanion Function({
+      Value<int> id,
+      required String name,
+      Value<bool> enabled,
+    });
+typedef $$NeighborhoodTableTableUpdateCompanionBuilder =
+    NeighborhoodTableCompanion Function({
+      Value<int> id,
+      Value<String> name,
+      Value<bool> enabled,
+    });
+
+class $$NeighborhoodTableTableFilterComposer
+    extends Composer<_$AppDatabase, $NeighborhoodTableTable> {
+  $$NeighborhoodTableTableFilterComposer({
+    required super.$db,
+    required super.$table,
+    super.joinBuilder,
+    super.$addJoinBuilderToRootComposer,
+    super.$removeJoinBuilderFromRootComposer,
+  });
+  ColumnFilters<int> get id => $composableBuilder(
+    column: $table.id,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get name => $composableBuilder(
+    column: $table.name,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<bool> get enabled => $composableBuilder(
+    column: $table.enabled,
+    builder: (column) => ColumnFilters(column),
+  );
+}
+
+class $$NeighborhoodTableTableOrderingComposer
+    extends Composer<_$AppDatabase, $NeighborhoodTableTable> {
+  $$NeighborhoodTableTableOrderingComposer({
+    required super.$db,
+    required super.$table,
+    super.joinBuilder,
+    super.$addJoinBuilderToRootComposer,
+    super.$removeJoinBuilderFromRootComposer,
+  });
+  ColumnOrderings<int> get id => $composableBuilder(
+    column: $table.id,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<String> get name => $composableBuilder(
+    column: $table.name,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<bool> get enabled => $composableBuilder(
+    column: $table.enabled,
+    builder: (column) => ColumnOrderings(column),
+  );
+}
+
+class $$NeighborhoodTableTableAnnotationComposer
+    extends Composer<_$AppDatabase, $NeighborhoodTableTable> {
+  $$NeighborhoodTableTableAnnotationComposer({
+    required super.$db,
+    required super.$table,
+    super.joinBuilder,
+    super.$addJoinBuilderToRootComposer,
+    super.$removeJoinBuilderFromRootComposer,
+  });
+  GeneratedColumn<int> get id =>
+      $composableBuilder(column: $table.id, builder: (column) => column);
+
+  GeneratedColumn<String> get name =>
+      $composableBuilder(column: $table.name, builder: (column) => column);
+
+  GeneratedColumn<bool> get enabled =>
+      $composableBuilder(column: $table.enabled, builder: (column) => column);
+}
+
+class $$NeighborhoodTableTableTableManager
+    extends
+        RootTableManager<
+          _$AppDatabase,
+          $NeighborhoodTableTable,
+          NeighborhoodTableData,
+          $$NeighborhoodTableTableFilterComposer,
+          $$NeighborhoodTableTableOrderingComposer,
+          $$NeighborhoodTableTableAnnotationComposer,
+          $$NeighborhoodTableTableCreateCompanionBuilder,
+          $$NeighborhoodTableTableUpdateCompanionBuilder,
+          (
+            NeighborhoodTableData,
+            BaseReferences<
+              _$AppDatabase,
+              $NeighborhoodTableTable,
+              NeighborhoodTableData
+            >,
+          ),
+          NeighborhoodTableData,
+          PrefetchHooks Function()
+        > {
+  $$NeighborhoodTableTableTableManager(
+    _$AppDatabase db,
+    $NeighborhoodTableTable table,
+  ) : super(
+        TableManagerState(
+          db: db,
+          table: table,
+          createFilteringComposer: () =>
+              $$NeighborhoodTableTableFilterComposer($db: db, $table: table),
+          createOrderingComposer: () =>
+              $$NeighborhoodTableTableOrderingComposer($db: db, $table: table),
+          createComputedFieldComposer: () =>
+              $$NeighborhoodTableTableAnnotationComposer(
+                $db: db,
+                $table: table,
+              ),
+          updateCompanionCallback:
+              ({
+                Value<int> id = const Value.absent(),
+                Value<String> name = const Value.absent(),
+                Value<bool> enabled = const Value.absent(),
+              }) => NeighborhoodTableCompanion(
+                id: id,
+                name: name,
+                enabled: enabled,
+              ),
+          createCompanionCallback:
+              ({
+                Value<int> id = const Value.absent(),
+                required String name,
+                Value<bool> enabled = const Value.absent(),
+              }) => NeighborhoodTableCompanion.insert(
+                id: id,
+                name: name,
+                enabled: enabled,
+              ),
+          withReferenceMapper: (p0) => p0
+              .map((e) => (e.readTable(table), BaseReferences(db, table, e)))
+              .toList(),
+          prefetchHooksCallback: null,
+        ),
+      );
+}
+
+typedef $$NeighborhoodTableTableProcessedTableManager =
+    ProcessedTableManager<
+      _$AppDatabase,
+      $NeighborhoodTableTable,
+      NeighborhoodTableData,
+      $$NeighborhoodTableTableFilterComposer,
+      $$NeighborhoodTableTableOrderingComposer,
+      $$NeighborhoodTableTableAnnotationComposer,
+      $$NeighborhoodTableTableCreateCompanionBuilder,
+      $$NeighborhoodTableTableUpdateCompanionBuilder,
+      (
+        NeighborhoodTableData,
+        BaseReferences<
+          _$AppDatabase,
+          $NeighborhoodTableTable,
+          NeighborhoodTableData
+        >,
+      ),
+      NeighborhoodTableData,
+      PrefetchHooks Function()
+    >;
 
 class $AppDatabaseManager {
   final _$AppDatabase _db;
@@ -25990,4 +26410,6 @@ class $AppDatabaseManager {
       );
   $$SyncStateTableTableTableManager get syncStateTable =>
       $$SyncStateTableTableTableManager(_db, _db.syncStateTable);
+  $$NeighborhoodTableTableTableManager get neighborhoodTable =>
+      $$NeighborhoodTableTableTableManager(_db, _db.neighborhoodTable);
 }

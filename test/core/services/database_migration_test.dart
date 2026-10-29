@@ -372,8 +372,68 @@ void main() {
       expect(product.containerTypeId, isNull);
     });
 
-    test('the schema version is 13', () {
-      expect(db.schemaVersion, 13);
+  });
+
+  group('Database Schema Migration V13 -> V14', () {
+    late AppDatabase db;
+
+    setUp(() async {
+      db = AppDatabase(NativeDatabase.memory());
+      // Rebuild the v13 shape: no neighborhood catalog yet.
+      await db.customStatement('DROP TABLE neighborhoods');
+      await db.customStatement(
+        "INSERT INTO customers (customer_id, name) VALUES ('c-1', 'Kiosco Norte')",
+      );
+      await db.customStatement(
+        "INSERT INTO customer_addresses (address_id, customer_id, street, neighborhood, is_primary) "
+        "VALUES ('a-1', 'c-1', 'Belgrano 340', 'Centro', 1)",
+      );
+      await db.customStatement(
+        "INSERT INTO payment_methods (id, code, name) VALUES (5, 'CASH', 'Cash')",
+      );
+    });
+
+    tearDown(() async {
+      await db.close();
+    });
+
+    test('creates an empty neighborhood catalog and keeps existing data', () async {
+      Future<List<Map<String, Object?>>> rows(String table) async =>
+          (await db.customSelect('SELECT * FROM $table').get())
+              .map((r) => r.data)
+              .toList();
+      final customers = await rows('customers');
+      final addresses = await rows('customer_addresses');
+      final methods = await rows('payment_methods');
+
+      await db.migration.onUpgrade(db.createMigrator(), 13, 14);
+
+      expect(await db.select(db.neighborhoodTable).get(), isEmpty);
+      await db.into(db.neighborhoodTable).insert(
+            NeighborhoodTableCompanion.insert(
+              id: const drift.Value(1),
+              name: 'Centro',
+            ),
+          );
+      expect((await db.select(db.neighborhoodTable).getSingle()).enabled, isTrue);
+      expect(await rows('customers'), customers);
+      expect(await rows('customer_addresses'), addresses);
+      expect(await rows('payment_methods'), methods);
+    });
+
+    test('re-running 13->14 keeps the stored catalog', () async {
+      await db.migration.onUpgrade(db.createMigrator(), 13, 14);
+      await db.customStatement(
+        "INSERT INTO neighborhoods (id, name, enabled) VALUES (1, 'Centro', 1)",
+      );
+
+      await db.migration.onUpgrade(db.createMigrator(), 13, 14);
+
+      expect((await db.select(db.neighborhoodTable).getSingle()).name, 'Centro');
+    });
+
+    test('the schema version is 14', () {
+      expect(db.schemaVersion, 14);
     });
   });
 }

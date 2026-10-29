@@ -15,6 +15,7 @@ void main() {
     expect(await db.select(db.productTable).get(), isEmpty);
     expect(await db.select(db.routeTable).get(), isEmpty);
     expect(await db.select(db.routeStopTable).get(), isEmpty);
+    expect(await db.select(db.neighborhoodTable).get(), isEmpty);
   });
 
   test('reopening an existing empty database does not reseed it', () async {

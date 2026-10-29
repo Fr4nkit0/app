@@ -107,7 +107,7 @@ class SyncService {
         unsent: await Unsent.load(_db),
         ids: ServerIds.downloaded(_db),
       );
-      await _catalogs.store(data);
+      await _catalogs.store(data, snapshot: true);
       await _products.applySnapshot(
         jsonList(data['products']),
         jsonList(data['truck_inventory']),
