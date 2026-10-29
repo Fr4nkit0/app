@@ -1,4 +1,5 @@
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:app/core/providers/clock_provider.dart';
 import 'package:app/core/usecases/drift_transaction_runner.dart';
 import 'package:app/features/route/presentation/providers/route_repository_provider.dart';
 import 'package:app/features/visits/domain/usecases/complete_visit.usecase.dart';
@@ -11,5 +12,6 @@ final completeVisitUseCaseProvider = Provider<CompleteVisitUseCase>(
     // The visit and its reschedule are queued atomically, so one push
     // always carries both.
     transaction: ref.watch(transactionRunnerProvider),
+    now: ref.watch(clockProvider),
   ),
 );

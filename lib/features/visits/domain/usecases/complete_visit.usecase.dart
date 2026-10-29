@@ -1,5 +1,6 @@
 import 'package:uuid/uuid.dart';
 
+import 'package:app/core/errors/domain_failure.dart';
 import 'package:app/core/usecases/transaction_runner.dart';
 import 'package:app/features/route/data/repositories/repositories/route.repository.dart';
 import 'package:app/features/route/domain/models/stop_status.dart';
@@ -26,7 +27,7 @@ class CompleteVisitUseCase {
 
   /// Records the visit and closes its stop with [nextStatus], or, with
   /// [rescheduleAt], marks the stop rescheduled and adds a new stop at that
-  /// time, which must be later the same day ([RescheduleTimeException]), in
+  /// time, which must be later the same day (else a [ValidationFailure]), in
   /// one unit of work.
   Future<void> execute({
     required String stopId,
@@ -40,7 +41,9 @@ class CompleteVisitUseCase {
     final now = _now();
     if (rescheduleAt != null) {
       final error = checkRescheduleTime(now: now, at: rescheduleAt);
-      if (error != null) throw RescheduleTimeException(error);
+      if (error != null) {
+        throw ValidationFailure(rescheduleTimeMessage(error));
+      }
     }
 
     await _transaction(() async {

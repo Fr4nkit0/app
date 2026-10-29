@@ -9,7 +9,6 @@ import 'package:app/features/route/data/repositories/repositories/drift_route_re
 import 'package:app/features/route/data/repositories/repositories/route.repository.dart';
 import 'package:app/features/route/domain/models/route_stop.dart';
 import 'package:app/features/route/domain/models/stop_status.dart';
-import 'package:app/features/visits/domain/reschedule_time.dart';
 import 'package:app/features/visits/data/repositories/drift_visit.repository.dart';
 import 'package:app/features/visits/data/repositories/visit.repository.dart';
 import 'package:app/features/visits/domain/models/visit.dart';
@@ -248,10 +247,10 @@ void main() {
       await expectLater(
         reschedule(DateTime(2026, 10, 20, 10, 0)),
         throwsA(
-          isA<RescheduleTimeException>().having(
-            (e) => e.reason,
-            'reason',
-            RescheduleTimeError.otherDay,
+          isA<ValidationFailure>().having(
+            (e) => e.message,
+            'message',
+            'Solo se puede reprogramar para hoy.',
           ),
         ),
       );
@@ -264,10 +263,10 @@ void main() {
       await expectLater(
         reschedule(DateTime(2026, 10, 19, 7, 30)),
         throwsA(
-          isA<RescheduleTimeException>().having(
-            (e) => e.reason,
-            'reason',
-            RescheduleTimeError.notLater,
+          isA<ValidationFailure>().having(
+            (e) => e.message,
+            'message',
+            'Elegí una hora posterior a la actual.',
           ),
         ),
       );

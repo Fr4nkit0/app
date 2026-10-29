@@ -1,15 +1,6 @@
 /// Why a reschedule time is not allowed (ADR 0002: later the same day).
 enum RescheduleTimeError { otherDay, notLater }
 
-class RescheduleTimeException implements Exception {
-  const RescheduleTimeException(this.reason);
-
-  final RescheduleTimeError reason;
-
-  @override
-  String toString() => 'RescheduleTimeException($reason)';
-}
-
 /// Returns why [at] cannot be a reschedule time at [now], or null when it
 /// can: it must fall later on the same day.
 RescheduleTimeError? checkRescheduleTime({
@@ -22,3 +13,9 @@ RescheduleTimeError? checkRescheduleTime({
   if (!at.isAfter(now)) return RescheduleTimeError.notLater;
   return null;
 }
+
+/// Driver-facing copy for why a reschedule time is not allowed.
+String rescheduleTimeMessage(RescheduleTimeError error) => switch (error) {
+  RescheduleTimeError.otherDay => 'Solo se puede reprogramar para hoy.',
+  RescheduleTimeError.notLater => 'Elegí una hora posterior a la actual.',
+};

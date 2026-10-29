@@ -1,4 +1,5 @@
 import 'package:app/core/utils/money_formatter.dart';
+import 'package:app/core/errors/domain_failure.dart';
 import 'package:app/core/presentation/failure_message.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
@@ -383,15 +384,19 @@ class _VisitScreenState extends ConsumerState<VisitScreen> {
                 : null,
             rescheduleAt: rescheduleAt,
           );
-    } on RescheduleTimeException catch (error) {
-      if (!mounted) return;
-      setState(() {
-        _isClosing = false;
-        _rescheduleError = error.reason;
-      });
-      return;
     } catch (error) {
       if (!mounted) return;
+      // The time can stop being valid while the close is saved.
+      final rescheduleError = error is ValidationFailure && rescheduleAt != null
+          ? checkRescheduleTime(now: DateTime.now(), at: rescheduleAt)
+          : null;
+      if (rescheduleError != null) {
+        setState(() {
+          _isClosing = false;
+          _rescheduleError = rescheduleError;
+        });
+        return;
+      }
       setState(() => _isClosing = false);
       TopToast.show(
         context,
