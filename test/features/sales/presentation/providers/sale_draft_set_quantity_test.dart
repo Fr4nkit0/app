@@ -45,4 +45,67 @@ void main() {
     notifier().setQuantity(SaleItem(product: unpriced, quantity: 0), 4);
     expect(container.read(saleDraftProvider).items, isEmpty);
   });
+
+  group('default returned containers', () {
+    const jug = Product(
+      id: 'p3',
+      name: 'Jug',
+      unitLabel: 'u',
+      price: 1500,
+      containerType: 'JUG',
+    );
+    const jugRefill = Product(
+      id: 'p4',
+      name: 'Jug refill',
+      unitLabel: 'u',
+      price: 1200,
+      containerType: 'JUG',
+    );
+    const siphon = Product(
+      id: 'p5',
+      name: 'Siphon',
+      unitLabel: 'u',
+      price: 900,
+      containerType: 'SIPHON',
+    );
+
+    Map<String, int> returned() =>
+        container.read(saleDraftProvider).returnedContainers;
+
+    test('returned equals delivered for every container type', () {
+      notifier().setQuantity(SaleItem(product: jug, quantity: 0), 2);
+      notifier().setQuantity(SaleItem(product: jugRefill, quantity: 0), 1);
+      notifier().setQuantity(SaleItem(product: siphon, quantity: 0), 4);
+      notifier().setQuantity(SaleItem(product: priced, quantity: 0), 5);
+
+      expect(returned(), {'JUG': 3, 'SIPHON': 4});
+    });
+
+    test('a container type no longer delivered drops its default return', () {
+      notifier().setQuantity(SaleItem(product: jug, quantity: 0), 2);
+      notifier().setQuantity(SaleItem(product: siphon, quantity: 0), 1);
+      notifier().setQuantity(SaleItem(product: siphon, quantity: 0), 0);
+
+      expect(returned(), {'JUG': 2});
+    });
+
+    test('the sale records delivered and returned containers per type', () {
+      notifier().setQuantity(SaleItem(product: jug, quantity: 0), 3);
+      notifier().setQuantity(SaleItem(product: siphon, quantity: 0), 2);
+      notifier().setReturnedQuantity('JUG', 1);
+
+      final movements = container
+          .read(saleDraftProvider)
+          .toContainerMovements('cust-1', 'visit-1');
+
+      expect(
+        {
+          for (final m in movements)
+            m.containerType: (m.deliveredQuantity, m.returnedQuantity),
+        },
+        {'JUG': (3, 1), 'SIPHON': (2, 2)},
+      );
+      expect(movements.map((m) => m.visitId).toSet(), {'visit-1'});
+    });
+  });
 }

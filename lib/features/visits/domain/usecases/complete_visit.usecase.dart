@@ -1,5 +1,6 @@
 import 'package:uuid/uuid.dart';
 
+import 'package:app/core/usecases/transaction_runner.dart';
 import 'package:app/core/utils/resource.dart';
 import 'package:app/features/route/data/repositories/repositories/route.repository.dart';
 import 'package:app/features/route/domain/models/stop_status.dart';
@@ -7,10 +8,6 @@ import 'package:app/features/visits/data/repositories/visit.repository.dart';
 import 'package:app/features/visits/domain/models/visit.dart';
 import 'package:app/features/visits/domain/models/visit_type.dart';
 import 'package:app/features/visits/domain/reschedule_time.dart';
-
-/// Runs [action] atomically; the data layer provides it (a Drift
-/// transaction), so a visit and its stop changes reach the queue together.
-typedef TransactionRunner = Future<T> Function<T>(Future<T> Function() action);
 
 Future<T> _noTransaction<T>(Future<T> Function() action) => action();
 

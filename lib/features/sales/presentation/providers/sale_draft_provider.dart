@@ -1,5 +1,6 @@
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:app/core/utils/resource.dart';
+import 'package:app/features/inventory/domain/custody.dart';
 import 'package:uuid/uuid.dart';
 import 'package:app/features/customers/domain/models/customer.dart';
 import 'package:app/features/sales/domain/models/payment_method.dart';
@@ -53,19 +54,12 @@ class SaleDraft extends Notifier<SaleDraftState> {
       }
     }
 
-    final updatedReturns = Map<String, int>.from(state.returnedContainers);
-    for (final type in ['BIDON_20L', 'SIFON_2L']) {
-      final delivered = newItems
-          .where((i) => i.product.containerType == type)
-          .fold(0, (sum, i) => sum + i.quantity);
-      if (delivered > 0) {
-        updatedReturns[type] = delivered;
-      } else {
-        updatedReturns.remove(type);
-      }
-    }
-
-    state = state.copyWith(items: newItems, returnedContainers: updatedReturns);
+    // Custody rule: by default the customer returns as many containers of
+    // each type as the sale delivers.
+    final next = state.copyWith(items: newItems);
+    state = next.copyWith(
+      returnedContainers: deliveredByContainerType(next.containerDeliveries),
+    );
   }
 
   void setReturnedQuantity(String type, int quantity) {
