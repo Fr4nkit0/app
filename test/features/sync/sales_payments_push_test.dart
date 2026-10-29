@@ -531,6 +531,16 @@ void main() {
       expect(await queue.countPending(), 0);
     });
 
+    test('a payment without a visit is not held by an open stop', () async {
+      await sell(method: PaymentMethod.cash, visitId: 's-1');
+      await pay(id: 'pay-profile');
+
+      await engine.push();
+
+      expect(sent('payments').single['uuid'], 'pay-profile');
+      expect(sent('sales'), isEmpty);
+    });
+
     test('a stop of a past day does not hold them', () async {
       await db.into(db.routeTable).insert(
             RouteTableCompanion.insert(
