@@ -64,8 +64,10 @@ class _VisitScreenState extends ConsumerState<VisitScreen> {
       );
     }
 
-    final balanceAsync = ref.watch(customerBalanceProvider(stop.customer.id));
-    final balance = balanceAsync.value ?? stop.customer.debtAmount;
+    // The debt comes only from the customer account: 0 until it loads and
+    // for a customer without one.
+    final balance =
+        ref.watch(customerBalanceProvider(stop.customer.id)).value ?? 0.0;
 
     final isDone = stop.status != StopStatus.pending;
     final salesAsync = ref.watch(stopSalesProvider(widget.stopId));
