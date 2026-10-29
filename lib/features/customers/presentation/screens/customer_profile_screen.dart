@@ -14,11 +14,12 @@ import 'package:app/features/history/presentation/widgets/history_entry_tile.dar
 import 'package:app/features/sales/presentation/providers/sale_draft_provider.dart';
 import 'package:app/features/sales/presentation/screens/sale_step1_screen.dart';
 import 'package:app/features/inventory/presentation/providers/inventory_repository_provider.dart';
-import 'package:app/features/inventory/domain/models/customer_container_balance.dart';
-import 'package:app/features/inventory/domain/models/container_movement.dart';
+import 'package:app/features/inventory/domain/custody.dart';
+import 'package:app/features/inventory/domain/models/container_type.dart';
+import 'package:app/features/inventory/presentation/widgets/container_return_dialog.dart';
+import 'package:app/features/inventory/presentation/widgets/register_container_return_dialog.dart';
 import 'package:app/core/widgets/error_state.dart';
 import 'package:app/core/widgets/top_toast.dart';
-import 'package:uuid/uuid.dart';
 import 'package:app/features/payments/presentation/providers/payment_repository_provider.dart';
 import 'package:app/features/payments/presentation/register_debt_payment.dart';
 
@@ -245,6 +246,12 @@ class _CustomerProfileScreenState extends ConsumerState<CustomerProfileScreen> {
                   final containerBalancesAsync = ref.watch(
                     customerContainerBalancesProvider(customer.id),
                   );
+                  final containerTypes = ref
+                      .watch(containerTypesProvider)
+                      .maybeWhen(
+                        data: (types) => types,
+                        orElse: () => <ContainerType>[],
+                      );
 
                   return Row(
                     children: [
@@ -372,8 +379,8 @@ class _CustomerProfileScreenState extends ConsumerState<CustomerProfileScreen> {
                             onTap: () {
                               showDialog(
                                 context: context,
-                                builder: (_) => ProfileContainerReturnDialog(
-                                  customer: customer,
+                                builder: (_) => RegisterContainerReturnDialog(
+                                  customerId: customer.id,
                                 ),
                               );
                             },
@@ -410,44 +417,21 @@ class _CustomerProfileScreenState extends ConsumerState<CustomerProfileScreen> {
                                   const SizedBox(height: 12),
                                   containerBalancesAsync.when(
                                     data: (balances) {
-                                      final bidon = balances
-                                          .firstWhere(
-                                            (b) =>
-                                                b.containerType == 'BIDON_20L',
-                                            orElse: () =>
-                                                CustomerContainerBalance(
-                                                  customerId: customer.id,
-                                                  containerType: 'BIDON_20L',
-                                                  quantity: 0,
-                                                ),
-                                          )
-                                          .quantity;
-                                      final sifon = balances
-                                          .firstWhere(
-                                            (b) =>
-                                                b.containerType == 'SIFON_2L',
-                                            orElse: () =>
-                                                CustomerContainerBalance(
-                                                  customerId: customer.id,
-                                                  containerType: 'SIFON_2L',
-                                                  quantity: 0,
-                                                ),
-                                          )
-                                          .quantity;
-
+                                      final custody = custodyByContainerType(
+                                        balances,
+                                      );
                                       return Column(
                                         children: [
-                                          _buildProfileCustodyRow(
-                                            icon: Icons.water_drop_outlined,
-                                            label: 'Bidón 20L',
-                                            count: bidon,
-                                          ),
-                                          const SizedBox(height: 8),
-                                          _buildProfileCustodyRow(
-                                            icon: Icons.local_drink_outlined,
-                                            label: 'Sifón 1.5L',
-                                            count: sifon,
-                                          ),
+                                          for (final (index, type)
+                                              in containerTypes.indexed) ...[
+                                            if (index > 0)
+                                              const SizedBox(height: 8),
+                                            _buildProfileCustodyRow(
+                                              icon: containerTypeIcon(index),
+                                              label: type.label,
+                                              count: custody[type.code] ?? 0,
+                                            ),
+                                          ],
                                         ],
                                       );
                                     },
@@ -923,167 +907,6 @@ class _CustomerProfileScreenState extends ConsumerState<CustomerProfileScreen> {
           ),
         ],
       ),
-    );
-  }
-}
-
-class ProfileContainerReturnDialog extends ConsumerStatefulWidget {
-  const ProfileContainerReturnDialog({super.key, required this.customer});
-
-  final Customer customer;
-
-  @override
-  ConsumerState<ProfileContainerReturnDialog> createState() =>
-      _ProfileContainerReturnDialogState();
-}
-
-class _ProfileContainerReturnDialogState
-    extends ConsumerState<ProfileContainerReturnDialog> {
-  final Map<String, int> _returns = {'BIDON_20L': 0, 'SIFON_2L': 0};
-
-  @override
-  Widget build(BuildContext context) {
-    final balancesAsync = ref.watch(
-      customerContainerBalancesProvider(widget.customer.id),
-    );
-    final balances = balancesAsync.maybeWhen(
-      data: (list) => list,
-      orElse: () => <CustomerContainerBalance>[],
-    );
-
-    return AlertDialog(
-      title: const Text(
-        'Registrar Retorno de Envases',
-        style: TextStyle(fontWeight: FontWeight.bold),
-      ),
-      content: SingleChildScrollView(
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Text(
-              'Ajustá la cantidad de envases vacíos que devuelve el cliente.',
-              style: TextStyle(color: context.marilin.textMuted, fontSize: 14),
-            ),
-            const SizedBox(height: 16),
-            ...['BIDON_20L', 'SIFON_2L'].map((type) {
-              final returned = _returns[type] ?? 0;
-              final label = type == 'BIDON_20L' ? 'Bidón 20L' : 'Sifón 1.5L';
-              final balance = balances
-                  .firstWhere(
-                    (b) => b.containerType == type,
-                    orElse: () => CustomerContainerBalance(
-                      customerId: widget.customer.id,
-                      containerType: type,
-                      quantity: 0,
-                    ),
-                  )
-                  .quantity;
-
-              return Padding(
-                padding: const EdgeInsets.symmetric(vertical: 8.0),
-                child: Row(
-                  children: [
-                    Expanded(
-                      child: Text(
-                        label,
-                        style: const TextStyle(
-                          fontWeight: FontWeight.bold,
-                          fontSize: 16,
-                        ),
-                      ),
-                    ),
-                    Row(
-                      children: [
-                        IconButton(
-                          tooltip: 'Restar',
-                          onPressed: returned > 0
-                              ? () {
-                                  setState(() {
-                                    _returns[type] = returned - 1;
-                                  });
-                                }
-                              : null,
-                          icon: const Icon(Icons.remove_circle_outline),
-                          color: context.marilin.vivid(
-                            MarilinColors.destructive,
-                          ),
-                        ),
-                        SizedBox(
-                          width: 32,
-                          child: Text(
-                            '$returned',
-                            textAlign: TextAlign.center,
-                            style: const TextStyle(
-                              fontSize: 16,
-                              fontWeight: FontWeight.bold,
-                            ),
-                          ),
-                        ),
-                        IconButton(
-                          tooltip: 'Sumar',
-                          onPressed: returned < balance
-                              ? () {
-                                  setState(() {
-                                    _returns[type] = returned + 1;
-                                  });
-                                }
-                              : null,
-                          icon: const Icon(Icons.add_circle_outline),
-                          color: MarilinColors.brandBlue,
-                        ),
-                      ],
-                    ),
-                  ],
-                ),
-              );
-            }),
-          ],
-        ),
-      ),
-      actions: [
-        TextButton(
-          onPressed: () => Navigator.of(context).pop(),
-          child: const Text('Cancelar'),
-        ),
-        FilledButton(
-          onPressed: () async {
-            final repository = ref.read(inventoryRepositoryProvider);
-            for (final type in ['BIDON_20L', 'SIFON_2L']) {
-              final returnedQty = _returns[type] ?? 0;
-              if (returnedQty > 0) {
-                final movement = ContainerMovement(
-                  id: const Uuid().v4(),
-                  customerId: widget.customer.id,
-                  containerType: type,
-                  deliveredQuantity: 0,
-                  returnedQuantity: returnedQty,
-                  createdAt: DateTime.now(),
-                );
-                await repository.recordContainerMovement(movement);
-              }
-            }
-
-            ref.invalidate(
-              customerContainerBalancesProvider(widget.customer.id),
-            );
-
-            if (context.mounted) {
-              Navigator.of(context).pop();
-              TopToast.show(
-                context,
-                message: 'Retorno de envases registrado',
-                icon: Icons.check_circle_rounded,
-                color: context.marilin.vivid(MarilinColors.success),
-              );
-            }
-          },
-          style: FilledButton.styleFrom(
-            backgroundColor: MarilinColors.brandBlue,
-          ),
-          child: const Text('Guardar'),
-        ),
-      ],
     );
   }
 }

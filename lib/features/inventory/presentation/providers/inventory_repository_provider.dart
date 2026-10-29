@@ -19,10 +19,7 @@ final customerContainerBalancesProvider =
     });
 
 final visitMovementsProvider =
-    FutureProvider.family<List<ContainerMovement>, String>((
-      ref,
-      visitId,
-    ) {
+    FutureProvider.family<List<ContainerMovement>, String>((ref, visitId) {
       final repo = ref.watch(inventoryRepositoryProvider);
       return repo.getVisitMovements(visitId);
     });
