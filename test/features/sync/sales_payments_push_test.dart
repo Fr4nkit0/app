@@ -480,4 +480,81 @@ void main() {
       expect(await displayedBalance(), 1000);
     },
   );
+
+  group('records made during an open visit', () {
+    Future<void> returnContainers({String? visitId}) =>
+        DriftInventoryRepository(db).recordContainerMovement(
+          ContainerMovement(
+            id: 'm-1',
+            customerId: 'c-1',
+            containerType: 'BIDON_20L',
+            deliveredQuantity: 0,
+            returnedQuantity: 2,
+            createdAt: soldAt,
+            visitId: visitId,
+          ),
+        );
+
+    test('wait in the outbox while the visit of their stop is open', () async {
+      await sell(method: PaymentMethod.cash, visitId: 's-1');
+      await pay(id: 'pay-debt', visitId: 's-1');
+      await returnContainers(visitId: 's-1');
+      final pendingBefore = await queue.countPending();
+
+      await engine.push();
+
+      final bodies = server.pushBodies;
+      for (final body in bodies) {
+        expect(body.containsKey('sales'), isFalse);
+        expect(body.containsKey('payments'), isFalse);
+        expect(body.containsKey('container_movements'), isFalse);
+      }
+      expect(await queue.countPending(), pendingBefore);
+      expect(await queue.getRejected(), isEmpty);
+    });
+
+    test('travel with the visit once it is closed', () async {
+      await sell(method: PaymentMethod.cash, visitId: 's-1');
+      await pay(id: 'pay-debt', visitId: 's-1');
+      await returnContainers(visitId: 's-1');
+      await engine.push();
+
+      await recordVisit();
+      await engine.push();
+
+      expect(sent('sales').single['visit_uuid'], 'v-1');
+      expect(sent('payments'), hasLength(2));
+      for (final p in sent('payments')) {
+        expect(p['visit_uuid'], 'v-1');
+      }
+      expect(sent('container_movements').single['visit_uuid'], 'v-1');
+      expect(await queue.countPending(), 0);
+    });
+
+    test('a stop of a past day does not hold them', () async {
+      await db.into(db.routeTable).insert(
+            RouteTableCompanion.insert(
+              routeId: const drift.Value('r-old'),
+              route_date: '2020-01-01',
+              serverId: const drift.Value(6),
+            ),
+          );
+      await db.into(db.routeStopTable).insert(
+            RouteStopTableCompanion.insert(
+              routeStopId: const drift.Value('s-old'),
+              routeId: 'r-old',
+              customerId: 'c-1',
+              sequence: 1,
+              scheduledAt: DateTime(2020),
+              serverId: const drift.Value(60),
+            ),
+          );
+      await pay(id: 'pay-old', visitId: 's-old');
+
+      await engine.push();
+
+      expect(sent('payments').single['uuid'], 'pay-old');
+      expect(sent('payments').single.containsKey('visit_uuid'), isFalse);
+    });
+  });
 }

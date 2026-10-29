@@ -33,7 +33,7 @@ class SyncEngine {
        _db = db,
        _sync = sync,
        _queue = DriftPendingChangeRepository(db),
-       _pushers = pushers ?? defaultPushers(db),
+       _pushers = pushers ?? defaultPushers(db, today: now ?? DateTime.now),
        _now = now ?? DateTime.now;
 
   static const lastCycleAtKey = 'last_cycle_at';
@@ -41,14 +41,17 @@ class SyncEngine {
   static const lastCycleErrorKey = 'last_cycle_error';
 
   /// Entity pushers in the server's dependency order.
-  static List<EntityPusher> defaultPushers(AppDatabase db) => [
+  static List<EntityPusher> defaultPushers(
+    AppDatabase db, {
+    DateTime Function()? today,
+  }) => [
     CustomerPusher(db),
     AgreementPusher(db),
     RouteStopPusher(db),
     VisitPusher(db),
-    ContainerMovementPusher(db),
-    SalePusher(db),
-    PaymentPusher(db),
+    ContainerMovementPusher(db, today: today),
+    SalePusher(db, today: today),
+    PaymentPusher(db, today: today),
   ];
 
   final Dio _dio;

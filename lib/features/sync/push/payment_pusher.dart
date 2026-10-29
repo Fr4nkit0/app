@@ -8,16 +8,22 @@ import 'references.dart';
 
 /// Payments, with or without a visit or a sale.
 class PaymentPusher implements EntityPusher, RejectionAware {
-  PaymentPusher(this._db) : _account = CustomerAccount(_db);
+  PaymentPusher(this._db, {DateTime Function()? today})
+    : _account = CustomerAccount(_db),
+      _today = today ?? DateTime.now;
 
   static const missing = 'El pago ya no existe en el dispositivo.';
   static String unknownMethod(String method) =>
       'Medio de pago desconocido: $method. Sincronizá el catálogo primero.';
 
   /// Local payment methods by the server catalog code they stand for.
-  static const _catalogCodes = {'EFECTIVO': 'CASH', 'TRANSFERENCIA': 'TRANSFER'};
+  static const _catalogCodes = {
+    'EFECTIVO': 'CASH',
+    'TRANSFERENCIA': 'TRANSFER',
+  };
 
   final AppDatabase _db;
+  final DateTime Function() _today;
   final CustomerAccount _account;
 
   @override
@@ -43,14 +49,21 @@ class PaymentPusher implements EntityPusher, RejectionAware {
         rejections.add(LocalRejection(ids, missing));
         continue;
       }
+      // Its visit is still open: it waits so it travels linked to it.
+      if (await awaitsOpenVisit(_db, payment.visitId, today: _today())) {
+        continue;
+      }
       final code =
           _catalogCodes[payment.paymentMethod] ?? payment.paymentMethod;
-      final method = await (_db.select(_db.paymentMethodTable)
-            ..where((t) => t.code.equals(code))
-            ..limit(1))
-          .getSingleOrNull();
+      final method =
+          await (_db.select(_db.paymentMethodTable)
+                ..where((t) => t.code.equals(code))
+                ..limit(1))
+              .getSingleOrNull();
       if (method == null) {
-        rejections.add(LocalRejection(ids, unknownMethod(payment.paymentMethod)));
+        rejections.add(
+          LocalRejection(ids, unknownMethod(payment.paymentMethod)),
+        );
         continue;
       }
 
@@ -68,9 +81,17 @@ class PaymentPusher implements EntityPusher, RejectionAware {
             'uuid': paymentId,
             ...await customerReference(_db, payment.customerId),
             if (visit != null)
-              ...reference('visit', serverId: visit.serverId, uuid: visit.visitId),
+              ...reference(
+                'visit',
+                serverId: visit.serverId,
+                uuid: visit.visitId,
+              ),
             if (payment.saleId != null)
-              ...reference('sale', serverId: sale?.serverId, uuid: payment.saleId!),
+              ...reference(
+                'sale',
+                serverId: sale?.serverId,
+                uuid: payment.saleId!,
+              ),
             'payment_method_id': method.id,
             'amount': payment.amount,
             'paid_at': payment.createdAt.toUtc().toIso8601String(),
