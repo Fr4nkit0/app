@@ -329,4 +329,33 @@ void main() {
       expect(outcome.code, isNull);
     });
   });
+
+  group('Database Schema Migration V12 -> V13', () {
+    late AppDatabase db;
+
+    setUp(() async {
+      db = AppDatabase(NativeDatabase.memory());
+      // Rebuild the v12 shape: products without their container type link.
+      await db.customStatement('ALTER TABLE products DROP COLUMN container_type_id');
+      await db.customStatement(
+        "INSERT INTO products (product_id, name, price) VALUES ('p-1', 'Agua 20L', 1500)",
+      );
+    });
+
+    tearDown(() async {
+      await db.close();
+    });
+
+    test('adds the container type link and keeps existing products without one', () async {
+      await db.migration.onUpgrade(db.createMigrator(), 12, 13);
+
+      final product = await db.select(db.productTable).getSingle();
+      expect(product.name, 'Agua 20L');
+      expect(product.containerTypeId, isNull);
+    });
+
+    test('the schema version is 13', () {
+      expect(db.schemaVersion, 13);
+    });
+  });
 }

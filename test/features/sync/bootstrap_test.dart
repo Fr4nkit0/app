@@ -1,5 +1,5 @@
 import 'package:dio/dio.dart';
-import 'package:drift/drift.dart' hide isNotNull;
+import 'package:drift/drift.dart' hide isNotNull, isNull;
 import 'package:drift/native.dart';
 import 'package:flutter_test/flutter_test.dart';
 
@@ -163,7 +163,10 @@ void main() {
     final products = await db.select(db.productTable).get();
     final water = products.firstWhere((p) => p.serverId == 21);
     expect(water.stock, 20);
-    expect(products.firstWhere((p) => p.serverId == 22).stock, 0);
+    expect(water.containerTypeId, 1);
+    final soda = products.firstWhere((p) => p.serverId == 22);
+    expect(soda.stock, 0);
+    expect(soda.containerTypeId, isNull);
     final load = await db.select(db.routeInventoryLoadTable).getSingle();
     expect(load.productId, water.productId);
     expect(load.quantity, 20);

@@ -1,3 +1,4 @@
+import 'package:app/features/inventory/domain/legacy_container_type.dart';
 import 'package:app/features/products/data/repositories/product.repository.dart';
 import 'package:app/features/products/domain/models/product.dart';
 import 'package:app/core/services/database.helper.dart';
@@ -12,30 +13,52 @@ class DriftProductRepository implements ProductRepository {
   SimpleSelectStatement<$ProductTableTable, ProductTableData> get _enabled =>
       db.select(db.productTable)..where((t) => t.enabled.equals(true));
 
-  static Product _toProduct(ProductTableData row) => Product(
-    id: row.productId,
-    name: row.name,
-    unitLabel: row.description ?? '', // Using description as unitLabel mapping
-    price: row.price,
-    available: row.stock,
-  );
+  static Product _toProduct(ProductTableData row, Map<int, String> codes) =>
+      Product(
+        id: row.productId,
+        name: row.name,
+        unitLabel: row.description ?? '', // Using description as unitLabel mapping
+        price: row.price,
+        available: row.stock,
+        containerType:
+            codes[row.containerTypeId] ?? legacyContainerCodeFromName(row.name),
+      );
+
+  /// Enabled products with their container type resolved from the catalog.
+  Future<List<Product>> _loadProducts() async {
+    final codes = {
+      for (final t in await db.select(db.containerTypeTable).get()) t.id: t.code,
+    };
+    return [for (final row in await _enabled.get()) _toProduct(row, codes)];
+  }
 
   @override
   Stream<List<Product>> watchAllProducts() {
-    return _enabled.watch().map((rows) => rows.map(_toProduct).toList());
+    // Re-emits when either products or the container catalog change.
+    return db
+        .customSelect(
+          'SELECT 1',
+          readsFrom: {db.productTable, db.containerTypeTable},
+        )
+        .watch()
+        .asyncMap((_) => _loadProducts());
   }
 
   @override
   Stream<List<Product>> watchProductsFor(String customerId, {DateTime? day}) {
     final agreements = db.select(db.customerAgreementTable)
       ..where((t) => t.customerId.equals(customerId) & t.enabled.equals(true));
-    // Re-emits when either products or agreements change.
+    // Re-emits when products, agreements or the container catalog change.
     final changes = db.customSelect(
       'SELECT 1',
-      readsFrom: {db.productTable, db.customerAgreementTable},
+      readsFrom: {
+        db.productTable,
+        db.customerAgreementTable,
+        db.containerTypeTable,
+      },
     ).watch();
     return changes.asyncMap((_) async {
-      final products = (await _enabled.get()).map(_toProduct);
+      final products = await _loadProducts();
       final today = _dateOnly(day ?? DateTime.now());
       // Server dates may come as full timestamps; only the day counts.
       bool inForce(CustomerAgreementTableData a) =>
@@ -58,6 +81,7 @@ class DriftProductRepository implements ProductRepository {
               unitLabel: p.unitLabel,
               price: a.unitPrice,
               available: p.available,
+              containerType: p.containerType,
               agreementId: a.serverId,
               agreementUuid: a.agreementId,
             )

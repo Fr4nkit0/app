@@ -199,6 +199,7 @@ class SyncService {
     final fields = ProductTableCompanion(
       name: Value(p['name'] as String),
       description: Value(p['description'] as String?),
+      containerTypeId: Value(p['container_type_id'] as int?),
       enabled: _enabled(p),
       serverId: Value(serverId),
     );
@@ -458,6 +459,7 @@ class SyncService {
                 description: Value(p['description'] as String?),
                 price: p['price'] == null ? 0 : _toDouble(p['price']),
                 stock: Value(stock),
+                containerTypeId: Value(p['container_type_id'] as int?),
                 serverId: Value(serverId),
               ),
             );
@@ -471,6 +473,7 @@ class SyncService {
             description: Value(p['description'] as String?),
             price: p['price'] == null ? const Value.absent() : Value(_toDouble(p['price'])),
             stock: unsent.hasSales ? const Value.absent() : Value(stock),
+            containerTypeId: Value(p['container_type_id'] as int?),
           ),
         );
         ids[serverId] = existing.productId;

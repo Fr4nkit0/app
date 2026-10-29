@@ -6,7 +6,6 @@ import 'package:app/features/sales/domain/models/payment_method.dart';
 import 'package:app/features/sales/domain/models/sale.dart';
 import 'package:app/features/sales/domain/models/sale_draft_state.dart';
 import 'package:app/features/sales/domain/models/sale_item.dart';
-import 'package:app/features/products/domain/models/product.dart';
 import 'package:app/features/sales/presentation/providers/register_sale_usecase_provider.dart';
 
 class SaleDraft extends Notifier<SaleDraftState> {

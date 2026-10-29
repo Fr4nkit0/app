@@ -12,7 +12,6 @@ import 'package:app/core/widgets/core_horizontal_stepper.dart';
 import 'package:app/features/inventory/presentation/providers/inventory_repository_provider.dart';
 import 'package:app/features/inventory/domain/models/customer_container_balance.dart';
 
-import 'package:app/features/products/domain/models/product.dart';
 import 'package:app/features/sales/domain/models/sale_item.dart';
 import 'package:app/core/theme/marilin_tokens.dart';
 import 'package:app/features/payments/presentation/widgets/amount_field.dart';

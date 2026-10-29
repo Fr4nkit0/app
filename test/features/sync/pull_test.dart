@@ -226,6 +226,25 @@ void main() {
     expect(added.sequence, 3);
   });
 
+  test('stores the product container_type_id when present and null when absent', () async {
+    pages = [
+      _page({
+        'products': [
+          {'id': 21, 'name': 'Water 20L', 'description': null, 'enabled': true, 'container_type_id': 1},
+          {'id': 22, 'name': 'Soda 2L', 'description': null, 'enabled': true},
+          {'id': 23, 'name': 'Ice', 'description': null, 'enabled': true},
+        ],
+      }),
+    ];
+
+    await service.pull();
+
+    final products = await db.select(db.productTable).get();
+    expect(products.firstWhere((p) => p.serverId == 21).containerTypeId, 1);
+    expect(products.firstWhere((p) => p.serverId == 22).containerTypeId, isNull);
+    expect(products.firstWhere((p) => p.serverId == 23).containerTypeId, isNull);
+  });
+
   test('applies an address shaped like the server, with an integer floor and decimal strings', () async {
     pages = [
       _page({

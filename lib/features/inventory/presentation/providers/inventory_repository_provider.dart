@@ -3,6 +3,7 @@ import 'package:app/core/services/database.helper.dart';
 import 'package:app/features/inventory/data/repositories/inventory.repository.dart';
 import 'package:app/features/inventory/domain/models/customer_container_balance.dart';
 import 'package:app/features/inventory/domain/models/container_movement.dart';
+import 'package:app/features/inventory/domain/models/container_type.dart';
 
 final inventoryRepositoryProvider = Provider<InventoryRepository>(
   (ref) => DriftInventoryRepository(ref.watch(databaseProvider)),
@@ -25,3 +26,8 @@ final visitMovementsProvider =
       final repo = ref.watch(inventoryRepositoryProvider);
       return repo.getVisitMovements(visitId);
     });
+
+/// Container types of the catalog, the ones custody and returns show.
+final containerTypesProvider = StreamProvider<List<ContainerType>>(
+  (ref) => ref.watch(inventoryRepositoryProvider).watchContainerTypes(),
+);

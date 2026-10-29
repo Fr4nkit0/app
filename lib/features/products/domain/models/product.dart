@@ -5,6 +5,10 @@ class Product {
   final double price;
   final int? available;
 
+  /// Code of the container type the product is delivered in; null when it
+  /// needs no returnable container.
+  final String? containerType;
+
   /// Server id of the customer agreement that set [price]; null when
   /// [price] is the list price.
   final int? agreementId;
@@ -19,6 +23,7 @@ class Product {
     required this.unitLabel,
     required this.price,
     this.available,
+    this.containerType,
     this.agreementId,
     this.agreementUuid,
   });
@@ -33,12 +38,4 @@ class Product {
 
   @override
   int get hashCode => id.hashCode;
-}
-
-extension ProductContainerExtension on Product {
-  String? get containerType {
-    if (name.contains('20L')) return 'BIDON_20L';
-    if (name.contains('Sifón')) return 'SIFON_2L';
-    return null;
-  }
 }

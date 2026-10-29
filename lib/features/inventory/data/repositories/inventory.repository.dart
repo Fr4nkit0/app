@@ -2,6 +2,7 @@ import 'package:drift/drift.dart';
 
 import 'package:app/core/services/database.helper.dart';
 import 'package:app/features/inventory/domain/models/container_movement.dart';
+import 'package:app/features/inventory/domain/models/container_type.dart';
 import 'package:app/features/inventory/domain/models/customer_container_balance.dart';
 import 'package:app/features/inventory/domain/models/route_inventory_load.dart';
 import 'package:app/features/sync/data/repositories/pending_change.repository.dart';
@@ -19,6 +20,9 @@ abstract class InventoryRepository {
     int returnedQuantity,
   );
   Future<List<RouteInventoryLoad>> getRouteLoads(String routeId);
+
+  /// Enabled container types of the catalog, ordered by id.
+  Stream<List<ContainerType>> watchContainerTypes();
 }
 
 class DriftInventoryRepository implements InventoryRepository {
@@ -164,6 +168,24 @@ class DriftInventoryRepository implements InventoryRepository {
               ..orderBy([(t) => OrderingTerm.asc(t.loadedAt)]))
             .get();
     return rows.map(_rowToLoad).toList();
+  }
+
+  @override
+  Stream<List<ContainerType>> watchContainerTypes() {
+    return (_db.select(_db.containerTypeTable)
+          ..where((t) => t.enabled.equals(true))
+          ..orderBy([(t) => OrderingTerm.asc(t.id)]))
+        .watch()
+        .map(
+          (rows) => [
+            for (final row in rows)
+              ContainerType.fromCatalog(
+                id: row.id,
+                code: row.code,
+                description: row.description,
+              ),
+          ],
+        );
   }
 
   ContainerMovement _rowToMovement(ContainerMovementTableData row) =>

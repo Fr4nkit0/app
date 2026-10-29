@@ -56,7 +56,7 @@ class AppDatabase extends _$AppDatabase {
   AppDatabase([QueryExecutor? executor]) : super(executor ?? _openConnection());
 
   @override
-  int get schemaVersion => 12;
+  int get schemaVersion => 13;
 
   @override
   MigrationStrategy get migration => MigrationStrategy(
@@ -138,6 +138,9 @@ class AppDatabase extends _$AppDatabase {
       }
       if (from < 12) {
         await _addColumnIfMissing(m, saleItemTable, saleItemTable.agreementUuid);
+      }
+      if (from < 13) {
+        await _addColumnIfMissing(m, productTable, productTable.containerTypeId);
       }
     },
   );

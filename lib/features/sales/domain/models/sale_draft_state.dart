@@ -1,7 +1,6 @@
 import 'package:app/features/customers/domain/models/customer.dart';
 import 'package:app/features/sales/domain/models/payment_method.dart';
 import 'package:app/features/sales/domain/models/sale_item.dart';
-import 'package:app/features/products/domain/models/product.dart';
 import 'package:app/features/inventory/domain/models/container_movement.dart';
 import 'package:uuid/uuid.dart';
 

@@ -468,4 +468,32 @@ void main() {
       expect(l.createdBy, 'driver-1');
     });
   });
+
+  group('watchContainerTypes', () {
+    Future<void> seedType(int id, String code, String? description, {bool enabled = true}) =>
+        db.into(db.containerTypeTable).insert(
+              ContainerTypeTableCompanion.insert(
+                id: drift.Value(id),
+                code: code,
+                description: drift.Value(description),
+                enabled: drift.Value(enabled),
+              ),
+            );
+
+    test('emits the enabled catalog types ordered by id with their labels', () async {
+      await seedType(3, 'OLD_JUG', 'Old jug', enabled: false);
+      await seedType(2, 'SIFON_2L', 'Sifón 1.5L');
+      await seedType(1, 'BIDON_20L', null);
+
+      final types = await sut.watchContainerTypes().first;
+
+      expect(types.map((t) => t.id), [1, 2]);
+      expect(types.map((t) => t.code), ['BIDON_20L', 'SIFON_2L']);
+      expect(types.map((t) => t.label), ['BIDON_20L', 'Sifón 1.5L']);
+    });
+
+    test('emits an empty list when the catalog is empty', () async {
+      expect(await sut.watchContainerTypes().first, isEmpty);
+    });
+  });
 }
