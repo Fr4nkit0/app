@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:app/core/presentation/failure_message.dart';
 import 'package:app/core/theme/marilin_tokens.dart';
-import 'package:app/core/utils/resource.dart';
 import 'package:app/core/widgets/top_toast.dart';
 import 'package:app/features/inventory/domain/custody.dart';
 import 'package:app/features/inventory/domain/models/container_type.dart';
@@ -47,11 +47,25 @@ class RegisterContainerReturnDialog extends ConsumerWidget {
     Map<String, int> returns,
   ) async {
     final visitId = this.visitId;
-    final result = await ref
-        .read(registerContainerReturnUseCaseProvider)
-        .execute(customerId: customerId, visitId: visitId, returns: returns);
-    // A failed return keeps the dialog open so the driver can retry.
-    if (result is Error<void>) return;
+    try {
+      await ref
+          .read(registerContainerReturnUseCaseProvider)
+          .execute(customerId: customerId, visitId: visitId, returns: returns);
+    } catch (e) {
+      // A failed return keeps the dialog open so the driver can retry.
+      if (context.mounted) {
+        TopToast.show(
+          context,
+          message: failureMessage(
+            e,
+            fallback: 'No se registró la devolución. Reintentá.',
+          ),
+          icon: Icons.error_outline,
+          color: MarilinColors.destructive,
+        );
+      }
+      return;
+    }
 
     if (visitId != null) ref.invalidate(visitMovementsProvider(visitId));
     ref.invalidate(customerContainerBalancesProvider(customerId));

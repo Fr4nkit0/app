@@ -1,4 +1,5 @@
 import 'package:app/core/utils/money_formatter.dart';
+import 'package:app/core/presentation/failure_message.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:url_launcher/url_launcher.dart';
@@ -21,7 +22,6 @@ import 'package:app/features/inventory/presentation/providers/inventory_reposito
 import 'package:app/features/payments/presentation/providers/payment_repository_provider.dart';
 import 'package:app/features/payments/presentation/register_debt_payment.dart';
 import 'package:app/features/payments/domain/models/payment.dart';
-import 'package:app/core/utils/resource.dart';
 import 'package:app/core/theme/marilin_tokens.dart';
 import 'package:app/features/sync/domain/models/pending_change.dart';
 import 'package:app/features/sync/presentation/widgets/sync_badge_container.dart';
@@ -388,50 +388,56 @@ class _VisitScreenState extends ConsumerState<VisitScreen> {
     final visitType = _isSaleSelected ? VisitType.sale : VisitType.visit;
 
     setState(() => _isClosing = true);
-    final result = await ref
-        .read(completeVisitUseCaseProvider)
-        .execute(
-          stopId: stop.id,
-          customerId: stop.customer.id,
-          visitType: visitType,
-          nextStatus: nextStatus,
-          outcomeId: hasSales ? null : outcome?.id,
-          observations: _noteController.text.isNotEmpty
-              ? _noteController.text
-              : null,
-          rescheduleAt: rescheduleAt,
-        );
+    try {
+      await ref
+          .read(completeVisitUseCaseProvider)
+          .execute(
+            stopId: stop.id,
+            customerId: stop.customer.id,
+            visitType: visitType,
+            nextStatus: nextStatus,
+            outcomeId: hasSales ? null : outcome?.id,
+            observations: _noteController.text.isNotEmpty
+                ? _noteController.text
+                : null,
+            rescheduleAt: rescheduleAt,
+          );
+    } on RescheduleTimeException catch (error) {
+      if (!mounted) return;
+      setState(() {
+        _isClosing = false;
+        _rescheduleError = error.reason;
+      });
+      return;
+    } catch (error) {
+      if (!mounted) return;
+      setState(() => _isClosing = false);
+      TopToast.show(
+        context,
+        message: failureMessage(
+          error,
+          fallback: 'No se guardó la visita. Reintentá.',
+        ),
+        icon: Icons.error_outline,
+        color: MarilinColors.destructive,
+      );
+      return;
+    }
     if (!mounted) return;
 
-    switch (result) {
-      case Success():
-        // The toast outlives this screen, so it uses the navigator's context.
-        final navigator = Navigator.of(context);
-        navigator.pop();
-        WidgetsBinding.instance.addPostFrameCallback((_) {
-          if (!navigator.mounted) return;
-          TopToast.show(
-            navigator.context,
-            message: toastMessage,
-            icon: toastIcon,
-            color: toastColor,
-            duration: const Duration(seconds: 4),
-          );
-        });
-      case Error(:final error):
-        setState(() {
-          _isClosing = false;
-          if (error is RescheduleTimeException) _rescheduleError = error.reason;
-        });
-        if (error is! RescheduleTimeException) {
-          TopToast.show(
-            context,
-            message: 'No se guardó la visita. Reintentá.',
-            icon: Icons.error_outline,
-            color: MarilinColors.destructive,
-          );
-        }
-    }
+    // The toast outlives this screen, so it uses the navigator's context.
+    final navigator = Navigator.of(context);
+    navigator.pop();
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (!navigator.mounted) return;
+      TopToast.show(
+        navigator.context,
+        message: toastMessage,
+        icon: toastIcon,
+        color: toastColor,
+        duration: const Duration(seconds: 4),
+      );
+    });
   }
 
   /// The chosen reschedule time on [now]'s day, or null when none is chosen.

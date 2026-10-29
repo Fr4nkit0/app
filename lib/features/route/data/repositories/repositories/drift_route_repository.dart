@@ -121,80 +121,76 @@ class DriftRouteRepository implements RouteRepository {
   @override
   Future<void> markStop(String id, StopStatus status) async {
     final now = DateTime.now();
-    await _db.transaction(() async {
-      final updated =
-          await (_db.update(
-            _db.routeStopTable,
-          )..where((t) => t.routeStopId.equals(id))).write(
-            RouteStopTableCompanion(
-              status: Value(status.name),
-              visitedAt: status == StopStatus.pending
-                  ? const Value.absent()
-                  : Value(now),
-              lastModifiedDate: Value(now),
-            ),
-          );
-      if (updated == 0) return;
+    final updated =
+        await (_db.update(
+          _db.routeStopTable,
+        )..where((t) => t.routeStopId.equals(id))).write(
+          RouteStopTableCompanion(
+            status: Value(status.name),
+            visitedAt: status == StopStatus.pending
+                ? const Value.absent()
+                : Value(now),
+            lastModifiedDate: Value(now),
+          ),
+        );
+    if (updated == 0) return;
 
-      await _queue.enqueue(
-        entity: PendingEntity.routeStop,
-        entityId: id,
-        action: PendingAction.update,
-        payload: {
-          'routeStopId': id,
-          'status': status.name,
-          'visitedAt': status == StopStatus.pending
-              ? null
-              : now.toIso8601String(),
-        },
-      );
-    });
+    await _queue.enqueue(
+      entity: PendingEntity.routeStop,
+      entityId: id,
+      action: PendingAction.update,
+      payload: {
+        'routeStopId': id,
+        'status': status.name,
+        'visitedAt': status == StopStatus.pending
+            ? null
+            : now.toIso8601String(),
+      },
+    );
   }
 
   @override
-  Future<String> rescheduleStop(String stopId, DateTime at) {
-    return _db.transaction(() async {
-      final original = await (_db.select(
-        _db.routeStopTable,
-      )..where((t) => t.routeStopId.equals(stopId))).getSingle();
-      await markStop(stopId, StopStatus.rescheduled);
+  Future<String> rescheduleStop(String stopId, DateTime at) async {
+    final original = await (_db.select(
+      _db.routeStopTable,
+    )..where((t) => t.routeStopId.equals(stopId))).getSingle();
+    await markStop(stopId, StopStatus.rescheduled);
 
-      final maxSequence = _db.routeStopTable.sequence.max();
-      final last =
-          await (_db.selectOnly(_db.routeStopTable)
-                ..addColumns([maxSequence])
-                ..where(_db.routeStopTable.routeId.equals(original.routeId)))
-              .map((r) => r.read(maxSequence))
-              .getSingle();
-      final time =
-          '${at.hour.toString().padLeft(2, '0')}:'
-          '${at.minute.toString().padLeft(2, '0')}:00';
-      final created = await _db
-          .into(_db.routeStopTable)
-          .insertReturning(
-            RouteStopTableCompanion.insert(
-              routeId: original.routeId,
-              customerId: original.customerId,
-              customerAddressId: Value(original.customerAddressId),
-              sequence: (last ?? 0) + 1,
-              scheduledAt: at,
-              scheduledTime: Value(time),
-              rescheduledFromStopId: Value(stopId),
-            ),
-          );
+    final maxSequence = _db.routeStopTable.sequence.max();
+    final last =
+        await (_db.selectOnly(_db.routeStopTable)
+              ..addColumns([maxSequence])
+              ..where(_db.routeStopTable.routeId.equals(original.routeId)))
+            .map((r) => r.read(maxSequence))
+            .getSingle();
+    final time =
+        '${at.hour.toString().padLeft(2, '0')}:'
+        '${at.minute.toString().padLeft(2, '0')}:00';
+    final created = await _db
+        .into(_db.routeStopTable)
+        .insertReturning(
+          RouteStopTableCompanion.insert(
+            routeId: original.routeId,
+            customerId: original.customerId,
+            customerAddressId: Value(original.customerAddressId),
+            sequence: (last ?? 0) + 1,
+            scheduledAt: at,
+            scheduledTime: Value(time),
+            rescheduledFromStopId: Value(stopId),
+          ),
+        );
 
-      await _queue.enqueue(
-        entity: PendingEntity.routeStop,
-        entityId: created.routeStopId,
-        action: PendingAction.insert,
-        payload: {
-          'routeStopId': created.routeStopId,
-          'rescheduledFromStopId': stopId,
-          'scheduledTime': time,
-        },
-      );
-      return created.routeStopId;
-    });
+    await _queue.enqueue(
+      entity: PendingEntity.routeStop,
+      entityId: created.routeStopId,
+      action: PendingAction.insert,
+      payload: {
+        'routeStopId': created.routeStopId,
+        'rescheduledFromStopId': stopId,
+        'scheduledTime': time,
+      },
+    );
+    return created.routeStopId;
   }
 
   static String _dateOnly(DateTime d) =>

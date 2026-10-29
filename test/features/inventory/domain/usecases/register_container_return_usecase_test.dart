@@ -1,8 +1,9 @@
 import 'package:drift/native.dart';
 import 'package:flutter_test/flutter_test.dart';
 
+import 'package:app/core/errors/domain_failure.dart';
 import 'package:app/core/services/database.helper.dart';
-import 'package:app/core/utils/resource.dart';
+import 'package:app/core/usecases/drift_transaction_runner.dart';
 import 'package:app/features/inventory/data/repositories/inventory.repository.dart';
 import 'package:app/features/inventory/domain/models/container_movement.dart';
 import 'package:app/features/inventory/domain/usecases/register_container_return.usecase.dart';
@@ -33,7 +34,7 @@ void main() {
     var next = 0;
     return RegisterContainerReturnUseCase(
       inventoryRepo: repo,
-      transaction: db.transaction,
+      transaction: driftTransactionRunner(db),
       now: () => at,
       newId: () => 'mov-${next++}',
     );
@@ -42,14 +43,13 @@ void main() {
   test(
     'records one return movement per container type with returned > 0',
     () async {
-      final result = await useCase(DriftInventoryRepository(db)).execute(
+      await useCase(DriftInventoryRepository(db)).execute(
         customerId: 'cust-1',
         visitId: 'visit-1',
         routeId: 'route-1',
         returns: {'JUG': 2, 'SIPHON': 1},
       );
 
-      expect(result, isA<Success<void>>());
       final movements = await db.select(db.containerMovementTable).get();
       expect(movements.map((m) => m.containerMovementId), ['mov-0', 'mov-1']);
       expect(movements.map((m) => m.containerType), ['JUG', 'SIPHON']);
@@ -82,11 +82,10 @@ void main() {
   });
 
   test('records nothing when every return is zero', () async {
-    final result = await useCase(
+    await useCase(
       DriftInventoryRepository(db),
     ).execute(customerId: 'cust-1', returns: {'JUG': 0, 'SIPHON': 0});
 
-    expect(result, isA<Success<void>>());
     expect(await db.select(db.containerMovementTable).get(), isEmpty);
     expect(await db.select(db.customerContainerBalanceTable).get(), isEmpty);
     expect(await db.select(db.pendingChangeTable).get(), isEmpty);
@@ -97,11 +96,12 @@ void main() {
     () async {
       final repo = _FailingInventoryRepository(db, failOn: 2);
 
-      final result = await useCase(
-        repo,
-      ).execute(customerId: 'cust-1', returns: {'JUG': 2, 'SIPHON': 1});
-
-      expect(result, isA<Error<void>>());
+      await expectLater(
+        useCase(
+          repo,
+        ).execute(customerId: 'cust-1', returns: {'JUG': 2, 'SIPHON': 1}),
+        throwsA(isA<StorageFailure>()),
+      );
       expect(repo.calls, 2);
       expect(await db.select(db.containerMovementTable).get(), isEmpty);
       expect(await db.select(db.customerContainerBalanceTable).get(), isEmpty);

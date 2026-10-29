@@ -18,38 +18,36 @@ class DriftVisitRepository implements VisitRepository {
 
   @override
   Future<void> recordVisit(Visit v) async {
-    await _db.transaction(() async {
-      await _db
-          .into(_db.visitTable)
-          .insert(
-            VisitTableCompanion.insert(
-              visitId: Value(v.visitId),
-              routeStopId: v.routeStopId,
-              customerId: v.customerId,
-              visitType: v.visitType.name,
-              outcomeId: Value(v.outcomeId),
-              arrived_at: v.arrivedAt,
-              observations: Value(v.observations),
-              amountCollected: Value(v.amountCollected),
-            ),
-          );
+    await _db
+        .into(_db.visitTable)
+        .insert(
+          VisitTableCompanion.insert(
+            visitId: Value(v.visitId),
+            routeStopId: v.routeStopId,
+            customerId: v.customerId,
+            visitType: v.visitType.name,
+            outcomeId: Value(v.outcomeId),
+            arrived_at: v.arrivedAt,
+            observations: Value(v.observations),
+            amountCollected: Value(v.amountCollected),
+          ),
+        );
 
-      await _queue.enqueue(
-        entity: PendingEntity.visit,
-        entityId: v.visitId,
-        action: PendingAction.insert,
-        payload: {
-          'visitId': v.visitId,
-          'routeStopId': v.routeStopId,
-          'customerId': v.customerId,
-          'visitType': v.visitType.name,
-          'outcomeId': v.outcomeId,
-          'arrivedAt': v.arrivedAt.toIso8601String(),
-          'observations': v.observations,
-          'amountCollected': v.amountCollected,
-        },
-      );
-    });
+    await _queue.enqueue(
+      entity: PendingEntity.visit,
+      entityId: v.visitId,
+      action: PendingAction.insert,
+      payload: {
+        'visitId': v.visitId,
+        'routeStopId': v.routeStopId,
+        'customerId': v.customerId,
+        'visitType': v.visitType.name,
+        'outcomeId': v.outcomeId,
+        'arrivedAt': v.arrivedAt.toIso8601String(),
+        'observations': v.observations,
+        'amountCollected': v.amountCollected,
+      },
+    );
   }
 
   @override

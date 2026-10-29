@@ -35,72 +35,70 @@ class DriftInventoryRepository implements InventoryRepository {
 
   @override
   Future<void> recordContainerMovement(ContainerMovement movement) async {
-    await _db.transaction(() async {
-      await _db
-          .into(_db.containerMovementTable)
-          .insert(
-            ContainerMovementTableCompanion.insert(
-              containerMovementId: Value(movement.id),
-              customerId: movement.customerId,
-              containerType: movement.containerType,
-              deliveredQuantity: movement.deliveredQuantity,
-              returnedQuantity: movement.returnedQuantity,
-              createdAt: Value(movement.createdAt),
-              visitId: Value(movement.visitId),
-              routeId: Value(movement.routeId),
-            ),
-          );
+    await _db
+        .into(_db.containerMovementTable)
+        .insert(
+          ContainerMovementTableCompanion.insert(
+            containerMovementId: Value(movement.id),
+            customerId: movement.customerId,
+            containerType: movement.containerType,
+            deliveredQuantity: movement.deliveredQuantity,
+            returnedQuantity: movement.returnedQuantity,
+            createdAt: Value(movement.createdAt),
+            visitId: Value(movement.visitId),
+            routeId: Value(movement.routeId),
+          ),
+        );
 
-      final existing =
-          await (_db.select(_db.customerContainerBalanceTable)..where(
-                (t) =>
-                    t.customerId.equals(movement.customerId) &
-                    t.containerType.equals(movement.containerType),
-              ))
-              .getSingleOrNull();
-
-      final newQty = (existing?.quantity ?? 0) + movement.netQuantity;
-
-      if (existing == null) {
-        await _db
-            .into(_db.customerContainerBalanceTable)
-            .insert(
-              CustomerContainerBalanceTableCompanion.insert(
-                customerId: movement.customerId,
-                containerType: movement.containerType,
-                quantity: Value(newQty),
-              ),
-            );
-      } else {
-        await (_db.update(_db.customerContainerBalanceTable)..where(
+    final existing =
+        await (_db.select(_db.customerContainerBalanceTable)..where(
               (t) =>
                   t.customerId.equals(movement.customerId) &
                   t.containerType.equals(movement.containerType),
             ))
-            .write(
-              CustomerContainerBalanceTableCompanion(
-                quantity: Value(newQty),
-                lastModifiedDate: Value(DateTime.now()),
-              ),
-            );
-      }
+            .getSingleOrNull();
 
-      await _queue.enqueue(
-        entity: PendingEntity.containerMovement,
-        entityId: movement.id,
-        action: PendingAction.insert,
-        payload: {
-          'containerMovementId': movement.id,
-          'customerId': movement.customerId,
-          'containerType': movement.containerType,
-          'deliveredQuantity': movement.deliveredQuantity,
-          'returnedQuantity': movement.returnedQuantity,
-          'visitId': movement.visitId,
-          'routeId': movement.routeId,
-          'createdAt': movement.createdAt.toIso8601String(),
-        },
-      );
-    });
+    final newQty = (existing?.quantity ?? 0) + movement.netQuantity;
+
+    if (existing == null) {
+      await _db
+          .into(_db.customerContainerBalanceTable)
+          .insert(
+            CustomerContainerBalanceTableCompanion.insert(
+              customerId: movement.customerId,
+              containerType: movement.containerType,
+              quantity: Value(newQty),
+            ),
+          );
+    } else {
+      await (_db.update(_db.customerContainerBalanceTable)..where(
+            (t) =>
+                t.customerId.equals(movement.customerId) &
+                t.containerType.equals(movement.containerType),
+          ))
+          .write(
+            CustomerContainerBalanceTableCompanion(
+              quantity: Value(newQty),
+              lastModifiedDate: Value(DateTime.now()),
+            ),
+          );
+    }
+
+    await _queue.enqueue(
+      entity: PendingEntity.containerMovement,
+      entityId: movement.id,
+      action: PendingAction.insert,
+      payload: {
+        'containerMovementId': movement.id,
+        'customerId': movement.customerId,
+        'containerType': movement.containerType,
+        'deliveredQuantity': movement.deliveredQuantity,
+        'returnedQuantity': movement.returnedQuantity,
+        'visitId': movement.visitId,
+        'routeId': movement.routeId,
+        'createdAt': movement.createdAt.toIso8601String(),
+      },
+    );
   }
 
   @override

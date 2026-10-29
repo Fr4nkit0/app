@@ -3,8 +3,8 @@ import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
+import 'package:app/core/errors/domain_failure.dart';
 import 'package:app/core/theme/marilin_tokens.dart';
-import 'package:app/core/utils/resource.dart';
 import 'package:app/features/customers/domain/models/customer.dart';
 import 'package:app/features/inventory/presentation/providers/inventory_repository_provider.dart';
 import 'package:app/features/payments/presentation/providers/payment_repository_provider.dart';
@@ -23,12 +23,12 @@ import 'package:app/features/visits/presentation/providers/visit_repository_prov
 import 'package:app/features/visits/presentation/screens/visit_screen.dart';
 
 class _FakeCompleteVisit implements CompleteVisitUseCase {
-  final completer = Completer<Resource<void>>();
+  final completer = Completer<void>();
   int calls = 0;
   DateTime? lastRescheduleAt;
 
   @override
-  Future<Resource<void>> execute({
+  Future<void> execute({
     required String stopId,
     required String customerId,
     required VisitType visitType,
@@ -160,7 +160,7 @@ void main() {
     expect(tester.widget<FilledButton>(_primary).onPressed, isNull);
     expect(find.byType(VisitScreen), findsOneWidget);
 
-    fake.completer.complete(const Resource.success(null));
+    fake.completer.complete();
     await tester.pumpAndSettle(const Duration(seconds: 5));
   });
 
@@ -171,7 +171,7 @@ void main() {
 
     await tester.tap(_primary);
     await tester.pump();
-    fake.completer.complete(Resource.error(Exception('boom')));
+    fake.completer.completeError(StorageFailure(Exception('boom')));
     await tester.pump();
     await tester.pump(const Duration(milliseconds: 400));
 
@@ -198,7 +198,7 @@ void main() {
 
     await tester.tap(_primary);
     await tester.pump();
-    fake.completer.complete(const Resource.success(null));
+    fake.completer.complete();
     await tester.pump();
     await tester.pump(const Duration(milliseconds: 400));
     await tester.pump(const Duration(milliseconds: 400));
@@ -214,7 +214,7 @@ void main() {
 
     await tester.tap(_primary);
     await tester.pump();
-    fake.completer.complete(const Resource.success(null));
+    fake.completer.complete();
     await tester.pump();
     await tester.pump(const Duration(milliseconds: 400));
     await tester.pump(const Duration(milliseconds: 400));
@@ -243,7 +243,7 @@ void main() {
 
     await tester.tap(_primary);
     await tester.pump();
-    fake.completer.complete(const Resource.success(null));
+    fake.completer.complete();
     await tester.pump();
     await tester.pump(const Duration(milliseconds: 400));
     await tester.pump(const Duration(milliseconds: 400));
