@@ -20,6 +20,7 @@ import 'package:app/features/visits/domain/models/visit_type.dart';
 import 'package:app/features/visits/domain/usecases/complete_visit.usecase.dart';
 import 'package:app/features/visits/presentation/providers/complete_visit_usecase_provider.dart';
 import 'package:app/features/visits/presentation/providers/visit_repository_provider.dart';
+import 'package:app/features/sales/presentation/providers/sale_repository_provider.dart';
 import 'package:app/features/visits/presentation/screens/visit_screen.dart';
 
 class _FakeCompleteVisit implements CompleteVisitUseCase {

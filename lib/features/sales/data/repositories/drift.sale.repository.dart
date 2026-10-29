@@ -22,13 +22,16 @@ class DriftSaleRepository implements SaleRepository {
   final CustomerBalanceStore _balances;
 
   @override
-  Stream<List<Sale>> watchAllSales() {
-    final query = _db.select(_db.saleTable).join([
-      innerJoin(
-        _db.customerTable,
-        _db.customerTable.customerId.equalsExp(_db.saleTable.customerId),
-      ),
-    ]);
+  Stream<List<Sale>> watchVisitSales(String visitId) {
+    final query =
+        (_db.select(
+          _db.saleTable,
+        )..where((t) => t.visitId.equals(visitId))).join([
+          innerJoin(
+            _db.customerTable,
+            _db.customerTable.customerId.equalsExp(_db.saleTable.customerId),
+          ),
+        ]);
 
     return query.watch().asyncMap((rows) async {
       final sales = <Sale>[];

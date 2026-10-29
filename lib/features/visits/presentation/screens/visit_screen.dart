@@ -21,7 +21,6 @@ import 'package:app/features/visits/presentation/providers/complete_visit_usecas
 import 'package:app/features/inventory/presentation/providers/inventory_repository_provider.dart';
 import 'package:app/features/payments/presentation/providers/payment_repository_provider.dart';
 import 'package:app/features/payments/presentation/register_debt_payment.dart';
-import 'package:app/features/payments/domain/models/payment.dart';
 import 'package:app/core/theme/marilin_tokens.dart';
 import 'package:app/features/sync/domain/models/pending_change.dart';
 import 'package:app/features/sync/presentation/widgets/sync_badge_container.dart';
@@ -34,24 +33,6 @@ import 'package:app/features/visits/presentation/widgets/visit_debt_banner.dart'
 import 'package:app/features/visits/presentation/widgets/visit_custody_banner.dart';
 import 'package:app/features/visits/presentation/widgets/visit_reschedule_time_field.dart';
 import 'package:app/features/visits/domain/reschedule_time.dart';
-
-final stopSalesProvider = StreamProvider.family<List<Sale>, String>((
-  ref,
-  stopId,
-) {
-  final repo = ref.watch(saleRepositoryProvider);
-  return repo.watchAllSales().map(
-    (sales) => sales.where((s) => s.visitId == stopId).toList(),
-  );
-});
-
-final visitPaymentsProvider = StreamProvider.family<List<Payment>, String>((
-  ref,
-  stopId,
-) {
-  final repo = ref.watch(paymentRepositoryProvider);
-  return repo.watchVisitPayments(stopId);
-});
 
 class VisitScreen extends ConsumerStatefulWidget {
   const VisitScreen({super.key, required this.stopId});

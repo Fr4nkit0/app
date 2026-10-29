@@ -18,6 +18,7 @@ import 'package:app/features/route/presentation/widgets/route_stop_card.dart';
 import 'package:app/features/sync/domain/models/sync_status.dart';
 import 'package:app/features/sync/presentation/providers/sync_providers.dart';
 import 'package:app/features/visits/presentation/providers/visit_repository_provider.dart';
+import 'package:app/features/sales/presentation/providers/sale_repository_provider.dart';
 import 'package:app/features/visits/presentation/screens/visit_screen.dart';
 
 import '../../../support/real_fonts.dart';
