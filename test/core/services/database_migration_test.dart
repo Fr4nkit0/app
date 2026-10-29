@@ -333,6 +333,24 @@ void main() {
   group('Database Schema Migration V12 -> V13', () {
     late AppDatabase db;
 
+    test('re-running 12->13 on an upgraded db keeps the column and the data', () async {
+      final fresh = AppDatabase(NativeDatabase.memory());
+      await fresh.customStatement(
+        "INSERT INTO products (product_id, name, price, container_type_id) "
+        "VALUES ('p-1', 'Agua 20L', 1500, 7)",
+      );
+      final before = await fresh.customSelect('SELECT * FROM products').get();
+
+      await fresh.migration.onUpgrade(fresh.createMigrator(), 12, 13);
+
+      final after = await fresh.customSelect('SELECT * FROM products').get();
+      expect(after.map((r) => r.data).toList(), before.map((r) => r.data).toList());
+      final column = (await fresh.customSelect('PRAGMA table_info(products)').get())
+          .firstWhere((r) => r.read<String>('name') == 'container_type_id');
+      expect(column.read<int>('notnull'), 0);
+      await fresh.close();
+    });
+
     setUp(() async {
       db = AppDatabase(NativeDatabase.memory());
       // Rebuild the v12 shape: products without their container type link.
