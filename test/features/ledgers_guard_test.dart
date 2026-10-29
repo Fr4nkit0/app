@@ -31,4 +31,16 @@ void main() {
       ]),
     );
   });
+
+  test('only Custody writes the customer container balance table', () {
+    final write = RegExp(
+      r'\b(into|update|delete)\(\s*\w*\.?customerContainerBalanceTable\b',
+    );
+    final writing = [
+      for (final file in dartFiles('lib'))
+        if (write.hasMatch(file.readAsStringSync())) path(file),
+    ];
+
+    expect(writing, ['lib/features/inventory/data/repositories/custody.dart']);
+  });
 }

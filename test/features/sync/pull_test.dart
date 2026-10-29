@@ -5,6 +5,8 @@ import 'package:flutter_test/flutter_test.dart';
 
 import 'package:app/core/services/database.helper.dart';
 import 'package:app/features/customers/data/repositories/drift.customer.repository.dart';
+import 'package:app/features/inventory/data/repositories/inventory.repository.dart';
+import 'package:app/features/inventory/domain/models/container_movement.dart';
 import 'package:app/features/products/data/repositories/drift.product.repository.dart';
 import 'package:app/features/route/data/repositories/repositories/drift_route_repository.dart';
 import 'package:app/features/visits/data/repositories/drift_visit.repository.dart';
@@ -371,6 +373,58 @@ void main() {
     expect(containers.quantity, 7);
     final stops = await DriftRouteRepository(db).watchDayStops().first;
     expect(stops.firstWhere((s) => s.customer.name == 'Ana').customer.debtAmount, 250.75);
+  });
+
+  group('custody', () {
+    Future<int> held(String code) async => (await (db.select(db.customerContainerBalanceTable)
+              ..where((t) => t.customerId.equals('cust-uuid-11') & t.containerType.equals(code)))
+            .getSingle())
+        .quantity;
+
+    Map<String, dynamic> serverCustody(int balance) => _page({
+      'customer_container_balances': [
+        {'id': 1300, 'customer_id': 11, 'container_type_id': 1, 'balance': balance, 'enabled': true},
+      ],
+    });
+
+    test('is the server value plus the unsent container movements', () async {
+      await DriftInventoryRepository(db).recordContainerMovement(
+        ContainerMovement(
+          id: 'mov-1',
+          customerId: 'cust-uuid-11',
+          containerType: 'BIDON_20L',
+          deliveredQuantity: 2,
+          returnedQuantity: 0,
+          createdAt: DateTime(2026, 10, 19, 10),
+        ),
+      );
+      pages = [serverCustody(7)];
+
+      await service.pull();
+
+      expect(await held('BIDON_20L'), 7 + 2);
+    });
+
+    test('takes the server value while only sales or payments are unsent', () async {
+      await db.into(db.paymentTable).insert(
+            PaymentTableCompanion.insert(
+              paymentId: const Value('pay-1'),
+              customerId: 'cust-uuid-11',
+              amount: 100,
+              paymentMethod: 'EFECTIVO',
+            ),
+          );
+      await DriftPendingChangeRepository(db).enqueue(
+        entity: PendingEntity.payment,
+        entityId: 'pay-1',
+        action: PendingAction.insert,
+      );
+      pages = [serverCustody(7)];
+
+      await service.pull();
+
+      expect(await held('BIDON_20L'), 7);
+    });
   });
 
   test('keeps rows with unsent local changes and adds unsent payments to the server balance', () async {

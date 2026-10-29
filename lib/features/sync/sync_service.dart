@@ -4,6 +4,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../core/network/dio_client.dart';
 import '../../core/services/database.helper.dart';
+import '../inventory/data/repositories/custody.dart';
 import '../payments/data/repositories/customer_account.dart';
 import 'domain/models/pending_change.dart';
 
@@ -15,13 +16,11 @@ class _Unsent {
   const _Unsent({
     required this.customers,
     required this.stops,
-    required this.balanceCustomers,
     required this.hasSales,
   });
 
   final Set<String> customers;
   final Set<String> stops;
-  final Set<String> balanceCustomers;
   final bool hasSales;
 }
 
@@ -32,7 +31,8 @@ class _Unsent {
 class SyncService {
   SyncService(this._dio, this._db, {DateTime Function()? today})
     : _today = today ?? DateTime.now,
-      _account = CustomerAccount(_db);
+      _account = CustomerAccount(_db),
+      _custody = Custody(_db);
 
   static const pullCursorKey = 'pull_cursor';
 
@@ -40,6 +40,7 @@ class SyncService {
   final AppDatabase _db;
   final DateTime Function() _today;
   final CustomerAccount _account;
+  final Custody _custody;
 
   /// True on the first run (no cursor) or when no stored route is today's.
   Future<bool> needsBootstrap() async {
@@ -136,7 +137,7 @@ class SyncService {
       for (final a in rows['customer_agreements'] ?? const <Json>[]) {
         await _upsertAgreement(a);
       }
-      await _replaceBalances(rows, unsent);
+      await _replaceBalances(rows);
       for (final r in rows['routes'] ?? const <Json>[]) {
         await _storeRoute(r);
       }
@@ -246,10 +247,9 @@ class SyncService {
     }
   }
 
-  /// Server balances replace local ones, plus the sales and minus the
-  /// payments the server has not received yet. Container balances keep the
-  /// local value while unsent changes are folded into it.
-  Future<void> _replaceBalances(Map<String, List<Json>> rows, _Unsent unsent) async {
+  /// Server balances and custody replace the local ones, plus the local
+  /// movements the server has not received yet (ADR 0003).
+  Future<void> _replaceBalances(Map<String, List<Json>> rows) async {
     for (final b in rows['customer_balances'] ?? const <Json>[]) {
       final customerId = await _localCustomerId(b['customer_id'] as int?);
       if (customerId == null) continue;
@@ -267,16 +267,13 @@ class SyncService {
       final customerId = await _localCustomerId(b['customer_id'] as int?);
       final code = containerCodes[b['container_type_id'] as int];
       if (customerId == null || code == null) continue;
-      if (unsent.balanceCustomers.contains(customerId)) continue;
-      await _db.into(_db.customerContainerBalanceTable).insertOnConflictUpdate(
-            CustomerContainerBalanceTableCompanion.insert(
-              customerId: customerId,
-              containerType: code,
-              quantity: Value((b['balance'] as num).toInt()),
-              enabled: _enabled(b),
-              serverId: Value(b['id'] as int),
-            ),
-          );
+      await _custody.reconcile(
+        customerId,
+        code,
+        (b['balance'] as num).toInt(),
+        serverId: b['id'] as int,
+        enabled: _enabled(b),
+      );
     }
   }
 
@@ -374,34 +371,10 @@ class SyncService {
       stops.addAll(visits.map((v) => v.routeStopId));
     }
 
-    final balanceCustomers = <String>{};
-    final saleIds = ids(PendingEntity.sale);
-    if (saleIds.isNotEmpty) {
-      final sales = await (_db.select(_db.saleTable)
-            ..where((t) => t.saleId.isIn(saleIds)))
-          .get();
-      balanceCustomers.addAll(sales.map((r) => r.customerId));
-    }
-    final paymentIds = ids(PendingEntity.payment);
-    if (paymentIds.isNotEmpty) {
-      final payments = await (_db.select(_db.paymentTable)
-            ..where((t) => t.paymentId.isIn(paymentIds)))
-          .get();
-      balanceCustomers.addAll(payments.map((r) => r.customerId));
-    }
-    final movementIds = ids(PendingEntity.containerMovement);
-    if (movementIds.isNotEmpty) {
-      final movements = await (_db.select(_db.containerMovementTable)
-            ..where((t) => t.containerMovementId.isIn(movementIds)))
-          .get();
-      balanceCustomers.addAll(movements.map((r) => r.customerId));
-    }
-
     return _Unsent(
       customers: ids(PendingEntity.customer),
       stops: stops,
-      balanceCustomers: balanceCustomers,
-      hasSales: saleIds.isNotEmpty,
+      hasSales: ids(PendingEntity.sale).isNotEmpty,
     );
   }
 
@@ -555,18 +528,10 @@ class SyncService {
         );
       }
 
-      if (unsent.balanceCustomers.contains(localId)) continue;
-
       for (final b in _list(c['container_balances'])) {
         final code = containerCodes[b['container_type_id'] as int];
         if (code == null) continue;
-        await _db.into(_db.customerContainerBalanceTable).insertOnConflictUpdate(
-              CustomerContainerBalanceTableCompanion.insert(
-                customerId: localId,
-                containerType: code,
-                quantity: Value((b['balance'] as num).toInt()),
-              ),
-            );
+        await _custody.reconcile(localId, code, (b['balance'] as num).toInt());
       }
     }
     return (customerIds, addressIds);

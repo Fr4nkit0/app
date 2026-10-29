@@ -19,14 +19,18 @@ void main() {
     for (final id in ['ana', 'beto']) {
       await db
           .into(db.customerTable)
-          .insert(CustomerTableCompanion.insert(customerId: Value(id), name: id));
+          .insert(
+            CustomerTableCompanion.insert(customerId: Value(id), name: id),
+          );
     }
   });
 
   tearDown(() => db.close());
 
   Future<void> pendingSale(String id, String customerId, double total) async {
-    await db.into(db.saleTable).insert(
+    await db
+        .into(db.saleTable)
+        .insert(
           SaleTableCompanion.insert(
             saleId: Value(id),
             customerId: customerId,
@@ -43,8 +47,14 @@ void main() {
     );
   }
 
-  Future<void> pendingPayment(String id, String customerId, double amount) async {
-    await db.into(db.paymentTable).insert(
+  Future<void> pendingPayment(
+    String id,
+    String customerId,
+    double amount,
+  ) async {
+    await db
+        .into(db.paymentTable)
+        .insert(
           PaymentTableCompanion.insert(
             paymentId: Value(id),
             customerId: customerId,
@@ -86,19 +96,25 @@ void main() {
     });
   });
 
-  test('balancesOf returns the accounts of the customers that have one', () async {
-    await account.post('ana', 10);
+  test(
+    'balancesOf returns the accounts of the customers that have one',
+    () async {
+      await account.post('ana', 10);
 
-    expect(await account.balancesOf(['ana', 'beto']), {'ana': 10});
-  });
+      expect(await account.balancesOf(['ana', 'beto']), {'ana': 10});
+    },
+  );
 
-  test('pendingDelta is the pending sales minus the pending payments', () async {
-    await pendingSale('s1', 'ana', 300);
-    await pendingPayment('p1', 'ana', 100);
-    await pendingSale('s-beto', 'beto', 999);
+  test(
+    'pendingDelta is the pending sales minus the pending payments',
+    () async {
+      await pendingSale('s1', 'ana', 300);
+      await pendingPayment('p1', 'ana', 100);
+      await pendingSale('s-beto', 'beto', 999);
 
-    expect(await account.pendingDelta('ana'), 200);
-  });
+      expect(await account.pendingDelta('ana'), 200);
+    },
+  );
 
   group('reconcile', () {
     test('without pending changes stores the server value', () async {
@@ -128,13 +144,16 @@ void main() {
     });
   });
 
-  test('a query joined to the account reads the balance, 0 without one', () async {
-    await account.post('ana', 42);
+  test(
+    'a query joined to the account reads the balance, 0 without one',
+    () async {
+      await account.post('ana', 42);
 
-    final rows = await (db.select(db.customerTable).join([
-      account.balanceJoin(db.customerTable.customerId),
-    ])..orderBy([OrderingTerm.asc(db.customerTable.customerId)])).get();
+      final rows = await (db.select(db.customerTable).join([
+        account.balanceJoin(db.customerTable.customerId),
+      ])..orderBy([OrderingTerm.asc(db.customerTable.customerId)])).get();
 
-    expect(rows.map(account.balanceIn), [42, 0]);
-  });
+      expect(rows.map(account.balanceIn), [42, 0]);
+    },
+  );
 }
