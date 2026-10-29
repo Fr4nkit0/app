@@ -1,14 +1,14 @@
 import 'package:drift/drift.dart';
 
 import '../../../core/services/database.helper.dart';
-import '../../payments/data/repositories/customer_balance.store.dart';
+import '../../payments/data/repositories/customer_account.dart';
 import '../domain/models/pending_change.dart';
 import 'entity_pusher.dart';
 import 'references.dart';
 
 /// Payments, with or without a visit or a sale.
 class PaymentPusher implements EntityPusher, RejectionAware {
-  PaymentPusher(this._db) : _balances = CustomerBalanceStore(_db);
+  PaymentPusher(this._db) : _account = CustomerAccount(_db);
 
   static const missing = 'El pago ya no existe en el dispositivo.';
   static String unknownMethod(String method) =>
@@ -18,7 +18,7 @@ class PaymentPusher implements EntityPusher, RejectionAware {
   static const _catalogCodes = {'EFECTIVO': 'CASH', 'TRANSFERENCIA': 'TRANSFER'};
 
   final AppDatabase _db;
-  final CustomerBalanceStore _balances;
+  final CustomerAccount _account;
 
   @override
   PendingEntity get entity => PendingEntity.payment;
@@ -94,6 +94,6 @@ class PaymentPusher implements EntityPusher, RejectionAware {
       _db.paymentTable,
     )..where((t) => t.paymentId.equals(localId))).getSingleOrNull();
     if (payment == null) return;
-    await _balances.adjust(payment.customerId, payment.amount);
+    await _account.post(payment.customerId, payment.amount);
   }
 }

@@ -111,7 +111,7 @@ class SaleDraft extends Notifier<SaleDraftState> {
         .execute(sale, containerMovements: movements);
 
     // The customer balance moves with the sale and its settling payments
-    // (see CustomerBalanceStore); nothing to update here.
+    // (see CustomerAccount); nothing to update here.
 
     state = const SaleDraftState();
   }
