@@ -103,7 +103,7 @@ class DriftRouteRepository implements RouteRepository {
         );
       }
 
-      // Pending-first, then scheduledAt ascending (replicates MockRouteRepository._sortStops).
+      // Pending-first, then scheduledAt ascending.
       stops.sort((a, b) {
         final aPending = a.status == StopStatus.pending;
         final bPending = b.status == StopStatus.pending;
