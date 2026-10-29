@@ -31,6 +31,7 @@ void main() {
     WidgetTester tester, {
     bool syncRunning = false,
     Stream<List<RouteStop>> Function()? dayStream,
+    SyncCycleResult? lastResult = SyncCycleResult.success,
   }) async {
     await tester.binding.setSurfaceSize(const Size(360, 800));
     addTearDown(() => tester.binding.setSurfaceSize(null));
@@ -43,7 +44,7 @@ void main() {
           (ref) => Stream.value(
             SyncStatus(
               lastCycleAt: DateTime(2026, 10, 28, 18, 27),
-              lastResult: SyncCycleResult.success,
+              lastResult: lastResult,
               pendingCount: 0,
               rejectedCount: 0,
             ),
@@ -88,6 +89,34 @@ void main() {
     final button = find.widgetWithText(OutlinedButton, 'Sincronizar ahora');
     expect(button, findsOneWidget);
     expect(tester.widget<OutlinedButton>(button).onPressed, isNotNull);
+  });
+
+  for (final lastResult in [SyncCycleResult.offline, null]) {
+    testWidgets(
+      'with no route for today and no connection ($lastResult), it asks to '
+      'connect to download it',
+      (tester) async {
+        await pumpRoute(tester, lastResult: lastResult);
+
+        expect(find.text('Falta la ruta de hoy'), findsOneWidget);
+        expect(
+          find.text('Conectate a internet para descargar la ruta de hoy.'),
+          findsOneWidget,
+        );
+        expect(find.text('Sin paradas por ahora'), findsNothing);
+        final button = find.widgetWithText(OutlinedButton, 'Sincronizar ahora');
+        expect(tester.widget<OutlinedButton>(button).onPressed, isNotNull);
+      },
+    );
+  }
+
+  testWidgets('a server failure keeps the generic empty message', (
+    tester,
+  ) async {
+    await pumpRoute(tester, lastResult: SyncCycleResult.failure);
+
+    expect(find.text('Sin paradas por ahora'), findsOneWidget);
+    expect(find.text('Falta la ruta de hoy'), findsNothing);
   });
 
   testWidgets('the sync action is disabled while a sync runs', (tester) async {

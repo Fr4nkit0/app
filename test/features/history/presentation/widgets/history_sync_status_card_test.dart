@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 
 import 'package:app/features/history/presentation/widgets/history_sync_status_card.dart';
+import 'package:app/core/theme/marilin_tokens.dart';
 import 'package:app/features/sync/domain/models/sync_status.dart';
 
 void main() {
@@ -53,6 +54,28 @@ void main() {
     expect(find.text('Falló a las 09:30'), findsOneWidget);
     expect(find.text('Sin conexión'), findsOneWidget);
     expect(find.text('1 pendiente · 0 rechazados'), findsOneWidget);
+  });
+
+  testWidgets('an offline cycle reads as neutral with the saved count', (
+    tester,
+  ) async {
+    await pump(
+      tester,
+      SyncStatus(
+        lastCycleAt: DateTime(2026, 10, 29, 17, 44),
+        lastResult: SyncCycleResult.offline,
+        pendingCount: 11,
+      ),
+    );
+
+    expect(find.textContaining('Falló'), findsNothing);
+    expect(
+      find.text('Sin conexión · 11 guardados en el teléfono'),
+      findsOneWidget,
+    );
+    expect(find.byIcon(Icons.cloud_off_rounded), findsOneWidget);
+    final icon = tester.widget<Icon>(find.byIcon(Icons.cloud_off_rounded));
+    expect(icon.color, isNot(MarilinColors.destructive));
   });
 
   testWidgets('shows when no cycle has run yet', (tester) async {

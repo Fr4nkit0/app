@@ -61,6 +61,7 @@ class _FakeServer {
   Map<String, List<Map<String, dynamic>>> pullRows = {};
   PushAnswer? answer;
   bool dropNextPushResponse = false;
+  bool failNextPushWithServerError = false;
   Completer<void>? holdPush;
   int _nextId = 500;
 
@@ -91,6 +92,10 @@ class _FakeServer {
         final body = Map<String, dynamic>.from(options.data as Map);
         pushBodies.add(body);
         if (holdPush != null) await holdPush!.future;
+        if (failNextPushWithServerError) {
+          failNextPushWithServerError = false;
+          return FakeHttpAdapter.json(500, {'message': 'boom'});
+        }
         final customers = [
           for (final r in (body['customers'] as List? ?? const []))
             (answer ?? accept)(Map<String, dynamic>.from(r as Map)),
@@ -350,7 +355,7 @@ void main() {
 
       final failed = await engine.runCycle();
 
-      expect(failed.lastResult, SyncCycleResult.failure);
+      expect(failed.lastResult, SyncCycleResult.offline);
       expect(failed.pendingCount, 1);
       expect((await localCustomer('c-1')).serverId, isNull);
       expect(server.calls, [
@@ -371,6 +376,32 @@ void main() {
       expect((await localCustomer('c-1')).serverId, 501);
     },
   );
+
+  test(
+    'a cycle without connection is recorded as offline, not as a failure',
+    () async {
+      await createCustomer('c-1');
+      server.dropNextPushResponse = true;
+
+      final status = await engine.runCycle();
+
+      expect(status.lastResult, SyncCycleResult.offline);
+      expect(status.lastError, isNull);
+      expect(status.pendingCount, 1);
+      expect(await engine.watchStatus().first, status);
+    },
+  );
+
+  test('a server error keeps the cycle recorded as a failure', () async {
+    await createCustomer('c-1');
+    server.failNextPushWithServerError = true;
+
+    final status = await engine.runCycle();
+
+    expect(status.lastResult, SyncCycleResult.failure);
+    expect(status.lastError, 'El servidor respondió 500.');
+    expect(status.pendingCount, 1);
+  });
 
   test(
     'a change made while the push is in flight stays pending for the next cycle',

@@ -20,7 +20,12 @@ class SyncStatusButton extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final failed = status.lastResult == SyncCycleResult.failure;
-    final color = failed ? MarilinColors.destructive : MarilinColors.brandBlue;
+    final offline = !isRunning && status.lastResult == SyncCycleResult.offline;
+    final color = failed
+        ? MarilinColors.destructive
+        : offline
+        ? context.marilin.inkSecondary
+        : MarilinColors.brandBlue;
 
     return Material(
       color: color.withValues(alpha: 0.06),
@@ -46,7 +51,11 @@ class SyncStatusButton extends StatelessWidget {
                 )
               else
                 Icon(
-                  failed ? Icons.sync_problem : Icons.sync,
+                  failed
+                      ? Icons.sync_problem
+                      : offline
+                      ? Icons.cloud_off
+                      : Icons.sync,
                   size: 18,
                   color: color,
                 ),
@@ -72,11 +81,13 @@ class SyncStatusButton extends StatelessWidget {
                       children: [
                         Flexible(
                           child: Text(
-                            _count(
-                              status.pendingCount,
-                              'pendiente',
-                              'pendientes',
-                            ),
+                            offline
+                                ? _saved(status.pendingCount)
+                                : _count(
+                                    status.pendingCount,
+                                    'pendiente',
+                                    'pendientes',
+                                  ),
                             maxLines: 1,
                             overflow: TextOverflow.ellipsis,
                             style: TextStyle(
@@ -121,10 +132,16 @@ class SyncStatusButton extends StatelessWidget {
     if (at == null || status.lastResult == null) return 'Sin sincronizar';
     final time =
         '${at.hour.toString().padLeft(2, '0')}:${at.minute.toString().padLeft(2, '0')}';
-    return status.lastResult == SyncCycleResult.success
-        ? 'Sincronizado $time'
-        : 'Falló $time';
+    return switch (status.lastResult!) {
+      SyncCycleResult.success => 'Sincronizado $time',
+      SyncCycleResult.offline => 'Sin conexión',
+      SyncCycleResult.failure => 'Falló $time',
+    };
   }
+
+  /// Changes kept on the phone while there is no connection.
+  static String _saved(int n) =>
+      '$n ${n == 1 ? 'guardado' : 'guardados'} en el teléfono';
 
   static String _count(int n, String singular, String plural) =>
       '$n ${n == 1 ? singular : plural}';

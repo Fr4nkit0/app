@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 
+import 'package:app/core/theme/marilin_tokens.dart';
 import 'package:app/features/sync/domain/models/sync_status.dart';
 import 'package:app/features/sync/presentation/widgets/sync_status_button.dart';
 
@@ -88,6 +89,51 @@ void main() {
 
     await pump(tester, const SyncStatus());
     expect(find.text('Sin sincronizar'), findsOneWidget);
+  });
+
+  testWidgets('an offline cycle reads as neutral with the saved count', (
+    tester,
+  ) async {
+    await pump(
+      tester,
+      SyncStatus(
+        lastCycleAt: DateTime(2026, 10, 29, 17, 44),
+        lastResult: SyncCycleResult.offline,
+        pendingCount: 6,
+      ),
+    );
+
+    expect(find.textContaining('Falló'), findsNothing);
+    expect(find.text('Sin conexión'), findsOneWidget);
+    expect(find.text('6 guardados en el teléfono'), findsOneWidget);
+    expect(find.byIcon(Icons.cloud_off), findsOneWidget);
+    final headline = tester.widget<Text>(find.text('Sin conexión'));
+    expect(headline.style?.color, isNot(MarilinColors.destructive));
+
+    await pump(
+      tester,
+      SyncStatus(
+        lastCycleAt: DateTime(2026, 10, 29, 17, 44),
+        lastResult: SyncCycleResult.offline,
+        pendingCount: 1,
+      ),
+    );
+    expect(find.text('1 guardado en el teléfono'), findsOneWidget);
+  });
+
+  testWidgets('a real failure keeps its red error state', (tester) async {
+    await pump(
+      tester,
+      SyncStatus(
+        lastCycleAt: DateTime(2026, 10, 29, 17, 44),
+        lastResult: SyncCycleResult.failure,
+        pendingCount: 6,
+      ),
+    );
+
+    final headline = tester.widget<Text>(find.text('Falló 17:44'));
+    expect(headline.style?.color, MarilinColors.destructive);
+    expect(find.byIcon(Icons.sync_problem), findsOneWidget);
   });
 
   testWidgets('tapping forces a cycle, except while one is running', (
