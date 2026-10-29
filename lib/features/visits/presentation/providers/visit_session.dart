@@ -1,14 +1,17 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
+import 'package:app/core/errors/domain_failure.dart';
 import 'package:app/core/providers/clock_provider.dart';
 import 'package:app/features/inventory/presentation/providers/inventory_repository_provider.dart';
 import 'package:app/features/payments/presentation/providers/payment_repository_provider.dart';
 import 'package:app/features/route/domain/models/stop_status.dart';
+import 'package:app/features/route/presentation/providers/route_repository_provider.dart';
 import 'package:app/features/sales/presentation/providers/sale_repository_provider.dart';
 import 'package:app/features/visits/domain/models/visit_outcome.dart';
 import 'package:app/features/visits/domain/models/visit_type.dart';
 import 'package:app/features/visits/domain/reschedule_time.dart';
+import 'package:app/features/visits/presentation/providers/complete_visit_usecase_provider.dart';
 import 'package:app/features/visits/presentation/visit_outcome_display.dart';
 
 const _unset = Object();
@@ -95,6 +98,41 @@ class VisitSessionState {
   );
 }
 
+/// How [VisitSession.close] ended.
+sealed class VisitCloseResult {
+  const VisitCloseResult();
+}
+
+/// The visit with its sales was closed.
+final class VisitClosedWithSales extends VisitCloseResult {
+  const VisitClosedWithSales();
+}
+
+/// The stop was rescheduled to [at].
+final class VisitRescheduled extends VisitCloseResult {
+  const VisitRescheduled(this.at);
+
+  final DateTime at;
+}
+
+/// The visit without sale was closed with its outcome.
+final class VisitClosed extends VisitCloseResult {
+  const VisitClosed();
+}
+
+/// Nothing was saved: the visit cannot close yet, is already closing, or the
+/// reschedule time is not allowed (see [VisitSessionState.rescheduleError]).
+final class VisitCloseRejected extends VisitCloseResult {
+  const VisitCloseRejected();
+}
+
+/// Saving failed with [error]; the visit can be closed again.
+final class VisitCloseFailed extends VisitCloseResult {
+  const VisitCloseFailed(this.error);
+
+  final Object error;
+}
+
 /// The decisions of the visit to one stop, keyed by the stop's id: which
 /// outcomes are possible, when it can close, how the stop ends and whether
 /// the reschedule time is allowed.
@@ -160,6 +198,63 @@ class VisitSession extends Notifier<VisitSessionState> {
       rescheduleTime: time,
       rescheduleError: checkRescheduleTime(now: now, at: _today(now, time)),
     );
+  }
+
+  /// Records the visit and closes, or reschedules, its stop.
+  Future<VisitCloseResult> close({String observations = ''}) async {
+    final current = state;
+    final stop = ref.read(routeStopByIdProvider(stopId));
+    if (current.isClosing || !current.canClose || stop == null) {
+      return const VisitCloseRejected();
+    }
+
+    DateTime? rescheduleAt;
+    if (current.triggersReschedule) {
+      final now = _now();
+      final time = current.rescheduleTime;
+      rescheduleAt = time == null ? null : _today(now, time);
+      final error = rescheduleAt == null
+          ? RescheduleTimeError.notLater
+          : checkRescheduleTime(now: now, at: rescheduleAt);
+      if (error != null) {
+        state = state.copyWith(rescheduleError: error);
+        return const VisitCloseRejected();
+      }
+    }
+
+    state = state.copyWith(isClosing: true);
+    try {
+      await ref
+          .read(completeVisitUseCaseProvider)
+          .execute(
+            stopId: stop.id,
+            customerId: stop.customer.id,
+            visitType: current.visitType,
+            nextStatus: current.nextStatus,
+            outcomeId: current.hasSales ? null : current.selectedOutcome?.id,
+            observations: observations.isNotEmpty ? observations : null,
+            rescheduleAt: rescheduleAt,
+          );
+    } catch (error) {
+      if (!ref.mounted) return VisitCloseFailed(error);
+      // The time can stop being valid while the close is saved.
+      final rescheduleError = error is ValidationFailure && rescheduleAt != null
+          ? checkRescheduleTime(now: _now(), at: rescheduleAt)
+          : null;
+      if (rescheduleError != null) {
+        state = state.copyWith(
+          isClosing: false,
+          rescheduleError: rescheduleError,
+        );
+        return const VisitCloseRejected();
+      }
+      state = state.copyWith(isClosing: false);
+      return VisitCloseFailed(error);
+    }
+
+    if (current.hasSales) return const VisitClosedWithSales();
+    if (rescheduleAt != null) return VisitRescheduled(rescheduleAt);
+    return const VisitClosed();
   }
 
   static DateTime _today(DateTime now, TimeOfDay time) =>

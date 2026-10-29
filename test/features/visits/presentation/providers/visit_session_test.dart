@@ -4,6 +4,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
 
+import 'package:app/core/errors/domain_failure.dart';
 import 'package:app/core/providers/clock_provider.dart';
 import 'package:app/features/customers/domain/models/customer.dart';
 import 'package:app/features/inventory/domain/models/container_movement.dart';
@@ -333,6 +334,143 @@ void main() {
         h.session.initialRescheduleTime(),
         const TimeOfDay(hour: 11, minute: 15),
       );
+    });
+
+    test('closing without a time is rejected as notLater and saves '
+        'nothing', () async {
+      final h = await _start();
+      h.session.selectOutcome(_reschedule);
+
+      final result = await h.session.close();
+
+      expect(result, isA<VisitCloseRejected>());
+      expect(h.state.rescheduleError, RescheduleTimeError.notLater);
+      expect(h.useCase.calls, isEmpty);
+    });
+
+    test('a time that became past before closing is rejected', () async {
+      final h = await _start();
+      h.session.selectOutcome(_reschedule);
+      h.session.setRescheduleTime(const TimeOfDay(hour: 10, minute: 30));
+      h.now = DateTime(2026, 10, 28, 10, 45);
+
+      final result = await h.session.close();
+
+      expect(result, isA<VisitCloseRejected>());
+      expect(h.state.rescheduleError, RescheduleTimeError.notLater);
+      expect(h.useCase.calls, isEmpty);
+    });
+
+    test('a ValidationFailure for the time while saving shows the reason '
+        'inline', () async {
+      final h = await _start();
+      h.session.selectOutcome(_reschedule);
+      h.session.setRescheduleTime(const TimeOfDay(hour: 10, minute: 30));
+      h.useCase.error = const ValidationFailure('x');
+      h.useCase.gate = Completer<void>();
+
+      final closing = h.session.close();
+      h.now = DateTime(2026, 10, 28, 10, 45);
+      h.useCase.gate!.complete();
+      final result = await closing;
+
+      expect(result, isA<VisitCloseRejected>());
+      expect(h.state.rescheduleError, RescheduleTimeError.notLater);
+      expect(h.state.isClosing, isFalse);
+    });
+  });
+
+  group('close', () {
+    test('a plain visit records the outcome and the note and closes as '
+        'done', () async {
+      final h = await _start();
+      h.session.selectOutcome(_absent);
+
+      final result = await h.session.close(observations: 'No estaba');
+
+      expect(result, isA<VisitClosed>());
+      final call = h.useCase.calls.single;
+      expect(call.stopId, 's-1');
+      expect(call.customerId, 'c-1');
+      expect(call.visitType, VisitType.visit);
+      expect(call.nextStatus, StopStatus.done);
+      expect(call.outcomeId, 1);
+      expect(call.observations, 'No estaba');
+      expect(call.rescheduleAt, isNull);
+      expect(h.state.isClosing, isTrue);
+    });
+
+    test('an empty note is not recorded', () async {
+      final h = await _start();
+      h.session.selectOutcome(_absent);
+
+      await h.session.close();
+
+      expect(h.useCase.calls.single.observations, isNull);
+    });
+
+    test('a visit with sales records no outcome', () async {
+      final h = await _start(sales: [_sale]);
+
+      final result = await h.session.close();
+
+      expect(result, isA<VisitClosedWithSales>());
+      expect(h.useCase.calls.single.outcomeId, isNull);
+      expect(h.useCase.calls.single.nextStatus, StopStatus.done);
+    });
+
+    test('a reschedule records the chosen time today', () async {
+      final h = await _start();
+      h.session.selectOutcome(_reschedule);
+      h.session.setRescheduleTime(const TimeOfDay(hour: 11, minute: 15));
+
+      final result = await h.session.close();
+
+      final at = DateTime(2026, 10, 28, 11, 15);
+      expect(result, isA<VisitRescheduled>().having((r) => r.at, 'at', at));
+      expect(h.useCase.calls.single.rescheduleAt, at);
+      expect(h.useCase.calls.single.nextStatus, StopStatus.absent);
+      expect(h.useCase.calls.single.outcomeId, 2);
+    });
+
+    test('a failure is reported and the visit can be closed again', () async {
+      final h = await _start();
+      h.session.selectOutcome(_absent);
+      final failure = StorageFailure(Exception('boom'));
+      h.useCase.error = failure;
+
+      final result = await h.session.close();
+
+      expect(
+        result,
+        isA<VisitCloseFailed>().having((r) => r.error, 'error', failure),
+      );
+      expect(h.state.isClosing, isFalse);
+      expect(h.state.rescheduleError, isNull);
+    });
+
+    test('a second close while saving runs the use case once', () async {
+      final h = await _start();
+      h.session.selectOutcome(_absent);
+      h.useCase.gate = Completer<void>();
+
+      final first = h.session.close();
+      expect(h.state.isClosing, isTrue);
+      final second = await h.session.close();
+      h.useCase.gate!.complete();
+      await first;
+
+      expect(second, isA<VisitCloseRejected>());
+      expect(h.useCase.calls, hasLength(1));
+    });
+
+    test('a visit that cannot close saves nothing', () async {
+      final h = await _start();
+
+      final result = await h.session.close();
+
+      expect(result, isA<VisitCloseRejected>());
+      expect(h.useCase.calls, isEmpty);
     });
   });
 }
