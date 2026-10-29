@@ -1,4 +1,3 @@
-import 'package:app/features/inventory/domain/legacy_container_type.dart';
 import 'package:app/features/products/data/repositories/product.repository.dart';
 import 'package:app/features/products/domain/models/product.dart';
 import 'package:app/core/services/database.helper.dart';
@@ -20,11 +19,11 @@ class DriftProductRepository implements ProductRepository {
         unitLabel: row.description ?? '', // Using description as unitLabel mapping
         price: row.price,
         available: row.stock,
-        containerType:
-            codes[row.containerTypeId] ?? legacyContainerCodeFromName(row.name),
+        containerType: codes[row.containerTypeId],
       );
 
-  /// Enabled products with their container type resolved from the catalog.
+  /// Enabled products with their container type resolved from the catalog;
+  /// an id the catalog lacks (e.g. a disabled type) means no container.
   Future<List<Product>> _loadProducts() async {
     final codes = {
       for (final t in await db.select(db.containerTypeTable).get()) t.id: t.code,

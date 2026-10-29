@@ -152,7 +152,7 @@ void main() {
       expect(product.containerType, 'JUG_12L');
     });
 
-    test('falls back to the name guess without a containerTypeId', () async {
+    test('is null without a containerTypeId, whatever the name says', () async {
       await seedProduct('prod-1', 'Agua 20L');
       await seedProduct('prod-2', 'Sifón 1.5L');
       await seedProduct('prod-3', 'Hielo');
@@ -161,16 +161,16 @@ void main() {
 
       expect(
         {for (final p in products) p.id: p.containerType},
-        {'prod-1': 'BIDON_20L', 'prod-2': 'SIFON_2L', 'prod-3': null},
+        {'prod-1': null, 'prod-2': null, 'prod-3': null},
       );
     });
 
-    test('falls back to the name guess when the catalog lacks the type', () async {
+    test('is null when the catalog lacks the type, e.g. a disabled one', () async {
       await seedProduct('prod-1', 'Agua 20L', containerTypeId: 99);
 
       final product = (await sut.watchAllProducts().first).single;
 
-      expect(product.containerType, 'BIDON_20L');
+      expect(product.containerType, isNull);
     });
 
     test('is resolved for customer priced products too', () async {
