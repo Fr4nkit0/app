@@ -5,7 +5,7 @@ import 'package:app/core/theme/marilin_tokens.dart';
 import 'package:app/core/utils/resource.dart';
 import 'package:app/core/widgets/top_toast.dart';
 import 'package:app/features/customers/domain/models/customer.dart';
-import 'package:app/features/payments/domain/models/payment.dart';
+import 'package:app/features/payments/domain/models/payment_split.dart';
 import 'package:app/features/payments/presentation/providers/payment_repository_provider.dart';
 import 'package:app/features/payments/presentation/widgets/debt_payment_sheet.dart';
 
@@ -18,7 +18,7 @@ Future<void> registerDebtPayment(
   required double debt,
   String? visitId,
 }) async {
-  final result = await showModalBottomSheet<DebtPaymentResult>(
+  final split = await showModalBottomSheet<PaymentSplit>(
     context: context,
     isScrollControlled: true,
     useSafeArea: true,
@@ -29,40 +29,14 @@ Future<void> registerDebtPayment(
       child: DebtPaymentSheet(totalDebt: debt),
     ),
   );
-  if (result == null) return;
+  if (split == null) return;
 
-  final now = DateTime.now();
-  Payment build(double amount, PaymentType type, DateTime createdAt) => Payment(
-    id: const Uuid().v4(),
+  final payments = split.toPayments(
     customerId: customer.id,
-    amount: amount,
-    type: type,
-    createdAt: createdAt,
+    at: DateTime.now(),
+    idFor: (_) => const Uuid().v4(),
     visitId: visitId,
   );
-
-  final cash = result.cashAmount;
-  final transfer = result.transferAmount;
-  final payments = <Payment>[];
-  switch (result.method) {
-    case 'Efectivo':
-      payments.add(build(cash!, PaymentType.cash, now));
-    case 'Transferencia':
-      payments.add(build(transfer!, PaymentType.transfer, now));
-    case 'Mixto':
-      if (cash != null && cash > 0) {
-        payments.add(build(cash, PaymentType.cash, now));
-      }
-      if (transfer != null && transfer > 0) {
-        payments.add(
-          build(
-            transfer,
-            PaymentType.transfer,
-            now.add(const Duration(milliseconds: 10)),
-          ),
-        );
-      }
-  }
   if (payments.isEmpty) return;
 
   final res = await ref.read(registerPaymentUseCaseProvider).execute(payments);

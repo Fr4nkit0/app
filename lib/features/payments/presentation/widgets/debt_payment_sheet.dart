@@ -1,24 +1,12 @@
 import 'package:app/core/utils/money_formatter.dart';
 import 'package:flutter/material.dart';
 import 'package:app/core/theme/marilin_tokens.dart';
+import 'package:app/features/payments/domain/models/payment_split.dart';
 import 'package:app/features/payments/presentation/widgets/amount_field.dart';
 import 'package:app/features/sales/domain/models/payment_method.dart';
 import 'package:app/features/sales/presentation/widgets/payment_method_icon.dart';
 
-/// Result returned by [DebtPaymentSheet].
-class DebtPaymentResult {
-  final String method; // 'Efectivo' | 'Transferencia' | 'Mixto'
-  final double? cashAmount;
-  final double? transferAmount;
-
-  const DebtPaymentResult({
-    required this.method,
-    this.cashAmount,
-    this.transferAmount,
-  });
-}
-
-/// Bottom sheet to pay an existing debt.
+/// Bottom sheet to pay an existing debt; pops the chosen [PaymentSplit].
 ///
 /// Opened by `registerDebtPayment` with [showModalBottomSheet].
 class DebtPaymentSheet extends StatefulWidget {
@@ -31,7 +19,7 @@ class DebtPaymentSheet extends StatefulWidget {
 }
 
 class _DebtPaymentSheetState extends State<DebtPaymentSheet> {
-  String? _selectedMethod;
+  PaymentMethod? _selectedMethod;
   final _cashController = TextEditingController();
   final _transferController = TextEditingController();
 
@@ -40,11 +28,11 @@ class _DebtPaymentSheetState extends State<DebtPaymentSheet> {
     final cash = AmountField.parseAmount(_cashController.text) ?? 0;
     final transfer = AmountField.parseAmount(_transferController.text) ?? 0;
     switch (_selectedMethod) {
-      case 'Efectivo':
+      case PaymentMethod.cash:
         return cash > 0 && cash <= widget.totalDebt + 0.01;
-      case 'Transferencia':
+      case PaymentMethod.transfer:
         return transfer > 0 && transfer <= widget.totalDebt + 0.01;
-      case 'Mixto':
+      case PaymentMethod.mixed:
         return (cash > 0 || transfer > 0) &&
             (cash + transfer) <= widget.totalDebt + 0.01;
       default:
@@ -54,10 +42,10 @@ class _DebtPaymentSheetState extends State<DebtPaymentSheet> {
 
   bool get _canPayFull {
     switch (_selectedMethod) {
-      case 'Efectivo':
-      case 'Transferencia':
+      case PaymentMethod.cash:
+      case PaymentMethod.transfer:
         return true;
-      case 'Mixto':
+      case PaymentMethod.mixed:
         return _remaining.abs() <= 0.01;
       default:
         return false;
@@ -68,11 +56,11 @@ class _DebtPaymentSheetState extends State<DebtPaymentSheet> {
     final cash = AmountField.parseAmount(_cashController.text) ?? 0;
     final transfer = AmountField.parseAmount(_transferController.text) ?? 0;
     switch (_selectedMethod) {
-      case 'Efectivo':
+      case PaymentMethod.cash:
         return widget.totalDebt - cash;
-      case 'Transferencia':
+      case PaymentMethod.transfer:
         return widget.totalDebt - transfer;
-      case 'Mixto':
+      case PaymentMethod.mixed:
         return widget.totalDebt - cash - transfer;
       default:
         return widget.totalDebt;
@@ -82,12 +70,12 @@ class _DebtPaymentSheetState extends State<DebtPaymentSheet> {
   void _onCashChanged(String value) => setState(() {});
   void _onTransferChanged(String value) => setState(() {});
 
-  void _onMethodSelected(String label) {
+  void _onMethodSelected(PaymentMethod method) {
     setState(() {
-      if (label != _selectedMethod) {
+      if (method != _selectedMethod) {
         _cashController.clear();
         _transferController.clear();
-        _selectedMethod = label;
+        _selectedMethod = method;
       }
     });
   }
@@ -205,43 +193,28 @@ class _DebtPaymentSheetState extends State<DebtPaymentSheet> {
             const SizedBox(height: 10),
             Row(
               children: [
-                Expanded(
-                  child: _buildPaymentOption(
-                    label: 'Efectivo',
-                    method: PaymentMethod.cash,
-                  ),
-                ),
+                Expanded(child: _buildPaymentOption(PaymentMethod.cash)),
                 const SizedBox(width: 10),
-                Expanded(
-                  child: _buildPaymentOption(
-                    label: 'Transferencia',
-                    method: PaymentMethod.transfer,
-                  ),
-                ),
+                Expanded(child: _buildPaymentOption(PaymentMethod.transfer)),
                 const SizedBox(width: 10),
-                Expanded(
-                  child: _buildPaymentOption(
-                    label: 'Mixto',
-                    method: PaymentMethod.mixed,
-                  ),
-                ),
+                Expanded(child: _buildPaymentOption(PaymentMethod.mixed)),
               ],
             ),
             if (_selectedMethod != null) ...[
               const SizedBox(height: 16),
-              if (_selectedMethod == 'Efectivo')
+              if (_selectedMethod == PaymentMethod.cash)
                 AmountField(
                   label: 'Efectivo',
                   controller: _cashController,
                   onChanged: _onCashChanged,
                 ),
-              if (_selectedMethod == 'Transferencia')
+              if (_selectedMethod == PaymentMethod.transfer)
                 AmountField(
                   label: 'Transferencia',
                   controller: _transferController,
                   onChanged: _onTransferChanged,
                 ),
-              if (_selectedMethod == 'Mixto') ...[
+              if (_selectedMethod == PaymentMethod.mixed) ...[
                 AmountField(
                   label: 'Efectivo',
                   controller: _cashController,
@@ -315,11 +288,9 @@ class _DebtPaymentSheetState extends State<DebtPaymentSheet> {
     );
   }
 
-  Widget _buildPaymentOption({
-    required String label,
-    required PaymentMethod method,
-  }) {
-    final isSelected = _selectedMethod == label;
+  Widget _buildPaymentOption(PaymentMethod method) {
+    final label = method.label;
+    final isSelected = _selectedMethod == method;
     final primary = MarilinColors.brandBlue;
     final foreground = isSelected ? Colors.white : primary;
     final radius = BorderRadius.circular(14);
@@ -336,7 +307,7 @@ class _DebtPaymentSheetState extends State<DebtPaymentSheet> {
       ),
       child: InkWell(
         borderRadius: radius,
-        onTap: () => _onMethodSelected(label),
+        onTap: () => _onMethodSelected(method),
         child: SizedBox(
           height: 64,
           child: Column(
@@ -362,27 +333,23 @@ class _DebtPaymentSheetState extends State<DebtPaymentSheet> {
   }
 
   void _payFull() {
-    final method = _selectedMethod!;
-    if (method == 'Mixto') return _confirm();
-    Navigator.of(context).pop(
-      DebtPaymentResult(
-        method: method,
-        cashAmount: method == 'Efectivo' ? widget.totalDebt : null,
-        transferAmount: method == 'Transferencia' ? widget.totalDebt : null,
-      ),
-    );
+    final split = switch (_selectedMethod) {
+      PaymentMethod.cash => PaymentSplit(cash: widget.totalDebt),
+      PaymentMethod.transfer => PaymentSplit(transfer: widget.totalDebt),
+      _ => null,
+    };
+    if (split == null) return _confirm();
+    Navigator.of(context).pop(split);
   }
 
   void _confirm() {
-    final cash = AmountField.parseAmount(_cashController.text);
-    final transfer = AmountField.parseAmount(_transferController.text);
+    final cash = AmountField.parseAmount(_cashController.text) ?? 0;
+    final transfer = AmountField.parseAmount(_transferController.text) ?? 0;
 
-    Navigator.of(context).pop(
-      DebtPaymentResult(
-        method: _selectedMethod!,
-        cashAmount: cash,
-        transferAmount: transfer,
-      ),
-    );
+    Navigator.of(context).pop(switch (_selectedMethod) {
+      PaymentMethod.cash => PaymentSplit(cash: cash),
+      PaymentMethod.transfer => PaymentSplit(transfer: transfer),
+      _ => PaymentSplit(cash: cash, transfer: transfer),
+    });
   }
 }

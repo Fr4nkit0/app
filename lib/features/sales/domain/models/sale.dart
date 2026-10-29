@@ -1,4 +1,5 @@
 import 'package:app/features/customers/domain/models/customer.dart';
+import 'package:app/features/payments/domain/models/payment_split.dart';
 import 'package:app/features/sales/domain/models/payment_method.dart';
 import 'package:app/features/sales/domain/models/sale_item.dart';
 
@@ -24,4 +25,15 @@ class Sale {
     this.transferAmount,
     this.visitId,
   });
+
+  /// What the customer pays on the spot; nothing for credit and route sales.
+  PaymentSplit get settlement => switch (paymentMethod) {
+    PaymentMethod.cash => PaymentSplit(cash: total),
+    PaymentMethod.transfer => PaymentSplit(transfer: total),
+    PaymentMethod.mixed => PaymentSplit(
+      cash: cashAmount ?? 0,
+      transfer: transferAmount ?? 0,
+    ),
+    PaymentMethod.credit || PaymentMethod.route => PaymentSplit.none,
+  };
 }

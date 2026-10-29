@@ -98,6 +98,34 @@ void main() {
     await tester.pump(const Duration(seconds: 5));
   });
 
+  testWidgets('a mixed payment records cash first and the transfer after it', (
+    tester,
+  ) async {
+    final fake = _FakeRegisterPayment();
+    await _pump(tester, fake);
+    await tester.tap(find.text('Mixto'));
+    await tester.pumpAndSettle();
+    final fields = find.byType(TextField);
+    await tester.enterText(fields.at(0), '600');
+    await tester.enterText(fields.at(1), '400');
+    await tester.pump();
+    await tester.tap(find.text('Registrar monto ingresado'));
+    await tester.pumpAndSettle();
+
+    final payments = fake.recorded.single;
+    expect(payments.map((p) => p.type), [
+      PaymentType.cash,
+      PaymentType.transfer,
+    ]);
+    expect(payments.map((p) => p.amount), [600, 400]);
+    expect(
+      payments[1].createdAt,
+      payments[0].createdAt.add(const Duration(milliseconds: 10)),
+    );
+    expect(payments.map((p) => p.visitId), ['v1', 'v1']);
+    await tester.pump(const Duration(seconds: 5));
+  });
+
   testWidgets('cancel registers nothing', (tester) async {
     final fake = _FakeRegisterPayment();
     await _pump(tester, fake);

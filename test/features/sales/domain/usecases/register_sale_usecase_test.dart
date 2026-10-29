@@ -6,6 +6,7 @@ import 'package:app/core/utils/resource.dart';
 import 'package:app/features/customers/domain/models/customer.dart';
 import 'package:app/features/inventory/data/repositories/inventory.repository.dart';
 import 'package:app/features/payments/data/repositories/payment.repository.dart';
+import 'package:app/features/payments/domain/models/payment.dart';
 import 'package:app/features/products/domain/models/product.dart';
 import 'package:app/features/sales/data/repositories/drift.sale.repository.dart';
 import 'package:app/features/sales/domain/models/payment_method.dart';
@@ -142,6 +143,67 @@ void main() {
 
       expect(await db.select(db.paymentTable).get(), isEmpty);
       expect(await paymentRepo.watchCustomerBalance(testCustomer.id).first, 13000.0);
+    });
+
+    test('a mixed sale is settled by cash first and the transfer right after it', () async {
+      final date = DateTime(2026, 10, 28, 9, 30);
+      final payments = RegisterSaleUseCase.settlingPayments(
+        Sale(
+          id: 'sale-mixed',
+          customer: testCustomer,
+          items: const [SaleItem(product: testProduct, quantity: 2)],
+          total: 13000.0,
+          paymentMethod: PaymentMethod.mixed,
+          date: date,
+          cashAmount: 8000,
+          transferAmount: 5000,
+          visitId: 'v1',
+        ),
+      );
+
+      expect(payments.map((p) => p.type), [PaymentType.cash, PaymentType.transfer]);
+      expect(payments.map((p) => p.amount), [8000, 5000]);
+      expect(payments[0].createdAt, date);
+      expect(payments[1].createdAt, date.add(const Duration(milliseconds: 10)));
+      expect(payments.map((p) => p.saleId), ['sale-mixed', 'sale-mixed']);
+      expect(payments.map((p) => p.visitId), ['v1', 'v1']);
+      expect(payments[0].id, isNot(payments[1].id));
+    });
+
+    test('settling payments are deterministic for the same sale', () {
+      Sale sale() => Sale(
+            id: 'sale-same',
+            customer: testCustomer,
+            items: const [SaleItem(product: testProduct, quantity: 2)],
+            total: 13000.0,
+            paymentMethod: PaymentMethod.mixed,
+            date: DateTime(2026),
+            cashAmount: 8000,
+            transferAmount: 5000,
+          );
+
+      expect(
+        RegisterSaleUseCase.settlingPayments(sale()).map((p) => p.id),
+        RegisterSaleUseCase.settlingPayments(sale()).map((p) => p.id),
+      );
+    });
+
+    test('a transfer sale is one transfer of its total; credit and route are none', () {
+      Sale withMethod(PaymentMethod method) => Sale(
+            id: 'sale-$method',
+            customer: testCustomer,
+            items: const [SaleItem(product: testProduct, quantity: 2)],
+            total: 13000.0,
+            paymentMethod: method,
+            date: DateTime(2026),
+          );
+
+      final transfer = RegisterSaleUseCase.settlingPayments(withMethod(PaymentMethod.transfer));
+      expect(transfer.single.type, PaymentType.transfer);
+      expect(transfer.single.amount, 13000.0);
+      expect(transfer.single.createdAt, DateTime(2026));
+      expect(RegisterSaleUseCase.settlingPayments(withMethod(PaymentMethod.credit)), isEmpty);
+      expect(RegisterSaleUseCase.settlingPayments(withMethod(PaymentMethod.route)), isEmpty);
     });
   });
 
