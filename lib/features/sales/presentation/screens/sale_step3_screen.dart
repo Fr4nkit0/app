@@ -10,9 +10,11 @@ import 'package:app/features/sales/presentation/widgets/payment_method_icon.dart
 import 'package:app/features/sales/presentation/providers/sale_draft_provider.dart';
 import 'package:app/core/widgets/core_horizontal_stepper.dart';
 import 'package:app/features/inventory/presentation/providers/inventory_repository_provider.dart';
+import 'package:app/features/inventory/domain/custody.dart';
+import 'package:app/features/inventory/domain/models/container_type.dart';
 import 'package:app/features/inventory/domain/models/customer_container_balance.dart';
+import 'package:app/features/inventory/presentation/widgets/container_return_dialog.dart';
 
-import 'package:app/features/sales/domain/models/sale_item.dart';
 import 'package:app/core/theme/marilin_tokens.dart';
 import 'package:app/features/payments/presentation/widgets/amount_field.dart';
 
@@ -554,13 +556,20 @@ class _FooterState extends ConsumerState<_Footer> {
                 final balancesAsync = ref.watch(
                   customerContainerBalancesProvider(draft.customer?.id ?? ''),
                 );
+                final containerTypes = ref
+                    .watch(containerTypesProvider)
+                    .maybeWhen(
+                      data: (types) => types,
+                      orElse: () => <ContainerType>[],
+                    );
 
                 return FilledButton(
                   onPressed: draft.canConfirm && !_busy
                       ? () async {
-                          final hasContainers = draft.items.any(
-                            (item) => item.product.containerType != null,
+                          final delivered = deliveredByContainerType(
+                            draft.containerDeliveries,
                           );
+                          final hasContainers = delivered.isNotEmpty;
                           final visitId = draft.visitId;
 
                           final balances = balancesAsync.maybeWhen(
@@ -610,39 +619,48 @@ class _FooterState extends ConsumerState<_Footer> {
                           }
 
                           if (hasContainers && hasActiveCustody) {
-                            final customerBalancesMap = {
-                              for (final b in balances)
-                                b.containerType: b.quantity,
-                            };
+                            final custody = custodyByContainerType(balances);
                             showDialog(
                               context: context,
                               barrierDismissible: false,
-                              builder: (context) =>
-                                  ContainerReturnConfirmationDialog(
-                                    items: draft.items,
-                                    initialReturns: draft.returnedContainers,
-                                    customerBalances: customerBalancesMap,
-                                    onConfirm: (adjustedReturns) async {
-                                      for (final entry
-                                          in adjustedReturns.entries) {
-                                        ref
-                                            .read(saleDraftProvider.notifier)
-                                            .setReturnedQuantity(
-                                              entry.key,
-                                              entry.value,
-                                            );
-                                      }
-                                      await handleCommit();
-                                    },
-                                  ),
+                              builder: (dialogContext) => ContainerReturnDialog(
+                                containerTypes: [
+                                  for (final type in containerTypes)
+                                    if (delivered.containsKey(type.code)) type,
+                                ],
+                                custody: custody,
+                                // Returned = delivered by default, but a
+                                // customer holding none of a type returns 0.
+                                initialReturns: {
+                                  for (final MapEntry(:key, :value)
+                                      in delivered.entries)
+                                    key: (custody[key] ?? 0) > 0
+                                        ? draft.returnedContainers[key] ?? value
+                                        : 0,
+                                },
+                                title: 'Retorno de Envases',
+                                message:
+                                    'Confirmá o ajustá la cantidad de envases retornados por el cliente.',
+                                confirmLabel: 'Confirmar',
+                                onConfirm: (adjustedReturns) async {
+                                  Navigator.of(dialogContext).pop();
+                                  for (final entry in adjustedReturns.entries) {
+                                    ref
+                                        .read(saleDraftProvider.notifier)
+                                        .setReturnedQuantity(
+                                          entry.key,
+                                          entry.value,
+                                        );
+                                  }
+                                  await handleCommit();
+                                },
+                              ),
                             );
                           } else {
-                            if (hasContainers) {
-                              for (final type in ['BIDON_20L', 'SIFON_2L']) {
-                                ref
-                                    .read(saleDraftProvider.notifier)
-                                    .setReturnedQuantity(type, 0);
-                              }
+                            for (final type in delivered.keys) {
+                              ref
+                                  .read(saleDraftProvider.notifier)
+                                  .setReturnedQuantity(type, 0);
                             }
                             await handleCommit();
                           }
@@ -678,163 +696,6 @@ class _FooterState extends ConsumerState<_Footer> {
           ),
         ],
       ),
-    );
-  }
-}
-
-// ─── Container Return Confirmation Dialog ─────────────────────────────────────
-
-class ContainerReturnConfirmationDialog extends StatefulWidget {
-  const ContainerReturnConfirmationDialog({
-    super.key,
-    required this.items,
-    required this.initialReturns,
-    required this.customerBalances,
-    required this.onConfirm,
-  });
-
-  final List<SaleItem> items;
-  final Map<String, int> initialReturns;
-  final Map<String, int> customerBalances;
-  final ValueChanged<Map<String, int>> onConfirm;
-
-  @override
-  State<ContainerReturnConfirmationDialog> createState() =>
-      _ContainerReturnConfirmationDialogState();
-}
-
-class _ContainerReturnConfirmationDialogState
-    extends State<ContainerReturnConfirmationDialog> {
-  late Map<String, int> _returns;
-
-  @override
-  void initState() {
-    super.initState();
-    _returns = Map<String, int>.from(widget.initialReturns);
-    // If the customer has no active balance of a container type,
-    // default its return value to 0 since they don't have containers to return yet.
-    for (final type in ['BIDON_20L', 'SIFON_2L']) {
-      final balance = widget.customerBalances[type] ?? 0;
-      if (balance == 0) {
-        _returns[type] = 0;
-      }
-    }
-  }
-
-  @override
-  Widget build(BuildContext context) {
-    final containerTypes = <String>[];
-    for (final type in ['BIDON_20L', 'SIFON_2L']) {
-      final delivered = widget.items
-          .where((item) => item.product.containerType == type)
-          .fold(0, (sum, item) => sum + item.quantity);
-      if (delivered > 0) {
-        containerTypes.add(type);
-        final balance = widget.customerBalances[type] ?? 0;
-        // Fallback default setup
-        _returns[type] ??= (balance > 0 ? delivered : 0);
-      }
-    }
-
-    final tokens = Theme.of(context).extension<SalesTokens>()!;
-
-    return AlertDialog(
-      title: const Text(
-        'Retorno de Envases',
-        style: TextStyle(fontWeight: FontWeight.bold),
-      ),
-      content: SingleChildScrollView(
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Text(
-              'Confirmá o ajustá la cantidad de envases retornados por el cliente.',
-              style: TextStyle(color: context.marilin.textMuted, fontSize: 14),
-            ),
-            const SizedBox(height: 16),
-            ...containerTypes.map((type) {
-              final delivered = widget.items
-                  .where((item) => item.product.containerType == type)
-                  .fold(0, (sum, item) => sum + item.quantity);
-              final returned = _returns[type] ?? delivered;
-              final balance = widget.customerBalances[type] ?? 0;
-              final maxReturns = balance;
-              final label = type == 'BIDON_20L' ? 'Bidón 20L' : 'Sifón 1.5L';
-
-              return Padding(
-                padding: const EdgeInsets.symmetric(vertical: 8.0),
-                child: Row(
-                  children: [
-                    Expanded(
-                      child: Text(
-                        label,
-                        style: const TextStyle(
-                          fontWeight: FontWeight.bold,
-                          fontSize: 16,
-                        ),
-                      ),
-                    ),
-                    Row(
-                      children: [
-                        IconButton(
-                          tooltip: 'Restar',
-                          onPressed: returned > 0
-                              ? () {
-                                  setState(() {
-                                    _returns[type] = returned - 1;
-                                  });
-                                }
-                              : null,
-                          icon: const Icon(Icons.remove_circle_outline),
-                          color: tokens.destructive,
-                        ),
-                        SizedBox(
-                          width: 32,
-                          child: Text(
-                            '$returned',
-                            textAlign: TextAlign.center,
-                            style: const TextStyle(
-                              fontSize: 16,
-                              fontWeight: FontWeight.bold,
-                            ),
-                          ),
-                        ),
-                        IconButton(
-                          tooltip: 'Sumar',
-                          onPressed: returned < maxReturns
-                              ? () {
-                                  setState(() {
-                                    _returns[type] = returned + 1;
-                                  });
-                                }
-                              : null,
-                          icon: const Icon(Icons.add_circle_outline),
-                          color: tokens.primary,
-                        ),
-                      ],
-                    ),
-                  ],
-                ),
-              );
-            }),
-          ],
-        ),
-      ),
-      actions: [
-        TextButton(
-          onPressed: () => Navigator.of(context).pop(),
-          child: const Text('Cancelar'),
-        ),
-        FilledButton(
-          onPressed: () {
-            widget.onConfirm(_returns);
-            Navigator.of(context).pop();
-          },
-          style: FilledButton.styleFrom(backgroundColor: tokens.primary),
-          child: const Text('Confirmar'),
-        ),
-      ],
     );
   }
 }

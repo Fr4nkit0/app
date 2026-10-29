@@ -15,7 +15,7 @@ class ContainerMovementTable extends Table with Timestamps {
     #customerId,
     onDelete: KeyAction.restrict,
   )();
-  late final containerType = text()(); // 'BIDON_20L' | 'SIFON_2L'
+  late final containerType = text()(); // Catalog code (container_types.code)
   late final deliveredQuantity = integer()();
   late final returnedQuantity = integer()();
   late final visitId = text().nullable().references(
@@ -42,7 +42,7 @@ class CustomerContainerBalanceTable extends Table with Timestamps {
     #customerId,
     onDelete: KeyAction.restrict,
   )();
-  late final containerType = text()(); // 'BIDON_20L' | 'SIFON_2L'
+  late final containerType = text()(); // Catalog code (container_types.code)
   late final quantity = integer().withDefault(const Constant(0))();
 
   @override

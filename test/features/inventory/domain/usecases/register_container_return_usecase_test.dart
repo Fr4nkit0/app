@@ -39,35 +39,40 @@ void main() {
     );
   }
 
-  test('records one return movement per container type with returned > 0', () async {
-    final result = await useCase(DriftInventoryRepository(db)).execute(
-      customerId: 'cust-1',
-      visitId: 'visit-1',
-      routeId: 'route-1',
-      returns: {'JUG': 2, 'SIPHON': 1},
-    );
+  test(
+    'records one return movement per container type with returned > 0',
+    () async {
+      final result = await useCase(DriftInventoryRepository(db)).execute(
+        customerId: 'cust-1',
+        visitId: 'visit-1',
+        routeId: 'route-1',
+        returns: {'JUG': 2, 'SIPHON': 1},
+      );
 
-    expect(result, isA<Success<void>>());
-    final movements = await db.select(db.containerMovementTable).get();
-    expect(movements.map((m) => m.containerMovementId), ['mov-0', 'mov-1']);
-    expect(movements.map((m) => m.containerType), ['JUG', 'SIPHON']);
-    expect(movements.map((m) => m.returnedQuantity), [2, 1]);
-    expect(movements.map((m) => m.deliveredQuantity), [0, 0]);
-    expect(movements.map((m) => m.customerId).toSet(), {'cust-1'});
-    expect(movements.map((m) => m.visitId).toSet(), {'visit-1'});
-    expect(movements.map((m) => m.routeId).toSet(), {'route-1'});
-    expect(movements.map((m) => m.createdAt).toSet(), {at});
+      expect(result, isA<Success<void>>());
+      final movements = await db.select(db.containerMovementTable).get();
+      expect(movements.map((m) => m.containerMovementId), ['mov-0', 'mov-1']);
+      expect(movements.map((m) => m.containerType), ['JUG', 'SIPHON']);
+      expect(movements.map((m) => m.returnedQuantity), [2, 1]);
+      expect(movements.map((m) => m.deliveredQuantity), [0, 0]);
+      expect(movements.map((m) => m.customerId).toSet(), {'cust-1'});
+      expect(movements.map((m) => m.visitId).toSet(), {'visit-1'});
+      expect(movements.map((m) => m.routeId).toSet(), {'route-1'});
+      expect(movements.map((m) => m.createdAt).toSet(), {at});
 
-    final custody = await db.select(db.customerContainerBalanceTable).get();
-    expect({for (final b in custody) b.containerType: b.quantity}, {'JUG': -2, 'SIPHON': -1});
-    expect((await db.select(db.pendingChangeTable).get()).length, 2);
-  });
+      final custody = await db.select(db.customerContainerBalanceTable).get();
+      expect(
+        {for (final b in custody) b.containerType: b.quantity},
+        {'JUG': -2, 'SIPHON': -1},
+      );
+      expect((await db.select(db.pendingChangeTable).get()).length, 2);
+    },
+  );
 
   test('skips container types returned zero times', () async {
-    await useCase(DriftInventoryRepository(db)).execute(
-      customerId: 'cust-1',
-      returns: {'JUG': 0, 'SIPHON': 3},
-    );
+    await useCase(
+      DriftInventoryRepository(db),
+    ).execute(customerId: 'cust-1', returns: {'JUG': 0, 'SIPHON': 3});
 
     final movement = await db.select(db.containerMovementTable).getSingle();
     expect(movement.containerType, 'SIPHON');
@@ -77,10 +82,9 @@ void main() {
   });
 
   test('records nothing when every return is zero', () async {
-    final result = await useCase(DriftInventoryRepository(db)).execute(
-      customerId: 'cust-1',
-      returns: {'JUG': 0, 'SIPHON': 0},
-    );
+    final result = await useCase(
+      DriftInventoryRepository(db),
+    ).execute(customerId: 'cust-1', returns: {'JUG': 0, 'SIPHON': 0});
 
     expect(result, isA<Success<void>>());
     expect(await db.select(db.containerMovementTable).get(), isEmpty);
@@ -88,18 +92,20 @@ void main() {
     expect(await db.select(db.pendingChangeTable).get(), isEmpty);
   });
 
-  test('is atomic: a failed movement leaves no movement, custody or pending change', () async {
-    final repo = _FailingInventoryRepository(db, failOn: 2);
+  test(
+    'is atomic: a failed movement leaves no movement, custody or pending change',
+    () async {
+      final repo = _FailingInventoryRepository(db, failOn: 2);
 
-    final result = await useCase(repo).execute(
-      customerId: 'cust-1',
-      returns: {'JUG': 2, 'SIPHON': 1},
-    );
+      final result = await useCase(
+        repo,
+      ).execute(customerId: 'cust-1', returns: {'JUG': 2, 'SIPHON': 1});
 
-    expect(result, isA<Error<void>>());
-    expect(repo.calls, 2);
-    expect(await db.select(db.containerMovementTable).get(), isEmpty);
-    expect(await db.select(db.customerContainerBalanceTable).get(), isEmpty);
-    expect(await db.select(db.pendingChangeTable).get(), isEmpty);
-  });
+      expect(result, isA<Error<void>>());
+      expect(repo.calls, 2);
+      expect(await db.select(db.containerMovementTable).get(), isEmpty);
+      expect(await db.select(db.customerContainerBalanceTable).get(), isEmpty);
+      expect(await db.select(db.pendingChangeTable).get(), isEmpty);
+    },
+  );
 }

@@ -20,11 +20,13 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
 
+import '../../../../support/container_types.dart';
 import '../../../../support/real_fonts.dart';
 
 class _FakeRegisterSale implements RegisterSaleUseCase {
   Completer<Resource<void>> completer = Completer<Resource<void>>();
   int calls = 0;
+  List<ContainerMovement>? movements;
 
   @override
   Future<Resource<void>> execute(
@@ -33,11 +35,16 @@ class _FakeRegisterSale implements RegisterSaleUseCase {
     List<ContainerMovement>? containerMovements,
   }) {
     calls++;
+    movements = containerMovements;
     return completer.future;
   }
 }
 
 class _PreparedDraft extends SaleDraft {
+  _PreparedDraft([this.containerType]);
+
+  final String? containerType;
+
   @override
   SaleDraftState build() => SaleDraftState(
     customer: Customer(
@@ -48,15 +55,17 @@ class _PreparedDraft extends SaleDraft {
     ),
     items: [
       SaleItem(
-        product: const Product(
+        product: Product(
           id: 'p-1',
           name: 'Agua 20L',
           unitLabel: 'bidón',
           price: 1500,
+          containerType: containerType,
         ),
         quantity: 2,
       ),
     ],
+    returnedContainers: {?containerType: 2},
     paymentMethod: PaymentMethod.cash,
   );
 }
@@ -72,17 +81,24 @@ void main() {
 
   late _FakeRegisterSale fake;
 
-  Future<void> pumpScreen(WidgetTester tester) async {
+  Future<void> pumpScreen(
+    WidgetTester tester, {
+    String? containerType,
+    List<CustomerContainerBalance> custody = const [],
+  }) async {
     fake = _FakeRegisterSale();
     await tester.binding.setSurfaceSize(const Size(360, 800));
     addTearDown(() => tester.binding.setSurfaceSize(null));
     await tester.pumpWidget(
       ProviderScope(
         overrides: [
-          saleDraftProvider.overrideWith(_PreparedDraft.new),
+          saleDraftProvider.overrideWith(() => _PreparedDraft(containerType)),
           registerSaleUseCaseProvider.overrideWithValue(fake),
           customerContainerBalancesProvider.overrideWith(
-            (ref, id) => Stream.value(const <CustomerContainerBalance>[]),
+            (ref, id) => Stream.value(custody),
+          ),
+          containerTypesProvider.overrideWith(
+            (ref) => Stream.value(catalogContainerTypes),
           ),
         ],
         child: MaterialApp(
@@ -170,6 +186,52 @@ void main() {
     expect(find.byType(SaleStep3Screen), findsNothing);
     expect(find.text('Venta registrada con éxito'), findsOneWidget);
 
+    await tester.pumpAndSettle(const Duration(seconds: 4));
+  });
+
+  testWidgets('with custody the driver confirms the returns before the sale '
+      'is recorded', (tester) async {
+    await pumpScreen(
+      tester,
+      containerType: 'BIDON_20L',
+      custody: const [
+        CustomerContainerBalance(
+          customerId: 'c-1',
+          containerType: 'BIDON_20L',
+          quantity: 5,
+        ),
+      ],
+    );
+
+    await tester.tap(confirmButton);
+    await tester.pumpAndSettle();
+
+    expect(find.text('Retorno de Envases'), findsOneWidget);
+    expect(find.text('Bidón 20L'), findsOneWidget);
+    expect(find.text('Sifón 1.5L'), findsNothing);
+    expect(
+      find.descendant(of: find.byType(AlertDialog), matching: find.text('2')),
+      findsOneWidget,
+    );
+    await tester.tap(find.byTooltip('Restar'));
+    await tester.pump();
+    await tester.tap(
+      find.descendant(
+        of: find.byType(AlertDialog),
+        matching: find.widgetWithText(FilledButton, 'Confirmar'),
+      ),
+    );
+    await tester.pump();
+    await tester.pump(const Duration(milliseconds: 300));
+
+    expect(find.byType(AlertDialog), findsNothing);
+    expect(fake.calls, 1);
+    final movement = fake.movements!.single;
+    expect(movement.containerType, 'BIDON_20L');
+    expect(movement.deliveredQuantity, 2);
+    expect(movement.returnedQuantity, 1);
+
+    fake.completer.complete(const Resource.success(null));
     await tester.pumpAndSettle(const Duration(seconds: 4));
   });
 }
