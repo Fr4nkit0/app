@@ -1,6 +1,7 @@
 import 'package:flutter_test/flutter_test.dart';
 
 import 'package:app/features/inventory/domain/custody.dart';
+import 'package:app/features/inventory/domain/models/customer_container_balance.dart';
 
 void main() {
   test('sums the delivered quantity per container code', () {
@@ -36,5 +37,23 @@ void main() {
 
   test('no items deliver nothing', () {
     expect(deliveredByContainerType(const []), isEmpty);
+  });
+
+  test('custody per container code from the customer balances', () {
+    expect(
+      custodyByContainerType(const [
+        CustomerContainerBalance(
+          customerId: 'c-1',
+          containerType: 'JUG',
+          quantity: 3,
+        ),
+        CustomerContainerBalance(
+          customerId: 'c-1',
+          containerType: 'SIPHON',
+          quantity: 0,
+        ),
+      ]),
+      {'JUG': 3, 'SIPHON': 0},
+    );
   });
 }
