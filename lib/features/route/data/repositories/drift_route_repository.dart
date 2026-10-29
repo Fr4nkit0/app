@@ -7,8 +7,11 @@ import 'package:app/features/payments/data/repositories/customer_account.dart';
 import 'package:app/features/route/data/repositories/route.repository.dart';
 import 'package:app/features/route/domain/models/route_stop.dart';
 import 'package:app/features/route/domain/models/stop_status.dart';
+import 'package:app/features/sales/domain/models/payment_method.dart';
 import 'package:app/features/sync/data/repositories/pending_change.repository.dart';
 import 'package:app/features/sync/domain/models/pending_change.dart';
+import 'package:app/features/visits/domain/models/visit_outcome.dart';
+import 'package:app/features/visits/domain/models/visit_summary.dart';
 
 class DriftRouteRepository implements RouteRepository {
   DriftRouteRepository(AppDatabase db)
@@ -41,14 +44,42 @@ class DriftRouteRepository implements RouteRepository {
             _db.customerTable.enabled.equals(true),
       );
 
-    return q.watch().asyncMap((rows) async {
+    // The joined query alone would not re-emit when a visit or one of its
+    // records changes, so any of these tables triggers a fresh read.
+    final changes = _db
+        .customSelect(
+          'SELECT 1',
+          readsFrom: {
+            _db.routeStopTable,
+            _db.routeTable,
+            _db.customerTable,
+            _account.watchedTable,
+            _db.visitTable,
+            _db.visitOutcomeTable,
+            _db.saleTable,
+            _db.paymentTable,
+            _db.containerMovementTable,
+          },
+        )
+        .watch();
+
+    return changes.asyncMap((_) async {
+      final rows = await q.get();
       final stops = <RouteStop>[];
+      final stopRows = [
+        for (final row in rows) row.readTable(_db.routeStopTable),
+      ];
       final scheduledAtById = {
-        for (final row in rows)
-          row.readTable(_db.routeStopTable).routeStopId: row
-              .readTable(_db.routeStopTable)
-              .scheduledAt,
+        for (final stop in stopRows) stop.routeStopId: stop.scheduledAt,
       };
+      final rescheduledToById = {
+        for (final stop in stopRows)
+          if (stop.rescheduledFromStopId != null)
+            stop.rescheduledFromStopId!: stop.scheduledAt,
+      };
+      final visits = await _visitSummaries([
+        for (final stop in stopRows) stop.routeStopId,
+      ]);
 
       for (final row in rows) {
         final stopRow = row.readTable(_db.routeStopTable);
@@ -99,6 +130,8 @@ class DriftRouteRepository implements RouteRepository {
             hasScheduledTime: stopRow.scheduledTime != null,
             rescheduledFromStopId: stopRow.rescheduledFromStopId,
             rescheduledFromAt: scheduledAtById[stopRow.rescheduledFromStopId],
+            rescheduledToAt: rescheduledToById[stopRow.routeStopId],
+            visit: visits[stopRow.routeStopId],
           ),
         );
       }
@@ -113,6 +146,76 @@ class DriftRouteRepository implements RouteRepository {
 
       return stops;
     });
+  }
+
+  /// The summary of each stop in [stopIds] with a recorded visit. Sales,
+  /// payments and container movements of a visit carry its stop's id.
+  Future<Map<String, VisitSummary>> _visitSummaries(
+    List<String> stopIds,
+  ) async {
+    if (stopIds.isEmpty) return const {};
+
+    final visitRows =
+        await (_db.select(_db.visitTable).join([
+                leftOuterJoin(
+                  _db.visitOutcomeTable,
+                  _db.visitOutcomeTable.id.equalsExp(_db.visitTable.outcomeId),
+                ),
+              ])
+              ..where(_db.visitTable.routeStopId.isIn(stopIds))
+              ..orderBy([OrderingTerm.asc(_db.visitTable.arrived_at)]))
+            .get();
+    // The latest visit of a stop decides its outcome.
+    final outcomes = <String, VisitOutcome?>{};
+    for (final row in visitRows) {
+      final outcome = row.readTableOrNull(_db.visitOutcomeTable);
+      outcomes[row.readTable(_db.visitTable).routeStopId] = outcome == null
+          ? null
+          : VisitOutcome(
+              id: outcome.id,
+              code: outcome.code,
+              name: outcome.name,
+              triggersReschedule: outcome.triggersReschedule,
+            );
+    }
+    if (outcomes.isEmpty) return const {};
+    final visited = outcomes.keys.toList();
+
+    final sales =
+        await (_db.select(_db.saleTable)
+              ..where((t) => t.visitId.isIn(visited))
+              ..orderBy([(t) => OrderingTerm.asc(t.saleDate)]))
+            .get();
+    final payments = await (_db.select(
+      _db.paymentTable,
+    )..where((t) => t.visitId.isIn(visited) & t.saleId.isNull())).get();
+    final movements = await (_db.select(
+      _db.containerMovementTable,
+    )..where((t) => t.visitId.isIn(visited))).get();
+
+    return {
+      for (final stopId in visited)
+        stopId: VisitSummary(
+          outcome: outcomes[stopId],
+          salesTotal: sales
+              .where((s) => s.visitId == stopId)
+              .fold(0.0, (sum, s) => sum + s.totalAmount),
+          saleMethods: {
+            for (final s in sales)
+              if (s.visitId == stopId)
+                PaymentMethod.values.firstWhere(
+                  (m) => m.name == s.paymentMethod,
+                  orElse: () => PaymentMethod.cash,
+                ),
+          }.toList(),
+          collected: payments
+              .where((p) => p.visitId == stopId)
+              .fold(0.0, (sum, p) => sum + p.amount),
+          returned: movements
+              .where((m) => m.visitId == stopId)
+              .fold(0, (sum, m) => sum + m.returnedQuantity),
+        ),
+    };
   }
 
   @override

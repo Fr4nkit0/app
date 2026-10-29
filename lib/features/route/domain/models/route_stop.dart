@@ -1,4 +1,5 @@
 import 'package:app/features/customers/domain/models/customer.dart';
+import 'package:app/features/visits/domain/models/visit_summary.dart';
 import 'stop_status.dart';
 
 class RouteStop {
@@ -16,6 +17,12 @@ class RouteStop {
   /// Scheduled time of the stop this one was rescheduled from.
   final DateTime? rescheduledFromAt;
 
+  /// Scheduled time of the stop this one was rescheduled to, when it was.
+  final DateTime? rescheduledToAt;
+
+  /// What the visit recorded; null until a visit is recorded at the stop.
+  final VisitSummary? visit;
+
   const RouteStop({
     required this.id,
     required this.customer,
@@ -24,6 +31,8 @@ class RouteStop {
     this.hasScheduledTime = true,
     this.rescheduledFromStopId,
     this.rescheduledFromAt,
+    this.rescheduledToAt,
+    this.visit,
   });
 
   RouteStop copyWith({StopStatus? status}) => RouteStop(
@@ -34,5 +43,7 @@ class RouteStop {
     hasScheduledTime: hasScheduledTime,
     rescheduledFromStopId: rescheduledFromStopId,
     rescheduledFromAt: rescheduledFromAt,
+    rescheduledToAt: rescheduledToAt,
+    visit: visit,
   );
 }
