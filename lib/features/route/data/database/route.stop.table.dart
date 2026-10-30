@@ -28,7 +28,6 @@ class RouteStopTable extends Table with Timestamps {
   late final status = text().withDefault(const Constant('pending'))();
   late final scheduledAt = dateTime()();
   late final visitedAt = dateTime().nullable()();
-  late final notes = text().nullable()();
   late final scheduledTime = text().nullable()(); // 'HH:MM:SS'
   late final rescheduledFromStopId = text().nullable()();
 

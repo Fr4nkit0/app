@@ -57,143 +57,27 @@ part 'database.helper.g.dart';
 class AppDatabase extends _$AppDatabase {
   AppDatabase([QueryExecutor? executor]) : super(executor ?? _openConnection());
 
+  /// 17 is the development baseline: one schema, no upgrade history. Before
+  /// the first production release this version must be frozen, and every
+  /// later schema change must ship with its own upgrade step.
   @override
-  int get schemaVersion => 16;
+  int get schemaVersion => 17;
 
   @override
   MigrationStrategy get migration => MigrationStrategy(
     onCreate: (m) async {
       await m.createAll();
     },
+    // Any older development schema is rebuilt empty; unsent local data is
+    // lost, the same as reinstalling the app.
     onUpgrade: (m, from, to) async {
-      if (from < 3) {
-        await m.createTable(paymentTable);
-        await m.createTable(customerAccountEntryTable);
-        await m.createTable(customerBalanceTable);
-        await m.createTable(containerMovementTable);
-        await m.createTable(customerContainerBalanceTable);
-        await m.createTable(routeInventoryLoadTable);
+      // Reverse declaration order drops dependents before what they reference.
+      for (final entity in allSchemaEntities.toList().reversed) {
+        await m.drop(entity);
       }
-      if (from < 4) {
-        final columns = await customSelect("PRAGMA table_info(customer_addresses)").get();
-        final columnNames = columns.map((row) => row.read<String>('name')).toList();
-        if (!columnNames.contains('latitude')) {
-          await m.addColumn(customerAddressTable, customerAddressTable.latitude);
-        }
-        if (!columnNames.contains('longitude')) {
-          await m.addColumn(customerAddressTable, customerAddressTable.longitude);
-        }
-      }
-      if (from < 5) {
-        final columns = await customSelect("PRAGMA table_info(customer_addresses)").get();
-        final columnNames = columns.map((row) => row.read<String>('name')).toList();
-        if (!columnNames.contains('neighborhood')) {
-          await m.addColumn(customerAddressTable, customerAddressTable.neighborhood);
-        }
-      }
-      if (from < 6) {
-        final tables = <TableInfo<Table, dynamic>>[
-          customerTable, customerAddressTable, customerPreferenceTable,
-          routeTable, routeStopTable, routeInventoryTable, productTable,
-          visitTable, saleTable, saleItemTable, paymentTable,
-          customerAccountEntryTable, customerBalanceTable,
-          containerMovementTable, customerContainerBalanceTable,
-          routeInventoryLoadTable,
-        ];
-        for (final table in tables) {
-          final columns = await customSelect("PRAGMA table_info(${table.actualTableName})").get();
-          final columnNames = columns.map((row) => row.read<String>('name')).toList();
-          if (!columnNames.contains('server_id')) {
-            await m.addColumn(table, (table as dynamic).serverId);
-          }
-        }
-      }
-      if (from < 7) {
-        await m.createTable(pendingChangeTable);
-        await _replaceAuditLogsWithPendingChanges();
-      }
-      if (from < 8) {
-        await m.createTable(containerTypeTable);
-        await m.createTable(paymentMethodTable);
-        await m.createTable(visitOutcomeTable);
-        await m.createTable(customerAgreementTable);
-        await m.createTable(syncStateTable);
-        await _addColumnIfMissing(m, routeTable, routeTable.status);
-        await _addColumnIfMissing(m, routeStopTable, routeStopTable.scheduledTime);
-        await _addColumnIfMissing(m, routeStopTable, routeStopTable.rescheduledFromStopId);
-        await _addColumnIfMissing(m, visitTable, visitTable.outcomeId);
-        final visitColumns = await customSelect('PRAGMA table_info(visits)').get();
-        if (visitColumns.any((row) => row.read<String>('name') == 'outcome')) {
-          await customStatement('ALTER TABLE visits DROP COLUMN outcome');
-        }
-      }
-      if (from < 9) {
-        await _addColumnIfMissing(m, containerTypeTable, containerTypeTable.enabled);
-        await _addColumnIfMissing(m, paymentMethodTable, paymentMethodTable.enabled);
-        await _addColumnIfMissing(m, visitOutcomeTable, visitOutcomeTable.enabled);
-      }
-      if (from < 10) {
-        await _addColumnIfMissing(m, saleItemTable, saleItemTable.agreementServerId);
-      }
-      if (from < 11) {
-        await _addColumnIfMissing(m, visitOutcomeTable, visitOutcomeTable.code);
-      }
-      if (from < 12) {
-        await _addColumnIfMissing(m, saleItemTable, saleItemTable.agreementUuid);
-      }
-      if (from < 13) {
-        await _addColumnIfMissing(m, productTable, productTable.containerTypeId);
-      }
-      if (from < 14) {
-        await m.createTable(neighborhoodTable);
-      }
-      if (from < 15) {
-        await _addColumnIfMissing(m, saleTable, saleTable.status);
-        await _addColumnIfMissing(m, saleTable, saleTable.cancelledAt);
-        await _addColumnIfMissing(m, saleTable, saleTable.cancellationReason);
-        await _addColumnIfMissing(m, paymentTable, paymentTable.cancelledAt);
-        await _addColumnIfMissing(m, paymentTable, paymentTable.cancellationReason);
-      }
-      if (from < 16) {
-        await _addColumnIfMissing(m, containerMovementTable, containerMovementTable.saleId);
-        await _addColumnIfMissing(m, containerMovementTable, containerMovementTable.reversesMovementId);
-      }
+      await m.createAll();
     },
   );
-
-  Future<void> _addColumnIfMissing(
-    Migrator m,
-    TableInfo<Table, dynamic> table,
-    GeneratedColumn column,
-  ) async {
-    final columns = await customSelect('PRAGMA table_info(${table.actualTableName})').get();
-    if (!columns.any((row) => row.read<String>('name') == column.name)) {
-      await m.addColumn(table, column);
-    }
-  }
-
-  /// Moves unsynced audit rows into the pending queue and drops the old table.
-  Future<void> _replaceAuditLogsWithPendingChanges() async {
-    final legacy = await customSelect(
-      "SELECT name FROM sqlite_master WHERE type = 'table' AND name = 'audit_logs'",
-    ).get();
-    if (legacy.isEmpty) return;
-
-    await customStatement('''
-      INSERT INTO pending_changes
-        (entity, entity_id, action, payload, status, created_at, last_modified_date)
-      SELECT
-        CASE table_name
-          WHEN 'payments' THEN 'payment'
-          ELSE 'container_movement'
-        END,
-        record_id, lower(action), payload, 'pending', created_at, last_modified_date
-      FROM audit_logs
-      WHERE enabled = 1 AND table_name IN ('payments', 'container_movements')
-      ORDER BY created_at, rowid
-    ''');
-    await customStatement('DROP TABLE audit_logs');
-  }
 
   static QueryExecutor _openConnection() {
     return driftDatabase(

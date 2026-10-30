@@ -26,7 +26,6 @@ void main() {
     expect(
       touching,
       unorderedEquals([
-        'lib/core/services/database.helper.dart',
         'lib/features/payments/data/repositories/customer_account.dart',
       ]),
     );

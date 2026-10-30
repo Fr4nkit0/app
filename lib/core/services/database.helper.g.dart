@@ -2786,15 +2786,6 @@ class $RouteStopTableTable extends RouteStopTable
     type: DriftSqlType.dateTime,
     requiredDuringInsert: false,
   );
-  static const VerificationMeta _notesMeta = const VerificationMeta('notes');
-  @override
-  late final GeneratedColumn<String> notes = GeneratedColumn<String>(
-    'notes',
-    aliasedName,
-    true,
-    type: DriftSqlType.string,
-    requiredDuringInsert: false,
-  );
   static const VerificationMeta _scheduledTimeMeta = const VerificationMeta(
     'scheduledTime',
   );
@@ -2866,7 +2857,6 @@ class $RouteStopTableTable extends RouteStopTable
     status,
     scheduledAt,
     visitedAt,
-    notes,
     scheduledTime,
     rescheduledFromStopId,
     isRequested,
@@ -2977,12 +2967,6 @@ class $RouteStopTableTable extends RouteStopTable
         visitedAt.isAcceptableOrUnknown(data['visited_at']!, _visitedAtMeta),
       );
     }
-    if (data.containsKey('notes')) {
-      context.handle(
-        _notesMeta,
-        notes.isAcceptableOrUnknown(data['notes']!, _notesMeta),
-      );
-    }
     if (data.containsKey('scheduled_time')) {
       context.handle(
         _scheduledTimeMeta,
@@ -3082,10 +3066,6 @@ class $RouteStopTableTable extends RouteStopTable
         DriftSqlType.dateTime,
         data['${effectivePrefix}visited_at'],
       ),
-      notes: attachedDatabase.typeMapping.read(
-        DriftSqlType.string,
-        data['${effectivePrefix}notes'],
-      ),
       scheduledTime: attachedDatabase.typeMapping.read(
         DriftSqlType.string,
         data['${effectivePrefix}scheduled_time'],
@@ -3129,7 +3109,6 @@ class RouteStopTableData extends DataClass
   final String status;
   final DateTime scheduledAt;
   final DateTime? visitedAt;
-  final String? notes;
   final String? scheduledTime;
   final String? rescheduledFromStopId;
 
@@ -3152,7 +3131,6 @@ class RouteStopTableData extends DataClass
     required this.status,
     required this.scheduledAt,
     this.visitedAt,
-    this.notes,
     this.scheduledTime,
     this.rescheduledFromStopId,
     required this.isRequested,
@@ -3179,9 +3157,6 @@ class RouteStopTableData extends DataClass
     map['scheduled_at'] = Variable<DateTime>(scheduledAt);
     if (!nullToAbsent || visitedAt != null) {
       map['visited_at'] = Variable<DateTime>(visitedAt);
-    }
-    if (!nullToAbsent || notes != null) {
-      map['notes'] = Variable<String>(notes);
     }
     if (!nullToAbsent || scheduledTime != null) {
       map['scheduled_time'] = Variable<String>(scheduledTime);
@@ -3219,9 +3194,6 @@ class RouteStopTableData extends DataClass
       visitedAt: visitedAt == null && nullToAbsent
           ? const Value.absent()
           : Value(visitedAt),
-      notes: notes == null && nullToAbsent
-          ? const Value.absent()
-          : Value(notes),
       scheduledTime: scheduledTime == null && nullToAbsent
           ? const Value.absent()
           : Value(scheduledTime),
@@ -3256,7 +3228,6 @@ class RouteStopTableData extends DataClass
       status: serializer.fromJson<String>(json['status']),
       scheduledAt: serializer.fromJson<DateTime>(json['scheduledAt']),
       visitedAt: serializer.fromJson<DateTime?>(json['visitedAt']),
-      notes: serializer.fromJson<String?>(json['notes']),
       scheduledTime: serializer.fromJson<String?>(json['scheduledTime']),
       rescheduledFromStopId: serializer.fromJson<String?>(
         json['rescheduledFromStopId'],
@@ -3282,7 +3253,6 @@ class RouteStopTableData extends DataClass
       'status': serializer.toJson<String>(status),
       'scheduledAt': serializer.toJson<DateTime>(scheduledAt),
       'visitedAt': serializer.toJson<DateTime?>(visitedAt),
-      'notes': serializer.toJson<String?>(notes),
       'scheduledTime': serializer.toJson<String?>(scheduledTime),
       'rescheduledFromStopId': serializer.toJson<String?>(
         rescheduledFromStopId,
@@ -3306,7 +3276,6 @@ class RouteStopTableData extends DataClass
     String? status,
     DateTime? scheduledAt,
     Value<DateTime?> visitedAt = const Value.absent(),
-    Value<String?> notes = const Value.absent(),
     Value<String?> scheduledTime = const Value.absent(),
     Value<String?> rescheduledFromStopId = const Value.absent(),
     bool? isRequested,
@@ -3327,7 +3296,6 @@ class RouteStopTableData extends DataClass
     status: status ?? this.status,
     scheduledAt: scheduledAt ?? this.scheduledAt,
     visitedAt: visitedAt.present ? visitedAt.value : this.visitedAt,
-    notes: notes.present ? notes.value : this.notes,
     scheduledTime: scheduledTime.present
         ? scheduledTime.value
         : this.scheduledTime,
@@ -3364,7 +3332,6 @@ class RouteStopTableData extends DataClass
           ? data.scheduledAt.value
           : this.scheduledAt,
       visitedAt: data.visitedAt.present ? data.visitedAt.value : this.visitedAt,
-      notes: data.notes.present ? data.notes.value : this.notes,
       scheduledTime: data.scheduledTime.present
           ? data.scheduledTime.value
           : this.scheduledTime,
@@ -3396,7 +3363,6 @@ class RouteStopTableData extends DataClass
           ..write('status: $status, ')
           ..write('scheduledAt: $scheduledAt, ')
           ..write('visitedAt: $visitedAt, ')
-          ..write('notes: $notes, ')
           ..write('scheduledTime: $scheduledTime, ')
           ..write('rescheduledFromStopId: $rescheduledFromStopId, ')
           ..write('isRequested: $isRequested, ')
@@ -3420,7 +3386,6 @@ class RouteStopTableData extends DataClass
     status,
     scheduledAt,
     visitedAt,
-    notes,
     scheduledTime,
     rescheduledFromStopId,
     isRequested,
@@ -3443,7 +3408,6 @@ class RouteStopTableData extends DataClass
           other.status == this.status &&
           other.scheduledAt == this.scheduledAt &&
           other.visitedAt == this.visitedAt &&
-          other.notes == this.notes &&
           other.scheduledTime == this.scheduledTime &&
           other.rescheduledFromStopId == this.rescheduledFromStopId &&
           other.isRequested == this.isRequested &&
@@ -3464,7 +3428,6 @@ class RouteStopTableCompanion extends UpdateCompanion<RouteStopTableData> {
   final Value<String> status;
   final Value<DateTime> scheduledAt;
   final Value<DateTime?> visitedAt;
-  final Value<String?> notes;
   final Value<String?> scheduledTime;
   final Value<String?> rescheduledFromStopId;
   final Value<bool> isRequested;
@@ -3484,7 +3447,6 @@ class RouteStopTableCompanion extends UpdateCompanion<RouteStopTableData> {
     this.status = const Value.absent(),
     this.scheduledAt = const Value.absent(),
     this.visitedAt = const Value.absent(),
-    this.notes = const Value.absent(),
     this.scheduledTime = const Value.absent(),
     this.rescheduledFromStopId = const Value.absent(),
     this.isRequested = const Value.absent(),
@@ -3505,7 +3467,6 @@ class RouteStopTableCompanion extends UpdateCompanion<RouteStopTableData> {
     this.status = const Value.absent(),
     required DateTime scheduledAt,
     this.visitedAt = const Value.absent(),
-    this.notes = const Value.absent(),
     this.scheduledTime = const Value.absent(),
     this.rescheduledFromStopId = const Value.absent(),
     this.isRequested = const Value.absent(),
@@ -3529,7 +3490,6 @@ class RouteStopTableCompanion extends UpdateCompanion<RouteStopTableData> {
     Expression<String>? status,
     Expression<DateTime>? scheduledAt,
     Expression<DateTime>? visitedAt,
-    Expression<String>? notes,
     Expression<String>? scheduledTime,
     Expression<String>? rescheduledFromStopId,
     Expression<bool>? isRequested,
@@ -3550,7 +3510,6 @@ class RouteStopTableCompanion extends UpdateCompanion<RouteStopTableData> {
       if (status != null) 'status': status,
       if (scheduledAt != null) 'scheduled_at': scheduledAt,
       if (visitedAt != null) 'visited_at': visitedAt,
-      if (notes != null) 'notes': notes,
       if (scheduledTime != null) 'scheduled_time': scheduledTime,
       if (rescheduledFromStopId != null)
         'rescheduled_from_stop_id': rescheduledFromStopId,
@@ -3574,7 +3533,6 @@ class RouteStopTableCompanion extends UpdateCompanion<RouteStopTableData> {
     Value<String>? status,
     Value<DateTime>? scheduledAt,
     Value<DateTime?>? visitedAt,
-    Value<String?>? notes,
     Value<String?>? scheduledTime,
     Value<String?>? rescheduledFromStopId,
     Value<bool>? isRequested,
@@ -3595,7 +3553,6 @@ class RouteStopTableCompanion extends UpdateCompanion<RouteStopTableData> {
       status: status ?? this.status,
       scheduledAt: scheduledAt ?? this.scheduledAt,
       visitedAt: visitedAt ?? this.visitedAt,
-      notes: notes ?? this.notes,
       scheduledTime: scheduledTime ?? this.scheduledTime,
       rescheduledFromStopId:
           rescheduledFromStopId ?? this.rescheduledFromStopId,
@@ -3645,9 +3602,6 @@ class RouteStopTableCompanion extends UpdateCompanion<RouteStopTableData> {
     if (visitedAt.present) {
       map['visited_at'] = Variable<DateTime>(visitedAt.value);
     }
-    if (notes.present) {
-      map['notes'] = Variable<String>(notes.value);
-    }
     if (scheduledTime.present) {
       map['scheduled_time'] = Variable<String>(scheduledTime.value);
     }
@@ -3686,7 +3640,6 @@ class RouteStopTableCompanion extends UpdateCompanion<RouteStopTableData> {
           ..write('status: $status, ')
           ..write('scheduledAt: $scheduledAt, ')
           ..write('visitedAt: $visitedAt, ')
-          ..write('notes: $notes, ')
           ..write('scheduledTime: $scheduledTime, ')
           ..write('rescheduledFromStopId: $rescheduledFromStopId, ')
           ..write('isRequested: $isRequested, ')
@@ -17104,7 +17057,6 @@ typedef $$RouteStopTableTableCreateCompanionBuilder =
       Value<String> status,
       required DateTime scheduledAt,
       Value<DateTime?> visitedAt,
-      Value<String?> notes,
       Value<String?> scheduledTime,
       Value<String?> rescheduledFromStopId,
       Value<bool> isRequested,
@@ -17126,7 +17078,6 @@ typedef $$RouteStopTableTableUpdateCompanionBuilder =
       Value<String> status,
       Value<DateTime> scheduledAt,
       Value<DateTime?> visitedAt,
-      Value<String?> notes,
       Value<String?> scheduledTime,
       Value<String?> rescheduledFromStopId,
       Value<bool> isRequested,
@@ -17285,11 +17236,6 @@ class $$RouteStopTableTableFilterComposer
 
   ColumnFilters<DateTime> get visitedAt => $composableBuilder(
     column: $table.visitedAt,
-    builder: (column) => ColumnFilters(column),
-  );
-
-  ColumnFilters<String> get notes => $composableBuilder(
-    column: $table.notes,
     builder: (column) => ColumnFilters(column),
   );
 
@@ -17467,11 +17413,6 @@ class $$RouteStopTableTableOrderingComposer
     builder: (column) => ColumnOrderings(column),
   );
 
-  ColumnOrderings<String> get notes => $composableBuilder(
-    column: $table.notes,
-    builder: (column) => ColumnOrderings(column),
-  );
-
   ColumnOrderings<String> get scheduledTime => $composableBuilder(
     column: $table.scheduledTime,
     builder: (column) => ColumnOrderings(column),
@@ -17609,9 +17550,6 @@ class $$RouteStopTableTableAnnotationComposer
 
   GeneratedColumn<DateTime> get visitedAt =>
       $composableBuilder(column: $table.visitedAt, builder: (column) => column);
-
-  GeneratedColumn<String> get notes =>
-      $composableBuilder(column: $table.notes, builder: (column) => column);
 
   GeneratedColumn<String> get scheduledTime => $composableBuilder(
     column: $table.scheduledTime,
@@ -17779,7 +17717,6 @@ class $$RouteStopTableTableTableManager
                 Value<String> status = const Value.absent(),
                 Value<DateTime> scheduledAt = const Value.absent(),
                 Value<DateTime?> visitedAt = const Value.absent(),
-                Value<String?> notes = const Value.absent(),
                 Value<String?> scheduledTime = const Value.absent(),
                 Value<String?> rescheduledFromStopId = const Value.absent(),
                 Value<bool> isRequested = const Value.absent(),
@@ -17799,7 +17736,6 @@ class $$RouteStopTableTableTableManager
                 status: status,
                 scheduledAt: scheduledAt,
                 visitedAt: visitedAt,
-                notes: notes,
                 scheduledTime: scheduledTime,
                 rescheduledFromStopId: rescheduledFromStopId,
                 isRequested: isRequested,
@@ -17821,7 +17757,6 @@ class $$RouteStopTableTableTableManager
                 Value<String> status = const Value.absent(),
                 required DateTime scheduledAt,
                 Value<DateTime?> visitedAt = const Value.absent(),
-                Value<String?> notes = const Value.absent(),
                 Value<String?> scheduledTime = const Value.absent(),
                 Value<String?> rescheduledFromStopId = const Value.absent(),
                 Value<bool> isRequested = const Value.absent(),
@@ -17841,7 +17776,6 @@ class $$RouteStopTableTableTableManager
                 status: status,
                 scheduledAt: scheduledAt,
                 visitedAt: visitedAt,
-                notes: notes,
                 scheduledTime: scheduledTime,
                 rescheduledFromStopId: rescheduledFromStopId,
                 isRequested: isRequested,
