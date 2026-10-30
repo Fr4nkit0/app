@@ -218,21 +218,44 @@ class DriftInventoryRepository implements InventoryRepository {
 
   @override
   Stream<List<ContainerType>> watchContainerTypes() {
-    return (_db.select(_db.containerTypeTable)
-          ..where((t) => t.enabled.equals(true))
-          ..orderBy([(t) => OrderingTerm.asc(t.id)]))
-        .watch()
-        .map(
-          (rows) => [
-            for (final row in rows)
-              ContainerType.fromCatalog(
-                id: row.id,
-                code: row.code,
-                description: row.description,
-              ),
-          ],
-        );
+    // Re-emits when the catalog or the products that use it change.
+    final changes = _db
+        .customSelect(
+          'SELECT 1',
+          readsFrom: {_db.containerTypeTable, _db.productTable},
+        )
+        .watch();
+    return changes.asyncMap((_) async {
+      final rows =
+          await (_db.select(_db.containerTypeTable)
+                ..where((t) => t.enabled.equals(true))
+                ..orderBy([(t) => OrderingTerm.asc(t.id)]))
+              .get();
+      final products =
+          await (_db.select(_db.productTable)..where(
+                (t) => t.enabled.equals(true) & t.containerTypeId.isNotNull(),
+              ))
+              .get();
+      final productNames = <int, List<String>>{};
+      for (final p in products) {
+        productNames.putIfAbsent(p.containerTypeId!, () => []).add(p.name);
+      }
+      return [
+        for (final row in rows)
+          ContainerType.fromCatalog(
+            id: row.id,
+            code: row.code,
+            description: row.description,
+            productName: _singleName(productNames[row.id]),
+          ),
+      ];
+    });
   }
+
+  /// The name of the only enabled product that uses a type; null when no
+  /// product or several products share it.
+  static String? _singleName(List<String>? names) =>
+      names != null && names.length == 1 ? names.single : null;
 
   ContainerMovement _rowToMovement(ContainerMovementTableData row) =>
       ContainerMovement(

@@ -501,6 +501,63 @@ void main() {
       },
     );
 
+    Future<void> seedProduct(
+      String name,
+      int? containerTypeId, {
+      bool enabled = true,
+    }) => db
+        .into(db.productTable)
+        .insert(
+          ProductTableCompanion.insert(
+            name: name,
+            price: 1000,
+            containerTypeId: drift.Value(containerTypeId),
+            enabled: drift.Value(enabled),
+          ),
+        );
+
+    test('labels a type with the name of the product that uses it', () async {
+      await seedType(1, 'BIDON_20L', 'Bidón 20 Litros Retornable');
+      await seedType(2, 'SIFON_2L', 'Sifón Soda 1.5 Litros Retornable');
+      await seedProduct('Bidón 20L', 1);
+      await seedProduct('Sifón 1.5L', 2);
+
+      final types = await sut.watchContainerTypes().first;
+
+      expect(types.map((t) => t.label), ['Bidón 20L', 'Sifón 1.5L']);
+      expect(types.map((t) => t.code), ['BIDON_20L', 'SIFON_2L']);
+    });
+
+    test('keeps the catalog description when no single enabled product '
+        'uses the type', () async {
+      await seedType(1, 'BIDON_20L', 'Bidón 20 Litros Retornable');
+      await seedType(2, 'SIFON_2L', 'Sifón Soda 1.5 Litros Retornable');
+      await seedType(3, 'JUG_10L', 'Bidón 10 Litros');
+      await seedProduct('Agua 20L', 1);
+      await seedProduct('Agua mineral 20L', 1);
+      await seedProduct('Sifón viejo', 2, enabled: false);
+
+      final types = await sut.watchContainerTypes().first;
+
+      expect(types.map((t) => t.label), [
+        'Bidón 20 Litros Retornable',
+        'Sifón Soda 1.5 Litros Retornable',
+        'Bidón 10 Litros',
+      ]);
+    });
+
+    test('re-emits when a product starts using a type', () async {
+      await seedType(1, 'BIDON_20L', 'Bidón 20 Litros Retornable');
+      final labels = sut.watchContainerTypes().map(
+        (types) => types.single.label,
+      );
+      final expectation = expectLater(labels, emitsThrough('Bidón 20L'));
+
+      await seedProduct('Bidón 20L', 1);
+
+      await expectation;
+    });
+
     test('emits an empty list when the catalog is empty', () async {
       expect(await sut.watchContainerTypes().first, isEmpty);
     });
