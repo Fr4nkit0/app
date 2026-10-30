@@ -32,6 +32,23 @@ class FakeFailingVisitRepository implements VisitRepository {
   @override
   Stream<List<Visit>> watchVisitsForStop(String routeStopId) =>
       const Stream.empty();
+
+  @override
+  Future<Visit?> findVisit(String visitId) async => null;
+
+  @override
+  Future<VisitOutcome?> findOutcome(int id) async => null;
+
+  @override
+  Future<bool> stopHasSales(String routeStopId) async => false;
+
+  @override
+  Future<void> editVisit(
+    String visitId, {
+    required int outcomeId,
+    String? observations,
+    required DateTime modifiedAt,
+  }) async {}
 }
 
 /// Route repository whose reschedule fails after the visit was recorded.

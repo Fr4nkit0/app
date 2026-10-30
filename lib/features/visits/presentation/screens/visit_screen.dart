@@ -1,3 +1,4 @@
+import 'package:app/core/providers/clock_provider.dart';
 import 'package:app/core/utils/money_formatter.dart';
 import 'package:app/core/presentation/failure_message.dart';
 import 'package:flutter/material.dart';
@@ -36,6 +37,9 @@ import 'package:app/features/visits/presentation/widgets/visit_outcome_banner.da
 import 'package:app/features/visits/presentation/widgets/visit_record_tile.dart';
 import 'package:app/features/visits/presentation/widgets/visit_reschedule_time_field.dart';
 import 'package:app/features/visits/presentation/providers/visit_session.dart';
+import 'package:app/features/visits/presentation/providers/edit_visit_usecase_provider.dart';
+import 'package:app/features/visits/presentation/widgets/visit_edit_sheet.dart';
+import 'package:app/features/visits/domain/models/visit_summary.dart';
 
 class VisitScreen extends ConsumerStatefulWidget {
   const VisitScreen({super.key, required this.stopId});
@@ -90,6 +94,18 @@ class _VisitScreenState extends ConsumerState<VisitScreen> {
               const <ContainerMovement>[])
         if (movement.returnedQuantity > 0) movement,
     ];
+    final canEditVisit =
+        stop.status != StopStatus.rescheduled &&
+        (stop.visit?.isEditableOn(ref.watch(clockProvider)()) ?? false);
+    // A reschedule adds a stop, so it is not an outcome an edit can pick.
+    final editOutcomes = canEditVisit
+        ? [
+            for (final outcome
+                in ref.watch(visitOutcomesProvider).value ??
+                    const <VisitOutcome>[])
+              if (!outcome.triggersReschedule) outcome,
+          ]
+        : const <VisitOutcome>[];
     final containerLabels = <String, String>{
       for (final type
           in ref.watch(containerTypesProvider).value ?? const <ContainerType>[])
@@ -239,6 +255,16 @@ class _VisitScreenState extends ConsumerState<VisitScreen> {
                         ] else ...[
                           const VisitSectionHeader(title: 'Estado'),
                           VisitOutcomeBanner(stop: stop),
+                          if (canEditVisit)
+                            Align(
+                              alignment: Alignment.centerRight,
+                              child: TextButton.icon(
+                                icon: const Icon(Icons.edit_outlined, size: 18),
+                                label: const Text('Editar resultado'),
+                                onPressed: () =>
+                                    _editVisit(stop.visit!, editOutcomes),
+                              ),
+                            ),
                           if (records.isNotEmpty) ...[
                             const SizedBox(height: 24),
                             recordsHeader,
@@ -376,6 +402,52 @@ class _VisitScreenState extends ConsumerState<VisitScreen> {
         duration: const Duration(seconds: 4),
       );
     });
+  }
+
+  /// Lets the driver change the outcome and notes of the closed visit.
+  Future<void> _editVisit(
+    VisitSummary visit,
+    List<VisitOutcome> outcomes,
+  ) async {
+    final edit = await showModalBottomSheet<VisitEdit>(
+      context: context,
+      isScrollControlled: true,
+      showDragHandle: true,
+      builder: (_) => VisitEditSheet(
+        outcomes: outcomes,
+        initialOutcome: visit.outcome,
+        initialNotes: visit.notes,
+      ),
+    );
+    if (edit == null || !mounted) return;
+    try {
+      await ref
+          .read(editVisitUseCaseProvider)
+          .execute(
+            visitId: visit.visitId!,
+            outcomeId: edit.outcome.id,
+            notes: edit.notes,
+          );
+    } catch (error) {
+      if (!mounted) return;
+      TopToast.show(
+        context,
+        message: failureMessage(
+          error,
+          fallback: 'No se guardó el cambio. Reintentá.',
+        ),
+        icon: Icons.error_outline,
+        color: MarilinColors.destructive,
+      );
+      return;
+    }
+    if (!mounted) return;
+    TopToast.show(
+      context,
+      message: 'Resultado actualizado',
+      icon: Icons.check_circle_rounded,
+      color: MarilinColors.success,
+    );
   }
 
   Future<void> _pickRescheduleTime() async {

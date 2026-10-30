@@ -27,22 +27,25 @@ class DriftRouteRepository implements RouteRepository {
   Stream<List<RouteStop>> watchDayStops() {
     final todayStr = _dateOnly(DateTime.now());
 
-    final q = _db.select(_db.routeStopTable).join([
-      innerJoin(
-        _db.routeTable,
-        _db.routeTable.routeId.equalsExp(_db.routeStopTable.routeId),
-      ),
-      innerJoin(
-        _db.customerTable,
-        _db.customerTable.customerId.equalsExp(_db.routeStopTable.customerId),
-      ),
-      _account.balanceJoin(_db.routeStopTable.customerId),
-    ])..where(
-        _db.routeTable.route_date.equals(todayStr) &
-            _db.routeTable.enabled.equals(true) &
-            _db.routeStopTable.enabled.equals(true) &
-            _db.customerTable.enabled.equals(true),
-      );
+    final q =
+        _db.select(_db.routeStopTable).join([
+          innerJoin(
+            _db.routeTable,
+            _db.routeTable.routeId.equalsExp(_db.routeStopTable.routeId),
+          ),
+          innerJoin(
+            _db.customerTable,
+            _db.customerTable.customerId.equalsExp(
+              _db.routeStopTable.customerId,
+            ),
+          ),
+          _account.balanceJoin(_db.routeStopTable.customerId),
+        ])..where(
+          _db.routeTable.route_date.equals(todayStr) &
+              _db.routeTable.enabled.equals(true) &
+              _db.routeStopTable.enabled.equals(true) &
+              _db.customerTable.enabled.equals(true),
+        );
 
     // The joined query alone would not re-emit when a visit or one of its
     // records changes, so any of these tables triggers a fresh read.
@@ -166,10 +169,13 @@ class DriftRouteRepository implements RouteRepository {
               ..orderBy([OrderingTerm.asc(_db.visitTable.arrived_at)]))
             .get();
     // The latest visit of a stop decides its outcome.
+    final latest = <String, VisitTableData>{};
     final outcomes = <String, VisitOutcome?>{};
     for (final row in visitRows) {
+      final visit = row.readTable(_db.visitTable);
       final outcome = row.readTableOrNull(_db.visitOutcomeTable);
-      outcomes[row.readTable(_db.visitTable).routeStopId] = outcome == null
+      latest[visit.routeStopId] = visit;
+      outcomes[visit.routeStopId] = outcome == null
           ? null
           : VisitOutcome(
               id: outcome.id,
@@ -196,6 +202,9 @@ class DriftRouteRepository implements RouteRepository {
     return {
       for (final stopId in visited)
         stopId: VisitSummary(
+          visitId: latest[stopId]!.visitId,
+          arrivedAt: latest[stopId]!.arrived_at,
+          notes: latest[stopId]!.observations,
           outcome: outcomes[stopId],
           salesTotal: sales
               .where((s) => s.visitId == stopId)

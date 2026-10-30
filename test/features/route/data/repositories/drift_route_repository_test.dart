@@ -556,6 +556,8 @@ void main() {
 
       expect(visit.outcome?.name, 'No quiso');
       expect(visit.outcome?.code, 'refused');
+      expect(visit.visitId, isNotNull);
+      expect(visit.arrivedAt, isNotNull);
       expect(visit.hasSales, isFalse);
       expect(visit.collected, 2000);
       expect(visit.returned, 3);

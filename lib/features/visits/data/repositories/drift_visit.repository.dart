@@ -78,6 +78,70 @@ class DriftVisitRepository implements VisitRepository {
         );
   }
 
+  @override
+  Future<Visit?> findVisit(String visitId) async {
+    final row = await (_db.select(
+      _db.visitTable,
+    )..where((t) => t.visitId.equals(visitId))).getSingleOrNull();
+    return row == null ? null : _rowToVisit(row);
+  }
+
+  @override
+  Future<VisitOutcome?> findOutcome(int id) async {
+    final row = await (_db.select(
+      _db.visitOutcomeTable,
+    )..where((t) => t.id.equals(id))).getSingleOrNull();
+    return row == null
+        ? null
+        : VisitOutcome(
+            id: row.id,
+            code: row.code,
+            name: row.name,
+            triggersReschedule: row.triggersReschedule,
+          );
+  }
+
+  @override
+  Future<bool> stopHasSales(String routeStopId) async {
+    final sale =
+        await (_db.select(_db.saleTable)
+              ..where((t) => t.visitId.equals(routeStopId))
+              ..limit(1))
+            .getSingleOrNull();
+    return sale != null;
+  }
+
+  @override
+  Future<void> editVisit(
+    String visitId, {
+    required int outcomeId,
+    String? observations,
+    required DateTime modifiedAt,
+  }) async {
+    await (_db.update(
+      _db.visitTable,
+    )..where((t) => t.visitId.equals(visitId))).write(
+      VisitTableCompanion(
+        outcomeId: Value(outcomeId),
+        observations: Value(observations),
+        lastModifiedDate: Value(modifiedAt),
+      ),
+    );
+
+    // The push rebuilds the visit from its row and sends it as an edit.
+    await _queue.enqueue(
+      entity: PendingEntity.visit,
+      entityId: visitId,
+      action: PendingAction.update,
+      payload: {
+        'visitId': visitId,
+        'outcomeId': outcomeId,
+        'observations': observations,
+        'modifiedAt': modifiedAt.toIso8601String(),
+      },
+    );
+  }
+
   Visit _rowToVisit(VisitTableData row) => Visit(
     visitId: row.visitId,
     routeStopId: row.routeStopId,
