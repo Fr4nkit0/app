@@ -67,7 +67,13 @@ class DriftHistoryRepository implements HistoryRepository {
         customerName: names[detail.customerId] ?? _unknownCustomer,
         date: row.createdAt,
         amount: detail.amount,
-        description: detail.description ?? _describe(entity, action),
+        description: switch (entity) {
+          // The record's own detail describes the record, not its
+          // cancellation.
+          PendingEntity.saleCancellation ||
+          PendingEntity.paymentCancellation => _describe(entity, action),
+          _ => detail.description ?? _describe(entity, action),
+        },
         status: PendingStatus.fromWire(row.status),
         rejectionReason: row.rejectionReason,
       );
@@ -84,8 +90,10 @@ class DriftHistoryRepository implements HistoryRepository {
         PendingEntity.routeStop => await _routeStops(ids),
         PendingEntity.visit => await _visits(ids),
         PendingEntity.containerMovement => await _containerMovements(ids),
-        PendingEntity.sale => await _sales(ids),
-        PendingEntity.payment => await _payments(ids),
+        PendingEntity.sale ||
+        PendingEntity.saleCancellation => await _sales(ids),
+        PendingEntity.payment ||
+        PendingEntity.paymentCancellation => await _payments(ids),
         PendingEntity.customerAgreement => await _agreements(ids),
       };
       for (final MapEntry(:key, :value) in found.entries) {
@@ -204,8 +212,10 @@ class DriftHistoryRepository implements HistoryRepository {
     PendingEntity.routeStop => HistoryEntryType.routeStop,
     PendingEntity.visit => HistoryEntryType.visit,
     PendingEntity.containerMovement => HistoryEntryType.delivery,
-    PendingEntity.sale => HistoryEntryType.sale,
-    PendingEntity.payment => HistoryEntryType.payment,
+    PendingEntity.sale ||
+    PendingEntity.saleCancellation => HistoryEntryType.sale,
+    PendingEntity.payment ||
+    PendingEntity.paymentCancellation => HistoryEntryType.payment,
     PendingEntity.customerAgreement => HistoryEntryType.agreement,
   };
 
@@ -222,6 +232,8 @@ class DriftHistoryRepository implements HistoryRepository {
         (PendingEntity.sale, _) => 'Venta registrada',
         (PendingEntity.payment, _) => 'Cobro registrado',
         (PendingEntity.customerAgreement, _) => 'Acuerdo de precio creado',
+        (PendingEntity.saleCancellation, _) => 'Venta anulada',
+        (PendingEntity.paymentCancellation, _) => 'Cobro anulado',
       };
 }
 

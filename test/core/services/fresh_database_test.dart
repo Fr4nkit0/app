@@ -18,6 +18,22 @@ void main() {
     expect(await db.select(db.neighborhoodTable).get(), isEmpty);
   });
 
+  test('a fresh install stores new sales as confirmed', () async {
+    final db = AppDatabase(NativeDatabase.memory());
+    addTearDown(db.close);
+    await db.customStatement(
+      "INSERT INTO customers (customer_id, name) VALUES ('c-1', 'Ana')",
+    );
+    await db.customStatement(
+      'INSERT INTO sales (sale_id, customer_id, total_amount, payment_method, '
+      "quantity, shipping_amount) VALUES ('sale-1', 'c-1', 10, 'cash', 0, 0)",
+    );
+
+    final sale = await db.select(db.saleTable).getSingle();
+    expect(sale.status, 'CONFIRMED');
+    expect(sale.cancelledAt, isNull);
+  });
+
   test('reopening an existing empty database does not reseed it', () async {
     final dir = Directory.systemTemp.createTempSync('marilin_db_test_');
     addTearDown(() => dir.deleteSync(recursive: true));

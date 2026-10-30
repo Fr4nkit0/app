@@ -2,6 +2,7 @@ import 'package:drift/drift.dart';
 import 'package:uuid/uuid.dart';
 
 import '../../../core/services/database.helper.dart';
+import '../../sales/data/database/record_status.dart';
 import '../../sales/domain/models/payment_method.dart';
 import 'pull_applier.dart';
 
@@ -12,9 +13,9 @@ import 'pull_applier.dart';
 /// server balances and truck inventory already include these sales, so
 /// they move no balance or stock and nothing is queued for push.
 ///
-/// Limits of the download: payments are not in it, so the method is
-/// `credit` for a credit sale and `cash` otherwise; and a cancelled sale
-/// is not stored, since the local sales have no status yet.
+/// A cancelled sale is stored as cancelled, with its credit note. Limit of
+/// the download: payments are not in it, so the method is `credit` for a
+/// credit sale and `cash` otherwise.
 class SaleApplier {
   SaleApplier(this._db);
 
@@ -43,7 +44,8 @@ class SaleApplier {
         continue;
       }
       final customerId = await context.ids.customer(s['customer_id'] as int?);
-      if (s['status'] == 'cancelled' || customerId == null) continue;
+      if (customerId == null) continue;
+      final cancelled = s['status'] == 'cancelled';
 
       final saleId = clientUuid ?? const Uuid().v4();
       final total = toDouble(s['total']);
@@ -65,6 +67,9 @@ class SaleApplier {
                 await _stopOfVisit(s['visit_id'] as int?, context),
               ),
               serverId: Value(serverId),
+              status: Value(
+                cancelled ? RecordStatus.cancelled : RecordStatus.confirmed,
+              ),
             ),
           );
       for (final d in jsonList(s['details'])) {
@@ -100,6 +105,21 @@ class SaleApplier {
               description: Value(isCredit ? 'Credit sale' : 'Sale'),
             ),
           );
+      if (cancelled) {
+        await _db
+            .into(_db.customerAccountEntryTable)
+            .insert(
+              CustomerAccountEntryTableCompanion.insert(
+                customerId: customerId,
+                saleId: Value(saleId),
+                entryType: 'CREDIT_NOTE',
+                amount: total,
+                direction: -1,
+                createdAt: Value(date),
+                description: const Value('Sale cancelled'),
+              ),
+            );
+      }
     }
   }
 

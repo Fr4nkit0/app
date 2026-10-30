@@ -5,6 +5,7 @@ import 'package:app/core/services/database.helper.dart';
 import 'package:app/features/payments/data/repositories/customer_account.dart';
 import 'package:app/features/payments/domain/models/customer_account_entry.dart';
 import 'package:app/features/payments/domain/models/payment.dart';
+import 'package:app/features/sales/data/database/record_status.dart';
 import 'package:app/features/sync/data/repositories/pending_change.repository.dart';
 import 'package:app/features/sync/domain/models/pending_change.dart';
 
@@ -19,6 +20,21 @@ abstract class PaymentRepository {
   Future<List<Payment>> getVisitPayments(String visitId);
   Stream<List<Payment>> watchVisitPayments(String visitId);
   Future<List<CustomerAccountEntry>> getCustomerLedger(String customerId);
+
+  /// The payment [paymentId], cancelled or not; null when it does not exist.
+  Future<Payment?> findPayment(String paymentId);
+
+  /// The payments that settled the sale [saleId].
+  Future<List<Payment>> getSalePayments(String saleId);
+
+  /// Marks [payment] cancelled at [at], books its adjustment, puts it back
+  /// on the customer balance and queues the cancellation; run it inside the
+  /// use case's unit of work.
+  Future<void> cancelPayment(
+    Payment payment, {
+    required DateTime at,
+    String? reason,
+  });
 }
 
 class DriftPaymentRepository implements PaymentRepository {
@@ -142,6 +158,101 @@ class DriftPaymentRepository implements PaymentRepository {
     return rows.map(_rowToEntry).toList();
   }
 
+  @override
+  Future<Payment?> findPayment(String paymentId) async {
+    final row = await (_db.select(
+      _db.paymentTable,
+    )..where((t) => t.paymentId.equals(paymentId))).getSingleOrNull();
+    return row == null ? null : _rowToPayment(row);
+  }
+
+  @override
+  Future<List<Payment>> getSalePayments(String saleId) async {
+    final rows = await (_db.select(
+      _db.paymentTable,
+    )..where((t) => t.saleId.equals(saleId))).get();
+    return rows.map(_rowToPayment).toList();
+  }
+
+  @override
+  Future<void> cancelPayment(
+    Payment payment, {
+    required DateTime at,
+    String? reason,
+  }) async {
+    await (_db.update(
+      _db.paymentTable,
+    )..where((t) => t.paymentId.equals(payment.id))).write(
+      PaymentTableCompanion(
+        status: const Value(RecordStatus.cancelled),
+        cancelledAt: Value(at),
+        cancellationReason: Value(reason),
+        lastModifiedDate: Value(at),
+      ),
+    );
+
+    // Like the server: an adjustment puts the amount back on the account.
+    final entryId = _uuid.v4();
+    await _db
+        .into(_db.customerAccountEntryTable)
+        .insert(
+          CustomerAccountEntryTableCompanion.insert(
+            customerAccountEntryId: Value(entryId),
+            customerId: payment.customerId,
+            paymentId: Value(payment.id),
+            entryType: adjustmentEntry,
+            amount: payment.amount,
+            direction: 1,
+            createdAt: Value(at),
+            description: const Value('Payment cancelled'),
+          ),
+        );
+    await _account.post(
+      payment.customerId,
+      payment.amount,
+      lastEntryId: entryId,
+    );
+
+    await _queue.enqueue(
+      entity: PendingEntity.paymentCancellation,
+      entityId: payment.id,
+      action: PendingAction.insert,
+      payload: {
+        'paymentId': payment.id,
+        'cancelledAt': at.toIso8601String(),
+        'reason': reason,
+      },
+    );
+  }
+
+  /// Takes back a cancellation the server refused: the payment counts
+  /// again in the balance. Nothing is queued.
+  Future<void> undoCancellation(String paymentId) async {
+    final payment = await (_db.select(
+      _db.paymentTable,
+    )..where((t) => t.paymentId.equals(paymentId))).getSingleOrNull();
+    if (payment == null || payment.status != RecordStatus.cancelled) return;
+    await (_db.update(
+      _db.paymentTable,
+    )..where((t) => t.paymentId.equals(paymentId))).write(
+      PaymentTableCompanion(
+        status: const Value(RecordStatus.confirmed),
+        cancelledAt: const Value(null),
+        cancellationReason: const Value(null),
+        lastModifiedDate: Value(DateTime.now()),
+      ),
+    );
+    await (_db.delete(_db.customerAccountEntryTable)..where(
+          (t) =>
+              t.paymentId.equals(paymentId) &
+              t.entryType.equals(adjustmentEntry),
+        ))
+        .go();
+    await _account.post(payment.customerId, -payment.amount);
+  }
+
+  static const adjustmentEntry = 'ADJUSTMENT';
+
   Payment _rowToPayment(PaymentTableData row) => Payment(
     id: row.paymentId,
     customerId: row.customerId,
@@ -151,6 +262,7 @@ class DriftPaymentRepository implements PaymentRepository {
     visitId: row.visitId,
     saleId: row.saleId,
     notes: row.notes,
+    isCancelled: row.status == RecordStatus.cancelled,
   );
 
   CustomerAccountEntry _rowToEntry(CustomerAccountEntryTableData row) =>

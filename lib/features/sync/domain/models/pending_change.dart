@@ -8,7 +8,13 @@ enum PendingEntity {
   containerMovement('container_movement'),
   sale('sale'),
   payment('payment'),
-  customerAgreement('customer_agreement');
+  customerAgreement('customer_agreement'),
+
+  /// The cancellation of a sale; its entity id is the sale's id.
+  saleCancellation('sale_cancellation'),
+
+  /// The cancellation of a payment; its entity id is the payment's id.
+  paymentCancellation('payment_cancellation');
 
   const PendingEntity(this.wireName);
 

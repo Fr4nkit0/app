@@ -46,7 +46,11 @@ class Unsent {
       customers: ids(PendingEntity.customer),
       stops: stops,
       visits: visitIds,
-      sales: ids(PendingEntity.sale),
+      // A cancellation moved the truck stock back, like a sale moved it out.
+      sales: {
+        ...ids(PendingEntity.sale),
+        ...ids(PendingEntity.saleCancellation),
+      },
     );
   }
 }

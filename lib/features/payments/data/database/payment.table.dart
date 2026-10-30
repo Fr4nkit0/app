@@ -30,7 +30,9 @@ class PaymentTable extends Table with Timestamps {
   late final notes = text().nullable()();
   late final status = text().withDefault(
     const Constant('CONFIRMED'),
-  )(); // 'CONFIRMED' | 'CANCELLED' | 'ANNULLED'
+  )(); // RecordStatus.confirmed, as a literal the generated code can copy
+  late final cancelledAt = dateTime().nullable()();
+  late final cancellationReason = text().nullable()();
 
   @override
   Set<Column<Object>> get primaryKey => {paymentId};

@@ -58,7 +58,7 @@ class AppDatabase extends _$AppDatabase {
   AppDatabase([QueryExecutor? executor]) : super(executor ?? _openConnection());
 
   @override
-  int get schemaVersion => 14;
+  int get schemaVersion => 15;
 
   @override
   MigrationStrategy get migration => MigrationStrategy(
@@ -146,6 +146,13 @@ class AppDatabase extends _$AppDatabase {
       }
       if (from < 14) {
         await m.createTable(neighborhoodTable);
+      }
+      if (from < 15) {
+        await _addColumnIfMissing(m, saleTable, saleTable.status);
+        await _addColumnIfMissing(m, saleTable, saleTable.cancelledAt);
+        await _addColumnIfMissing(m, saleTable, saleTable.cancellationReason);
+        await _addColumnIfMissing(m, paymentTable, paymentTable.cancelledAt);
+        await _addColumnIfMissing(m, paymentTable, paymentTable.cancellationReason);
       }
     },
   );

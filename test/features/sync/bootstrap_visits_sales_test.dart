@@ -156,8 +156,25 @@ void main() {
     expect(visits[502]!.outcomeId, 4);
     expect(visits[502]!.observations, 'Closed door');
 
-    // A cancelled sale is not stored: sales have no status column yet.
-    final sale = await db.select(db.saleTable).getSingle();
+    final sales = {
+      for (final s in await db.select(db.saleTable).get()) s.serverId: s,
+    };
+    expect(sales.keys, unorderedEquals([601, 602]));
+    // A cancelled sale is stored as cancelled, with its credit note.
+    final cancelled = sales[602]!;
+    expect(cancelled.saleId, 'sale-uuid-602');
+    expect(cancelled.status, 'CANCELLED');
+    expect(
+      [
+        for (final e in await (db.select(db.customerAccountEntryTable)
+              ..where((t) => t.saleId.equals('sale-uuid-602')))
+            .get())
+          (e.entryType, e.amount, e.direction),
+      ],
+      unorderedEquals([('SALE', 2700.0, 1), ('CREDIT_NOTE', 2700.0, -1)]),
+    );
+    final sale = sales[601]!;
+    expect(sale.status, 'CONFIRMED');
     expect(sale.saleId, 'sale-uuid-601');
     expect(sale.serverId, 601);
     expect(sale.customerId, 'cust-uuid-12');
@@ -165,7 +182,9 @@ void main() {
     expect(sale.paymentMethod, PaymentMethod.credit.name);
     // Sales of a visit carry its stop's id.
     expect(sale.visitId, stops[72]!.routeStopId);
-    final line = await db.select(db.saleItemTable).getSingle();
+    final line = await (db.select(db.saleItemTable)
+          ..where((t) => t.saleId.equals(sale.saleId)))
+        .getSingle();
     final water = await db.select(db.productTable).getSingle();
     expect(line.saleId, sale.saleId);
     expect(line.serverId, 6001);
@@ -174,7 +193,9 @@ void main() {
     expect(line.unitPrice, 1350);
     expect(line.subtotal, 2700);
     expect(line.agreementServerId, 1200);
-    final entry = await db.select(db.customerAccountEntryTable).getSingle();
+    final entry = await (db.select(db.customerAccountEntryTable)
+          ..where((t) => t.saleId.equals(sale.saleId)))
+        .getSingle();
     expect(entry.saleId, sale.saleId);
     expect(entry.amount, 2700);
 
@@ -261,7 +282,9 @@ void main() {
     expect(sale.serverId, 601);
     expect(sale.totalAmount, 2500);
     expect(sale.paymentMethod, PaymentMethod.cash.name);
-    final line = await db.select(db.saleItemTable).getSingle();
+    final line = await (db.select(db.saleItemTable)
+          ..where((t) => t.saleId.equals(sale.saleId)))
+        .getSingle();
     expect(line.unitPrice, 1250);
     expect(
       (await queue.getPending()).map((c) => c.entityId),

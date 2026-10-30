@@ -4,7 +4,8 @@ import 'package:app/core/services/database.helper.dart';
 import 'package:app/features/sync/domain/models/pending_change.dart';
 
 /// The customer account the driver sees: the balance downloaded from the
-/// server plus the sales and minus the payments not yet sent.
+/// server plus the sales and minus the payments not yet sent (a pending
+/// cancellation takes its record back out).
 ///
 /// The only module that reads or writes the customer balance. Every local
 /// sale or payment posts a movement at once, a rejected one is posted back
@@ -106,21 +107,27 @@ class CustomerAccount {
         );
   }
 
-  /// Pending sales minus pending payments of [customerId].
+  /// Pending sales minus pending payments of [customerId], minus the sales
+  /// and plus the payments whose cancellation is pending.
   Future<double> pendingDelta(String customerId) async {
+    String pendingIds(int entity) =>
+        '(SELECT entity_id FROM pending_changes '
+        'WHERE entity = ?$entity AND status = ?6)';
+    String sales(int entity) =>
+        '(SELECT COALESCE(SUM(s.total_amount), 0.0) FROM sales s '
+        'WHERE s.customer_id = ?1 AND s.sale_id IN ${pendingIds(entity)})';
+    String payments(int entity) =>
+        '(SELECT COALESCE(SUM(p.amount), 0.0) FROM payments p '
+        'WHERE p.customer_id = ?1 AND p.payment_id IN ${pendingIds(entity)})';
     final row = await _db.customSelect(
-      'SELECT '
-      '(SELECT COALESCE(SUM(s.total_amount), 0.0) FROM sales s '
-      ' WHERE s.customer_id = ?1 AND s.sale_id IN '
-      '  (SELECT entity_id FROM pending_changes WHERE entity = ?2 AND status = ?4)) '
-      '- (SELECT COALESCE(SUM(p.amount), 0.0) FROM payments p '
-      ' WHERE p.customer_id = ?1 AND p.payment_id IN '
-      '  (SELECT entity_id FROM pending_changes WHERE entity = ?3 AND status = ?4)) '
+      'SELECT ${sales(2)} - ${payments(3)} - ${sales(4)} + ${payments(5)} '
       'AS delta',
       variables: [
         Variable.withString(customerId),
         Variable.withString(PendingEntity.sale.wireName),
         Variable.withString(PendingEntity.payment.wireName),
+        Variable.withString(PendingEntity.saleCancellation.wireName),
+        Variable.withString(PendingEntity.paymentCancellation.wireName),
         Variable.withString(PendingStatus.pending.wireName),
       ],
       readsFrom: {_db.saleTable, _db.paymentTable, _db.pendingChangeTable},
