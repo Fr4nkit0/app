@@ -93,6 +93,9 @@ class CustomerPusher implements EntityPusher {
       'server_id': ?customer.serverId,
       'name': customer.name,
       'phone_number': customer.phone,
+      // Drivers can only disable; re-enabling is up to the office, so an
+      // enabled customer leaves the server's flag as it is.
+      if (!customer.enabled) 'enabled': false,
       'modified_at': modifiedAt.toUtc().toIso8601String(),
       'address': {
         // Lets a later address edit reach the same server row.

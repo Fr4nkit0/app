@@ -169,6 +169,28 @@ class DriftCustomerRepository implements CustomerRepository {
     );
   }
 
+  /// Only the office re-enables a customer, so this goes one way.
+  @override
+  Future<void> disableCustomer(String customerId) async {
+    final updated =
+        await (db.update(
+          db.customerTable,
+        )..where((t) => t.customerId.equals(customerId))).write(
+          CustomerTableCompanion(
+            enabled: const Value(false),
+            lastModifiedDate: Value(DateTime.now()),
+          ),
+        );
+    if (updated == 0) throw const NotFoundFailure('customer');
+
+    await _queue.enqueue(
+      entity: PendingEntity.customer,
+      entityId: customerId,
+      action: PendingAction.update,
+      payload: {'customerId': customerId, 'enabled': false},
+    );
+  }
+
   /// The address the customer push sends: same selection and order as
   /// `CustomerPusher`.
   Future<CustomerAddressTableData?> _pushedAddress(String customerId) async =>

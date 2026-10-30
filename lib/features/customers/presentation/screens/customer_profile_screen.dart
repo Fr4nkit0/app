@@ -6,7 +6,11 @@ import 'package:url_launcher/url_launcher.dart';
 import 'package:app/core/utils/avatar_utils.dart';
 import 'package:app/core/utils/address_formatter.dart';
 import 'package:app/features/customers/domain/models/customer.dart';
+import 'package:app/core/presentation/failure_message.dart';
 import 'package:app/features/customers/presentation/providers/customer_count_provider.dart';
+import 'package:app/features/customers/presentation/providers/customer_usecase_providers.dart';
+import 'package:app/features/customers/presentation/widgets/disable_customer_dialog.dart';
+import 'package:app/features/route/presentation/providers/route_repository_provider.dart';
 import 'package:app/features/customers/presentation/screens/edit_customer_screen.dart';
 import 'package:app/features/customers/presentation/widgets/customer_agreements_tab.dart';
 import 'package:app/features/history/domain/models/history_entry.dart';
@@ -41,10 +45,41 @@ class _CustomerProfileScreenState extends ConsumerState<CustomerProfileScreen> {
 
   String _dayName(int day) => day >= 1 && day <= 7 ? _days[day] : 'Día $day';
 
+  /// Disabling is allowed with a stop today; the dialog only warns about it.
+  Future<void> _disable(Customer customer) async {
+    final hasStopToday =
+        ref
+            .read(routeAllStopsProvider)
+            .value
+            ?.any((s) => s.customer.id == customer.id) ??
+        false;
+    final confirmed = await confirmDisableCustomer(
+      context,
+      customerName: customer.name,
+      hasStopToday: hasStopToday,
+    );
+    if (!confirmed || !mounted) return;
+
+    try {
+      await ref.read(disableCustomerUseCaseProvider).execute(customer.id);
+      if (!mounted) return;
+      TopToast.showSuccess(context, '${customer.name} dado de baja');
+      Navigator.of(context).pop();
+    } catch (e) {
+      if (!mounted) return;
+      TopToast.showError(
+        context,
+        failureMessage(e, fallback: 'No se pudo dar de baja. Reintentá.'),
+      );
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
     final customerAsync = ref.watch(customerByIdProvider(widget.customerId));
     final historyAsync = ref.watch(historyListProvider);
+    // Kept live so the disable dialog knows about today's stop.
+    ref.watch(routeAllStopsProvider);
 
     return customerAsync.when(
       data: (customer) {
@@ -108,6 +143,11 @@ class _CustomerProfileScreenState extends ConsumerState<CustomerProfileScreen> {
                 builder: (_) => EditCustomerScreen(customer: customer),
               ),
             ),
+          ),
+          IconButton(
+            tooltip: 'Dar de baja',
+            icon: const Icon(Icons.person_off_outlined),
+            onPressed: () => _disable(customer),
           ),
         ],
       ),
