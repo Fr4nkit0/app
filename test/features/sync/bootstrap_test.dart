@@ -142,7 +142,7 @@ void main() {
     expect(address.latitude, -24.18);
     final preference = await db.select(db.customerPreferenceTable).getSingle();
     expect(preference.dayOfWeek, 1);
-    expect(preference.timeWindowStart, '08:00:00');
+    expect(preference.timeWindowStart, '08:00');
 
     final agreement = await db.select(db.customerAgreementTable).getSingle();
     expect(agreement.unitPrice, 1350.0);

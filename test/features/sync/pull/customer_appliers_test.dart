@@ -208,7 +208,7 @@ void main() {
       }, await pullContext(db));
 
       final row = await db.select(db.customerPreferenceTable).getSingle();
-      expect(row.timeWindowStart, '08:00:00');
+      expect(row.timeWindowStart, '08:00');
     });
 
     test('skips a preference whose customer is not on the device', () async {

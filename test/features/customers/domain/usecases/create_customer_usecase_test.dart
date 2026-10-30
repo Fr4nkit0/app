@@ -72,7 +72,8 @@ void main() {
       );
       expect(await db.select(db.customerAddressTable).get(), hasLength(1));
       expect(await db.select(db.customerPreferenceTable).get(), hasLength(1));
-      expect(await db.select(db.pendingChangeTable).get(), hasLength(1));
+      // The customer, then its preference.
+      expect(await db.select(db.pendingChangeTable).get(), hasLength(2));
     },
   );
 

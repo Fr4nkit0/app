@@ -179,6 +179,46 @@ void main() {
     }
   });
 
+  test('lists preference changes as customer records of their '
+      'customer', () async {
+    await db
+        .into(db.customerPreferenceTable)
+        .insert(
+          CustomerPreferenceTableCompanion.insert(
+            customerPreferenceId: const Value('pref-1'),
+            customerId: const Value('cus-1'),
+            timeWindowStart: '09:00',
+          ),
+        );
+    for (final (action, payload) in [
+      (PendingAction.insert, null),
+      (PendingAction.update, {'preferenceId': 'pref-1'}),
+      (PendingAction.update, {'preferenceId': 'pref-1', 'enabled': true}),
+      (PendingAction.update, {'preferenceId': 'pref-1', 'enabled': false}),
+    ]) {
+      await queue.enqueue(
+        entity: PendingEntity.customerPreference,
+        entityId: 'pref-1',
+        action: action,
+        payload: payload,
+      );
+    }
+
+    final entries = await sut.watchHistory().first;
+
+    expect([for (final e in entries) e.description], [
+      'Preferencia desactivada',
+      'Preferencia actualizada',
+      'Preferencia actualizada',
+      'Preferencia agregada',
+    ]);
+    for (final entry in entries) {
+      expect(entry.type, HistoryEntryType.customer);
+      expect(entry.customerId, 'cus-1');
+      expect(entry.customerName, 'Ana Gómez');
+    }
+  });
+
   test('emits again when the server answers a record', () async {
     await insertSale('sale-1', 4500);
     await queue.enqueue(

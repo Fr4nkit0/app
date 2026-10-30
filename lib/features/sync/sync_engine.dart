@@ -11,6 +11,7 @@ import 'domain/models/sync_status.dart';
 import 'push/agreement_pusher.dart';
 import 'push/container_movement_pusher.dart';
 import 'push/customer_address_pusher.dart';
+import 'push/customer_preference_pusher.dart';
 import 'push/customer_pusher.dart';
 import 'push/entity_pusher.dart';
 import 'push/payment_cancellation_pusher.dart';
@@ -51,6 +52,7 @@ class SyncEngine {
   }) => [
     CustomerPusher(db),
     CustomerAddressPusher(db),
+    CustomerPreferencePusher(db),
     AgreementPusher(db),
     RouteStopPusher(db),
     VisitPusher(db),

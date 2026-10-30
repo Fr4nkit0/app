@@ -11,6 +11,7 @@ class Unsent {
     required this.sales,
     this.addresses = const {},
     this.addressOwners = const {},
+    this.preferences = const {},
   });
 
   final Set<String> customers;
@@ -24,6 +25,9 @@ class Unsent {
   /// Customers with an unsent address change: a primary switch touches two
   /// addresses, so every address of theirs keeps its local values.
   final Set<String> addressOwners;
+
+  /// Preferences with their own unsent change.
+  final Set<String> preferences;
 
   bool get hasSales => sales.isNotEmpty;
 
@@ -64,6 +68,7 @@ class Unsent {
       customers: ids(PendingEntity.customer),
       addresses: addressIds,
       addressOwners: addressOwners,
+      preferences: ids(PendingEntity.customerPreference),
       stops: stops,
       visits: visitIds,
       // A cancellation moved the truck stock back, like a sale moved it out.

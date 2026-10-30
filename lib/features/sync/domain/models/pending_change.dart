@@ -14,6 +14,10 @@ enum PendingEntity {
   /// push still carries the primary address of a new or edited customer.
   customerAddress('customer_address'),
 
+  /// A delivery preference added or changed from the wizard or the profile;
+  /// the customer push does not carry preferences.
+  customerPreference('customer_preference'),
+
   /// The cancellation of a sale; its entity id is the sale's id.
   saleCancellation('sale_cancellation'),
 

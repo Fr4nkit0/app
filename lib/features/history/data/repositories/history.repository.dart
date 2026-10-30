@@ -74,7 +74,8 @@ class DriftHistoryRepository implements HistoryRepository {
           // cancellation.
           PendingEntity.saleCancellation ||
           PendingEntity.paymentCancellation => _describe(entity, action),
-          PendingEntity.customerAddress => _describeAddress(action, row),
+          PendingEntity.customerAddress || PendingEntity.customerPreference =>
+            _describeToggle(entity, action, row),
           _ => detail.description ?? _describe(entity, action),
         },
         status: PendingStatus.fromWire(row.status),
@@ -99,6 +100,7 @@ class DriftHistoryRepository implements HistoryRepository {
         PendingEntity.paymentCancellation => await _payments(ids),
         PendingEntity.customerAgreement => await _agreements(ids),
         PendingEntity.customerAddress => await _addresses(ids),
+        PendingEntity.customerPreference => await _preferences(ids),
       };
       for (final MapEntry(:key, :value) in found.entries) {
         details[_key(entity, key)] = value;
@@ -201,16 +203,30 @@ class DriftHistoryRepository implements HistoryRepository {
     };
   }
 
-  /// A disable is an update whose payload turns the address off.
-  static String _describeAddress(
+  Future<Map<String, _Detail>> _preferences(Set<String> ids) async {
+    final rows = await (_db.select(
+      _db.customerPreferenceTable,
+    )..where((t) => t.customerPreferenceId.isIn(ids))).get();
+    return {
+      for (final r in rows)
+        r.customerPreferenceId: _Detail(customerId: r.customerId),
+    };
+  }
+
+  /// A disable is an update whose payload turns the address or preference
+  /// off.
+  static String _describeToggle(
+    PendingEntity entity,
     PendingAction action,
     PendingChangeTableData row,
   ) {
     final payload = row.payload == null ? null : jsonDecode(row.payload!);
     if (payload is Map && payload['enabled'] == false) {
-      return 'Dirección desactivada';
+      return entity == PendingEntity.customerPreference
+          ? 'Preferencia desactivada'
+          : 'Dirección desactivada';
     }
-    return _describe(PendingEntity.customerAddress, action);
+    return _describe(entity, action);
   }
 
   Future<Map<String, String>> _customerNames(Set<String> ids) async {
@@ -242,7 +258,8 @@ class DriftHistoryRepository implements HistoryRepository {
     PendingEntity.payment ||
     PendingEntity.paymentCancellation => HistoryEntryType.payment,
     PendingEntity.customerAgreement => HistoryEntryType.agreement,
-    PendingEntity.customerAddress => HistoryEntryType.customer,
+    PendingEntity.customerAddress ||
+    PendingEntity.customerPreference => HistoryEntryType.customer,
   };
 
   static String _describe(PendingEntity entity, PendingAction action) =>
@@ -263,6 +280,9 @@ class DriftHistoryRepository implements HistoryRepository {
         (PendingEntity.customerAddress, PendingAction.insert) =>
           'Dirección agregada',
         (PendingEntity.customerAddress, _) => 'Dirección actualizada',
+        (PendingEntity.customerPreference, PendingAction.insert) =>
+          'Preferencia agregada',
+        (PendingEntity.customerPreference, _) => 'Preferencia actualizada',
       };
 }
 

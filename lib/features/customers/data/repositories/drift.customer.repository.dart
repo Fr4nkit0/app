@@ -86,6 +86,12 @@ class DriftCustomerRepository implements CustomerRepository {
             ),
           );
     }
+    final storedPreferences = {
+      for (final p in await (db.select(
+        db.customerPreferenceTable,
+      )..where((t) => t.customerId.equals(customer.id))).get())
+        p.customerPreferenceId,
+    };
     for (final pref in customer.preferences) {
       await db
           .into(db.customerPreferenceTable)
@@ -106,6 +112,17 @@ class DriftCustomerRepository implements CustomerRepository {
       action: existed ? PendingAction.update : PendingAction.insert,
       payload: _payload(customer),
     );
+    // Preferences travel on their own, after the customer they belong to.
+    for (final pref in customer.preferences) {
+      await _queue.enqueue(
+        entity: PendingEntity.customerPreference,
+        entityId: pref.id,
+        action: storedPreferences.contains(pref.id)
+            ? PendingAction.update
+            : PendingAction.insert,
+        payload: {'preferenceId': pref.id, 'customerId': customer.id},
+      );
+    }
   }
 
   /// The address is edited in place, keeping its id and server id, so the
