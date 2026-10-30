@@ -9,6 +9,12 @@ import 'entity_pusher.dart';
 /// Queued payloads may be partial (a coordinates fix carries only lat/lng),
 /// so the record is rebuilt from the current local row: every change of the
 /// same customer collapses into one record carrying its latest state.
+///
+/// The server writes the record's address onto whichever address it holds
+/// as primary, and customers are processed before `customer_addresses`. So
+/// a customer the server already knows waits while any of its address
+/// changes is unsent: once those are in, the server's primary is the local
+/// one again.
 class CustomerPusher implements EntityPusher {
   CustomerPusher(this._db);
 
@@ -43,6 +49,10 @@ class CustomerPusher implements EntityPusher {
         rejections.add(LocalRejection(changeIds, deletionNotSynced));
         continue;
       }
+      if (customer.serverId != null &&
+          await _hasPendingAddressChanges(customerId)) {
+        continue;
+      }
       records.add(
         PushRecord(
           uuid: customerId,
@@ -61,8 +71,31 @@ class CustomerPusher implements EntityPusher {
         .write(CustomerTableCompanion(serverId: Value(serverId)));
   }
 
+  Future<bool> _hasPendingAddressChanges(String customerId) async {
+    final query =
+        _db.select(_db.pendingChangeTable).join([
+            innerJoin(
+              _db.customerAddressTable,
+              _db.customerAddressTable.addressId.equalsExp(
+                _db.pendingChangeTable.entityId,
+              ),
+            ),
+          ])
+          ..where(
+            _db.pendingChangeTable.entity.equals(
+                  PendingEntity.customerAddress.wireName,
+                ) &
+                _db.pendingChangeTable.status.equals(
+                  PendingStatus.pending.wireName,
+                ) &
+                _db.customerAddressTable.customerId.equals(customerId),
+          )
+          ..limit(1);
+    return (await query.get()).isNotEmpty;
+  }
+
   /// The floor travels as typed ("PB", "3"); a blank floor travels as null.
-  static String? _floor(String? floor) {
+  static String? floorOf(String? floor) {
     final trimmed = floor?.trim();
     return trimmed == null || trimmed.isEmpty ? null : trimmed;
   }
@@ -102,7 +135,7 @@ class CustomerPusher implements EntityPusher {
         'uuid': address?.addressId,
         'street': address?.street,
         'apartment': address?.apartment,
-        'floor': _floor(address?.floor),
+        'floor': floorOf(address?.floor),
         'visual_reference': address?.visualReference,
         'neighborhood': address?.neighborhood,
         'latitude': address?.latitude,

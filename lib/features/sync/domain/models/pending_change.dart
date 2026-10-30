@@ -10,6 +10,10 @@ enum PendingEntity {
   payment('payment'),
   customerAgreement('customer_agreement'),
 
+  /// An address added or changed from the customer profile; the customer
+  /// push still carries the primary address of a new or edited customer.
+  customerAddress('customer_address'),
+
   /// The cancellation of a sale; its entity id is the sale's id.
   saleCancellation('sale_cancellation'),
 

@@ -142,6 +142,43 @@ void main() {
     expect(entry.status, PendingStatus.pending);
   });
 
+  test('lists address changes as customer records of their customer', () async {
+    await db
+        .into(db.customerAddressTable)
+        .insert(
+          CustomerAddressTableCompanion.insert(
+            addressId: const Value('addr-1'),
+            customerId: const Value('cus-1'),
+            street: const Value('Mitre 50'),
+          ),
+        );
+    for (final (action, payload) in [
+      (PendingAction.insert, null),
+      (PendingAction.update, {'addressId': 'addr-1'}),
+      (PendingAction.update, {'addressId': 'addr-1', 'enabled': false}),
+    ]) {
+      await queue.enqueue(
+        entity: PendingEntity.customerAddress,
+        entityId: 'addr-1',
+        action: action,
+        payload: payload,
+      );
+    }
+
+    final entries = await sut.watchHistory().first;
+
+    expect([for (final e in entries) e.description], [
+      'Dirección desactivada',
+      'Dirección actualizada',
+      'Dirección agregada',
+    ]);
+    for (final entry in entries) {
+      expect(entry.type, HistoryEntryType.customer);
+      expect(entry.customerId, 'cus-1');
+      expect(entry.customerName, 'Ana Gómez');
+    }
+  });
+
   test('emits again when the server answers a record', () async {
     await insertSale('sale-1', 4500);
     await queue.enqueue(

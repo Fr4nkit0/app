@@ -10,6 +10,7 @@ import 'domain/models/pending_change.dart';
 import 'domain/models/sync_status.dart';
 import 'push/agreement_pusher.dart';
 import 'push/container_movement_pusher.dart';
+import 'push/customer_address_pusher.dart';
 import 'push/customer_pusher.dart';
 import 'push/entity_pusher.dart';
 import 'push/payment_cancellation_pusher.dart';
@@ -49,6 +50,7 @@ class SyncEngine {
     DateTime Function()? today,
   }) => [
     CustomerPusher(db),
+    CustomerAddressPusher(db),
     AgreementPusher(db),
     RouteStopPusher(db),
     VisitPusher(db),
