@@ -13,6 +13,7 @@ import 'package:app/features/route/presentation/providers/route_repository_provi
 import 'package:app/features/customers/presentation/screens/edit_customer_screen.dart';
 import 'package:app/features/customers/presentation/widgets/customer_addresses_section.dart';
 import 'package:app/features/customers/presentation/widgets/customer_agreements_tab.dart';
+import 'package:app/features/customers/presentation/widgets/customer_preferences_section.dart';
 import 'package:app/features/history/domain/models/history_entry.dart';
 import 'package:app/features/history/presentation/providers/history_list_provider.dart';
 import 'package:app/features/history/presentation/widgets/history_entry_tile.dart';
@@ -40,10 +41,6 @@ class CustomerProfileScreen extends ConsumerStatefulWidget {
 
 class _CustomerProfileScreenState extends ConsumerState<CustomerProfileScreen> {
   int _selectedTab = 0;
-
-  static const _days = ['', 'Lun', 'Mar', 'Mié', 'Jue', 'Vie', 'Sáb', 'Dom'];
-
-  String _dayName(int day) => day >= 1 && day <= 7 ? _days[day] : 'Día $day';
 
   /// Disabling is allowed with a stop today; the dialog only warns about it.
   Future<void> _disable(Customer customer) async {
@@ -614,14 +611,6 @@ class _CustomerProfileScreenState extends ConsumerState<CustomerProfileScreen> {
   }
 
   Widget _buildPreferencesTab(Customer customer) {
-    if (customer.preferences.isEmpty) {
-      return _buildEmptyState(
-        icon: Icons.schedule_outlined,
-        title: 'Sin preferencias',
-        subtitle: 'Este cliente no tiene horarios de entrega configurados.',
-      );
-    }
-
     return Container(
       padding: const EdgeInsets.all(16),
       child: Container(
@@ -638,71 +627,7 @@ class _CustomerProfileScreenState extends ConsumerState<CustomerProfileScreen> {
             ),
           ],
         ),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Row(
-              children: [
-                Icon(
-                  Icons.schedule_outlined,
-                  color: MarilinColors.brandBlue,
-                  size: 20,
-                ),
-                SizedBox(width: 8),
-                Text(
-                  'Horarios de Visita Preferidos',
-                  style: TextStyle(
-                    fontSize: 15,
-                    fontWeight: FontWeight.w700,
-                    color: context.marilin.ink,
-                  ),
-                ),
-              ],
-            ),
-            Divider(height: 24, color: context.marilin.border),
-            ...customer.preferences.map((pref) {
-              final day = _dayName(pref.dayOfWeek);
-              return Padding(
-                padding: const EdgeInsets.only(bottom: 12),
-                child: Row(
-                  children: [
-                    Container(
-                      width: 8,
-                      height: 8,
-                      decoration: const BoxDecoration(
-                        color: MarilinColors.brandBlue,
-                        shape: BoxShape.circle,
-                      ),
-                    ),
-                    const SizedBox(width: 12),
-                    Expanded(
-                      child: Row(
-                        children: [
-                          Text(
-                            '$day: ',
-                            style: TextStyle(
-                              fontWeight: FontWeight.w700,
-                              fontSize: 14,
-                              color: context.marilin.ink,
-                            ),
-                          ),
-                          Text(
-                            'de ${pref.timeWindowStart} a ${pref.timeWindowEnd ?? ''} hs',
-                            style: TextStyle(
-                              fontSize: 14,
-                              fontWeight: FontWeight.w500,
-                              color: context.marilin.inkSecondary,
-                            ),
-                          ),
-                        ],
-                      ),
-                    ),
-                  ],
-                ),
-              );
-            }),
-          ],
-        ),
+        child: CustomerPreferencesSection(customerId: customer.id),
       ),
     );
   }
