@@ -143,39 +143,44 @@ class VisitSession extends Notifier<VisitSessionState> {
 
   DateTime _now() => ref.read(clockProvider)();
 
+  /// The recorded activity is watched, so a change rebuilds the session
+  /// instead of setting its state from a listener, which may run while the
+  /// widget tree builds; the rebuild keeps the choices already made.
   @override
   VisitSessionState build() {
-    void sync(Object? _, Object? _) => state = _withActivity(state);
-    ref.listen(stopSalesProvider(stopId), sync);
-    ref.listen(visitMovementsProvider(stopId), sync);
-    ref.listen(visitPaymentsProvider(stopId), sync);
-    return _withActivity(const VisitSessionState());
-  }
-
-  /// [current] with what is recorded at the stop; returns or payments clear
-  /// a selected reschedule, which they no longer allow.
-  VisitSessionState _withActivity(VisitSessionState current) {
-    final next = current.copyWith(
-      hasSales: ref
-          .read(stopSalesProvider(stopId))
-          .maybeWhen(
-            // A cancelled sale no longer makes it a sale visit.
-            data: (sales) => sales.any((sale) => !sale.isCancelled),
-            orElse: () => false,
-          ),
-      hasReturns: ref
-          .read(visitMovementsProvider(stopId))
-          .maybeWhen(
-            data: (movements) => movements.any((m) => m.returnedQuantity > 0),
-            orElse: () => false,
-          ),
-      hasPayments: ref
-          .read(visitPaymentsProvider(stopId))
-          .maybeWhen(
-            data: (payments) => payments.isNotEmpty,
-            orElse: () => false,
-          ),
+    final hasSales = ref.watch(
+      stopSalesProvider(stopId).select(
+        (sales) => sales.maybeWhen(
+          // A cancelled sale no longer makes it a sale visit.
+          data: (sales) => sales.any((sale) => !sale.isCancelled),
+          orElse: () => false,
+        ),
+      ),
     );
+    final hasReturns = ref.watch(
+      visitMovementsProvider(stopId).select(
+        (movements) => movements.maybeWhen(
+          data: (movements) => movements.any((m) => m.returnedQuantity > 0),
+          orElse: () => false,
+        ),
+      ),
+    );
+    final hasPayments = ref.watch(
+      visitPaymentsProvider(stopId).select(
+        (payments) => payments.maybeWhen(
+          // A cancelled payment no longer counts.
+          data: (payments) => payments.any((payment) => !payment.isCancelled),
+          orElse: () => false,
+        ),
+      ),
+    );
+    final next = (stateOrNull ?? const VisitSessionState()).copyWith(
+      hasSales: hasSales,
+      hasReturns: hasReturns,
+      hasPayments: hasPayments,
+    );
+    // Returns or payments clear a selected reschedule, which they no longer
+    // allow.
     if ((next.hasReturns || next.hasPayments) && next.isRescheduleSelected) {
       return next.copyWith(selectedOutcome: null);
     }

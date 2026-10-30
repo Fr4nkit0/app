@@ -792,7 +792,7 @@ class _VisitScreenState extends ConsumerState<VisitScreen> {
             ),
             const SizedBox(width: 8),
             Text(
-              'Venta registrada',
+              sale.isCancelled ? 'Venta anulada' : 'Venta registrada',
               style: TextStyle(
                 fontSize: 14,
                 fontWeight: FontWeight.bold,

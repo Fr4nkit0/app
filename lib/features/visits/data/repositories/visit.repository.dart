@@ -12,7 +12,8 @@ abstract class VisitRepository {
   /// The outcome with [id], enabled or not, or null when it does not exist.
   Future<VisitOutcome?> findOutcome(int id);
 
-  /// Whether a sale was recorded at the stop; sales carry the stop's id.
+  /// Whether a sale that is not cancelled was recorded at the stop; sales
+  /// carry the stop's id.
   Future<bool> stopHasSales(String routeStopId);
 
   /// Replaces the outcome and notes of the visit (null [observations] clears

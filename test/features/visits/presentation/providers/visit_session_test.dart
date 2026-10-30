@@ -133,6 +133,38 @@ final _payment = Payment(
   visitId: 's-1',
 );
 
+final _cancelledSale = Sale(
+  id: _sale.id,
+  customer: _sale.customer,
+  items: _sale.items,
+  total: _sale.total,
+  paymentMethod: _sale.paymentMethod,
+  date: _sale.date,
+  visitId: _sale.visitId,
+  isCancelled: true,
+);
+
+extension on Payment {
+  Payment copyWithCancelled() => Payment(
+    id: id,
+    customerId: customerId,
+    amount: amount,
+    type: type,
+    createdAt: createdAt,
+    visitId: visitId,
+    isCancelled: true,
+  );
+
+  Payment copyWithId(String newId) => Payment(
+    id: newId,
+    customerId: customerId,
+    amount: amount,
+    type: type,
+    createdAt: createdAt,
+    visitId: visitId,
+  );
+}
+
 final _return = ContainerMovement(
   id: 'm-1',
   customerId: 'c-1',
@@ -223,6 +255,37 @@ void main() {
       expect(h.state.isOutcomeEnabled(_reschedule), isFalse);
     });
 
+    test(
+      'a cancelled payment does not disable absent and reschedule',
+      () async {
+        final h = await _start();
+        h.payments.add([_payment]);
+        await h.settle();
+
+        h.payments.add([_payment.copyWithCancelled()]);
+        await h.settle();
+
+        expect(h.state.hasPayments, isFalse);
+        expect(h.state.isOutcomeEnabled(_absent), isTrue);
+        expect(h.state.isOutcomeEnabled(_reschedule), isTrue);
+      },
+    );
+
+    test('a confirmed payment next to a cancelled one still disables '
+        'absent and reschedule', () async {
+      final h = await _start();
+
+      h.payments.add([
+        _payment.copyWithCancelled(),
+        _payment.copyWithId('pay-2'),
+      ]);
+      await h.settle();
+
+      expect(h.state.hasPayments, isTrue);
+      expect(h.state.isOutcomeEnabled(_absent), isFalse);
+      expect(h.state.isOutcomeEnabled(_reschedule), isFalse);
+    });
+
     test('a disabled outcome cannot be selected', () async {
       final h = await _start(movements: [_return]);
 
@@ -272,6 +335,33 @@ void main() {
       expect(h.state.hasSales, isTrue);
       expect(h.state.canClose, isTrue);
       expect(h.state.nextStatus, StopStatus.done);
+    });
+
+    test('a visit whose only sale was cancelled needs an outcome to '
+        'close', () async {
+      final h = await _start(sales: [_sale]);
+      expect(h.state.hasSales, isTrue);
+
+      h.sales.add([_cancelledSale]);
+      await h.settle();
+
+      expect(h.state.hasSales, isFalse);
+      expect(h.state.canClose, isFalse);
+      h.session.selectOutcome(_refused);
+      expect(h.state.canClose, isTrue);
+    });
+
+    test('activity keeps the choices already made', () async {
+      final h = await _start();
+      h.session.selectOutcome(_absent);
+      h.session.selectSaleMode();
+
+      h.sales.add([_cancelledSale]);
+      h.payments.add([_payment.copyWithCancelled()]);
+      await h.settle();
+
+      expect(h.state.selectedOutcome, _absent);
+      expect(h.state.isSaleSelected, isTrue);
     });
 
     test('a reschedule closes the stop as absent, any other outcome as '
