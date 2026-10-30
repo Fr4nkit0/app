@@ -17,6 +17,9 @@ class ServerIds {
   final _routes = <int, String>{};
   final _stops = <int, String>{};
   final _visits = <int, String>{};
+  final _sales = <int, String>{};
+  final _movements = <int, String>{};
+  Map<int, String>? _containerCodes;
 
   void recordCustomer(int serverId, String localId) =>
       _customers[serverId] = localId;
@@ -27,6 +30,9 @@ class ServerIds {
   void recordRoute(int serverId, String localId) => _routes[serverId] = localId;
   void recordStop(int serverId, String localId) => _stops[serverId] = localId;
   void recordVisit(int serverId, String localId) => _visits[serverId] = localId;
+  void recordSale(int serverId, String localId) => _sales[serverId] = localId;
+  void recordMovement(int serverId, String localId) =>
+      _movements[serverId] = localId;
 
   Future<String?> customer(int? serverId) => _resolve(
     serverId,
@@ -67,6 +73,46 @@ class ServerIds {
       _db.visitTable,
     )..where((t) => t.serverId.equals(id))).getSingleOrNull())?.visitId,
   );
+
+  /// The stop of a visit: sales, payments and container movements of a
+  /// visit carry its stop's id, like the ones made on the device.
+  Future<String?> stopOfVisit(int? serverId) async {
+    final visitId = await visit(serverId);
+    if (visitId == null) return null;
+    return (await (_db.select(
+      _db.visitTable,
+    )..where((t) => t.visitId.equals(visitId))).getSingleOrNull())?.routeStopId;
+  }
+
+  Future<String?> sale(int? serverId) => _resolve(
+    serverId,
+    _sales,
+    (id) async => (await (_db.select(
+      _db.saleTable,
+    )..where((t) => t.serverId.equals(id))).getSingleOrNull())?.saleId,
+  );
+
+  Future<String?> movement(int? serverId) => _resolve(
+    serverId,
+    _movements,
+    (id) async =>
+        (await (_db.select(_db.containerMovementTable)
+                  ..where((t) => t.serverId.equals(id))
+                  ..limit(1))
+                .getSingleOrNull())
+            ?.containerMovementId,
+  );
+
+  /// The catalog code of a container type; the catalog is stored before
+  /// any row that references it, so both modes read the table.
+  Future<String?> containerType(int? catalogId) async {
+    if (catalogId == null) return null;
+    final codes = _containerCodes ??= {
+      for (final c in await _db.select(_db.containerTypeTable).get())
+        c.id: c.code,
+    };
+    return codes[catalogId];
+  }
 
   Future<RouteTableData?> route(int? serverId) async {
     final routeId = await _resolve(
