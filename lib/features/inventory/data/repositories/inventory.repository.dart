@@ -1,4 +1,5 @@
 import 'package:drift/drift.dart';
+import 'package:uuid/uuid.dart';
 
 import 'package:app/core/services/database.helper.dart';
 import 'package:app/features/inventory/data/repositories/custody.dart';
@@ -11,6 +12,12 @@ import 'package:app/features/sync/domain/models/pending_change.dart';
 
 abstract class InventoryRepository {
   Future<void> recordContainerMovement(ContainerMovement movement);
+
+  /// Takes the movements recorded with the sale [saleId] back out of
+  /// custody, as the server does when the sale is cancelled; run it inside
+  /// the use case's unit of work.
+  Future<void> reverseSaleMovements(String saleId, {required DateTime at});
+
   Stream<List<CustomerContainerBalance>> watchContainerBalances(
     String customerId,
   );
@@ -50,6 +57,7 @@ class DriftInventoryRepository implements InventoryRepository {
             createdAt: Value(movement.createdAt),
             visitId: Value(movement.visitId),
             routeId: Value(movement.routeId),
+            saleId: Value(movement.saleId),
           ),
         );
 
@@ -71,9 +79,77 @@ class DriftInventoryRepository implements InventoryRepository {
         'returnedQuantity': movement.returnedQuantity,
         'visitId': movement.visitId,
         'routeId': movement.routeId,
+        'saleId': movement.saleId,
         'createdAt': movement.createdAt.toIso8601String(),
       },
     );
+  }
+
+  /// Each movement of the sale gets a local reversal dated [at]: a row that
+  /// undoes its quantities and points at it, posted to custody and never
+  /// queued, since the server writes its own reversal when it takes the
+  /// cancellation. The bootstrap links the server's reversals to this row
+  /// instead of storing them again. A movement already reversed is skipped.
+  @override
+  Future<void> reverseSaleMovements(
+    String saleId, {
+    required DateTime at,
+  }) async {
+    final movements =
+        await (_db.select(_db.containerMovementTable)..where(
+              (t) => t.saleId.equals(saleId) & t.reversesMovementId.isNull(),
+            ))
+            .get();
+    for (final movement in movements) {
+      final reversed =
+          await (_db.select(_db.containerMovementTable)
+                ..where(
+                  (t) =>
+                      t.reversesMovementId.equals(movement.containerMovementId),
+                )
+                ..limit(1))
+              .getSingleOrNull();
+      if (reversed != null) continue;
+      await _db
+          .into(_db.containerMovementTable)
+          .insert(
+            ContainerMovementTableCompanion.insert(
+              containerMovementId: Value(const Uuid().v4()),
+              customerId: movement.customerId,
+              containerType: movement.containerType,
+              deliveredQuantity: -movement.deliveredQuantity,
+              returnedQuantity: -movement.returnedQuantity,
+              createdAt: Value(at),
+              visitId: Value(movement.visitId),
+              routeId: Value(movement.routeId),
+              saleId: Value(saleId),
+              reversesMovementId: Value(movement.containerMovementId),
+            ),
+          );
+      await _custody.post(
+        movement.customerId,
+        movement.containerType,
+        movement.returnedQuantity - movement.deliveredQuantity,
+      );
+    }
+  }
+
+  /// Takes back the local reversals of the sale [saleId] when the server
+  /// refused its cancellation: its containers count in custody again.
+  Future<void> undoSaleReversal(String saleId) async {
+    final reversals = await (_db.select(
+      _db.containerMovementTable,
+    )..where((t) => Custody.isLocalReversalOf(t, saleId))).get();
+    for (final reversal in reversals) {
+      await _custody.post(
+        reversal.customerId,
+        reversal.containerType,
+        reversal.returnedQuantity - reversal.deliveredQuantity,
+      );
+    }
+    await (_db.delete(
+      _db.containerMovementTable,
+    )..where((t) => Custody.isLocalReversalOf(t, saleId))).go();
   }
 
   @override
@@ -168,6 +244,7 @@ class DriftInventoryRepository implements InventoryRepository {
         createdAt: row.createdAt,
         visitId: row.visitId,
         routeId: row.routeId,
+        saleId: row.saleId,
       );
 
   RouteInventoryLoad _rowToLoad(RouteInventoryLoadTableData row) =>

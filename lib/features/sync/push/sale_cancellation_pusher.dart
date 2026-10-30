@@ -1,6 +1,7 @@
 import 'package:uuid/uuid.dart';
 
 import '../../../core/services/database.helper.dart';
+import '../../inventory/data/repositories/inventory.repository.dart';
 import '../../sales/data/repositories/drift.sale.repository.dart';
 import '../domain/models/pending_change.dart';
 import 'entity_pusher.dart';
@@ -10,12 +11,14 @@ import 'references.dart';
 class SaleCancellationPusher implements EntityPusher, RejectionAware {
   SaleCancellationPusher(this._db, {DateTime Function()? today})
     : _sales = DriftSaleRepository(_db),
+      _inventory = DriftInventoryRepository(_db),
       _today = today ?? DateTime.now;
 
   static const missing = 'La venta anulada ya no existe en el dispositivo.';
 
   final AppDatabase _db;
   final DriftSaleRepository _sales;
+  final DriftInventoryRepository _inventory;
   final DateTime Function() _today;
 
   @override
@@ -66,9 +69,12 @@ class SaleCancellationPusher implements EntityPusher, RejectionAware {
   @override
   Future<void> applyAccepted(PushRecord record, int serverId) async {}
 
+  /// The sale counts again: in the balance, the truck stock and custody.
   @override
-  Future<void> applyRejected(String localId) =>
-      _sales.undoCancellation(localId);
+  Future<void> applyRejected(String localId) async {
+    await _sales.undoCancellation(localId);
+    await _inventory.undoSaleReversal(localId);
+  }
 }
 
 /// The client uuid of the cancellation of [entity] [localId] queued as

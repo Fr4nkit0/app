@@ -79,6 +79,8 @@ void main() {
     expect(movement.returnedQuantity, 3);
     expect(movement.visitId, isNull);
     expect(movement.routeId, isNull);
+    // A return without a sale carries no sale reference.
+    expect(movement.saleId, isNull);
   });
 
   test('records nothing when every return is zero', () async {

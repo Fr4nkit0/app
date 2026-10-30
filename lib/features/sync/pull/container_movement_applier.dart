@@ -18,7 +18,10 @@ import 'pull_applier.dart';
 /// types have no local meaning and are skipped. A server reversal (no client
 /// uuid) is stored as its own movement that takes the quantity of the
 /// movement it reverses back out, so the visit's totals net to what the
-/// server holds; custody stays the downloaded value either way.
+/// server holds; custody stays the downloaded value either way. When the
+/// device cancelled the sale itself it already wrote one local reversal for
+/// both halves of the movement; the server's reversals are linked to it
+/// instead, so the cancellation shows once.
 class ContainerMovementApplier {
   ContainerMovementApplier(this._db);
 
@@ -56,7 +59,9 @@ class ContainerMovementApplier {
       final clientUuid = m['client_uuid'] as String?;
       final saleId = await context.ids.sale(m['sale_id'] as int?);
 
-      final existing = await _existing(serverId, clientUuid, customerId);
+      final existing = reversedId == null
+          ? await _existing(serverId, clientUuid, customerId)
+          : await _existingReversal(serverId, reversedId, side!);
       if (existing != null) {
         // Like the push: the row keeps its delivery's server id, or its
         // return's when it only returned containers.
@@ -131,6 +136,29 @@ class ContainerMovementApplier {
           clientUuid) {
         return local;
       }
+    }
+    return null;
+  }
+
+  /// The reversal of [reversedId] already on the device that undoes its
+  /// [side]: one stored by an earlier download, or the device's own, which
+  /// undoes both sides at once.
+  Future<ContainerMovementTableData?> _existingReversal(
+    int serverId,
+    String reversedId,
+    String side,
+  ) async {
+    final reversals = await (_db.select(
+      _db.containerMovementTable,
+    )..where((t) => t.reversesMovementId.equals(reversedId))).get();
+    for (final reversal in reversals) {
+      if (reversal.serverId == serverId) return reversal;
+    }
+    for (final reversal in reversals) {
+      final undone = side == _delivered
+          ? reversal.deliveredQuantity
+          : reversal.returnedQuantity;
+      if (undone != 0) return reversal;
     }
     return null;
   }

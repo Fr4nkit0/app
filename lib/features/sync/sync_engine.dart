@@ -56,8 +56,9 @@ class SyncEngine {
     AgreementPusher(db),
     RouteStopPusher(db),
     VisitPusher(db),
-    ContainerMovementPusher(db, today: today),
+    // Before the movements, so a movement made with a sale finds it.
     SalePusher(db, today: today),
+    ContainerMovementPusher(db, today: today),
     PaymentPusher(db, today: today),
     SaleCancellationPusher(db, today: today),
     PaymentCancellationPusher(db, today: today),
@@ -262,8 +263,7 @@ class SyncEngine {
   /// opposed to a server that answered with an error.
   static bool _isOffline(Object error) => switch (error) {
     DioException(
-      type:
-          DioExceptionType.connectionError ||
+      type: DioExceptionType.connectionError ||
           DioExceptionType.connectionTimeout ||
           DioExceptionType.sendTimeout ||
           DioExceptionType.receiveTimeout,

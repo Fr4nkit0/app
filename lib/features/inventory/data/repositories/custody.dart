@@ -60,20 +60,26 @@ class Custody {
   }
 
   /// Delivered minus returned containers of [containerType] in the
-  /// movements of [customerId] the server has not received yet.
+  /// movements of [customerId] the server has not received yet, and in the
+  /// local reversals of the sales whose cancellation it has not received.
   Future<int> pendingMovements(String customerId, String containerType) async {
+    String pendingIds(int entity) =>
+        '(SELECT entity_id FROM pending_changes '
+        'WHERE entity = ?$entity AND status = ?4)';
     final row = await _db
         .customSelect(
           'SELECT COALESCE(SUM(m.delivered_quantity - m.returned_quantity), 0) '
           'AS delta FROM container_movements m '
           'WHERE m.customer_id = ?1 AND m.container_type = ?2 '
-          'AND m.container_movement_id IN '
-          ' (SELECT entity_id FROM pending_changes WHERE entity = ?3 AND status = ?4)',
+          'AND (m.container_movement_id IN ${pendingIds(3)} '
+          ' OR (m.reverses_movement_id IS NOT NULL AND m.server_id IS NULL '
+          '  AND m.sale_id IN ${pendingIds(5)}))',
           variables: [
             Variable.withString(customerId),
             Variable.withString(containerType),
             Variable.withString(PendingEntity.containerMovement.wireName),
             Variable.withString(PendingStatus.pending.wireName),
+            Variable.withString(PendingEntity.saleCancellation.wireName),
           ],
           readsFrom: {_db.containerMovementTable, _db.pendingChangeTable},
         )
@@ -103,6 +109,17 @@ class Custody {
           ),
         );
   }
+
+  /// The reversals the device wrote when it cancelled the sale [saleId]
+  /// (see `InventoryRepository.reverseSaleMovements`): no server id yet,
+  /// since the server writes its own.
+  static Expression<bool> isLocalReversalOf(
+    $ContainerMovementTableTable t,
+    String saleId,
+  ) =>
+      t.saleId.equals(saleId) &
+      t.reversesMovementId.isNotNull() &
+      t.serverId.isNull();
 
   static Expression<bool> _of(
     $CustomerContainerBalanceTableTable t,

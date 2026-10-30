@@ -11,7 +11,9 @@ import 'references.dart';
 /// A local movement holds both the delivered and the returned quantity; the
 /// server takes one record per direction. The delivery travels under the
 /// movement's own uuid and the return under a uuid derived from it, so a
-/// retry sends the very same uuids.
+/// retry sends the very same uuids. Both halves of a movement made with a
+/// sale reference it. The local reversal of a cancelled sale is never
+/// queued: the server writes its own.
 class ContainerMovementPusher implements EntityPusher {
   ContainerMovementPusher(this._db, {DateTime Function()? today})
     : _today = today ?? DateTime.now;
@@ -123,6 +125,12 @@ class ContainerMovementPusher implements EntityPusher {
               ..where((t) => t.customerId.equals(movement.customerId)))
             .getSingleOrNull();
     final visit = await resolveVisit(_db, movement.visitId);
+    final saleId = movement.saleId;
+    final sale = saleId == null
+        ? null
+        : await (_db.select(
+            _db.saleTable,
+          )..where((t) => t.saleId.equals(saleId))).getSingleOrNull();
     return {
       ...reference(
         'customer',
@@ -131,6 +139,9 @@ class ContainerMovementPusher implements EntityPusher {
       ),
       if (visit != null)
         ...reference('visit', serverId: visit.serverId, uuid: visit.visitId),
+      // Sales travel first, so a sale of the same request resolves.
+      if (saleId != null)
+        ...reference('sale', serverId: sale?.serverId, uuid: saleId),
       'container_type_id': typeId,
     };
   }
