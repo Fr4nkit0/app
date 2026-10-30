@@ -3,8 +3,7 @@ import 'package:drift/drift.dart';
 import '../../../core/services/database.helper.dart';
 import 'pull_applier.dart';
 
-/// Customer addresses. A customer with unsent changes keeps its local
-/// addresses; they only get linked to their server id.
+/// Customer addresses, several per customer, disabled ones included.
 class AddressApplier implements PullApplier {
   AddressApplier(this._db);
 
@@ -33,18 +32,29 @@ class AddressApplier implements PullApplier {
     }
   }
 
-  /// An address created on the street has no server id yet. The server keeps
-  /// one address per customer, built from the address the customer push sent,
-  /// so the server address is linked to that local row instead of duplicated,
-  /// whether or not either side marks it as primary.
+  /// A server address is matched by its server id, then by its client uuid
+  /// (the local id it was pushed with). A server row without client uuid
+  /// comes from a push that did not send one: the server built it from the
+  /// address the customer push sent, so it is linked to that local row
+  /// instead of duplicated, whether or not either side marks it as primary.
+  ///
+  /// A customer with unsent changes, of its own or of any of its addresses,
+  /// keeps its local addresses; they only get linked to their server id.
   Future<void> _upsert(Json a, String customerId, PullContext context) async {
-    final keepLocal = context.unsent.customers.contains(customerId);
+    final keepLocal =
+        context.unsent.customers.contains(customerId) ||
+        context.unsent.addressOwners.contains(customerId);
     final serverId = a['id'] as int;
+    final clientUuid = a['client_uuid'] as String?;
     final existing =
         await (_db.select(
           _db.customerAddressTable,
         )..where((t) => t.serverId.equals(serverId))).getSingleOrNull() ??
-        await _unlinkedPushedAddress(customerId);
+        await (clientUuid == null
+            ? _unlinkedPushedAddress(customerId, context)
+            : (_db.select(_db.customerAddressTable)
+                    ..where((t) => t.addressId.equals(clientUuid)))
+                  .getSingleOrNull());
     final fields = CustomerAddressTableCompanion(
       customerId: Value(customerId),
       street: Value(a['street'] as String?),
@@ -65,7 +75,17 @@ class AddressApplier implements PullApplier {
     if (existing == null) {
       final row = await _db
           .into(_db.customerAddressTable)
-          .insertReturning(fields);
+          .insertReturning(
+            fields.copyWith(
+              addressId: clientUuid == null
+                  ? const Value.absent()
+                  : Value(clientUuid),
+              // The local primary stands until its unsent switch is sent.
+              isPrimary: keepLocal && await _hasPrimary(customerId)
+                  ? const Value(false)
+                  : fields.isPrimary,
+            ),
+          );
       context.ids.recordAddress(serverId, row.addressId);
       return;
     }
@@ -79,22 +99,37 @@ class AddressApplier implements PullApplier {
     context.ids.recordAddress(serverId, existing.addressId);
   }
 
+  Future<bool> _hasPrimary(String customerId) async =>
+      (await (_db.select(_db.customerAddressTable)
+                ..where(
+                  (t) =>
+                      t.customerId.equals(customerId) &
+                      t.isPrimary.equals(true) &
+                      t.enabled.equals(true),
+                )
+                ..limit(1))
+              .get())
+          .isNotEmpty;
+
   static bool _isFreeTextFloor(String? floor) =>
       floor != null &&
       floor.trim().isNotEmpty &&
       int.tryParse(floor.trim()) == null;
 
   /// The unlinked address the customer push sends: same selection and order
-  /// as `CustomerPusher`.
+  /// as `CustomerPusher`. An address with its own unsent change travels
+  /// under its own uuid and is linked by it instead.
   Future<CustomerAddressTableData?> _unlinkedPushedAddress(
     String customerId,
+    PullContext context,
   ) async =>
       (await (_db.select(_db.customerAddressTable)
                 ..where(
                   (t) =>
                       t.customerId.equals(customerId) &
                       t.serverId.isNull() &
-                      t.enabled.equals(true),
+                      t.enabled.equals(true) &
+                      t.addressId.isNotIn(context.unsent.addresses),
                 )
                 ..orderBy([
                   (t) => OrderingTerm.desc(t.isPrimary),

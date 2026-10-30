@@ -5,7 +5,9 @@ import '../domain/models/pending_change.dart';
 import 'entity_pusher.dart';
 import 'references.dart';
 
-/// Visits recorded on the street, rebuilt from the local row.
+/// Visits recorded on the street, rebuilt from the local row. A visit with a
+/// queued edit carries `modified_at`, so the server applies it as an edit
+/// (last write wins); without it the record is a plain idempotent replay.
 class VisitPusher implements EntityPusher {
   VisitPusher(this._db);
 
@@ -22,8 +24,10 @@ class VisitPusher implements EntityPusher {
   @override
   Future<PushPlan> plan(List<PendingChange> changes) async {
     final idsByVisit = <String, List<int>>{};
+    final edited = <String>{};
     for (final c in changes) {
       idsByVisit.putIfAbsent(c.entityId, () => []).add(c.id);
+      if (c.action == PendingAction.update) edited.add(c.entityId);
     }
 
     final records = <PushRecord>[];
@@ -37,7 +41,11 @@ class VisitPusher implements EntityPusher {
         continue;
       }
       records.add(
-        PushRecord(uuid: visitId, changeIds: ids, body: await _body(visit)),
+        PushRecord(
+          uuid: visitId,
+          changeIds: ids,
+          body: await _body(visit, edited: edited.contains(visitId)),
+        ),
       );
     }
     return PushPlan(records: records, rejections: rejections);
@@ -50,7 +58,7 @@ class VisitPusher implements EntityPusher {
         .write(VisitTableCompanion(serverId: Value(serverId)));
   }
 
-  Future<Json> _body(VisitTableData visit) async {
+  Future<Json> _body(VisitTableData visit, {required bool edited}) async {
     final customer = await (_db.select(
       _db.customerTable,
     )..where((t) => t.customerId.equals(visit.customerId))).getSingleOrNull();
@@ -72,6 +80,8 @@ class VisitPusher implements EntityPusher {
       'outcome_id': visit.outcomeId,
       'arrived_at': visit.arrived_at.toUtc().toIso8601String(),
       'notes': visit.observations,
+      if (edited)
+        'modified_at': visit.lastModifiedDate.toUtc().toIso8601String(),
     };
   }
 }

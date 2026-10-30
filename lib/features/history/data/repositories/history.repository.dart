@@ -1,3 +1,5 @@
+import 'dart:convert';
+
 import 'package:drift/drift.dart';
 
 import 'package:app/core/services/database.helper.dart';
@@ -67,7 +69,15 @@ class DriftHistoryRepository implements HistoryRepository {
         customerName: names[detail.customerId] ?? _unknownCustomer,
         date: row.createdAt,
         amount: detail.amount,
-        description: detail.description ?? _describe(entity, action),
+        description: switch (entity) {
+          // The record's own detail describes the record, not its
+          // cancellation.
+          PendingEntity.saleCancellation ||
+          PendingEntity.paymentCancellation => _describe(entity, action),
+          PendingEntity.customerAddress || PendingEntity.customerPreference =>
+            _describeToggle(entity, action, row),
+          _ => detail.description ?? _describe(entity, action),
+        },
         status: PendingStatus.fromWire(row.status),
         rejectionReason: row.rejectionReason,
       );
@@ -84,9 +94,13 @@ class DriftHistoryRepository implements HistoryRepository {
         PendingEntity.routeStop => await _routeStops(ids),
         PendingEntity.visit => await _visits(ids),
         PendingEntity.containerMovement => await _containerMovements(ids),
-        PendingEntity.sale => await _sales(ids),
-        PendingEntity.payment => await _payments(ids),
+        PendingEntity.sale ||
+        PendingEntity.saleCancellation => await _sales(ids),
+        PendingEntity.payment ||
+        PendingEntity.paymentCancellation => await _payments(ids),
         PendingEntity.customerAgreement => await _agreements(ids),
+        PendingEntity.customerAddress => await _addresses(ids),
+        PendingEntity.customerPreference => await _preferences(ids),
       };
       for (final MapEntry(:key, :value) in found.entries) {
         details[_key(entity, key)] = value;
@@ -180,6 +194,41 @@ class DriftHistoryRepository implements HistoryRepository {
     };
   }
 
+  Future<Map<String, _Detail>> _addresses(Set<String> ids) async {
+    final rows = await (_db.select(
+      _db.customerAddressTable,
+    )..where((t) => t.addressId.isIn(ids))).get();
+    return {
+      for (final r in rows) r.addressId: _Detail(customerId: r.customerId),
+    };
+  }
+
+  Future<Map<String, _Detail>> _preferences(Set<String> ids) async {
+    final rows = await (_db.select(
+      _db.customerPreferenceTable,
+    )..where((t) => t.customerPreferenceId.isIn(ids))).get();
+    return {
+      for (final r in rows)
+        r.customerPreferenceId: _Detail(customerId: r.customerId),
+    };
+  }
+
+  /// A disable is an update whose payload turns the address or preference
+  /// off.
+  static String _describeToggle(
+    PendingEntity entity,
+    PendingAction action,
+    PendingChangeTableData row,
+  ) {
+    final payload = row.payload == null ? null : jsonDecode(row.payload!);
+    if (payload is Map && payload['enabled'] == false) {
+      return entity == PendingEntity.customerPreference
+          ? 'Preferencia desactivada'
+          : 'Dirección desactivada';
+    }
+    return _describe(entity, action);
+  }
+
   Future<Map<String, String>> _customerNames(Set<String> ids) async {
     if (ids.isEmpty) return const {};
     final rows = await (_db.select(
@@ -204,9 +253,13 @@ class DriftHistoryRepository implements HistoryRepository {
     PendingEntity.routeStop => HistoryEntryType.routeStop,
     PendingEntity.visit => HistoryEntryType.visit,
     PendingEntity.containerMovement => HistoryEntryType.delivery,
-    PendingEntity.sale => HistoryEntryType.sale,
-    PendingEntity.payment => HistoryEntryType.payment,
+    PendingEntity.sale ||
+    PendingEntity.saleCancellation => HistoryEntryType.sale,
+    PendingEntity.payment ||
+    PendingEntity.paymentCancellation => HistoryEntryType.payment,
     PendingEntity.customerAgreement => HistoryEntryType.agreement,
+    PendingEntity.customerAddress ||
+    PendingEntity.customerPreference => HistoryEntryType.customer,
   };
 
   static String _describe(PendingEntity entity, PendingAction action) =>
@@ -222,6 +275,14 @@ class DriftHistoryRepository implements HistoryRepository {
         (PendingEntity.sale, _) => 'Venta registrada',
         (PendingEntity.payment, _) => 'Cobro registrado',
         (PendingEntity.customerAgreement, _) => 'Acuerdo de precio creado',
+        (PendingEntity.saleCancellation, _) => 'Venta anulada',
+        (PendingEntity.paymentCancellation, _) => 'Cobro anulado',
+        (PendingEntity.customerAddress, PendingAction.insert) =>
+          'Dirección agregada',
+        (PendingEntity.customerAddress, _) => 'Dirección actualizada',
+        (PendingEntity.customerPreference, PendingAction.insert) =>
+          'Preferencia agregada',
+        (PendingEntity.customerPreference, _) => 'Preferencia actualizada',
       };
 }
 

@@ -2,12 +2,16 @@ import 'dart:math';
 import 'package:app/core/theme/marilin_tokens.dart';
 import 'package:flutter/material.dart';
 import 'package:app/core/utils/string_utils.dart';
-import 'package:app/features/customers/domain/models/salta_neighborhoods.dart';
 
 class NeighborhoodSearchBottomSheet extends StatefulWidget {
+  final List<String> neighborhoods;
   final ValueChanged<String> onSelected;
 
-  const NeighborhoodSearchBottomSheet({super.key, required this.onSelected});
+  const NeighborhoodSearchBottomSheet({
+    super.key,
+    required this.neighborhoods,
+    required this.onSelected,
+  });
 
   @override
   State<NeighborhoodSearchBottomSheet> createState() =>
@@ -50,9 +54,9 @@ class _NeighborhoodSearchBottomSheetState
 
   List<String> _filteredNeighborhoods() {
     if (_searchQuery.isEmpty) {
-      return saltaNeighborhoods;
+      return widget.neighborhoods;
     }
-    return saltaNeighborhoods
+    return widget.neighborhoods
         .where((n) => StringUtils.fuzzyMatch(_searchQuery, n))
         .toList();
   }

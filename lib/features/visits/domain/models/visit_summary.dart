@@ -8,12 +8,23 @@ import 'package:app/features/visits/domain/models/visit_outcome.dart';
 @immutable
 class VisitSummary {
   const VisitSummary({
+    this.visitId,
+    this.arrivedAt,
+    this.notes,
     this.outcome,
     this.salesTotal = 0,
     this.saleMethods = const [],
     this.collected = 0,
     this.returned = 0,
   });
+
+  /// The latest visit recorded at the stop.
+  final String? visitId;
+
+  final DateTime? arrivedAt;
+
+  /// The driver's observations of the visit.
+  final String? notes;
 
   /// Why the visit ended without a sale; null for a sale visit.
   final VisitOutcome? outcome;
@@ -30,4 +41,19 @@ class VisitSummary {
   final int returned;
 
   bool get hasSales => saleMethods.isNotEmpty;
+
+  /// Only a visit of today closed without a sale and not rescheduled can
+  /// change its outcome and notes.
+  bool isEditableOn(DateTime now) {
+    final at = arrivedAt?.toLocal();
+    final reason = outcome;
+    return visitId != null &&
+        at != null &&
+        at.year == now.year &&
+        at.month == now.month &&
+        at.day == now.day &&
+        !hasSales &&
+        reason != null &&
+        !reason.triggersReschedule;
+  }
 }

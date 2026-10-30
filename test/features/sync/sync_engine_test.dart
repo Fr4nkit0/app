@@ -11,6 +11,7 @@ import 'package:app/features/customers/data/repositories/drift.customer.reposito
 import 'package:app/features/customers/domain/models/customer.dart';
 import 'package:app/features/customers/domain/models/customer.address.dart';
 import 'package:app/features/customers/domain/models/customer_edit.dart';
+import 'package:app/features/customers/domain/usecases/disable_customer.usecase.dart';
 import 'package:app/features/customers/domain/usecases/edit.customer.usecase.dart';
 import 'package:app/features/sync/data/repositories/pending_change.repository.dart';
 import 'package:app/features/sync/domain/models/pending_change.dart';
@@ -230,6 +231,8 @@ void main() {
     expect(record.containsKey('server_id'), isFalse);
     expect(record['name'], 'Kiosco Norte');
     expect(record['phone_number'], '387-c-1');
+    // Only a disable travels; an enabled customer leaves the flag unchanged.
+    expect(record.containsKey('enabled'), isFalse);
     expect(DateTime.parse(record['modified_at'] as String).isUtc, isTrue);
     expect(record['address'], {
       'uuid': 'addr-c-1',
@@ -242,6 +245,42 @@ void main() {
       'longitude': -65.411,
     });
   });
+
+  test(
+    'a customer disabled through the use case travels with enabled false '
+    'and a later modified_at',
+    () async {
+      await createCustomer('c-1');
+      await db.update(db.customerTable).write(
+        CustomerTableCompanion(lastModifiedDate: Value(DateTime.utc(2026, 1, 1))),
+      );
+      await db.update(db.customerAddressTable).write(
+        CustomerAddressTableCompanion(
+          lastModifiedDate: Value(DateTime.utc(2026, 1, 1)),
+        ),
+      );
+      await engine.runCycle();
+      final first = (server.pushBodies.last['customers'] as List).single as Map;
+
+      await DisableCustomerUseCase(
+        customerRepository: customers,
+        transaction: driftTransactionRunner(db),
+      ).execute('c-1');
+      await engine.runCycle();
+
+      final record = (server.pushBodies.last['customers'] as List).single as Map;
+      expect(record['uuid'], 'c-1');
+      expect(record['server_id'], 501);
+      expect(record['enabled'], isFalse);
+      expect(
+        DateTime.parse(record['modified_at'] as String).isAfter(
+          DateTime.parse(first['modified_at'] as String),
+        ),
+        isTrue,
+      );
+      expect(await queue.countPending(), 0);
+    },
+  );
 
   test('pushes a free-text floor as typed and a blank floor as null', () async {
     await createCustomer('c-1', floor: ' PB ');

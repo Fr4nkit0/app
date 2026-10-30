@@ -6112,6 +6112,38 @@ class $SaleTableTable extends SaleTable
     type: DriftSqlType.double,
     requiredDuringInsert: false,
   );
+  static const VerificationMeta _statusMeta = const VerificationMeta('status');
+  @override
+  late final GeneratedColumn<String> status = GeneratedColumn<String>(
+    'status',
+    aliasedName,
+    false,
+    type: DriftSqlType.string,
+    requiredDuringInsert: false,
+    defaultValue: const Constant('CONFIRMED'),
+  );
+  static const VerificationMeta _cancelledAtMeta = const VerificationMeta(
+    'cancelledAt',
+  );
+  @override
+  late final GeneratedColumn<DateTime> cancelledAt = GeneratedColumn<DateTime>(
+    'cancelled_at',
+    aliasedName,
+    true,
+    type: DriftSqlType.dateTime,
+    requiredDuringInsert: false,
+  );
+  static const VerificationMeta _cancellationReasonMeta =
+      const VerificationMeta('cancellationReason');
+  @override
+  late final GeneratedColumn<String> cancellationReason =
+      GeneratedColumn<String>(
+        'cancellation_reason',
+        aliasedName,
+        true,
+        type: DriftSqlType.string,
+        requiredDuringInsert: false,
+      );
   @override
   List<GeneratedColumn> get $columns => [
     createdAt,
@@ -6128,6 +6160,9 @@ class $SaleTableTable extends SaleTable
     visitId,
     cashAmount,
     transferAmount,
+    status,
+    cancelledAt,
+    cancellationReason,
   ];
   @override
   String get aliasedName => _alias ?? actualTableName;
@@ -6250,6 +6285,30 @@ class $SaleTableTable extends SaleTable
         ),
       );
     }
+    if (data.containsKey('status')) {
+      context.handle(
+        _statusMeta,
+        status.isAcceptableOrUnknown(data['status']!, _statusMeta),
+      );
+    }
+    if (data.containsKey('cancelled_at')) {
+      context.handle(
+        _cancelledAtMeta,
+        cancelledAt.isAcceptableOrUnknown(
+          data['cancelled_at']!,
+          _cancelledAtMeta,
+        ),
+      );
+    }
+    if (data.containsKey('cancellation_reason')) {
+      context.handle(
+        _cancellationReasonMeta,
+        cancellationReason.isAcceptableOrUnknown(
+          data['cancellation_reason']!,
+          _cancellationReasonMeta,
+        ),
+      );
+    }
     return context;
   }
 
@@ -6315,6 +6374,18 @@ class $SaleTableTable extends SaleTable
         DriftSqlType.double,
         data['${effectivePrefix}transfer_amount'],
       ),
+      status: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}status'],
+      )!,
+      cancelledAt: attachedDatabase.typeMapping.read(
+        DriftSqlType.dateTime,
+        data['${effectivePrefix}cancelled_at'],
+      ),
+      cancellationReason: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}cancellation_reason'],
+      ),
     );
   }
 
@@ -6339,6 +6410,9 @@ class SaleTableData extends DataClass implements Insertable<SaleTableData> {
   final String? visitId;
   final double? cashAmount;
   final double? transferAmount;
+  final String status;
+  final DateTime? cancelledAt;
+  final String? cancellationReason;
   const SaleTableData({
     required this.createdAt,
     required this.lastModifiedDate,
@@ -6354,6 +6428,9 @@ class SaleTableData extends DataClass implements Insertable<SaleTableData> {
     this.visitId,
     this.cashAmount,
     this.transferAmount,
+    required this.status,
+    this.cancelledAt,
+    this.cancellationReason,
   });
   @override
   Map<String, Expression> toColumns(bool nullToAbsent) {
@@ -6379,6 +6456,13 @@ class SaleTableData extends DataClass implements Insertable<SaleTableData> {
     }
     if (!nullToAbsent || transferAmount != null) {
       map['transfer_amount'] = Variable<double>(transferAmount);
+    }
+    map['status'] = Variable<String>(status);
+    if (!nullToAbsent || cancelledAt != null) {
+      map['cancelled_at'] = Variable<DateTime>(cancelledAt);
+    }
+    if (!nullToAbsent || cancellationReason != null) {
+      map['cancellation_reason'] = Variable<String>(cancellationReason);
     }
     return map;
   }
@@ -6407,6 +6491,13 @@ class SaleTableData extends DataClass implements Insertable<SaleTableData> {
       transferAmount: transferAmount == null && nullToAbsent
           ? const Value.absent()
           : Value(transferAmount),
+      status: Value(status),
+      cancelledAt: cancelledAt == null && nullToAbsent
+          ? const Value.absent()
+          : Value(cancelledAt),
+      cancellationReason: cancellationReason == null && nullToAbsent
+          ? const Value.absent()
+          : Value(cancellationReason),
     );
   }
 
@@ -6430,6 +6521,11 @@ class SaleTableData extends DataClass implements Insertable<SaleTableData> {
       visitId: serializer.fromJson<String?>(json['visitId']),
       cashAmount: serializer.fromJson<double?>(json['cashAmount']),
       transferAmount: serializer.fromJson<double?>(json['transferAmount']),
+      status: serializer.fromJson<String>(json['status']),
+      cancelledAt: serializer.fromJson<DateTime?>(json['cancelledAt']),
+      cancellationReason: serializer.fromJson<String?>(
+        json['cancellationReason'],
+      ),
     );
   }
   @override
@@ -6450,6 +6546,9 @@ class SaleTableData extends DataClass implements Insertable<SaleTableData> {
       'visitId': serializer.toJson<String?>(visitId),
       'cashAmount': serializer.toJson<double?>(cashAmount),
       'transferAmount': serializer.toJson<double?>(transferAmount),
+      'status': serializer.toJson<String>(status),
+      'cancelledAt': serializer.toJson<DateTime?>(cancelledAt),
+      'cancellationReason': serializer.toJson<String?>(cancellationReason),
     };
   }
 
@@ -6468,6 +6567,9 @@ class SaleTableData extends DataClass implements Insertable<SaleTableData> {
     Value<String?> visitId = const Value.absent(),
     Value<double?> cashAmount = const Value.absent(),
     Value<double?> transferAmount = const Value.absent(),
+    String? status,
+    Value<DateTime?> cancelledAt = const Value.absent(),
+    Value<String?> cancellationReason = const Value.absent(),
   }) => SaleTableData(
     createdAt: createdAt ?? this.createdAt,
     lastModifiedDate: lastModifiedDate ?? this.lastModifiedDate,
@@ -6485,6 +6587,11 @@ class SaleTableData extends DataClass implements Insertable<SaleTableData> {
     transferAmount: transferAmount.present
         ? transferAmount.value
         : this.transferAmount,
+    status: status ?? this.status,
+    cancelledAt: cancelledAt.present ? cancelledAt.value : this.cancelledAt,
+    cancellationReason: cancellationReason.present
+        ? cancellationReason.value
+        : this.cancellationReason,
   );
   SaleTableData copyWithCompanion(SaleTableCompanion data) {
     return SaleTableData(
@@ -6516,6 +6623,13 @@ class SaleTableData extends DataClass implements Insertable<SaleTableData> {
       transferAmount: data.transferAmount.present
           ? data.transferAmount.value
           : this.transferAmount,
+      status: data.status.present ? data.status.value : this.status,
+      cancelledAt: data.cancelledAt.present
+          ? data.cancelledAt.value
+          : this.cancelledAt,
+      cancellationReason: data.cancellationReason.present
+          ? data.cancellationReason.value
+          : this.cancellationReason,
     );
   }
 
@@ -6535,7 +6649,10 @@ class SaleTableData extends DataClass implements Insertable<SaleTableData> {
           ..write('shipping_amount: $shipping_amount, ')
           ..write('visitId: $visitId, ')
           ..write('cashAmount: $cashAmount, ')
-          ..write('transferAmount: $transferAmount')
+          ..write('transferAmount: $transferAmount, ')
+          ..write('status: $status, ')
+          ..write('cancelledAt: $cancelledAt, ')
+          ..write('cancellationReason: $cancellationReason')
           ..write(')'))
         .toString();
   }
@@ -6556,6 +6673,9 @@ class SaleTableData extends DataClass implements Insertable<SaleTableData> {
     visitId,
     cashAmount,
     transferAmount,
+    status,
+    cancelledAt,
+    cancellationReason,
   );
   @override
   bool operator ==(Object other) =>
@@ -6574,7 +6694,10 @@ class SaleTableData extends DataClass implements Insertable<SaleTableData> {
           other.shipping_amount == this.shipping_amount &&
           other.visitId == this.visitId &&
           other.cashAmount == this.cashAmount &&
-          other.transferAmount == this.transferAmount);
+          other.transferAmount == this.transferAmount &&
+          other.status == this.status &&
+          other.cancelledAt == this.cancelledAt &&
+          other.cancellationReason == this.cancellationReason);
 }
 
 class SaleTableCompanion extends UpdateCompanion<SaleTableData> {
@@ -6592,6 +6715,9 @@ class SaleTableCompanion extends UpdateCompanion<SaleTableData> {
   final Value<String?> visitId;
   final Value<double?> cashAmount;
   final Value<double?> transferAmount;
+  final Value<String> status;
+  final Value<DateTime?> cancelledAt;
+  final Value<String?> cancellationReason;
   final Value<int> rowid;
   const SaleTableCompanion({
     this.createdAt = const Value.absent(),
@@ -6608,6 +6734,9 @@ class SaleTableCompanion extends UpdateCompanion<SaleTableData> {
     this.visitId = const Value.absent(),
     this.cashAmount = const Value.absent(),
     this.transferAmount = const Value.absent(),
+    this.status = const Value.absent(),
+    this.cancelledAt = const Value.absent(),
+    this.cancellationReason = const Value.absent(),
     this.rowid = const Value.absent(),
   });
   SaleTableCompanion.insert({
@@ -6625,6 +6754,9 @@ class SaleTableCompanion extends UpdateCompanion<SaleTableData> {
     this.visitId = const Value.absent(),
     this.cashAmount = const Value.absent(),
     this.transferAmount = const Value.absent(),
+    this.status = const Value.absent(),
+    this.cancelledAt = const Value.absent(),
+    this.cancellationReason = const Value.absent(),
     this.rowid = const Value.absent(),
   }) : customerId = Value(customerId),
        totalAmount = Value(totalAmount),
@@ -6646,6 +6778,9 @@ class SaleTableCompanion extends UpdateCompanion<SaleTableData> {
     Expression<String>? visitId,
     Expression<double>? cashAmount,
     Expression<double>? transferAmount,
+    Expression<String>? status,
+    Expression<DateTime>? cancelledAt,
+    Expression<String>? cancellationReason,
     Expression<int>? rowid,
   }) {
     return RawValuesInsertable({
@@ -6663,6 +6798,9 @@ class SaleTableCompanion extends UpdateCompanion<SaleTableData> {
       if (visitId != null) 'visit_id': visitId,
       if (cashAmount != null) 'cash_amount': cashAmount,
       if (transferAmount != null) 'transfer_amount': transferAmount,
+      if (status != null) 'status': status,
+      if (cancelledAt != null) 'cancelled_at': cancelledAt,
+      if (cancellationReason != null) 'cancellation_reason': cancellationReason,
       if (rowid != null) 'rowid': rowid,
     });
   }
@@ -6682,6 +6820,9 @@ class SaleTableCompanion extends UpdateCompanion<SaleTableData> {
     Value<String?>? visitId,
     Value<double?>? cashAmount,
     Value<double?>? transferAmount,
+    Value<String>? status,
+    Value<DateTime?>? cancelledAt,
+    Value<String?>? cancellationReason,
     Value<int>? rowid,
   }) {
     return SaleTableCompanion(
@@ -6699,6 +6840,9 @@ class SaleTableCompanion extends UpdateCompanion<SaleTableData> {
       visitId: visitId ?? this.visitId,
       cashAmount: cashAmount ?? this.cashAmount,
       transferAmount: transferAmount ?? this.transferAmount,
+      status: status ?? this.status,
+      cancelledAt: cancelledAt ?? this.cancelledAt,
+      cancellationReason: cancellationReason ?? this.cancellationReason,
       rowid: rowid ?? this.rowid,
     );
   }
@@ -6748,6 +6892,15 @@ class SaleTableCompanion extends UpdateCompanion<SaleTableData> {
     if (transferAmount.present) {
       map['transfer_amount'] = Variable<double>(transferAmount.value);
     }
+    if (status.present) {
+      map['status'] = Variable<String>(status.value);
+    }
+    if (cancelledAt.present) {
+      map['cancelled_at'] = Variable<DateTime>(cancelledAt.value);
+    }
+    if (cancellationReason.present) {
+      map['cancellation_reason'] = Variable<String>(cancellationReason.value);
+    }
     if (rowid.present) {
       map['rowid'] = Variable<int>(rowid.value);
     }
@@ -6771,6 +6924,9 @@ class SaleTableCompanion extends UpdateCompanion<SaleTableData> {
           ..write('visitId: $visitId, ')
           ..write('cashAmount: $cashAmount, ')
           ..write('transferAmount: $transferAmount, ')
+          ..write('status: $status, ')
+          ..write('cancelledAt: $cancelledAt, ')
+          ..write('cancellationReason: $cancellationReason, ')
           ..write('rowid: $rowid')
           ..write(')'))
         .toString();
@@ -7668,6 +7824,28 @@ class $PaymentTableTable extends PaymentTable
     requiredDuringInsert: false,
     defaultValue: const Constant('CONFIRMED'),
   );
+  static const VerificationMeta _cancelledAtMeta = const VerificationMeta(
+    'cancelledAt',
+  );
+  @override
+  late final GeneratedColumn<DateTime> cancelledAt = GeneratedColumn<DateTime>(
+    'cancelled_at',
+    aliasedName,
+    true,
+    type: DriftSqlType.dateTime,
+    requiredDuringInsert: false,
+  );
+  static const VerificationMeta _cancellationReasonMeta =
+      const VerificationMeta('cancellationReason');
+  @override
+  late final GeneratedColumn<String> cancellationReason =
+      GeneratedColumn<String>(
+        'cancellation_reason',
+        aliasedName,
+        true,
+        type: DriftSqlType.string,
+        requiredDuringInsert: false,
+      );
   @override
   List<GeneratedColumn> get $columns => [
     createdAt,
@@ -7682,6 +7860,8 @@ class $PaymentTableTable extends PaymentTable
     saleId,
     notes,
     status,
+    cancelledAt,
+    cancellationReason,
   ];
   @override
   String get aliasedName => _alias ?? actualTableName;
@@ -7779,6 +7959,24 @@ class $PaymentTableTable extends PaymentTable
         status.isAcceptableOrUnknown(data['status']!, _statusMeta),
       );
     }
+    if (data.containsKey('cancelled_at')) {
+      context.handle(
+        _cancelledAtMeta,
+        cancelledAt.isAcceptableOrUnknown(
+          data['cancelled_at']!,
+          _cancelledAtMeta,
+        ),
+      );
+    }
+    if (data.containsKey('cancellation_reason')) {
+      context.handle(
+        _cancellationReasonMeta,
+        cancellationReason.isAcceptableOrUnknown(
+          data['cancellation_reason']!,
+          _cancellationReasonMeta,
+        ),
+      );
+    }
     return context;
   }
 
@@ -7836,6 +8034,14 @@ class $PaymentTableTable extends PaymentTable
         DriftSqlType.string,
         data['${effectivePrefix}status'],
       )!,
+      cancelledAt: attachedDatabase.typeMapping.read(
+        DriftSqlType.dateTime,
+        data['${effectivePrefix}cancelled_at'],
+      ),
+      cancellationReason: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}cancellation_reason'],
+      ),
     );
   }
 
@@ -7859,6 +8065,8 @@ class PaymentTableData extends DataClass
   final String? saleId;
   final String? notes;
   final String status;
+  final DateTime? cancelledAt;
+  final String? cancellationReason;
   const PaymentTableData({
     required this.createdAt,
     required this.lastModifiedDate,
@@ -7872,6 +8080,8 @@ class PaymentTableData extends DataClass
     this.saleId,
     this.notes,
     required this.status,
+    this.cancelledAt,
+    this.cancellationReason,
   });
   @override
   Map<String, Expression> toColumns(bool nullToAbsent) {
@@ -7896,6 +8106,12 @@ class PaymentTableData extends DataClass
       map['notes'] = Variable<String>(notes);
     }
     map['status'] = Variable<String>(status);
+    if (!nullToAbsent || cancelledAt != null) {
+      map['cancelled_at'] = Variable<DateTime>(cancelledAt);
+    }
+    if (!nullToAbsent || cancellationReason != null) {
+      map['cancellation_reason'] = Variable<String>(cancellationReason);
+    }
     return map;
   }
 
@@ -7921,6 +8137,12 @@ class PaymentTableData extends DataClass
           ? const Value.absent()
           : Value(notes),
       status: Value(status),
+      cancelledAt: cancelledAt == null && nullToAbsent
+          ? const Value.absent()
+          : Value(cancelledAt),
+      cancellationReason: cancellationReason == null && nullToAbsent
+          ? const Value.absent()
+          : Value(cancellationReason),
     );
   }
 
@@ -7942,6 +8164,10 @@ class PaymentTableData extends DataClass
       saleId: serializer.fromJson<String?>(json['saleId']),
       notes: serializer.fromJson<String?>(json['notes']),
       status: serializer.fromJson<String>(json['status']),
+      cancelledAt: serializer.fromJson<DateTime?>(json['cancelledAt']),
+      cancellationReason: serializer.fromJson<String?>(
+        json['cancellationReason'],
+      ),
     );
   }
   @override
@@ -7960,6 +8186,8 @@ class PaymentTableData extends DataClass
       'saleId': serializer.toJson<String?>(saleId),
       'notes': serializer.toJson<String?>(notes),
       'status': serializer.toJson<String>(status),
+      'cancelledAt': serializer.toJson<DateTime?>(cancelledAt),
+      'cancellationReason': serializer.toJson<String?>(cancellationReason),
     };
   }
 
@@ -7976,6 +8204,8 @@ class PaymentTableData extends DataClass
     Value<String?> saleId = const Value.absent(),
     Value<String?> notes = const Value.absent(),
     String? status,
+    Value<DateTime?> cancelledAt = const Value.absent(),
+    Value<String?> cancellationReason = const Value.absent(),
   }) => PaymentTableData(
     createdAt: createdAt ?? this.createdAt,
     lastModifiedDate: lastModifiedDate ?? this.lastModifiedDate,
@@ -7989,6 +8219,10 @@ class PaymentTableData extends DataClass
     saleId: saleId.present ? saleId.value : this.saleId,
     notes: notes.present ? notes.value : this.notes,
     status: status ?? this.status,
+    cancelledAt: cancelledAt.present ? cancelledAt.value : this.cancelledAt,
+    cancellationReason: cancellationReason.present
+        ? cancellationReason.value
+        : this.cancellationReason,
   );
   PaymentTableData copyWithCompanion(PaymentTableCompanion data) {
     return PaymentTableData(
@@ -8010,6 +8244,12 @@ class PaymentTableData extends DataClass
       saleId: data.saleId.present ? data.saleId.value : this.saleId,
       notes: data.notes.present ? data.notes.value : this.notes,
       status: data.status.present ? data.status.value : this.status,
+      cancelledAt: data.cancelledAt.present
+          ? data.cancelledAt.value
+          : this.cancelledAt,
+      cancellationReason: data.cancellationReason.present
+          ? data.cancellationReason.value
+          : this.cancellationReason,
     );
   }
 
@@ -8027,7 +8267,9 @@ class PaymentTableData extends DataClass
           ..write('visitId: $visitId, ')
           ..write('saleId: $saleId, ')
           ..write('notes: $notes, ')
-          ..write('status: $status')
+          ..write('status: $status, ')
+          ..write('cancelledAt: $cancelledAt, ')
+          ..write('cancellationReason: $cancellationReason')
           ..write(')'))
         .toString();
   }
@@ -8046,6 +8288,8 @@ class PaymentTableData extends DataClass
     saleId,
     notes,
     status,
+    cancelledAt,
+    cancellationReason,
   );
   @override
   bool operator ==(Object other) =>
@@ -8062,7 +8306,9 @@ class PaymentTableData extends DataClass
           other.visitId == this.visitId &&
           other.saleId == this.saleId &&
           other.notes == this.notes &&
-          other.status == this.status);
+          other.status == this.status &&
+          other.cancelledAt == this.cancelledAt &&
+          other.cancellationReason == this.cancellationReason);
 }
 
 class PaymentTableCompanion extends UpdateCompanion<PaymentTableData> {
@@ -8078,6 +8324,8 @@ class PaymentTableCompanion extends UpdateCompanion<PaymentTableData> {
   final Value<String?> saleId;
   final Value<String?> notes;
   final Value<String> status;
+  final Value<DateTime?> cancelledAt;
+  final Value<String?> cancellationReason;
   final Value<int> rowid;
   const PaymentTableCompanion({
     this.createdAt = const Value.absent(),
@@ -8092,6 +8340,8 @@ class PaymentTableCompanion extends UpdateCompanion<PaymentTableData> {
     this.saleId = const Value.absent(),
     this.notes = const Value.absent(),
     this.status = const Value.absent(),
+    this.cancelledAt = const Value.absent(),
+    this.cancellationReason = const Value.absent(),
     this.rowid = const Value.absent(),
   });
   PaymentTableCompanion.insert({
@@ -8107,6 +8357,8 @@ class PaymentTableCompanion extends UpdateCompanion<PaymentTableData> {
     this.saleId = const Value.absent(),
     this.notes = const Value.absent(),
     this.status = const Value.absent(),
+    this.cancelledAt = const Value.absent(),
+    this.cancellationReason = const Value.absent(),
     this.rowid = const Value.absent(),
   }) : customerId = Value(customerId),
        amount = Value(amount),
@@ -8124,6 +8376,8 @@ class PaymentTableCompanion extends UpdateCompanion<PaymentTableData> {
     Expression<String>? saleId,
     Expression<String>? notes,
     Expression<String>? status,
+    Expression<DateTime>? cancelledAt,
+    Expression<String>? cancellationReason,
     Expression<int>? rowid,
   }) {
     return RawValuesInsertable({
@@ -8139,6 +8393,8 @@ class PaymentTableCompanion extends UpdateCompanion<PaymentTableData> {
       if (saleId != null) 'sale_id': saleId,
       if (notes != null) 'notes': notes,
       if (status != null) 'status': status,
+      if (cancelledAt != null) 'cancelled_at': cancelledAt,
+      if (cancellationReason != null) 'cancellation_reason': cancellationReason,
       if (rowid != null) 'rowid': rowid,
     });
   }
@@ -8156,6 +8412,8 @@ class PaymentTableCompanion extends UpdateCompanion<PaymentTableData> {
     Value<String?>? saleId,
     Value<String?>? notes,
     Value<String>? status,
+    Value<DateTime?>? cancelledAt,
+    Value<String?>? cancellationReason,
     Value<int>? rowid,
   }) {
     return PaymentTableCompanion(
@@ -8171,6 +8429,8 @@ class PaymentTableCompanion extends UpdateCompanion<PaymentTableData> {
       saleId: saleId ?? this.saleId,
       notes: notes ?? this.notes,
       status: status ?? this.status,
+      cancelledAt: cancelledAt ?? this.cancelledAt,
+      cancellationReason: cancellationReason ?? this.cancellationReason,
       rowid: rowid ?? this.rowid,
     );
   }
@@ -8214,6 +8474,12 @@ class PaymentTableCompanion extends UpdateCompanion<PaymentTableData> {
     if (status.present) {
       map['status'] = Variable<String>(status.value);
     }
+    if (cancelledAt.present) {
+      map['cancelled_at'] = Variable<DateTime>(cancelledAt.value);
+    }
+    if (cancellationReason.present) {
+      map['cancellation_reason'] = Variable<String>(cancellationReason.value);
+    }
     if (rowid.present) {
       map['rowid'] = Variable<int>(rowid.value);
     }
@@ -8235,6 +8501,8 @@ class PaymentTableCompanion extends UpdateCompanion<PaymentTableData> {
           ..write('saleId: $saleId, ')
           ..write('notes: $notes, ')
           ..write('status: $status, ')
+          ..write('cancelledAt: $cancelledAt, ')
+          ..write('cancellationReason: $cancellationReason, ')
           ..write('rowid: $rowid')
           ..write(')'))
         .toString();
@@ -13430,6 +13698,254 @@ class SyncStateTableCompanion extends UpdateCompanion<SyncStateTableData> {
   }
 }
 
+class $NeighborhoodTableTable extends NeighborhoodTable
+    with TableInfo<$NeighborhoodTableTable, NeighborhoodTableData> {
+  @override
+  final GeneratedDatabase attachedDatabase;
+  final String? _alias;
+  $NeighborhoodTableTable(this.attachedDatabase, [this._alias]);
+  static const VerificationMeta _idMeta = const VerificationMeta('id');
+  @override
+  late final GeneratedColumn<int> id = GeneratedColumn<int>(
+    'id',
+    aliasedName,
+    false,
+    type: DriftSqlType.int,
+    requiredDuringInsert: false,
+  );
+  static const VerificationMeta _nameMeta = const VerificationMeta('name');
+  @override
+  late final GeneratedColumn<String> name = GeneratedColumn<String>(
+    'name',
+    aliasedName,
+    false,
+    type: DriftSqlType.string,
+    requiredDuringInsert: true,
+  );
+  static const VerificationMeta _enabledMeta = const VerificationMeta(
+    'enabled',
+  );
+  @override
+  late final GeneratedColumn<bool> enabled = GeneratedColumn<bool>(
+    'enabled',
+    aliasedName,
+    false,
+    type: DriftSqlType.bool,
+    requiredDuringInsert: false,
+    defaultConstraints: GeneratedColumn.constraintIsAlways(
+      'CHECK ("enabled" IN (0, 1))',
+    ),
+    defaultValue: const Constant(true),
+  );
+  @override
+  List<GeneratedColumn> get $columns => [id, name, enabled];
+  @override
+  String get aliasedName => _alias ?? actualTableName;
+  @override
+  String get actualTableName => $name;
+  static const String $name = 'neighborhoods';
+  @override
+  VerificationContext validateIntegrity(
+    Insertable<NeighborhoodTableData> instance, {
+    bool isInserting = false,
+  }) {
+    final context = VerificationContext();
+    final data = instance.toColumns(true);
+    if (data.containsKey('id')) {
+      context.handle(_idMeta, id.isAcceptableOrUnknown(data['id']!, _idMeta));
+    }
+    if (data.containsKey('name')) {
+      context.handle(
+        _nameMeta,
+        name.isAcceptableOrUnknown(data['name']!, _nameMeta),
+      );
+    } else if (isInserting) {
+      context.missing(_nameMeta);
+    }
+    if (data.containsKey('enabled')) {
+      context.handle(
+        _enabledMeta,
+        enabled.isAcceptableOrUnknown(data['enabled']!, _enabledMeta),
+      );
+    }
+    return context;
+  }
+
+  @override
+  Set<GeneratedColumn> get $primaryKey => {id};
+  @override
+  NeighborhoodTableData map(Map<String, dynamic> data, {String? tablePrefix}) {
+    final effectivePrefix = tablePrefix != null ? '$tablePrefix.' : '';
+    return NeighborhoodTableData(
+      id: attachedDatabase.typeMapping.read(
+        DriftSqlType.int,
+        data['${effectivePrefix}id'],
+      )!,
+      name: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}name'],
+      )!,
+      enabled: attachedDatabase.typeMapping.read(
+        DriftSqlType.bool,
+        data['${effectivePrefix}enabled'],
+      )!,
+    );
+  }
+
+  @override
+  $NeighborhoodTableTable createAlias(String alias) {
+    return $NeighborhoodTableTable(attachedDatabase, alias);
+  }
+}
+
+class NeighborhoodTableData extends DataClass
+    implements Insertable<NeighborhoodTableData> {
+  final int id;
+  final String name;
+  final bool enabled;
+  const NeighborhoodTableData({
+    required this.id,
+    required this.name,
+    required this.enabled,
+  });
+  @override
+  Map<String, Expression> toColumns(bool nullToAbsent) {
+    final map = <String, Expression>{};
+    map['id'] = Variable<int>(id);
+    map['name'] = Variable<String>(name);
+    map['enabled'] = Variable<bool>(enabled);
+    return map;
+  }
+
+  NeighborhoodTableCompanion toCompanion(bool nullToAbsent) {
+    return NeighborhoodTableCompanion(
+      id: Value(id),
+      name: Value(name),
+      enabled: Value(enabled),
+    );
+  }
+
+  factory NeighborhoodTableData.fromJson(
+    Map<String, dynamic> json, {
+    ValueSerializer? serializer,
+  }) {
+    serializer ??= driftRuntimeOptions.defaultSerializer;
+    return NeighborhoodTableData(
+      id: serializer.fromJson<int>(json['id']),
+      name: serializer.fromJson<String>(json['name']),
+      enabled: serializer.fromJson<bool>(json['enabled']),
+    );
+  }
+  @override
+  Map<String, dynamic> toJson({ValueSerializer? serializer}) {
+    serializer ??= driftRuntimeOptions.defaultSerializer;
+    return <String, dynamic>{
+      'id': serializer.toJson<int>(id),
+      'name': serializer.toJson<String>(name),
+      'enabled': serializer.toJson<bool>(enabled),
+    };
+  }
+
+  NeighborhoodTableData copyWith({int? id, String? name, bool? enabled}) =>
+      NeighborhoodTableData(
+        id: id ?? this.id,
+        name: name ?? this.name,
+        enabled: enabled ?? this.enabled,
+      );
+  NeighborhoodTableData copyWithCompanion(NeighborhoodTableCompanion data) {
+    return NeighborhoodTableData(
+      id: data.id.present ? data.id.value : this.id,
+      name: data.name.present ? data.name.value : this.name,
+      enabled: data.enabled.present ? data.enabled.value : this.enabled,
+    );
+  }
+
+  @override
+  String toString() {
+    return (StringBuffer('NeighborhoodTableData(')
+          ..write('id: $id, ')
+          ..write('name: $name, ')
+          ..write('enabled: $enabled')
+          ..write(')'))
+        .toString();
+  }
+
+  @override
+  int get hashCode => Object.hash(id, name, enabled);
+  @override
+  bool operator ==(Object other) =>
+      identical(this, other) ||
+      (other is NeighborhoodTableData &&
+          other.id == this.id &&
+          other.name == this.name &&
+          other.enabled == this.enabled);
+}
+
+class NeighborhoodTableCompanion
+    extends UpdateCompanion<NeighborhoodTableData> {
+  final Value<int> id;
+  final Value<String> name;
+  final Value<bool> enabled;
+  const NeighborhoodTableCompanion({
+    this.id = const Value.absent(),
+    this.name = const Value.absent(),
+    this.enabled = const Value.absent(),
+  });
+  NeighborhoodTableCompanion.insert({
+    this.id = const Value.absent(),
+    required String name,
+    this.enabled = const Value.absent(),
+  }) : name = Value(name);
+  static Insertable<NeighborhoodTableData> custom({
+    Expression<int>? id,
+    Expression<String>? name,
+    Expression<bool>? enabled,
+  }) {
+    return RawValuesInsertable({
+      if (id != null) 'id': id,
+      if (name != null) 'name': name,
+      if (enabled != null) 'enabled': enabled,
+    });
+  }
+
+  NeighborhoodTableCompanion copyWith({
+    Value<int>? id,
+    Value<String>? name,
+    Value<bool>? enabled,
+  }) {
+    return NeighborhoodTableCompanion(
+      id: id ?? this.id,
+      name: name ?? this.name,
+      enabled: enabled ?? this.enabled,
+    );
+  }
+
+  @override
+  Map<String, Expression> toColumns(bool nullToAbsent) {
+    final map = <String, Expression>{};
+    if (id.present) {
+      map['id'] = Variable<int>(id.value);
+    }
+    if (name.present) {
+      map['name'] = Variable<String>(name.value);
+    }
+    if (enabled.present) {
+      map['enabled'] = Variable<bool>(enabled.value);
+    }
+    return map;
+  }
+
+  @override
+  String toString() {
+    return (StringBuffer('NeighborhoodTableCompanion(')
+          ..write('id: $id, ')
+          ..write('name: $name, ')
+          ..write('enabled: $enabled')
+          ..write(')'))
+        .toString();
+  }
+}
+
 abstract class _$AppDatabase extends GeneratedDatabase {
   _$AppDatabase(QueryExecutor e) : super(e);
   $AppDatabaseManager get managers => $AppDatabaseManager(this);
@@ -13468,6 +13984,8 @@ abstract class _$AppDatabase extends GeneratedDatabase {
   late final $CustomerAgreementTableTable customerAgreementTable =
       $CustomerAgreementTableTable(this);
   late final $SyncStateTableTable syncStateTable = $SyncStateTableTable(this);
+  late final $NeighborhoodTableTable neighborhoodTable =
+      $NeighborhoodTableTable(this);
   @override
   Iterable<TableInfo<Table, Object?>> get allTables =>
       allSchemaEntities.whereType<TableInfo<Table, Object?>>();
@@ -13495,6 +14013,7 @@ abstract class _$AppDatabase extends GeneratedDatabase {
     paymentMethodTable,
     customerAgreementTable,
     syncStateTable,
+    neighborhoodTable,
   ];
   @override
   StreamQueryUpdateRules get streamUpdateRules => const StreamQueryUpdateRules([
@@ -19542,6 +20061,9 @@ typedef $$SaleTableTableCreateCompanionBuilder =
       Value<String?> visitId,
       Value<double?> cashAmount,
       Value<double?> transferAmount,
+      Value<String> status,
+      Value<DateTime?> cancelledAt,
+      Value<String?> cancellationReason,
       Value<int> rowid,
     });
 typedef $$SaleTableTableUpdateCompanionBuilder =
@@ -19560,6 +20082,9 @@ typedef $$SaleTableTableUpdateCompanionBuilder =
       Value<String?> visitId,
       Value<double?> cashAmount,
       Value<double?> transferAmount,
+      Value<String> status,
+      Value<DateTime?> cancelledAt,
+      Value<String?> cancellationReason,
       Value<int> rowid,
     });
 
@@ -19734,6 +20259,21 @@ class $$SaleTableTableFilterComposer
 
   ColumnFilters<double> get transferAmount => $composableBuilder(
     column: $table.transferAmount,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get status => $composableBuilder(
+    column: $table.status,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<DateTime> get cancelledAt => $composableBuilder(
+    column: $table.cancelledAt,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get cancellationReason => $composableBuilder(
+    column: $table.cancellationReason,
     builder: (column) => ColumnFilters(column),
   );
 
@@ -19912,6 +20452,21 @@ class $$SaleTableTableOrderingComposer
     builder: (column) => ColumnOrderings(column),
   );
 
+  ColumnOrderings<String> get status => $composableBuilder(
+    column: $table.status,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<DateTime> get cancelledAt => $composableBuilder(
+    column: $table.cancelledAt,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<String> get cancellationReason => $composableBuilder(
+    column: $table.cancellationReason,
+    builder: (column) => ColumnOrderings(column),
+  );
+
   $$CustomerTableTableOrderingComposer get customerId {
     final $$CustomerTableTableOrderingComposer composer = $composerBuilder(
       composer: this,
@@ -19993,6 +20548,19 @@ class $$SaleTableTableAnnotationComposer
 
   GeneratedColumn<double> get transferAmount => $composableBuilder(
     column: $table.transferAmount,
+    builder: (column) => column,
+  );
+
+  GeneratedColumn<String> get status =>
+      $composableBuilder(column: $table.status, builder: (column) => column);
+
+  GeneratedColumn<DateTime> get cancelledAt => $composableBuilder(
+    column: $table.cancelledAt,
+    builder: (column) => column,
+  );
+
+  GeneratedColumn<String> get cancellationReason => $composableBuilder(
+    column: $table.cancellationReason,
     builder: (column) => column,
   );
 
@@ -20144,6 +20712,9 @@ class $$SaleTableTableTableManager
                 Value<String?> visitId = const Value.absent(),
                 Value<double?> cashAmount = const Value.absent(),
                 Value<double?> transferAmount = const Value.absent(),
+                Value<String> status = const Value.absent(),
+                Value<DateTime?> cancelledAt = const Value.absent(),
+                Value<String?> cancellationReason = const Value.absent(),
                 Value<int> rowid = const Value.absent(),
               }) => SaleTableCompanion(
                 createdAt: createdAt,
@@ -20160,6 +20731,9 @@ class $$SaleTableTableTableManager
                 visitId: visitId,
                 cashAmount: cashAmount,
                 transferAmount: transferAmount,
+                status: status,
+                cancelledAt: cancelledAt,
+                cancellationReason: cancellationReason,
                 rowid: rowid,
               ),
           createCompanionCallback:
@@ -20178,6 +20752,9 @@ class $$SaleTableTableTableManager
                 Value<String?> visitId = const Value.absent(),
                 Value<double?> cashAmount = const Value.absent(),
                 Value<double?> transferAmount = const Value.absent(),
+                Value<String> status = const Value.absent(),
+                Value<DateTime?> cancelledAt = const Value.absent(),
+                Value<String?> cancellationReason = const Value.absent(),
                 Value<int> rowid = const Value.absent(),
               }) => SaleTableCompanion.insert(
                 createdAt: createdAt,
@@ -20194,6 +20771,9 @@ class $$SaleTableTableTableManager
                 visitId: visitId,
                 cashAmount: cashAmount,
                 transferAmount: transferAmount,
+                status: status,
+                cancelledAt: cancelledAt,
+                cancellationReason: cancellationReason,
                 rowid: rowid,
               ),
           withReferenceMapper: (p0) => p0
@@ -20913,6 +21493,8 @@ typedef $$PaymentTableTableCreateCompanionBuilder =
       Value<String?> saleId,
       Value<String?> notes,
       Value<String> status,
+      Value<DateTime?> cancelledAt,
+      Value<String?> cancellationReason,
       Value<int> rowid,
     });
 typedef $$PaymentTableTableUpdateCompanionBuilder =
@@ -20929,6 +21511,8 @@ typedef $$PaymentTableTableUpdateCompanionBuilder =
       Value<String?> saleId,
       Value<String?> notes,
       Value<String> status,
+      Value<DateTime?> cancelledAt,
+      Value<String?> cancellationReason,
       Value<int> rowid,
     });
 
@@ -21085,6 +21669,16 @@ class $$PaymentTableTableFilterComposer
     builder: (column) => ColumnFilters(column),
   );
 
+  ColumnFilters<DateTime> get cancelledAt => $composableBuilder(
+    column: $table.cancelledAt,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get cancellationReason => $composableBuilder(
+    column: $table.cancellationReason,
+    builder: (column) => ColumnFilters(column),
+  );
+
   $$CustomerTableTableFilterComposer get customerId {
     final $$CustomerTableTableFilterComposer composer = $composerBuilder(
       composer: this,
@@ -21236,6 +21830,16 @@ class $$PaymentTableTableOrderingComposer
     builder: (column) => ColumnOrderings(column),
   );
 
+  ColumnOrderings<DateTime> get cancelledAt => $composableBuilder(
+    column: $table.cancelledAt,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<String> get cancellationReason => $composableBuilder(
+    column: $table.cancellationReason,
+    builder: (column) => ColumnOrderings(column),
+  );
+
   $$CustomerTableTableOrderingComposer get customerId {
     final $$CustomerTableTableOrderingComposer composer = $composerBuilder(
       composer: this,
@@ -21345,6 +21949,16 @@ class $$PaymentTableTableAnnotationComposer
 
   GeneratedColumn<String> get status =>
       $composableBuilder(column: $table.status, builder: (column) => column);
+
+  GeneratedColumn<DateTime> get cancelledAt => $composableBuilder(
+    column: $table.cancelledAt,
+    builder: (column) => column,
+  );
+
+  GeneratedColumn<String> get cancellationReason => $composableBuilder(
+    column: $table.cancellationReason,
+    builder: (column) => column,
+  );
 
   $$CustomerTableTableAnnotationComposer get customerId {
     final $$CustomerTableTableAnnotationComposer composer = $composerBuilder(
@@ -21488,6 +22102,8 @@ class $$PaymentTableTableTableManager
                 Value<String?> saleId = const Value.absent(),
                 Value<String?> notes = const Value.absent(),
                 Value<String> status = const Value.absent(),
+                Value<DateTime?> cancelledAt = const Value.absent(),
+                Value<String?> cancellationReason = const Value.absent(),
                 Value<int> rowid = const Value.absent(),
               }) => PaymentTableCompanion(
                 createdAt: createdAt,
@@ -21502,6 +22118,8 @@ class $$PaymentTableTableTableManager
                 saleId: saleId,
                 notes: notes,
                 status: status,
+                cancelledAt: cancelledAt,
+                cancellationReason: cancellationReason,
                 rowid: rowid,
               ),
           createCompanionCallback:
@@ -21518,6 +22136,8 @@ class $$PaymentTableTableTableManager
                 Value<String?> saleId = const Value.absent(),
                 Value<String?> notes = const Value.absent(),
                 Value<String> status = const Value.absent(),
+                Value<DateTime?> cancelledAt = const Value.absent(),
+                Value<String?> cancellationReason = const Value.absent(),
                 Value<int> rowid = const Value.absent(),
               }) => PaymentTableCompanion.insert(
                 createdAt: createdAt,
@@ -21532,6 +22152,8 @@ class $$PaymentTableTableTableManager
                 saleId: saleId,
                 notes: notes,
                 status: status,
+                cancelledAt: cancelledAt,
+                cancellationReason: cancellationReason,
                 rowid: rowid,
               ),
           withReferenceMapper: (p0) => p0
@@ -25923,6 +26545,175 @@ typedef $$SyncStateTableTableProcessedTableManager =
       SyncStateTableData,
       PrefetchHooks Function()
     >;
+typedef $$NeighborhoodTableTableCreateCompanionBuilder =
+    NeighborhoodTableCompanion Function({
+      Value<int> id,
+      required String name,
+      Value<bool> enabled,
+    });
+typedef $$NeighborhoodTableTableUpdateCompanionBuilder =
+    NeighborhoodTableCompanion Function({
+      Value<int> id,
+      Value<String> name,
+      Value<bool> enabled,
+    });
+
+class $$NeighborhoodTableTableFilterComposer
+    extends Composer<_$AppDatabase, $NeighborhoodTableTable> {
+  $$NeighborhoodTableTableFilterComposer({
+    required super.$db,
+    required super.$table,
+    super.joinBuilder,
+    super.$addJoinBuilderToRootComposer,
+    super.$removeJoinBuilderFromRootComposer,
+  });
+  ColumnFilters<int> get id => $composableBuilder(
+    column: $table.id,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get name => $composableBuilder(
+    column: $table.name,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<bool> get enabled => $composableBuilder(
+    column: $table.enabled,
+    builder: (column) => ColumnFilters(column),
+  );
+}
+
+class $$NeighborhoodTableTableOrderingComposer
+    extends Composer<_$AppDatabase, $NeighborhoodTableTable> {
+  $$NeighborhoodTableTableOrderingComposer({
+    required super.$db,
+    required super.$table,
+    super.joinBuilder,
+    super.$addJoinBuilderToRootComposer,
+    super.$removeJoinBuilderFromRootComposer,
+  });
+  ColumnOrderings<int> get id => $composableBuilder(
+    column: $table.id,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<String> get name => $composableBuilder(
+    column: $table.name,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<bool> get enabled => $composableBuilder(
+    column: $table.enabled,
+    builder: (column) => ColumnOrderings(column),
+  );
+}
+
+class $$NeighborhoodTableTableAnnotationComposer
+    extends Composer<_$AppDatabase, $NeighborhoodTableTable> {
+  $$NeighborhoodTableTableAnnotationComposer({
+    required super.$db,
+    required super.$table,
+    super.joinBuilder,
+    super.$addJoinBuilderToRootComposer,
+    super.$removeJoinBuilderFromRootComposer,
+  });
+  GeneratedColumn<int> get id =>
+      $composableBuilder(column: $table.id, builder: (column) => column);
+
+  GeneratedColumn<String> get name =>
+      $composableBuilder(column: $table.name, builder: (column) => column);
+
+  GeneratedColumn<bool> get enabled =>
+      $composableBuilder(column: $table.enabled, builder: (column) => column);
+}
+
+class $$NeighborhoodTableTableTableManager
+    extends
+        RootTableManager<
+          _$AppDatabase,
+          $NeighborhoodTableTable,
+          NeighborhoodTableData,
+          $$NeighborhoodTableTableFilterComposer,
+          $$NeighborhoodTableTableOrderingComposer,
+          $$NeighborhoodTableTableAnnotationComposer,
+          $$NeighborhoodTableTableCreateCompanionBuilder,
+          $$NeighborhoodTableTableUpdateCompanionBuilder,
+          (
+            NeighborhoodTableData,
+            BaseReferences<
+              _$AppDatabase,
+              $NeighborhoodTableTable,
+              NeighborhoodTableData
+            >,
+          ),
+          NeighborhoodTableData,
+          PrefetchHooks Function()
+        > {
+  $$NeighborhoodTableTableTableManager(
+    _$AppDatabase db,
+    $NeighborhoodTableTable table,
+  ) : super(
+        TableManagerState(
+          db: db,
+          table: table,
+          createFilteringComposer: () =>
+              $$NeighborhoodTableTableFilterComposer($db: db, $table: table),
+          createOrderingComposer: () =>
+              $$NeighborhoodTableTableOrderingComposer($db: db, $table: table),
+          createComputedFieldComposer: () =>
+              $$NeighborhoodTableTableAnnotationComposer(
+                $db: db,
+                $table: table,
+              ),
+          updateCompanionCallback:
+              ({
+                Value<int> id = const Value.absent(),
+                Value<String> name = const Value.absent(),
+                Value<bool> enabled = const Value.absent(),
+              }) => NeighborhoodTableCompanion(
+                id: id,
+                name: name,
+                enabled: enabled,
+              ),
+          createCompanionCallback:
+              ({
+                Value<int> id = const Value.absent(),
+                required String name,
+                Value<bool> enabled = const Value.absent(),
+              }) => NeighborhoodTableCompanion.insert(
+                id: id,
+                name: name,
+                enabled: enabled,
+              ),
+          withReferenceMapper: (p0) => p0
+              .map((e) => (e.readTable(table), BaseReferences(db, table, e)))
+              .toList(),
+          prefetchHooksCallback: null,
+        ),
+      );
+}
+
+typedef $$NeighborhoodTableTableProcessedTableManager =
+    ProcessedTableManager<
+      _$AppDatabase,
+      $NeighborhoodTableTable,
+      NeighborhoodTableData,
+      $$NeighborhoodTableTableFilterComposer,
+      $$NeighborhoodTableTableOrderingComposer,
+      $$NeighborhoodTableTableAnnotationComposer,
+      $$NeighborhoodTableTableCreateCompanionBuilder,
+      $$NeighborhoodTableTableUpdateCompanionBuilder,
+      (
+        NeighborhoodTableData,
+        BaseReferences<
+          _$AppDatabase,
+          $NeighborhoodTableTable,
+          NeighborhoodTableData
+        >,
+      ),
+      NeighborhoodTableData,
+      PrefetchHooks Function()
+    >;
 
 class $AppDatabaseManager {
   final _$AppDatabase _db;
@@ -25990,4 +26781,6 @@ class $AppDatabaseManager {
       );
   $$SyncStateTableTableTableManager get syncStateTable =>
       $$SyncStateTableTableTableManager(_db, _db.syncStateTable);
+  $$NeighborhoodTableTableTableManager get neighborhoodTable =>
+      $$NeighborhoodTableTableTableManager(_db, _db.neighborhoodTable);
 }

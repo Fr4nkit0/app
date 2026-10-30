@@ -6,6 +6,7 @@ import 'package:path_provider/path_provider.dart';
 import '../../features/customers/data/database/customer.table.dart';
 import '../../features/customers/data/database/customer.address.table.dart';
 import '../../features/customers/data/database/customer.preference.table.dart';
+import '../../features/customers/data/database/neighborhood.table.dart';
 import 'package:app/features/route/data/database/route.stop.table.dart';
 import 'package:app/features/route/data/database/route.inventory.table.dart';
 import 'package:app/features/route/data/database/route.table.dart';
@@ -50,13 +51,14 @@ part 'database.helper.g.dart';
     VisitOutcomeTable,
     CustomerAgreementTable,
     SyncStateTable,
+    NeighborhoodTable,
   ],
 )
 class AppDatabase extends _$AppDatabase {
   AppDatabase([QueryExecutor? executor]) : super(executor ?? _openConnection());
 
   @override
-  int get schemaVersion => 13;
+  int get schemaVersion => 15;
 
   @override
   MigrationStrategy get migration => MigrationStrategy(
@@ -141,6 +143,16 @@ class AppDatabase extends _$AppDatabase {
       }
       if (from < 13) {
         await _addColumnIfMissing(m, productTable, productTable.containerTypeId);
+      }
+      if (from < 14) {
+        await m.createTable(neighborhoodTable);
+      }
+      if (from < 15) {
+        await _addColumnIfMissing(m, saleTable, saleTable.status);
+        await _addColumnIfMissing(m, saleTable, saleTable.cancelledAt);
+        await _addColumnIfMissing(m, saleTable, saleTable.cancellationReason);
+        await _addColumnIfMissing(m, paymentTable, paymentTable.cancelledAt);
+        await _addColumnIfMissing(m, paymentTable, paymentTable.cancellationReason);
       }
     },
   );

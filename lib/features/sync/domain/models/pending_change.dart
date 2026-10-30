@@ -8,7 +8,21 @@ enum PendingEntity {
   containerMovement('container_movement'),
   sale('sale'),
   payment('payment'),
-  customerAgreement('customer_agreement');
+  customerAgreement('customer_agreement'),
+
+  /// An address added or changed from the customer profile; the customer
+  /// push still carries the primary address of a new or edited customer.
+  customerAddress('customer_address'),
+
+  /// A delivery preference added or changed from the wizard or the profile;
+  /// the customer push does not carry preferences.
+  customerPreference('customer_preference'),
+
+  /// The cancellation of a sale; its entity id is the sale's id.
+  saleCancellation('sale_cancellation'),
+
+  /// The cancellation of a payment; its entity id is the payment's id.
+  paymentCancellation('payment_cancellation');
 
   const PendingEntity(this.wireName);
 

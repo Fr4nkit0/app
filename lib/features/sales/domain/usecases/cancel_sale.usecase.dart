@@ -1,0 +1,52 @@
+import 'package:app/core/errors/domain_failure.dart';
+import 'package:app/core/usecases/transaction_runner.dart';
+import 'package:app/features/payments/data/repositories/payment.repository.dart';
+import 'package:app/features/sales/data/repositories/sale.repository.dart';
+import 'package:app/features/sales/domain/cancellation_reason.dart';
+import 'package:app/features/sales/domain/same_day.dart';
+
+class CancelSaleUseCase {
+  CancelSaleUseCase({
+    required SaleRepository saleRepo,
+    required PaymentRepository paymentRepo,
+    required TransactionRunner transaction,
+    DateTime Function() now = DateTime.now,
+  }) : _saleRepo = saleRepo,
+       _paymentRepo = paymentRepo,
+       _transaction = transaction,
+       _now = now;
+
+  final SaleRepository _saleRepo;
+  final PaymentRepository _paymentRepo;
+  final TransactionRunner _transaction;
+  final DateTime Function() _now;
+
+  /// Cancels a sale of today and the payments that settled it, in one unit
+  /// of work, so the customer account returns to where it was before the
+  /// sale and its stock goes back to the truck. Payments not linked to the
+  /// sale (a debt payment) are untouched.
+  ///
+  /// Cancelling a cancelled sale does nothing. Throws [ValidationFailure]
+  /// for a sale of another day or a too long reason, and [NotFoundFailure]
+  /// when the sale does not exist.
+  Future<void> execute(String saleId, {String? reason}) async {
+    final note = cancellationReason(reason);
+    final now = _now();
+    await _transaction(() async {
+      final sale = await _saleRepo.findSale(saleId);
+      if (sale == null) throw const NotFoundFailure('sale');
+      if (sale.isCancelled) return;
+      if (!isSameDay(sale.date, now)) {
+        throw const ValidationFailure(
+          'Solo se pueden anular las ventas de hoy.',
+        );
+      }
+
+      await _saleRepo.cancelSale(sale, at: now, reason: note);
+      for (final payment in await _paymentRepo.getSalePayments(saleId)) {
+        if (payment.isCancelled) continue;
+        await _paymentRepo.cancelPayment(payment, at: now, reason: note);
+      }
+    });
+  }
+}

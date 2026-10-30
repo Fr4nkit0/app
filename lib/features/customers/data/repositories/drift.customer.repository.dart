@@ -86,6 +86,12 @@ class DriftCustomerRepository implements CustomerRepository {
             ),
           );
     }
+    final storedPreferences = {
+      for (final p in await (db.select(
+        db.customerPreferenceTable,
+      )..where((t) => t.customerId.equals(customer.id))).get())
+        p.customerPreferenceId,
+    };
     for (final pref in customer.preferences) {
       await db
           .into(db.customerPreferenceTable)
@@ -106,6 +112,17 @@ class DriftCustomerRepository implements CustomerRepository {
       action: existed ? PendingAction.update : PendingAction.insert,
       payload: _payload(customer),
     );
+    // Preferences travel on their own, after the customer they belong to.
+    for (final pref in customer.preferences) {
+      await _queue.enqueue(
+        entity: PendingEntity.customerPreference,
+        entityId: pref.id,
+        action: storedPreferences.contains(pref.id)
+            ? PendingAction.update
+            : PendingAction.insert,
+        payload: {'preferenceId': pref.id, 'customerId': customer.id},
+      );
+    }
   }
 
   /// The address is edited in place, keeping its id and server id, so the
@@ -166,6 +183,28 @@ class DriftCustomerRepository implements CustomerRepository {
           'visualReference': edit.visualReference,
         },
       },
+    );
+  }
+
+  /// Only the office re-enables a customer, so this goes one way.
+  @override
+  Future<void> disableCustomer(String customerId) async {
+    final updated =
+        await (db.update(
+          db.customerTable,
+        )..where((t) => t.customerId.equals(customerId))).write(
+          CustomerTableCompanion(
+            enabled: const Value(false),
+            lastModifiedDate: Value(DateTime.now()),
+          ),
+        );
+    if (updated == 0) throw const NotFoundFailure('customer');
+
+    await _queue.enqueue(
+      entity: PendingEntity.customer,
+      entityId: customerId,
+      action: PendingAction.update,
+      payload: {'customerId': customerId, 'enabled': false},
     );
   }
 

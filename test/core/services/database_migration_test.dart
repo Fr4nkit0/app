@@ -372,8 +372,135 @@ void main() {
       expect(product.containerTypeId, isNull);
     });
 
-    test('the schema version is 13', () {
-      expect(db.schemaVersion, 13);
+  });
+
+  group('Database Schema Migration V13 -> V14', () {
+    late AppDatabase db;
+
+    setUp(() async {
+      db = AppDatabase(NativeDatabase.memory());
+      // Rebuild the v13 shape: no neighborhood catalog yet.
+      await db.customStatement('DROP TABLE neighborhoods');
+      await db.customStatement(
+        "INSERT INTO customers (customer_id, name) VALUES ('c-1', 'Kiosco Norte')",
+      );
+      await db.customStatement(
+        "INSERT INTO customer_addresses (address_id, customer_id, street, neighborhood, is_primary) "
+        "VALUES ('a-1', 'c-1', 'Belgrano 340', 'Centro', 1)",
+      );
+      await db.customStatement(
+        "INSERT INTO payment_methods (id, code, name) VALUES (5, 'CASH', 'Cash')",
+      );
+    });
+
+    tearDown(() async {
+      await db.close();
+    });
+
+    test('creates an empty neighborhood catalog and keeps existing data', () async {
+      Future<List<Map<String, Object?>>> rows(String table) async =>
+          (await db.customSelect('SELECT * FROM $table').get())
+              .map((r) => r.data)
+              .toList();
+      final customers = await rows('customers');
+      final addresses = await rows('customer_addresses');
+      final methods = await rows('payment_methods');
+
+      await db.migration.onUpgrade(db.createMigrator(), 13, 14);
+
+      expect(await db.select(db.neighborhoodTable).get(), isEmpty);
+      await db.into(db.neighborhoodTable).insert(
+            NeighborhoodTableCompanion.insert(
+              id: const drift.Value(1),
+              name: 'Centro',
+            ),
+          );
+      expect((await db.select(db.neighborhoodTable).getSingle()).enabled, isTrue);
+      expect(await rows('customers'), customers);
+      expect(await rows('customer_addresses'), addresses);
+      expect(await rows('payment_methods'), methods);
+    });
+
+    test('re-running 13->14 keeps the stored catalog', () async {
+      await db.migration.onUpgrade(db.createMigrator(), 13, 14);
+      await db.customStatement(
+        "INSERT INTO neighborhoods (id, name, enabled) VALUES (1, 'Centro', 1)",
+      );
+
+      await db.migration.onUpgrade(db.createMigrator(), 13, 14);
+
+      expect((await db.select(db.neighborhoodTable).getSingle()).name, 'Centro');
+    });
+
+  });
+
+  group('Database Schema Migration V14 -> V15', () {
+    late AppDatabase db;
+
+    setUp(() async {
+      db = AppDatabase(NativeDatabase.memory());
+      // Rebuild the v14 shape: sales without a status, no cancellation
+      // fields on sales or payments.
+      for (final statement in [
+        'ALTER TABLE sales DROP COLUMN status',
+        'ALTER TABLE sales DROP COLUMN cancelled_at',
+        'ALTER TABLE sales DROP COLUMN cancellation_reason',
+        'ALTER TABLE payments DROP COLUMN cancelled_at',
+        'ALTER TABLE payments DROP COLUMN cancellation_reason',
+      ]) {
+        await db.customStatement(statement);
+      }
+      await db.customStatement(
+        "INSERT INTO customers (customer_id, name) VALUES ('c-1', 'Kiosco Norte')",
+      );
+      await db.customStatement(
+        'INSERT INTO sales (sale_id, customer_id, total_amount, payment_method, '
+        "quantity, shipping_amount, visit_id) VALUES ('sale-1', 'c-1', 2400, "
+        "'cash', 0, 0, 's-1')",
+      );
+      await db.customStatement(
+        'INSERT INTO payments (payment_id, customer_id, amount, payment_method, '
+        "sale_id) VALUES ('pay-1', 'c-1', 2400, 'EFECTIVO', 'sale-1')",
+      );
+    });
+
+    tearDown(() async {
+      await db.close();
+    });
+
+    test('adds the cancellation fields and keeps existing sales and payments '
+        'confirmed', () async {
+      await db.migration.onUpgrade(db.createMigrator(), 14, 15);
+
+      final sale = await db.select(db.saleTable).getSingle();
+      expect(sale.saleId, 'sale-1');
+      expect(sale.totalAmount, 2400);
+      expect(sale.status, 'CONFIRMED');
+      expect(sale.cancelledAt, isNull);
+      expect(sale.cancellationReason, isNull);
+      final payment = await db.select(db.paymentTable).getSingle();
+      expect(payment.paymentId, 'pay-1');
+      expect(payment.saleId, 'sale-1');
+      expect(payment.status, 'CONFIRMED');
+      expect(payment.cancelledAt, isNull);
+      expect(payment.cancellationReason, isNull);
+    });
+
+    test('re-running 14->15 keeps the stored values', () async {
+      await db.migration.onUpgrade(db.createMigrator(), 14, 15);
+      await db.customStatement(
+        "UPDATE sales SET status = 'CANCELLED', cancellation_reason = 'x'",
+      );
+
+      await db.migration.onUpgrade(db.createMigrator(), 14, 15);
+
+      final sale = await db.select(db.saleTable).getSingle();
+      expect(sale.status, 'CANCELLED');
+      expect(sale.cancellationReason, 'x');
+    });
+
+    test('the schema version is 15', () {
+      expect(db.schemaVersion, 15);
     });
   });
 }

@@ -11,6 +11,10 @@ abstract class CustomerRepository {
   /// Writes the name, phone and delivery address of [edit] and queues the
   /// customer. Throws [NotFoundFailure] when the customer does not exist.
   Future<void> editCustomer(CustomerEdit edit);
+
+  /// Disables the customer, which hides it from every list, and queues it.
+  /// Throws [NotFoundFailure] when the customer does not exist.
+  Future<void> disableCustomer(String customerId);
   Stream<int> watchCustomerCount();
   Stream<List<Customer>> watchAllCustomers();
   Future<List<Customer>> getCustomersPage({

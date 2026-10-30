@@ -3,8 +3,8 @@ import 'package:drift/drift.dart';
 import '../../../core/services/database.helper.dart';
 import 'pull_applier.dart';
 
-/// Container types, payment methods and visit outcomes, stored by the
-/// server's own ids.
+/// Container types, payment methods, visit outcomes and neighborhoods,
+/// stored by the server's own ids.
 class CatalogsApplier implements PullApplier {
   CatalogsApplier(this._db);
 
@@ -17,7 +17,10 @@ class CatalogsApplier implements PullApplier {
   ) => store(rows);
 
   /// Stores the catalogs of [data], a bootstrap or a pull download.
-  Future<void> store(Map<String, Object?> data) async {
+  ///
+  /// A [snapshot] (the bootstrap) lists only the enabled neighborhoods, so
+  /// the stored ones it leaves out are disabled.
+  Future<void> store(Map<String, Object?> data, {bool snapshot = false}) async {
     for (final c in jsonList(data['container_types'])) {
       await _db
           .into(_db.containerTypeTable)
@@ -54,6 +57,25 @@ class CatalogsApplier implements PullApplier {
               enabled: enabledOf(o),
             ),
           );
+    }
+    if (!data.containsKey('neighborhoods')) return;
+    final neighborhoods = jsonList(data['neighborhoods']);
+    for (final n in neighborhoods) {
+      await _db
+          .into(_db.neighborhoodTable)
+          .insertOnConflictUpdate(
+            NeighborhoodTableCompanion.insert(
+              id: Value(n['id'] as int),
+              name: n['name'] as String,
+              enabled: enabledOf(n),
+            ),
+          );
+    }
+    if (snapshot) {
+      final listed = [for (final n in neighborhoods) n['id'] as int];
+      await (_db.update(_db.neighborhoodTable)
+            ..where((t) => t.id.isNotIn(listed)))
+          .write(const NeighborhoodTableCompanion(enabled: Value(false)));
     }
   }
 }

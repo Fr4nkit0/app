@@ -12,10 +12,12 @@ import 'pull/preference_applier.dart';
 import 'pull/product_applier.dart';
 import 'pull/pull_applier.dart';
 import 'pull/route_applier.dart';
+import 'pull/sale_applier.dart';
 import 'pull/server_ids.dart';
 import 'pull/stop_applier.dart';
 import 'pull/truck_inventory_applier.dart';
 import 'pull/unsent.dart';
+import 'pull/visit_applier.dart';
 
 /// Downloads the driver's full day and stores it locally.
 ///
@@ -37,6 +39,8 @@ class SyncService {
       _balances = BalanceApplier(_db),
       _routes = RouteApplier(_db),
       _stops = StopApplier(_db),
+      _visits = VisitApplier(_db),
+      _sales = SaleApplier(_db),
       _truckInventory = TruckInventoryApplier(
         _db,
         today: today ?? DateTime.now,
@@ -56,6 +60,8 @@ class SyncService {
   final BalanceApplier _balances;
   final RouteApplier _routes;
   final StopApplier _stops;
+  final VisitApplier _visits;
+  final SaleApplier _sales;
   final TruckInventoryApplier _truckInventory;
 
   /// Appliers of the incremental pull in dependency order: a row is applied
@@ -101,7 +107,7 @@ class SyncService {
         unsent: await Unsent.load(_db),
         ids: ServerIds.downloaded(_db),
       );
-      await _catalogs.store(data);
+      await _catalogs.store(data, snapshot: true);
       await _products.applySnapshot(
         jsonList(data['products']),
         jsonList(data['truck_inventory']),
@@ -136,6 +142,9 @@ class SyncService {
           context,
         );
       }
+      // Only the bootstrap carries today's visits and sales.
+      await _visits.storeToday(jsonList(data['visits']), context);
+      await _sales.storeToday(jsonList(data['sales']), context);
       await _saveCursor(data['server_time'] as String);
     });
   }

@@ -158,7 +158,11 @@ class VisitSession extends Notifier<VisitSessionState> {
     final next = current.copyWith(
       hasSales: ref
           .read(stopSalesProvider(stopId))
-          .maybeWhen(data: (sales) => sales.isNotEmpty, orElse: () => false),
+          .maybeWhen(
+            // A cancelled sale no longer makes it a sale visit.
+            data: (sales) => sales.any((sale) => !sale.isCancelled),
+            orElse: () => false,
+          ),
       hasReturns: ref
           .read(visitMovementsProvider(stopId))
           .maybeWhen(

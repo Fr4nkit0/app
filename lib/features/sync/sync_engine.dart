@@ -10,10 +10,14 @@ import 'domain/models/pending_change.dart';
 import 'domain/models/sync_status.dart';
 import 'push/agreement_pusher.dart';
 import 'push/container_movement_pusher.dart';
+import 'push/customer_address_pusher.dart';
+import 'push/customer_preference_pusher.dart';
 import 'push/customer_pusher.dart';
 import 'push/entity_pusher.dart';
+import 'push/payment_cancellation_pusher.dart';
 import 'push/payment_pusher.dart';
 import 'push/route_stop_pusher.dart';
+import 'push/sale_cancellation_pusher.dart';
 import 'push/sale_pusher.dart';
 import 'push/visit_pusher.dart';
 import 'sync_service.dart';
@@ -47,12 +51,16 @@ class SyncEngine {
     DateTime Function()? today,
   }) => [
     CustomerPusher(db),
+    CustomerAddressPusher(db),
+    CustomerPreferencePusher(db),
     AgreementPusher(db),
     RouteStopPusher(db),
     VisitPusher(db),
     ContainerMovementPusher(db, today: today),
     SalePusher(db, today: today),
     PaymentPusher(db, today: today),
+    SaleCancellationPusher(db, today: today),
+    PaymentCancellationPusher(db, today: today),
   ];
 
   final Dio _dio;

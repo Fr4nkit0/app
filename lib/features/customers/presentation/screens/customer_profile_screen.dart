@@ -4,11 +4,16 @@ import 'package:app/core/theme/marilin_tokens.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:url_launcher/url_launcher.dart';
 import 'package:app/core/utils/avatar_utils.dart';
-import 'package:app/core/utils/address_formatter.dart';
 import 'package:app/features/customers/domain/models/customer.dart';
+import 'package:app/core/presentation/failure_message.dart';
 import 'package:app/features/customers/presentation/providers/customer_count_provider.dart';
+import 'package:app/features/customers/presentation/providers/customer_usecase_providers.dart';
+import 'package:app/features/customers/presentation/widgets/disable_customer_dialog.dart';
+import 'package:app/features/route/presentation/providers/route_repository_provider.dart';
 import 'package:app/features/customers/presentation/screens/edit_customer_screen.dart';
+import 'package:app/features/customers/presentation/widgets/customer_addresses_section.dart';
 import 'package:app/features/customers/presentation/widgets/customer_agreements_tab.dart';
+import 'package:app/features/customers/presentation/widgets/customer_preferences_section.dart';
 import 'package:app/features/history/domain/models/history_entry.dart';
 import 'package:app/features/history/presentation/providers/history_list_provider.dart';
 import 'package:app/features/history/presentation/widgets/history_entry_tile.dart';
@@ -37,14 +42,41 @@ class CustomerProfileScreen extends ConsumerStatefulWidget {
 class _CustomerProfileScreenState extends ConsumerState<CustomerProfileScreen> {
   int _selectedTab = 0;
 
-  static const _days = ['', 'Lun', 'Mar', 'Mié', 'Jue', 'Vie', 'Sáb', 'Dom'];
+  /// Disabling is allowed with a stop today; the dialog only warns about it.
+  Future<void> _disable(Customer customer) async {
+    final hasStopToday =
+        ref
+            .read(routeAllStopsProvider)
+            .value
+            ?.any((s) => s.customer.id == customer.id) ??
+        false;
+    final confirmed = await confirmDisableCustomer(
+      context,
+      customerName: customer.name,
+      hasStopToday: hasStopToday,
+    );
+    if (!confirmed || !mounted) return;
 
-  String _dayName(int day) => day >= 1 && day <= 7 ? _days[day] : 'Día $day';
+    try {
+      await ref.read(disableCustomerUseCaseProvider).execute(customer.id);
+      if (!mounted) return;
+      TopToast.showSuccess(context, '${customer.name} dado de baja');
+      Navigator.of(context).pop();
+    } catch (e) {
+      if (!mounted) return;
+      TopToast.showError(
+        context,
+        failureMessage(e, fallback: 'No se pudo dar de baja. Reintentá.'),
+      );
+    }
+  }
 
   @override
   Widget build(BuildContext context) {
     final customerAsync = ref.watch(customerByIdProvider(widget.customerId));
     final historyAsync = ref.watch(historyListProvider);
+    // Kept live so the disable dialog knows about today's stop.
+    ref.watch(routeAllStopsProvider);
 
     return customerAsync.when(
       data: (customer) {
@@ -108,6 +140,11 @@ class _CustomerProfileScreenState extends ConsumerState<CustomerProfileScreen> {
                 builder: (_) => EditCustomerScreen(customer: customer),
               ),
             ),
+          ),
+          IconButton(
+            tooltip: 'Dar de baja',
+            icon: const Icon(Icons.person_off_outlined),
+            onPressed: () => _disable(customer),
           ),
         ],
       ),
@@ -574,14 +611,6 @@ class _CustomerProfileScreenState extends ConsumerState<CustomerProfileScreen> {
   }
 
   Widget _buildPreferencesTab(Customer customer) {
-    if (customer.preferences.isEmpty) {
-      return _buildEmptyState(
-        icon: Icons.schedule_outlined,
-        title: 'Sin preferencias',
-        subtitle: 'Este cliente no tiene horarios de entrega configurados.',
-      );
-    }
-
     return Container(
       padding: const EdgeInsets.all(16),
       child: Container(
@@ -598,87 +627,18 @@ class _CustomerProfileScreenState extends ConsumerState<CustomerProfileScreen> {
             ),
           ],
         ),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Row(
-              children: [
-                Icon(
-                  Icons.schedule_outlined,
-                  color: MarilinColors.brandBlue,
-                  size: 20,
-                ),
-                SizedBox(width: 8),
-                Text(
-                  'Horarios de Visita Preferidos',
-                  style: TextStyle(
-                    fontSize: 15,
-                    fontWeight: FontWeight.w700,
-                    color: context.marilin.ink,
-                  ),
-                ),
-              ],
-            ),
-            Divider(height: 24, color: context.marilin.border),
-            ...customer.preferences.map((pref) {
-              final day = _dayName(pref.dayOfWeek);
-              return Padding(
-                padding: const EdgeInsets.only(bottom: 12),
-                child: Row(
-                  children: [
-                    Container(
-                      width: 8,
-                      height: 8,
-                      decoration: const BoxDecoration(
-                        color: MarilinColors.brandBlue,
-                        shape: BoxShape.circle,
-                      ),
-                    ),
-                    const SizedBox(width: 12),
-                    Expanded(
-                      child: Row(
-                        children: [
-                          Text(
-                            '$day: ',
-                            style: TextStyle(
-                              fontWeight: FontWeight.w700,
-                              fontSize: 14,
-                              color: context.marilin.ink,
-                            ),
-                          ),
-                          Text(
-                            'de ${pref.timeWindowStart} a ${pref.timeWindowEnd ?? ''} hs',
-                            style: TextStyle(
-                              fontSize: 14,
-                              fontWeight: FontWeight.w500,
-                              color: context.marilin.inkSecondary,
-                            ),
-                          ),
-                        ],
-                      ),
-                    ),
-                  ],
-                ),
-              );
-            }),
-          ],
-        ),
+        child: CustomerPreferencesSection(customerId: customer.id),
       ),
     );
   }
 
   Widget _buildDatosTab(Customer customer) {
-    final addresses = customer.addresses;
-    final addr =
-        addresses.where((a) => a.isPrimary).firstOrNull ??
-        addresses.firstOrNull;
-
     return Container(
       padding: const EdgeInsets.all(16),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          // Card 1: Dirección principal
+          // Card 1: Direcciones de entrega
           Container(
             padding: const EdgeInsets.all(16),
             decoration: BoxDecoration(
@@ -686,71 +646,7 @@ class _CustomerProfileScreenState extends ConsumerState<CustomerProfileScreen> {
               borderRadius: BorderRadius.circular(16),
               border: Border.all(color: context.marilin.border),
             ),
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Row(
-                  children: [
-                    Icon(
-                      Icons.location_on_outlined,
-                      color: MarilinColors.brandBlue,
-                      size: 20,
-                    ),
-                    SizedBox(width: 8),
-                    Text(
-                      'Dirección de Entrega',
-                      style: TextStyle(
-                        fontSize: 15,
-                        fontWeight: FontWeight.w700,
-                        color: context.marilin.ink,
-                      ),
-                    ),
-                  ],
-                ),
-                Divider(height: 24, color: context.marilin.border),
-                if (addr != null) ...[
-                  Text(
-                    AddressFormatter.format(
-                      street: addr.street,
-                      neighborhood: addr.neighborhood,
-                      floor: addr.floor,
-                      apartment: addr.apartment,
-                      visualReference: addr.visualReference,
-                    ),
-                    style: TextStyle(
-                      fontSize: 15,
-                      fontWeight: FontWeight.w700,
-                      color: context.marilin.ink,
-                    ),
-                  ),
-                  if (addr.latitude != null && addr.longitude != null) ...[
-                    const SizedBox(height: 8),
-                    Row(
-                      children: [
-                        Icon(
-                          Icons.check_circle,
-                          size: 16,
-                          color: context.marilin.success,
-                        ),
-                        const SizedBox(width: 8),
-                        Text(
-                          'Ubicación fijada',
-                          style: TextStyle(
-                            fontSize: 13,
-                            color: context.marilin.success,
-                            fontWeight: FontWeight.w500,
-                          ),
-                        ),
-                      ],
-                    ),
-                  ],
-                ] else
-                  Text(
-                    'Sin dirección cargada',
-                    style: TextStyle(color: context.marilin.textMuted),
-                  ),
-              ],
-            ),
+            child: CustomerAddressesSection(customerId: customer.id),
           ),
 
           const SizedBox(height: 16),
