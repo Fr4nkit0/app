@@ -1,14 +1,23 @@
-import 'dart:convert';
-
 import 'package:drift/drift.dart';
+import 'package:uuid/uuid.dart';
 
 import 'package:app/core/services/database.helper.dart';
+import 'package:app/features/inventory/data/repositories/custody.dart';
 import 'package:app/features/inventory/domain/models/container_movement.dart';
+import 'package:app/features/inventory/domain/models/container_type.dart';
 import 'package:app/features/inventory/domain/models/customer_container_balance.dart';
 import 'package:app/features/inventory/domain/models/route_inventory_load.dart';
+import 'package:app/features/sync/data/repositories/pending_change.repository.dart';
+import 'package:app/features/sync/domain/models/pending_change.dart';
 
 abstract class InventoryRepository {
   Future<void> recordContainerMovement(ContainerMovement movement);
+
+  /// Takes the movements recorded with the sale [saleId] back out of
+  /// custody, as the server does when the sale is cancelled; run it inside
+  /// the use case's unit of work.
+  Future<void> reverseSaleMovements(String saleId, {required DateTime at});
+
   Stream<List<CustomerContainerBalance>> watchContainerBalances(
     String customerId,
   );
@@ -19,91 +28,135 @@ abstract class InventoryRepository {
     int returnedQuantity,
   );
   Future<List<RouteInventoryLoad>> getRouteLoads(String routeId);
+
+  /// Enabled container types of the catalog, ordered by id.
+  Stream<List<ContainerType>> watchContainerTypes();
 }
 
 class DriftInventoryRepository implements InventoryRepository {
-  DriftInventoryRepository(this._db);
+  DriftInventoryRepository(AppDatabase db)
+    : _db = db,
+      _queue = DriftPendingChangeRepository(db),
+      _custody = Custody(db);
 
   final AppDatabase _db;
+  final PendingChangeRepository _queue;
+  final Custody _custody;
 
   @override
   Future<void> recordContainerMovement(ContainerMovement movement) async {
-    await _db.transaction(() async {
+    await _db
+        .into(_db.containerMovementTable)
+        .insert(
+          ContainerMovementTableCompanion.insert(
+            containerMovementId: Value(movement.id),
+            customerId: movement.customerId,
+            containerType: movement.containerType,
+            deliveredQuantity: movement.deliveredQuantity,
+            returnedQuantity: movement.returnedQuantity,
+            createdAt: Value(movement.createdAt),
+            visitId: Value(movement.visitId),
+            routeId: Value(movement.routeId),
+            saleId: Value(movement.saleId),
+          ),
+        );
+
+    await _custody.post(
+      movement.customerId,
+      movement.containerType,
+      movement.netQuantity,
+    );
+
+    await _queue.enqueue(
+      entity: PendingEntity.containerMovement,
+      entityId: movement.id,
+      action: PendingAction.insert,
+      payload: {
+        'containerMovementId': movement.id,
+        'customerId': movement.customerId,
+        'containerType': movement.containerType,
+        'deliveredQuantity': movement.deliveredQuantity,
+        'returnedQuantity': movement.returnedQuantity,
+        'visitId': movement.visitId,
+        'routeId': movement.routeId,
+        'saleId': movement.saleId,
+        'createdAt': movement.createdAt.toIso8601String(),
+      },
+    );
+  }
+
+  /// Each movement of the sale gets a local reversal dated [at]: a row that
+  /// undoes its quantities and points at it, posted to custody and never
+  /// queued, since the server writes its own reversal when it takes the
+  /// cancellation. The bootstrap links the server's reversals to this row
+  /// instead of storing them again. A movement already reversed is skipped.
+  @override
+  Future<void> reverseSaleMovements(
+    String saleId, {
+    required DateTime at,
+  }) async {
+    final movements =
+        await (_db.select(_db.containerMovementTable)..where(
+              (t) => t.saleId.equals(saleId) & t.reversesMovementId.isNull(),
+            ))
+            .get();
+    for (final movement in movements) {
+      final reversed =
+          await (_db.select(_db.containerMovementTable)
+                ..where(
+                  (t) =>
+                      t.reversesMovementId.equals(movement.containerMovementId),
+                )
+                ..limit(1))
+              .getSingleOrNull();
+      if (reversed != null) continue;
       await _db
           .into(_db.containerMovementTable)
           .insert(
             ContainerMovementTableCompanion.insert(
-              containerMovementId: Value(movement.id),
+              containerMovementId: Value(const Uuid().v4()),
               customerId: movement.customerId,
               containerType: movement.containerType,
-              deliveredQuantity: movement.deliveredQuantity,
-              returnedQuantity: movement.returnedQuantity,
-              createdAt: Value(movement.createdAt),
+              deliveredQuantity: -movement.deliveredQuantity,
+              returnedQuantity: -movement.returnedQuantity,
+              createdAt: Value(at),
               visitId: Value(movement.visitId),
               routeId: Value(movement.routeId),
+              saleId: Value(saleId),
+              reversesMovementId: Value(movement.containerMovementId),
             ),
           );
+      await _custody.post(
+        movement.customerId,
+        movement.containerType,
+        movement.returnedQuantity - movement.deliveredQuantity,
+      );
+    }
+  }
 
-      final existing =
-          await (_db.select(_db.customerContainerBalanceTable)..where(
-                (t) =>
-                    t.customerId.equals(movement.customerId) &
-                    t.containerType.equals(movement.containerType),
-              ))
-              .getSingleOrNull();
-
-      final newQty = (existing?.quantity ?? 0) + movement.netQuantity;
-
-      if (existing == null) {
-        await _db
-            .into(_db.customerContainerBalanceTable)
-            .insert(
-              CustomerContainerBalanceTableCompanion.insert(
-                customerId: movement.customerId,
-                containerType: movement.containerType,
-                quantity: Value(newQty),
-              ),
-            );
-      } else {
-        await (_db.update(_db.customerContainerBalanceTable)..where(
-              (t) =>
-                  t.customerId.equals(movement.customerId) &
-                  t.containerType.equals(movement.containerType),
-            ))
-            .write(
-              CustomerContainerBalanceTableCompanion(quantity: Value(newQty)),
-            );
-      }
-
-      await _db
-          .into(_db.auditLogTable)
-          .insert(
-            AuditLogTableCompanion.insert(
-              tableNameColumn: 'container_movements',
-              recordId: movement.id,
-              action: 'INSERT',
-              payload: Value(
-                jsonEncode({
-                  'containerMovementId': movement.id,
-                  'customerId': movement.customerId,
-                  'containerType': movement.containerType,
-                  'deliveredQuantity': movement.deliveredQuantity,
-                  'returnedQuantity': movement.returnedQuantity,
-                }),
-              ),
-            ),
-          );
-    });
+  /// Takes back the local reversals of the sale [saleId] when the server
+  /// refused its cancellation: its containers count in custody again.
+  Future<void> undoSaleReversal(String saleId) async {
+    final reversals = await (_db.select(
+      _db.containerMovementTable,
+    )..where((t) => Custody.isLocalReversalOf(t, saleId))).get();
+    for (final reversal in reversals) {
+      await _custody.post(
+        reversal.customerId,
+        reversal.containerType,
+        reversal.returnedQuantity - reversal.deliveredQuantity,
+      );
+    }
+    await (_db.delete(
+      _db.containerMovementTable,
+    )..where((t) => Custody.isLocalReversalOf(t, saleId))).go();
   }
 
   @override
   Stream<List<CustomerContainerBalance>> watchContainerBalances(
     String customerId,
   ) {
-    return (_db.select(_db.customerContainerBalanceTable)
-          ..where((t) => t.customerId.equals(customerId)))
-        .watch()
-        .map((rows) => rows.map(_rowToBalance).toList());
+    return _custody.watch(customerId);
   }
 
   @override
@@ -148,6 +201,7 @@ class DriftInventoryRepository implements InventoryRepository {
     )..where((t) => t.routeInventoryLoadId.equals(routeInventoryLoadId))).write(
       RouteInventoryLoadTableCompanion(
         quantity: Value(existing.quantity - returnedQuantity),
+        lastModifiedDate: Value(DateTime.now()),
       ),
     );
   }
@@ -156,10 +210,28 @@ class DriftInventoryRepository implements InventoryRepository {
   Future<List<RouteInventoryLoad>> getRouteLoads(String routeId) async {
     final rows =
         await (_db.select(_db.routeInventoryLoadTable)
-              ..where((t) => t.routeId.equals(routeId))
+              ..where((t) => t.routeId.equals(routeId) & t.enabled.equals(true))
               ..orderBy([(t) => OrderingTerm.asc(t.loadedAt)]))
             .get();
     return rows.map(_rowToLoad).toList();
+  }
+
+  @override
+  Stream<List<ContainerType>> watchContainerTypes() {
+    return (_db.select(_db.containerTypeTable)
+          ..where((t) => t.enabled.equals(true))
+          ..orderBy([(t) => OrderingTerm.asc(t.id)]))
+        .watch()
+        .map(
+          (rows) => [
+            for (final row in rows)
+              ContainerType.fromCatalog(
+                id: row.id,
+                code: row.code,
+                description: row.description,
+              ),
+          ],
+        );
   }
 
   ContainerMovement _rowToMovement(ContainerMovementTableData row) =>
@@ -172,15 +244,8 @@ class DriftInventoryRepository implements InventoryRepository {
         createdAt: row.createdAt,
         visitId: row.visitId,
         routeId: row.routeId,
+        saleId: row.saleId,
       );
-
-  CustomerContainerBalance _rowToBalance(
-    CustomerContainerBalanceTableData row,
-  ) => CustomerContainerBalance(
-    customerId: row.customerId,
-    containerType: row.containerType,
-    quantity: row.quantity,
-  );
 
   RouteInventoryLoad _rowToLoad(RouteInventoryLoadTableData row) =>
       RouteInventoryLoad(

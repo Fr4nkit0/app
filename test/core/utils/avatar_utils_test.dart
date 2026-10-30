@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
+import 'package:app/core/theme/marilin_tokens.dart';
 import 'package:app/core/utils/avatar_utils.dart';
 
 void main() {
@@ -34,7 +35,7 @@ void main() {
         expect(colorsDefault.foreground, isA<Color>());
 
         final colorsSelected = AvatarUtils.getColors('Juan', selected: true);
-        expect(colorsSelected.background, equals(const Color(0xFF1565C0)));
+        expect(colorsSelected.background, equals(MarilinColors.brandBlue));
         expect(colorsSelected.foreground, equals(Colors.white));
 
         final customBaseColor = Colors.red;

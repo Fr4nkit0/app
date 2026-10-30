@@ -7,6 +7,7 @@ class CustomerAddress {
   final bool isPrimary;
   final double? latitude;
   final double? longitude;
+  final String? neighborhood;
 
   CustomerAddress({
     required this.id,
@@ -17,5 +18,6 @@ class CustomerAddress {
     this.isPrimary = false,
     this.latitude,
     this.longitude,
+    this.neighborhood,
   });
 }

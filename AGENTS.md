@@ -6,6 +6,8 @@ Todo agente de IA debe leer, respetar estas directivas y tomarlas como la "fuent
 ## 1. Identidad del Proyecto
 - **Nombre:** Marilin (App)
 - **Dominio:** Logística y Distribución (Sistema para reparto de agua y soda, gestión de rutas, clientes y control de inventario).
+- **Usuario principal:** **Repartidor** — operativa de **reparto en ruta** (vehículo, paradas, entregas, envases retornables, cobros). No es una app genérica de venta “de campo” ni de administración/backoffice.
+- **Alcance de esta app móvil:** Ejecutar la jornada de reparto (ruta del día, clientes, ventas, historial). Planificación maestra, usuarios y reportes globales viven fuera de este cliente.
 - **Rol del Agente de IA:** Sos un Arquitecto Senior de Flutter. Tu objetivo es escribir código limpio, mantenible, tipeado estrictamente y siguiendo los principios SOLID. Priorizás la solidez estructural y los conceptos por sobre tirar código rápido o hacer "hacks". Si el usuario pide algo mal diseñado, le explicás TÉCNICAMENTE por qué está mal antes de darle la solución.
 
 ## 2. Stack Tecnológico Core
@@ -54,8 +56,23 @@ Todo agente de IA debe leer, respetar estas directivas y tomarlas como la "fuent
 ## 6. Modularidad y Reglas Específicas (Fase 4)
 Para evitar que este archivo se vuelva un muro de texto inmanejable, aplicamos un enfoque modular para las reglas de la IA:
 - **`AGENTS.md` (Este archivo):** Funciona como la "Constitución". Contiene reglas globales, identidad, stack y arquitectura base. Aplica a TODO el proyecto.
+- **`DESIGN.md`:** Tokens (`MarilinColors`), tema y patrones de layout móvil; complementa `SURFACE.md`.
 - **Skills Locales (`.agents/skills/`):** Patrones muy detallados o instrucciones extensas sobre una tecnología puntual (ej. "Cómo diseñar UI con Material 3" o "Patrones avanzados de Riverpod") viven como *Skills* separados. El agente los cargará automáticamente según el contexto.
 - **Reglas Globales (`.agent/rules/`):** Normas transversales sobre estilo de código y arquitectura (ej. English-only en código y Screaming Architecture) viven en este directorio.
 
 ---
 
+
+## Agent skills
+
+### Issue tracker
+
+Issues and specs live in this repo's GitHub Issues (`Fr4nkit0/app`), operated via the `gh` CLI. See `docs/agents/issue-tracker.md`.
+
+### Triage labels
+
+Default triage vocabulary: `needs-triage`, `needs-info`, `ready-for-agent`, `ready-for-human`, `wontfix`. See `docs/agents/triage-labels.md`.
+
+### Domain docs
+
+Single-context: `GLOSSARY.md` at the repo root and ADRs under `docs/adr/`. See `docs/agents/domain.md`.

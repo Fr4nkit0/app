@@ -1,7 +1,8 @@
 import 'package:drift/drift.dart';
 import 'package:app/core/services/database_mixins.dart';
-import 'package:app/features/route/data/repositories/database/route.stop.table.dart';
+import 'package:app/features/route/data/database/route.stop.table.dart';
 import 'package:app/features/customers/data/database/customer.table.dart';
+import 'visit_outcome.table.dart';
 
 class VisitTable extends Table with Timestamps {
   @override
@@ -19,7 +20,11 @@ class VisitTable extends Table with Timestamps {
     onDelete: KeyAction.restrict,
   )();
   late final visitType = text()();
-  late final outcome = text().withDefault(const Constant('successful'))();
+  late final outcomeId = integer().nullable().references(
+    VisitOutcomeTable,
+    #id,
+    onDelete: KeyAction.setNull,
+  )();
   late final arrived_at = dateTime()();
   late final observations = text().nullable()();
   late final amountCollected = real().withDefault(const Constant(0))();

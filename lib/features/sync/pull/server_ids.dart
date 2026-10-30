@@ -1,0 +1,140 @@
+import '../../../core/services/database.helper.dart';
+
+/// Maps the server ids of a download to local ids.
+///
+/// The incremental pull resolves any row stored on the device. The
+/// bootstrap resolves only rows of the same download, recorded as each one
+/// is stored: a reference to a row the download did not carry is dropped.
+class ServerIds {
+  ServerIds.stored(this._db) : _downloadedOnly = false;
+  ServerIds.downloaded(this._db) : _downloadedOnly = true;
+
+  final AppDatabase _db;
+  final bool _downloadedOnly;
+  final _customers = <int, String>{};
+  final _products = <int, String>{};
+  final _addresses = <int, String>{};
+  final _routes = <int, String>{};
+  final _stops = <int, String>{};
+  final _visits = <int, String>{};
+  final _sales = <int, String>{};
+  final _movements = <int, String>{};
+  Map<int, String>? _containerCodes;
+
+  void recordCustomer(int serverId, String localId) =>
+      _customers[serverId] = localId;
+  void recordProduct(int serverId, String localId) =>
+      _products[serverId] = localId;
+  void recordAddress(int serverId, String localId) =>
+      _addresses[serverId] = localId;
+  void recordRoute(int serverId, String localId) => _routes[serverId] = localId;
+  void recordStop(int serverId, String localId) => _stops[serverId] = localId;
+  void recordVisit(int serverId, String localId) => _visits[serverId] = localId;
+  void recordSale(int serverId, String localId) => _sales[serverId] = localId;
+  void recordMovement(int serverId, String localId) =>
+      _movements[serverId] = localId;
+
+  Future<String?> customer(int? serverId) => _resolve(
+    serverId,
+    _customers,
+    (id) async => (await (_db.select(
+      _db.customerTable,
+    )..where((t) => t.serverId.equals(id))).getSingleOrNull())?.customerId,
+  );
+
+  Future<String?> product(int? serverId) => _resolve(
+    serverId,
+    _products,
+    (id) async => (await (_db.select(
+      _db.productTable,
+    )..where((t) => t.serverId.equals(id))).getSingleOrNull())?.productId,
+  );
+
+  Future<String?> address(int? serverId) => _resolve(
+    serverId,
+    _addresses,
+    (id) async => (await (_db.select(
+      _db.customerAddressTable,
+    )..where((t) => t.serverId.equals(id))).getSingleOrNull())?.addressId,
+  );
+
+  Future<String?> stop(int? serverId) => _resolve(
+    serverId,
+    _stops,
+    (id) async => (await (_db.select(
+      _db.routeStopTable,
+    )..where((t) => t.serverId.equals(id))).getSingleOrNull())?.routeStopId,
+  );
+
+  Future<String?> visit(int? serverId) => _resolve(
+    serverId,
+    _visits,
+    (id) async => (await (_db.select(
+      _db.visitTable,
+    )..where((t) => t.serverId.equals(id))).getSingleOrNull())?.visitId,
+  );
+
+  /// The stop of a visit: sales, payments and container movements of a
+  /// visit carry its stop's id, like the ones made on the device.
+  Future<String?> stopOfVisit(int? serverId) async {
+    final visitId = await visit(serverId);
+    if (visitId == null) return null;
+    return (await (_db.select(
+      _db.visitTable,
+    )..where((t) => t.visitId.equals(visitId))).getSingleOrNull())?.routeStopId;
+  }
+
+  Future<String?> sale(int? serverId) => _resolve(
+    serverId,
+    _sales,
+    (id) async => (await (_db.select(
+      _db.saleTable,
+    )..where((t) => t.serverId.equals(id))).getSingleOrNull())?.saleId,
+  );
+
+  Future<String?> movement(int? serverId) => _resolve(
+    serverId,
+    _movements,
+    (id) async =>
+        (await (_db.select(_db.containerMovementTable)
+                  ..where((t) => t.serverId.equals(id))
+                  ..limit(1))
+                .getSingleOrNull())
+            ?.containerMovementId,
+  );
+
+  /// The catalog code of a container type; the catalog is stored before
+  /// any row that references it, so both modes read the table.
+  Future<String?> containerType(int? catalogId) async {
+    if (catalogId == null) return null;
+    final codes = _containerCodes ??= {
+      for (final c in await _db.select(_db.containerTypeTable).get())
+        c.id: c.code,
+    };
+    return codes[catalogId];
+  }
+
+  Future<RouteTableData?> route(int? serverId) async {
+    final routeId = await _resolve(
+      serverId,
+      _routes,
+      (id) async => (await (_db.select(
+        _db.routeTable,
+      )..where((t) => t.serverId.equals(id))).getSingleOrNull())?.routeId,
+    );
+    if (routeId == null) return null;
+    return (_db.select(
+      _db.routeTable,
+    )..where((t) => t.routeId.equals(routeId))).getSingleOrNull();
+  }
+
+  Future<String?> _resolve(
+    int? serverId,
+    Map<int, String> recorded,
+    Future<String?> Function(int serverId) stored,
+  ) async {
+    if (serverId == null) return null;
+    if (_downloadedOnly) return recorded[serverId];
+    return stored(serverId);
+  }
+}

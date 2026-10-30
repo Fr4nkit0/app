@@ -1,31 +1,34 @@
 import 'package:flutter/material.dart';
+import 'package:app/core/theme/marilin_tokens.dart';
 
 class NewCustomerButton extends StatelessWidget {
   const NewCustomerButton({
     super.key,
     required this.onTap,
-    this.backgroundColor = const Color(0xFF1565C0),
+    this.backgroundColor,
   });
 
   final VoidCallback onTap;
-  final Color backgroundColor;
+  final Color? backgroundColor;
 
   @override
   Widget build(BuildContext context) {
+    final bg = backgroundColor ?? MarilinTokens.of(context).brandBlue;
+
     return Material(
       color: Colors.transparent,
       child: InkWell(
         onTap: onTap,
-        borderRadius: BorderRadius.circular(14),
+        borderRadius: BorderRadius.circular(16),
         child: Ink(
-          width: 50,
-          height: 50,
+          width: 56,
+          height: 56,
           decoration: BoxDecoration(
-            color: backgroundColor,
-            borderRadius: BorderRadius.circular(14),
+            color: bg,
+            borderRadius: BorderRadius.circular(16),
             boxShadow: [
               BoxShadow(
-                color: backgroundColor.withValues(alpha: 0.25),
+                color: bg.withValues(alpha: 0.25),
                 blurRadius: 8,
                 offset: const Offset(0, 3),
               ),

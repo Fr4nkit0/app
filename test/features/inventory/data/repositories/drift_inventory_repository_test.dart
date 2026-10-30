@@ -4,6 +4,8 @@ import 'package:flutter_test/flutter_test.dart';
 
 import 'package:app/core/services/database.helper.dart';
 import 'package:app/features/inventory/data/repositories/inventory.repository.dart';
+import 'package:app/features/sync/data/repositories/pending_change.repository.dart';
+import 'package:app/features/sync/domain/models/pending_change.dart';
 import 'package:app/features/inventory/domain/models/container_movement.dart';
 import 'package:app/features/inventory/domain/models/route_inventory_load.dart';
 
@@ -164,15 +166,15 @@ void main() {
       expect(c2.quantity, 1);
     });
 
-    test('logs audit entry with correct fields', () async {
-      await sut.recordContainerMovement(makeMovement(id: 'mov-audit'));
+    test('queues one pending insert per movement', () async {
+      await sut.recordContainerMovement(makeMovement(id: 'mov-queue'));
 
-      final logs = await db.select(db.auditLogTable).get();
-      expect(logs.length, 1);
-      expect(logs.first.action, 'INSERT');
-      expect(logs.first.tableNameColumn, 'container_movements');
-      expect(logs.first.recordId, 'mov-audit');
-      expect(logs.first.payload, isNotNull);
+      final queue = await DriftPendingChangeRepository(db).getPending();
+      expect(queue.length, 1);
+      expect(queue.first.entity, PendingEntity.containerMovement);
+      expect(queue.first.action, PendingAction.insert);
+      expect(queue.first.entityId, 'mov-queue');
+      expect(queue.first.payload, isNotNull);
     });
 
     test(
@@ -202,8 +204,8 @@ void main() {
             .get();
         expect(balances, isEmpty);
 
-        final logs = await db.select(db.auditLogTable).get();
-        expect(logs, isEmpty);
+        final queue = await DriftPendingChangeRepository(db).getPending();
+        expect(queue, isEmpty);
       },
     );
   });
@@ -464,6 +466,43 @@ void main() {
       expect(l.quantity, 75);
       expect(l.loadedAt, loadedAt);
       expect(l.createdBy, 'driver-1');
+    });
+  });
+
+  group('watchContainerTypes', () {
+    Future<void> seedType(
+      int id,
+      String code,
+      String? description, {
+      bool enabled = true,
+    }) => db
+        .into(db.containerTypeTable)
+        .insert(
+          ContainerTypeTableCompanion.insert(
+            id: drift.Value(id),
+            code: code,
+            description: drift.Value(description),
+            enabled: drift.Value(enabled),
+          ),
+        );
+
+    test(
+      'emits the enabled catalog types ordered by id with their labels',
+      () async {
+        await seedType(3, 'OLD_JUG', 'Old jug', enabled: false);
+        await seedType(2, 'SIFON_2L', 'Sifón 1.5L');
+        await seedType(1, 'BIDON_20L', null);
+
+        final types = await sut.watchContainerTypes().first;
+
+        expect(types.map((t) => t.id), [1, 2]);
+        expect(types.map((t) => t.code), ['BIDON_20L', 'SIFON_2L']);
+        expect(types.map((t) => t.label), ['BIDON_20L', 'Sifón 1.5L']);
+      },
+    );
+
+    test('emits an empty list when the catalog is empty', () async {
+      expect(await sut.watchContainerTypes().first, isEmpty);
     });
   });
 }

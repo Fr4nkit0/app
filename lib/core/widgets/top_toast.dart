@@ -1,5 +1,6 @@
 import 'dart:async';
 import 'package:flutter/material.dart';
+import 'package:app/core/theme/marilin_tokens.dart';
 
 class TopToast {
   static void show(
@@ -29,39 +30,59 @@ class TopToast {
     overlayState.insert(overlayEntry);
   }
 
-  static void showSuccess(BuildContext context, String message) {
+  static void showSuccess(
+    BuildContext context,
+    String message, {
+    Duration duration = const Duration(seconds: 3),
+  }) {
     show(
       context,
       message: message,
       icon: Icons.check_circle_rounded,
-      color: const Color(0xFF10B981), // Beautiful emerald green
+      color: MarilinColors.success, // Beautiful emerald green
+      duration: duration,
     );
   }
 
-  static void showError(BuildContext context, String message) {
+  static void showError(
+    BuildContext context,
+    String message, {
+    Duration duration = const Duration(seconds: 5),
+  }) {
     show(
       context,
       message: message,
       icon: Icons.error_outline_rounded,
-      color: const Color(0xFFEF4444), // Vibrant red
+      color: MarilinColors.destructive, // Vibrant red
+      duration: duration,
     );
   }
 
-  static void showWarning(BuildContext context, String message) {
+  static void showWarning(
+    BuildContext context,
+    String message, {
+    Duration duration = const Duration(seconds: 3),
+  }) {
     show(
       context,
       message: message,
       icon: Icons.warning_amber_rounded,
-      color: const Color(0xFFF59E0B), // Vibrant amber/orange
+      color: MarilinColors.warning, // Vibrant amber/orange
+      duration: duration,
     );
   }
 
-  static void showInfo(BuildContext context, String message) {
+  static void showInfo(
+    BuildContext context,
+    String message, {
+    Duration duration = const Duration(seconds: 3),
+  }) {
     show(
       context,
       message: message,
       icon: Icons.info_outline_rounded,
-      color: const Color(0xFF1565C0), // Premium blue
+      color: MarilinColors.brandBlue, // Premium blue
+      duration: duration,
     );
   }
 }
@@ -143,7 +164,7 @@ class _TopToastWidgetState extends State<_TopToastWidget>
             child: Container(
               padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
               decoration: BoxDecoration(
-                color: Colors.white,
+                color: context.marilin.surface,
                 borderRadius: BorderRadius.circular(16),
                 border: Border.all(
                   color: widget.color.withValues(alpha: 0.15),
@@ -151,7 +172,10 @@ class _TopToastWidgetState extends State<_TopToastWidget>
                 ),
                 boxShadow: [
                   BoxShadow(
-                    color: const Color(0xFF0F172A).withValues(alpha: 0.08),
+                    // A shadow is dark in both themes; the ink color would glow on dark.
+                    color: Colors.black.withValues(
+                      alpha: context.marilin.isDark ? 0.5 : 0.08,
+                    ),
                     blurRadius: 16,
                     offset: const Offset(0, 8),
                   ),
@@ -171,10 +195,10 @@ class _TopToastWidgetState extends State<_TopToastWidget>
                   Expanded(
                     child: Text(
                       widget.message,
-                      style: const TextStyle(
+                      style: TextStyle(
                         fontSize: 13,
                         fontWeight: FontWeight.w700,
-                        color: Color(0xFF0F172A),
+                        color: context.marilin.ink,
                       ),
                     ),
                   ),

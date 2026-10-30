@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:app/core/theme/marilin_tokens.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:app/core/widgets/top_toast.dart';
 
@@ -6,6 +7,7 @@ import '../providers/customer_form_provider.dart';
 import '../widgets/step_identity_view.dart';
 import '../widgets/step_address_view.dart';
 import '../widgets/step_preference_view.dart';
+import '../widgets/discard_customer_dialog.dart';
 import 'package:app/core/widgets/core_horizontal_stepper.dart';
 
 class CreateCustomerScreen extends ConsumerStatefulWidget {
@@ -53,7 +55,8 @@ class _CreateCustomerScreenState extends ConsumerState<CreateCustomerScreen> {
     ) {
       if (next == true) {
         TopToast.showSuccess(context, 'Cliente guardado exitosamente');
-        Navigator.of(context).pop();
+        // Returns the new customer so a sale started here can go on with it.
+        Navigator.of(context).pop(ref.read(customerFormProvider).createdCustomer);
       }
     });
 
@@ -67,12 +70,12 @@ class _CreateCustomerScreenState extends ConsumerState<CreateCustomerScreen> {
       }
     });
 
-    return Scaffold(
-      backgroundColor: Colors.white,
+    final screen = Scaffold(
+      backgroundColor: context.marilin.surface,
       appBar: AppBar(
         title: const Text('Nuevo Cliente'),
-        backgroundColor: Colors.white,
-        foregroundColor: const Color(0xFF0D1B3E),
+        backgroundColor: context.marilin.surface,
+        foregroundColor: context.marilin.ink,
       ),
       body: SafeArea(
         child: Column(
@@ -98,10 +101,12 @@ class _CreateCustomerScreenState extends ConsumerState<CreateCustomerScreen> {
                   ),
                   StepAddressView(
                     street: formState.street,
+                    neighborhood: formState.neighborhood,
                     apartment: formState.apartment,
                     floor: formState.floor,
                     visualReference: formState.visualReference,
                     onStreetChanged: formNotifier.updateStreet,
+                    onNeighborhoodChanged: formNotifier.updateNeighborhood,
                     onApartmentChanged: formNotifier.updateApartment,
                     onFloorChanged: formNotifier.updateFloor,
                     onVisualReferenceChanged:
@@ -133,7 +138,7 @@ class _CreateCustomerScreenState extends ConsumerState<CreateCustomerScreen> {
             // Footer fijo con sombra
             Container(
               decoration: BoxDecoration(
-                color: Colors.white,
+                color: context.marilin.surface,
                 boxShadow: [
                   BoxShadow(
                     color: Colors.black.withValues(alpha: 0.06),
@@ -166,7 +171,7 @@ class _CreateCustomerScreenState extends ConsumerState<CreateCustomerScreen> {
                               : formNotifier.nextStep)
                         : null,
                     style: FilledButton.styleFrom(
-                      backgroundColor: const Color(0xFF1565C0),
+                      backgroundColor: MarilinColors.brandBlue,
                       minimumSize: const Size(160, 52),
                     ),
                     child: formState.isSubmitting
@@ -191,6 +196,17 @@ class _CreateCustomerScreenState extends ConsumerState<CreateCustomerScreen> {
           ],
         ),
       ),
+    );
+
+    return PopScope<Object?>(
+      // Back (system or app bar) only drops typed data once the driver confirms.
+      canPop: !formState.hasEnteredData || formState.isSuccess,
+      onPopInvokedWithResult: (didPop, _) async {
+        if (didPop) return;
+        final navigator = Navigator.of(context);
+        if (await confirmDiscardCustomer(context)) navigator.pop();
+      },
+      child: screen,
     );
   }
 }

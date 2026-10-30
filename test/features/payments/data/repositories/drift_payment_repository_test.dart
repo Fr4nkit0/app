@@ -5,6 +5,8 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:app/core/services/database.helper.dart';
 import 'package:app/features/payments/data/repositories/payment.repository.dart';
 import 'package:app/features/payments/domain/models/payment.dart';
+import 'package:app/features/sync/data/repositories/pending_change.repository.dart';
+import 'package:app/features/sync/domain/models/pending_change.dart';
 
 void main() {
   late AppDatabase db;
@@ -134,15 +136,15 @@ void main() {
       expect(c2.currentBalance, -250.0);
     });
 
-    test('logs audit entry with correct table, action and recordId', () async {
-      await sut.recordPayment(makePayment(id: 'pay-audit'));
+    test('queues one pending insert per payment', () async {
+      await sut.recordPayment(makePayment(id: 'pay-queue'));
 
-      final logs = await db.select(db.auditLogTable).get();
-      expect(logs.length, 1);
-      expect(logs.first.action, 'INSERT');
-      expect(logs.first.tableNameColumn, 'payments');
-      expect(logs.first.recordId, 'pay-audit');
-      expect(logs.first.payload, isNotNull);
+      final queue = await DriftPendingChangeRepository(db).getPending();
+      expect(queue.length, 1);
+      expect(queue.first.entity, PendingEntity.payment);
+      expect(queue.first.action, PendingAction.insert);
+      expect(queue.first.entityId, 'pay-queue');
+      expect(queue.first.payload, isNotNull);
     });
 
     test(
@@ -172,8 +174,8 @@ void main() {
         final balances = await db.select(db.customerBalanceTable).get();
         expect(balances, isEmpty);
 
-        final logs = await db.select(db.auditLogTable).get();
-        expect(logs, isEmpty);
+        final queue = await DriftPendingChangeRepository(db).getPending();
+        expect(queue, isEmpty);
       },
     );
   });

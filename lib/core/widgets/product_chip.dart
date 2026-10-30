@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:app/core/theme/marilin_tokens.dart';
 
 class ProductChip extends StatelessWidget {
   const ProductChip({
@@ -38,7 +39,7 @@ class ProductChip extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    const blue = Color(0xFF1565C0);
+    const blue = MarilinColors.brandBlue;
     final resolvedBackgroundColor =
         backgroundColor ?? (selected ? blue : blue.withValues(alpha: 0.1));
     final resolvedTextColor = textColor ?? (selected ? Colors.white : blue);

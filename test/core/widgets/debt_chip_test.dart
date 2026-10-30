@@ -1,3 +1,4 @@
+import 'package:app/core/theme/marilin_tokens.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:app/core/widgets/debt_chip.dart';
@@ -11,19 +12,19 @@ void main() {
         const MaterialApp(home: Scaffold(body: DebtChip(amount: 1500))),
       );
 
-      // Default border color is 0xFFBF1B1B, text is "Deuda: $1.500"
-      expect(find.text('Deuda: \$1.500'), findsOneWidget);
+      // Default border color is MarilinColors.destructive, text is "Debe $1.500"
+      expect(find.text('Debe \$1.500'), findsOneWidget);
 
       final container = tester.widget<Container>(find.byType(Container));
       final decoration = container.decoration as BoxDecoration?;
       expect(decoration?.border, isA<Border>());
       final border = decoration!.border as Border;
-      expect(border.top.color, equals(const Color(0xFFBF1B1B)));
+      expect(border.top.color, equals(MarilinColors.destructive));
       expect(border.top.width, equals(1.5));
       expect(decoration.borderRadius, equals(BorderRadius.circular(20)));
 
       final text = tester.widget<Text>(find.byType(Text));
-      expect(text.style?.color, equals(const Color(0xFFBF1B1B)));
+      expect(text.style?.color, equals(MarilinColors.destructive));
       expect(text.style?.fontSize, equals(12.0));
       expect(text.style?.fontWeight, equals(FontWeight.w600));
     });
@@ -52,16 +53,13 @@ void main() {
               textColor: Colors.blue,
               fontSize: 14,
               fontWeight: FontWeight.bold,
-              prefixText: 'PRE-DEBT: \$',
-              useRawAmountFormatting: true,
+              prefixText: 'PRE-DEBT: ',
             ),
           ),
         ),
       );
 
-      // Verify the formatted text is not raw since useRawAmountFormatting formats double directly using toStringAsFixed or just double.
-      // Wait, let's see: we expect "PRE-DEBT: $2500.50" or similar depending on the raw formatting implementation.
-      expect(find.textContaining('PRE-DEBT: \$'), findsOneWidget);
+      expect(find.text('PRE-DEBT: \$2.500,50'), findsOneWidget);
 
       final container = tester.widget<Container>(find.byType(Container));
       expect(container.margin, equals(const EdgeInsets.all(8)));

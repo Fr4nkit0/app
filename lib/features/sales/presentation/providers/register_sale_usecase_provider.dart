@@ -1,5 +1,5 @@
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import 'package:app/core/services/database.helper.dart';
+import 'package:app/core/usecases/drift_transaction_runner.dart';
 import 'package:app/features/inventory/presentation/providers/inventory_repository_provider.dart';
 import 'package:app/features/payments/presentation/providers/payment_repository_provider.dart';
 import 'package:app/features/sales/domain/usecases/register_sale.usecase.dart';
@@ -10,6 +10,6 @@ final registerSaleUseCaseProvider = Provider<RegisterSaleUseCase>(
     saleRepo: ref.watch(saleRepositoryProvider),
     paymentRepo: ref.watch(paymentRepositoryProvider),
     inventoryRepo: ref.watch(inventoryRepositoryProvider),
-    db: ref.watch(databaseProvider),
+    transaction: ref.watch(transactionRunnerProvider),
   ),
 );

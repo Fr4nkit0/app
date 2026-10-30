@@ -1,5 +1,7 @@
 import 'package:flutter/foundation.dart';
 
+import 'package:app/features/sales/domain/same_day.dart';
+
 enum PaymentType {
   cash,
   transfer,
@@ -39,6 +41,7 @@ class Payment {
     this.visitId,
     this.saleId,
     this.notes,
+    this.isCancelled = false,
   });
 
   final String id;
@@ -49,4 +52,12 @@ class Payment {
   final String? visitId;
   final String? saleId;
   final String? notes;
+
+  /// A cancelled payment stays listed but no longer counts.
+  final bool isCancelled;
+
+  /// Only a confirmed payment of [now]'s day that did not settle a sale can
+  /// be cancelled on its own; a sale's payments go with the sale.
+  bool isCancellableOn(DateTime now) =>
+      !isCancelled && saleId == null && isSameDay(createdAt, now);
 }

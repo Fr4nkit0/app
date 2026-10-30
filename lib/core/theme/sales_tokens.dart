@@ -1,5 +1,7 @@
 import 'package:flutter/material.dart';
 
+import 'package:app/core/theme/marilin_tokens.dart';
+
 /// Semantic color tokens and text styles for the Sales module.
 ///
 /// Register via [ThemeData.extensions]:
@@ -38,9 +40,15 @@ class SalesTokens extends ThemeExtension<SalesTokens> {
   // ─── Preset ───────────────────────────────────────────────────────────────
 
   static const SalesTokens light = SalesTokens(
-    primary: Color(0xFF2563EB),
-    accent: Color(0xFFEA580C),
-    destructive: Color(0xFFDC2626),
+    primary: MarilinColors.brandBlue,
+    accent: MarilinColors.accent,
+    destructive: MarilinColors.destructive,
+  );
+
+  static const SalesTokens dark = SalesTokens(
+    primary: Color(0xFF3B82F6),
+    accent: Color(0xFFFB923C),
+    destructive: Color(0xFFF87171),
   );
 
   // ─── ThemeExtension contract ──────────────────────────────────────────────

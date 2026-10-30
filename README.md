@@ -145,9 +145,11 @@ flutter pub get
 # 3. Generar el código (Drift, Freezed)
 dart run build_runner build --delete-conflicting-outputs
 
-# 4. Ejecutar la aplicación
-flutter run
+# 4. Ejecutar la aplicación apuntando al servidor
+flutter run --dart-define=API_BASE_URL=https://<host>/api/v1
 ```
+
+La URL del servidor es obligatoria y se define al compilar con `API_BASE_URL`; la app no trae ninguna URL fija y falla al usar la red si falta. La base local nace vacía y se llena al sincronizar con el servidor.
 
 ---
 

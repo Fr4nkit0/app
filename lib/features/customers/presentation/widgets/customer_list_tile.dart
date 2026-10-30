@@ -1,19 +1,14 @@
 import 'package:flutter/material.dart';
+import 'package:app/core/theme/marilin_tokens.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:url_launcher/url_launcher.dart';
-import 'package:latlong2/latlong.dart';
 import 'package:app/core/widgets/debt_chip.dart';
 import 'package:app/core/widgets/product_chip.dart';
 import 'package:app/core/utils/avatar_utils.dart';
 import 'package:app/core/utils/address_formatter.dart';
-import 'package:app/core/widgets/circular_action_button.dart';
-import 'package:app/core/widgets/top_toast.dart';
-import 'package:app/core/utils/resource.dart';
 import 'package:app/features/customers/domain/models/customer.dart';
-import 'package:app/features/customers/presentation/widgets/address_picker_map.dart';
-import 'package:app/features/customers/presentation/providers/customer_repository_provider.dart';
-import 'package:app/features/customers/presentation/providers/customer_count_provider.dart';
 import 'package:font_awesome_flutter/font_awesome_flutter.dart';
+import 'package:app/core/widgets/top_toast.dart';
 
 class CustomerListTile extends ConsumerWidget {
   const CustomerListTile({
@@ -36,6 +31,7 @@ class CustomerListTile extends ConsumerWidget {
     if (addr == null) return '';
     return AddressFormatter.format(
       street: addr.street,
+      neighborhood: addr.neighborhood,
       floor: addr.floor,
       apartment: addr.apartment,
       visualReference: addr.visualReference,
@@ -44,7 +40,7 @@ class CustomerListTile extends ConsumerWidget {
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
-    const blue = Color(0xFF1565C0);
+    const blue = MarilinColors.brandBlue;
     final initials = AvatarUtils.getInitials(customer.name);
     final avatarColors = AvatarUtils.getColors(
       customer.name,
@@ -56,7 +52,9 @@ class CustomerListTile extends ConsumerWidget {
       duration: const Duration(milliseconds: 200),
       margin: const EdgeInsets.symmetric(horizontal: 16, vertical: 6),
       decoration: BoxDecoration(
-        color: selected ? blue.withValues(alpha: 0.03) : Colors.white,
+        color: selected
+            ? blue.withValues(alpha: 0.03)
+            : context.marilin.surface,
         borderRadius: BorderRadius.circular(16),
         boxShadow: [
           BoxShadow(
@@ -70,7 +68,7 @@ class CustomerListTile extends ConsumerWidget {
         border: Border.all(
           color: selected
               ? blue.withValues(alpha: 0.8)
-              : const Color(0xFFE2E8F0),
+              : context.marilin.border,
           width: selected ? 2.0 : 1.5,
         ),
       ),
@@ -117,9 +115,7 @@ class CustomerListTile extends ConsumerWidget {
                               style: TextStyle(
                                 fontSize: 15,
                                 fontWeight: FontWeight.w700,
-                                color: selected
-                                    ? blue
-                                    : const Color(0xFF0D1B3E),
+                                color: selected ? blue : context.marilin.ink,
                               ),
                             ),
                             const SizedBox(height: 2),
@@ -127,7 +123,7 @@ class CustomerListTile extends ConsumerWidget {
                               _address.isNotEmpty ? _address : 'Sin dirección',
                               style: TextStyle(
                                 fontSize: 13,
-                                color: Colors.grey.shade500,
+                                color: context.marilin.textMuted,
                               ),
                               maxLines: 1,
                               overflow: TextOverflow.ellipsis,
@@ -150,7 +146,7 @@ class CustomerListTile extends ConsumerWidget {
                               : Icon(
                                   Icons.circle_outlined,
                                   key: const ValueKey('unselected'),
-                                  color: Colors.grey.shade300,
+                                  color: context.marilin.lineStrong,
                                   size: 24,
                                 ),
                         ),
@@ -159,7 +155,7 @@ class CustomerListTile extends ConsumerWidget {
                         Icon(
                           Icons.arrow_forward_ios_rounded,
                           size: 14,
-                          color: Colors.grey.shade400,
+                          color: context.marilin.inkHint,
                         ),
                       ],
                     ],
@@ -184,18 +180,26 @@ class CustomerListTile extends ConsumerWidget {
                                   vertical: 4,
                                 ),
                                 borderRadius: BorderRadius.circular(8),
-                                backgroundColor: const Color(
-                                  0xFFEF4444,
-                                ).withValues(alpha: 0.08),
-                                borderColor: const Color(0xFFFFCDD2),
+                                backgroundColor: context.marilin
+                                    .vivid(MarilinColors.destructive)
+                                    .withValues(alpha: 0.08),
+                                borderColor: context.marilin.soft(
+                                  MarilinColors.destructive.withValues(
+                                    alpha: 0.3,
+                                  ),
+                                ),
                                 borderWidth: 1.0,
-                                textColor: const Color(0xFFEF4444),
-                                fontSize: 11,
+                                textColor: context.marilin.vivid(
+                                  MarilinColors.destructive,
+                                ),
+                                fontSize: 13,
                                 fontWeight: FontWeight.w700,
                                 icon: Icons.warning_amber_rounded,
                                 iconSize: 11,
-                                iconColor: const Color(0xFFEF4444),
-                                prefixText: 'Deuda: \$',
+                                iconColor: context.marilin.vivid(
+                                  MarilinColors.destructive,
+                                ),
+                                prefixText: 'Debe ',
                               ),
                             ...customer.productLabels
                                 .take(2) // Max 2 tags to avoid overflow
@@ -224,93 +228,32 @@ class CustomerListTile extends ConsumerWidget {
                                     );
                                   } catch (_) {
                                     if (context.mounted) {
-                                      ScaffoldMessenger.of(
+                                      TopToast.showError(
                                         context,
-                                      ).showSnackBar(
-                                        const SnackBar(
-                                          content: Text(
-                                            'No se pudo abrir WhatsApp',
-                                          ),
-                                          duration: Duration(seconds: 2),
-                                        ),
+                                        'No se pudo abrir WhatsApp',
                                       );
                                     }
                                   }
                                 },
-                                child: Container(
-                                  width: 44,
-                                  height: 44,
-                                  alignment: Alignment.center,
-                                  decoration: const BoxDecoration(
-                                    color: Color(0xFF25D366),
-                                    shape: BoxShape.circle,
-                                  ),
-                                  child: FaIcon(
-                                    FontAwesomeIcons.whatsapp,
-                                    color: Colors.white,
-                                    size: 28,
+                                child: Tooltip(
+                                  message: 'WhatsApp',
+                                  child: Container(
+                                    width: 44,
+                                    height: 44,
+                                    alignment: Alignment.center,
+                                    decoration: const BoxDecoration(
+                                      color: MarilinColors.success,
+                                      shape: BoxShape.circle,
+                                    ),
+                                    child: FaIcon(
+                                      FontAwesomeIcons.whatsapp,
+                                      color: Colors.white,
+                                      size: 28,
+                                    ),
                                   ),
                                 ),
                               ),
-                              const SizedBox(width: 8),
                             ],
-                            if (_address.isNotEmpty)
-                              CircularActionButton(
-                                icon: Icons.location_on,
-                                color: const Color(0xFF0369A1),
-                                onPressed: () async {
-                                  final addr = customer.addresses
-                                          .where((a) => a.isPrimary)
-                                          .firstOrNull ??
-                                      customer.addresses.firstOrNull;
-                                  if (addr == null) return;
-
-                                  await Navigator.of(context).push<LatLng>(
-                                    MaterialPageRoute(
-                                      builder: (context) => AddressPickerMap(
-                                        initialLatitude: addr.latitude,
-                                        initialLongitude: addr.longitude,
-                                        initialSearchQuery: addr.street,
-                                        onSave: (latLng) async {
-                                          final repository =
-                                              ref.read(customerRepositoryProvider);
-                                          final updateResult =
-                                              await repository
-                                                  .updateAddressCoordinates(
-                                            addr.id,
-                                            latLng.latitude,
-                                            latLng.longitude,
-                                          );
-
-                                          if (context.mounted) {
-                                            switch (updateResult) {
-                                              case Success():
-                                                TopToast.showSuccess(
-                                                  context,
-                                                  'Ubicación del cliente guardada',
-                                                );
-                                                ref
-                                                    .read(
-                                                        paginatedCustomerListProvider
-                                                            .notifier)
-                                                    .refresh();
-                                                ref.invalidate(
-                                                    customerByIdProvider(
-                                                        customer.id));
-                                              case Error(:final error):
-                                                TopToast.showError(
-                                                  context,
-                                                  'Error al guardar ubicación: $error',
-                                                );
-                                            }
-                                          }
-                                        },
-                                      ),
-                                      fullscreenDialog: true,
-                                    ),
-                                  );
-                                },
-                              ),
                           ],
                         ),
                       ],

@@ -1,6 +1,7 @@
 class AddressFormatter {
   static String format({
     String? street,
+    String? neighborhood,
     String? floor,
     String? apartment,
     String? visualReference,
@@ -8,7 +9,12 @@ class AddressFormatter {
     final parts = <String>[];
 
     if (street != null && street.trim().isNotEmpty) {
-      parts.add(_normalizeStreet(street.trim()));
+      final normalizedStreet = _normalizeStreet(street.trim());
+      if (neighborhood != null && neighborhood.trim().isNotEmpty) {
+        parts.add('$normalizedStreet, ${neighborhood.trim()}');
+      } else {
+        parts.add(normalizedStreet);
+      }
     }
 
     final floorAndDept = <String>[];

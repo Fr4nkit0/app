@@ -1,27 +1,33 @@
+import 'package:app/core/utils/money_formatter.dart';
 import 'package:flutter/material.dart';
+import 'package:app/core/theme/marilin_tokens.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:url_launcher/url_launcher.dart';
 import 'package:app/core/utils/avatar_utils.dart';
-import 'package:app/core/utils/address_formatter.dart';
 import 'package:app/features/customers/domain/models/customer.dart';
+import 'package:app/core/presentation/failure_message.dart';
 import 'package:app/features/customers/presentation/providers/customer_count_provider.dart';
-import 'package:app/features/customers/presentation/providers/customer_repository_provider.dart';
-import 'package:app/features/customers/presentation/widgets/address_picker_map.dart';
+import 'package:app/features/customers/presentation/providers/customer_usecase_providers.dart';
+import 'package:app/features/customers/presentation/widgets/disable_customer_dialog.dart';
+import 'package:app/features/route/presentation/providers/route_repository_provider.dart';
+import 'package:app/features/customers/presentation/screens/edit_customer_screen.dart';
+import 'package:app/features/customers/presentation/widgets/customer_addresses_section.dart';
+import 'package:app/features/customers/presentation/widgets/customer_agreements_tab.dart';
+import 'package:app/features/customers/presentation/widgets/customer_preferences_section.dart';
 import 'package:app/features/history/domain/models/history_entry.dart';
-import 'package:latlong2/latlong.dart';
 import 'package:app/features/history/presentation/providers/history_list_provider.dart';
 import 'package:app/features/history/presentation/widgets/history_entry_tile.dart';
 import 'package:app/features/sales/presentation/providers/sale_draft_provider.dart';
 import 'package:app/features/sales/presentation/screens/sale_step1_screen.dart';
 import 'package:app/features/inventory/presentation/providers/inventory_repository_provider.dart';
-import 'package:app/features/inventory/domain/models/customer_container_balance.dart';
-import 'package:app/features/inventory/domain/models/container_movement.dart';
+import 'package:app/features/inventory/domain/custody.dart';
+import 'package:app/features/inventory/domain/models/container_type.dart';
+import 'package:app/features/inventory/presentation/widgets/container_return_dialog.dart';
+import 'package:app/features/inventory/presentation/widgets/register_container_return_dialog.dart';
+import 'package:app/core/widgets/error_state.dart';
 import 'package:app/core/widgets/top_toast.dart';
-import 'package:uuid/uuid.dart';
-import 'package:app/core/utils/resource.dart';
 import 'package:app/features/payments/presentation/providers/payment_repository_provider.dart';
-import 'package:app/features/payments/presentation/widgets/debt_payment_dialog.dart';
-import 'package:app/features/payments/domain/models/payment.dart';
+import 'package:app/features/payments/presentation/register_debt_payment.dart';
 
 class CustomerProfileScreen extends ConsumerStatefulWidget {
   const CustomerProfileScreen({super.key, required this.customerId});
@@ -36,27 +42,32 @@ class CustomerProfileScreen extends ConsumerStatefulWidget {
 class _CustomerProfileScreenState extends ConsumerState<CustomerProfileScreen> {
   int _selectedTab = 0;
 
-  static const _days = ['', 'Lun', 'Mar', 'Mié', 'Jue', 'Vie', 'Sáb', 'Dom'];
+  /// Disabling is allowed with a stop today; the dialog only warns about it.
+  Future<void> _disable(Customer customer) async {
+    final hasStopToday =
+        ref
+            .read(routeAllStopsProvider)
+            .value
+            ?.any((s) => s.customer.id == customer.id) ??
+        false;
+    final confirmed = await confirmDisableCustomer(
+      context,
+      customerName: customer.name,
+      hasStopToday: hasStopToday,
+    );
+    if (!confirmed || !mounted) return;
 
-  String _dayName(int day) => day >= 1 && day <= 7 ? _days[day] : 'Día $day';
-
-  Future<void> _updateCoordinates(
-    BuildContext context,
-    String addressId,
-    double lat,
-    double lng,
-  ) async {
-    final repository = ref.read(customerRepositoryProvider);
-    final result = await repository.updateAddressCoordinates(addressId, lat, lng);
-
-    if (context.mounted) {
-      switch (result) {
-        case Success():
-          TopToast.showSuccess(context, 'Coordenadas actualizadas correctamente');
-          ref.invalidate(customerByIdProvider(widget.customerId));
-        case Error(:final error):
-          TopToast.showError(context, 'Error al guardar coordenadas: $error');
-      }
+    try {
+      await ref.read(disableCustomerUseCaseProvider).execute(customer.id);
+      if (!mounted) return;
+      TopToast.showSuccess(context, '${customer.name} dado de baja');
+      Navigator.of(context).pop();
+    } catch (e) {
+      if (!mounted) return;
+      TopToast.showError(
+        context,
+        failureMessage(e, fallback: 'No se pudo dar de baja. Reintentá.'),
+      );
     }
   }
 
@@ -64,8 +75,14 @@ class _CustomerProfileScreenState extends ConsumerState<CustomerProfileScreen> {
   Widget build(BuildContext context) {
     final customerAsync = ref.watch(customerByIdProvider(widget.customerId));
     final historyAsync = ref.watch(historyListProvider);
+    // Kept live so the disable dialog knows about today's stop.
+    ref.watch(routeAllStopsProvider);
 
+    // Every address or preference write re-emits the customer list, which
+    // reloads this provider; keeping the shown customer keeps the scroll view
+    // (and its position) instead of swapping in the loading scaffold.
     return customerAsync.when(
+      skipLoadingOnReload: true,
       data: (customer) {
         if (customer == null) {
           return Scaffold(
@@ -76,7 +93,7 @@ class _CustomerProfileScreenState extends ConsumerState<CustomerProfileScreen> {
 
         final customerHistory = historyAsync.maybeWhen(
           data: (entries) =>
-              entries.where((e) => e.customer.id == customer.id).toList(),
+              entries.where((e) => e.customerId == customer.id).toList(),
           orElse: () => <HistoryEntry>[],
         );
 
@@ -84,8 +101,17 @@ class _CustomerProfileScreenState extends ConsumerState<CustomerProfileScreen> {
       },
       loading: () =>
           const Scaffold(body: Center(child: CircularProgressIndicator())),
-      error: (e, _) =>
-          Scaffold(body: Center(child: Text('Error al cargar: $e'))),
+      error: (e, _) => Scaffold(
+        appBar: AppBar(title: const Text('Perfil de Cliente')),
+        body: ErrorState(
+          title: 'No pudimos cargar el cliente',
+          message:
+              'Revisá la conexión y reintentá. '
+              'Lo que ya cargaste sigue guardado en el teléfono.',
+          onRetry: () =>
+              ref.invalidate(customerByIdProvider(widget.customerId)),
+        ),
+      ),
     );
   }
 
@@ -95,30 +121,49 @@ class _CustomerProfileScreenState extends ConsumerState<CustomerProfileScreen> {
     List<HistoryEntry> customerHistory,
   ) {
     return Scaffold(
-      backgroundColor: const Color(0xFFF8FAFC),
+      backgroundColor: context.marilin.fill,
       appBar: AppBar(
-        title: const Text(
+        title: Text(
           'Perfil de Cliente',
           style: TextStyle(
             fontWeight: FontWeight.w800,
             fontSize: 18,
-            color: Color(0xFF0D1B3E),
+            color: context.marilin.ink,
           ),
         ),
-        backgroundColor: Colors.white,
-        foregroundColor: const Color(0xFF0D1B3E),
+        backgroundColor: context.marilin.surface,
+        foregroundColor: context.marilin.ink,
         elevation: 0,
         scrolledUnderElevation: 0.5,
+        actions: [
+          IconButton(
+            tooltip: 'Editar',
+            icon: const Icon(Icons.edit_outlined),
+            onPressed: () => Navigator.of(context).push(
+              MaterialPageRoute(
+                builder: (_) => EditCustomerScreen(customer: customer),
+              ),
+            ),
+          ),
+          IconButton(
+            tooltip: 'Dar de baja',
+            icon: const Icon(Icons.person_off_outlined),
+            onPressed: () => _disable(customer),
+          ),
+        ],
       ),
-      body: SingleChildScrollView(
-        child: Column(
-          children: [
-            _buildProfileHeader(customer),
-            const SizedBox(height: 16),
-            _buildTabBar(),
-            _buildTabContent(customer, customerHistory),
-            const SizedBox(height: 80),
-          ],
+      body: SafeArea(
+        top: false,
+        child: SingleChildScrollView(
+          child: Column(
+            children: [
+              _buildProfileHeader(customer),
+              const SizedBox(height: 16),
+              _buildTabBar(),
+              _buildTabContent(customer, customerHistory),
+              const SizedBox(height: 80),
+            ],
+          ),
         ),
       ),
       floatingActionButton: FloatingActionButton.extended(
@@ -129,7 +174,7 @@ class _CustomerProfileScreenState extends ConsumerState<CustomerProfileScreen> {
             context,
           ).push(MaterialPageRoute(builder: (_) => const SaleStep1Screen()));
         },
-        backgroundColor: const Color(0xFF1565C0),
+        backgroundColor: MarilinColors.brandBlue,
         foregroundColor: Colors.white,
         icon: const Icon(Icons.point_of_sale_outlined),
         label: const Text(
@@ -142,7 +187,7 @@ class _CustomerProfileScreenState extends ConsumerState<CustomerProfileScreen> {
 
   Widget _buildProfileHeader(dynamic customer) {
     return Container(
-      color: Colors.white,
+      color: context.marilin.surface,
       width: double.infinity,
       padding: const EdgeInsets.only(top: 24, bottom: 20),
       child: Column(
@@ -151,7 +196,7 @@ class _CustomerProfileScreenState extends ConsumerState<CustomerProfileScreen> {
             width: 90,
             height: 90,
             decoration: const BoxDecoration(
-              color: Color(0xFF1565C0),
+              color: MarilinColors.brandBlue,
               shape: BoxShape.circle,
             ),
             alignment: Alignment.center,
@@ -167,10 +212,10 @@ class _CustomerProfileScreenState extends ConsumerState<CustomerProfileScreen> {
           const SizedBox(height: 16),
           Text(
             customer.name,
-            style: const TextStyle(
+            style: TextStyle(
               fontSize: 24,
               fontWeight: FontWeight.w800,
-              color: Color(0xFF0D1B3E),
+              color: context.marilin.ink,
             ),
           ),
           const SizedBox(height: 10),
@@ -178,25 +223,25 @@ class _CustomerProfileScreenState extends ConsumerState<CustomerProfileScreen> {
             Container(
               padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
               decoration: BoxDecoration(
-                color: const Color(0xFF1565C0).withValues(alpha: 0.05),
+                color: MarilinColors.brandBlue.withValues(alpha: 0.05),
                 borderRadius: BorderRadius.circular(30),
                 border: Border.all(
-                  color: const Color(0xFF1565C0).withValues(alpha: 0.15),
+                  color: MarilinColors.brandBlue.withValues(alpha: 0.15),
                 ),
               ),
               child: Row(
                 mainAxisSize: MainAxisSize.min,
                 children: [
-                  const Icon(
+                  Icon(
                     Icons.phone_outlined,
                     size: 16,
-                    color: Color(0xFF0D1B3E),
+                    color: context.marilin.ink,
                   ),
                   const SizedBox(width: 8),
                   Text(
                     customer.phone!,
-                    style: const TextStyle(
-                      color: Color(0xFF0D1B3E),
+                    style: TextStyle(
+                      color: context.marilin.ink,
                       fontWeight: FontWeight.w600,
                       fontSize: 14,
                     ),
@@ -205,7 +250,7 @@ class _CustomerProfileScreenState extends ConsumerState<CustomerProfileScreen> {
                   Container(
                     height: 14,
                     width: 1,
-                    color: const Color(0xFF1565C0).withValues(alpha: 0.2),
+                    color: MarilinColors.brandBlue.withValues(alpha: 0.2),
                   ),
                   const SizedBox(width: 8),
                   GestureDetector(
@@ -222,11 +267,9 @@ class _CustomerProfileScreenState extends ConsumerState<CustomerProfileScreen> {
                         );
                       } catch (_) {
                         if (context.mounted) {
-                          ScaffoldMessenger.of(context).showSnackBar(
-                            const SnackBar(
-                              content: Text('No se pudo abrir WhatsApp'),
-                              duration: Duration(seconds: 2),
-                            ),
+                          TopToast.showError(
+                            context,
+                            'No se pudo abrir WhatsApp',
                           );
                         }
                       }
@@ -234,7 +277,7 @@ class _CustomerProfileScreenState extends ConsumerState<CustomerProfileScreen> {
                     child: const Text(
                       'Contactar',
                       style: TextStyle(
-                        color: Color(0xFF1565C0),
+                        color: MarilinColors.brandBlue,
                         fontWeight: FontWeight.bold,
                         fontSize: 14,
                       ),
@@ -249,98 +292,43 @@ class _CustomerProfileScreenState extends ConsumerState<CustomerProfileScreen> {
             child: IntrinsicHeight(
               child: Builder(
                 builder: (context) {
-                  final balanceAsync = ref.watch(customerBalanceProvider(customer.id));
+                  final balanceAsync = ref.watch(
+                    customerBalanceProvider(customer.id),
+                  );
                   final balance = balanceAsync.value ?? customer.debtAmount;
-                  final containerBalancesAsync = ref.watch(customerContainerBalancesProvider(customer.id));
+                  final containerBalancesAsync = ref.watch(
+                    customerContainerBalancesProvider(customer.id),
+                  );
+                  final containerTypes = ref
+                      .watch(containerTypesProvider)
+                      .maybeWhen(
+                        data: (types) => types,
+                        orElse: () => <ContainerType>[],
+                      );
 
                   return Row(
                     children: [
                       Expanded(
                         child: Material(
-                          color: balance > 0 ? const Color(0xFFFEF2F2) : const Color(0xFFECFDF5),
+                          color: balance > 0
+                              ? context.marilin.soft(
+                                  MarilinColors.destructive.withValues(
+                                    alpha: 0.12,
+                                  ),
+                                )
+                              : context.marilin.soft(
+                                  MarilinColors.success.withValues(alpha: 0.12),
+                                ),
                           borderRadius: BorderRadius.circular(16),
                           child: InkWell(
                             borderRadius: BorderRadius.circular(16),
                             onTap: balance > 0
-                                ? () async {
-                                    final result = await showDialog<DebtPaymentResult>(
-                                      context: context,
-                                      builder: (_) => DebtPaymentDialog(totalDebt: balance),
-                                    );
-                                    if (result == null) return;
-
-                                    final payments = <Payment>[];
-                                    final now = DateTime.now();
-                                    if (result.method == 'Efectivo') {
-                                      payments.add(
-                                        Payment(
-                                          id: const Uuid().v4(),
-                                          customerId: customer.id,
-                                          amount: result.cashAmount!,
-                                          type: PaymentType.cash,
-                                          createdAt: now,
-                                        ),
-                                      );
-                                    } else if (result.method == 'Transferencia') {
-                                      payments.add(
-                                        Payment(
-                                          id: const Uuid().v4(),
-                                          customerId: customer.id,
-                                          amount: result.transferAmount!,
-                                          type: PaymentType.transfer,
-                                          createdAt: now,
-                                        ),
-                                      );
-                                    } else if (result.method == 'Mixto') {
-                                      if (result.cashAmount != null && result.cashAmount! > 0) {
-                                        payments.add(
-                                          Payment(
-                                            id: const Uuid().v4(),
-                                            customerId: customer.id,
-                                            amount: result.cashAmount!,
-                                            type: PaymentType.cash,
-                                            createdAt: now,
-                                          ),
-                                        );
-                                      }
-                                      if (result.transferAmount != null &&
-                                          result.transferAmount! > 0) {
-                                        payments.add(
-                                          Payment(
-                                            id: const Uuid().v4(),
-                                            customerId: customer.id,
-                                            amount: result.transferAmount!,
-                                            type: PaymentType.transfer,
-                                            createdAt: now.add(const Duration(milliseconds: 10)),
-                                          ),
-                                        );
-                                      }
-                                    }
-
-                                    if (payments.isNotEmpty) {
-                                      final usecase = ref.read(registerPaymentUseCaseProvider);
-                                      final res = await usecase.execute(payments);
-                                      if (res is Success) {
-                                        if (context.mounted) {
-                                          TopToast.show(
-                                            context,
-                                            message: 'Pago registrado con éxito',
-                                            icon: Icons.check_circle_rounded,
-                                            color: const Color(0xFF10B981),
-                                          );
-                                        }
-                                      } else if (res is Error) {
-                                        if (context.mounted) {
-                                          TopToast.show(
-                                            context,
-                                            message: 'Error al registrar pago: ${res.error}',
-                                            icon: Icons.error_outline,
-                                            color: const Color(0xFFDC2626),
-                                          );
-                                        }
-                                      }
-                                    }
-                                  }
+                                ? () => registerDebtPayment(
+                                    context,
+                                    ref,
+                                    customer: customer,
+                                    debt: balance,
+                                  )
                                 : null,
                             child: Container(
                               padding: const EdgeInsets.all(14),
@@ -348,15 +336,24 @@ class _CustomerProfileScreenState extends ConsumerState<CustomerProfileScreen> {
                                 borderRadius: BorderRadius.circular(16),
                                 border: Border.all(
                                   color: balance > 0
-                                      ? const Color(0xFFFEE2E2)
-                                      : const Color(0xFFA7F3D0),
+                                      ? context.marilin.soft(
+                                          MarilinColors.destructive.withValues(
+                                            alpha: 0.12,
+                                          ),
+                                        )
+                                      : context.marilin.soft(
+                                          MarilinColors.success.withValues(
+                                            alpha: 0.3,
+                                          ),
+                                        ),
                                 ),
                               ),
                               child: Column(
                                 crossAxisAlignment: CrossAxisAlignment.start,
                                 children: [
                                   Row(
-                                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                                    mainAxisAlignment:
+                                        MainAxisAlignment.spaceBetween,
                                     children: [
                                       Text(
                                         'Saldo en dinero',
@@ -372,39 +369,48 @@ class _CustomerProfileScreenState extends ConsumerState<CustomerProfileScreen> {
                                         balance > 0
                                             ? Icons.credit_card_rounded
                                             : (balance == 0
-                                                ? Icons.check_circle_rounded
-                                                : Icons.monetization_on_outlined),
+                                                  ? Icons.check_circle_rounded
+                                                  : Icons
+                                                        .monetization_on_outlined),
                                         size: 16,
                                         color: balance > 0
-                                            ? const Color(0xFFEF4444)
-                                            : const Color(0xFF10B981),
+                                            ? context.marilin.vivid(
+                                                MarilinColors.destructive,
+                                              )
+                                            : context.marilin.vivid(
+                                                MarilinColors.success,
+                                              ),
                                       ),
                                     ],
                                   ),
                                   const SizedBox(height: 12),
                                   Text(
                                     balance > 0
-                                        ? '\$${balance.toStringAsFixed(0)}'
+                                        ? formatMoney(balance)
                                         : (balance == 0
-                                            ? '\$0'
-                                            : '\$${(-balance).toStringAsFixed(0)}'),
+                                              ? formatMoney(0)
+                                              : formatMoney(-balance)),
                                     style: TextStyle(
                                       fontSize: 22,
                                       fontWeight: FontWeight.w800,
                                       color: balance > 0
-                                          ? const Color(0xFFEF4444)
-                                          : const Color(0xFF10B981),
+                                          ? context.marilin.vivid(
+                                              MarilinColors.destructive,
+                                            )
+                                          : context.marilin.vivid(
+                                              MarilinColors.success,
+                                            ),
                                     ),
                                   ),
                                   const SizedBox(height: 4),
                                   Text(
                                     balance > 0
-                                        ? 'Deuda: \$${balance.toStringAsFixed(0)}'
+                                        ? 'Debe ${formatMoney(balance)}'
                                         : (balance == 0
-                                            ? 'Al día'
-                                            : 'Saldo a favor: \$${(-balance).toStringAsFixed(0)}'),
+                                              ? 'Al día'
+                                              : 'Saldo a favor: ${formatMoney(-balance)}'),
                                     style: TextStyle(
-                                      fontSize: 11,
+                                      fontSize: 13,
                                       color: balance > 0
                                           ? Colors.red.shade700
                                           : Colors.green.shade700,
@@ -419,93 +425,81 @@ class _CustomerProfileScreenState extends ConsumerState<CustomerProfileScreen> {
                       const SizedBox(width: 12),
                       Flexible(
                         child: Material(
-                          color: Colors.white,
+                          color: context.marilin.surface,
                           borderRadius: BorderRadius.circular(16),
                           child: InkWell(
                             borderRadius: BorderRadius.circular(16),
                             onTap: () {
                               showDialog(
                                 context: context,
-                                builder: (_) => ProfileContainerReturnDialog(customer: customer),
+                                builder: (_) => RegisterContainerReturnDialog(
+                                  customerId: customer.id,
+                                ),
                               );
                             },
                             child: Container(
                               padding: const EdgeInsets.all(14),
                               decoration: BoxDecoration(
                                 borderRadius: BorderRadius.circular(16),
-                                border: Border.all(color: const Color(0xFFE2E8F0)),
+                                border: Border.all(
+                                  color: context.marilin.border,
+                                ),
                               ),
                               child: Column(
                                 crossAxisAlignment: CrossAxisAlignment.start,
                                 children: [
-                                  const Row(
-                                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                                  Row(
+                                    mainAxisAlignment:
+                                        MainAxisAlignment.spaceBetween,
                                     children: [
                                       Text(
                                         'Comodatos activos',
                                         style: TextStyle(
                                           fontSize: 12,
                                           fontWeight: FontWeight.w600,
-                                          color: Color(0xFF0D1B3E),
+                                          color: context.marilin.ink,
                                         ),
                                       ),
                                       Icon(
                                         Icons.inventory_2_outlined,
                                         size: 16,
-                                        color: Color(0xFF1565C0),
+                                        color: MarilinColors.brandBlue,
                                       ),
                                     ],
                                   ),
                                   const SizedBox(height: 12),
                                   containerBalancesAsync.when(
                                     data: (balances) {
-                                      final bidon = balances
-                                          .firstWhere(
-                                            (b) => b.containerType == 'BIDON_20L',
-                                            orElse: () => CustomerContainerBalance(
-                                              customerId: customer.id,
-                                              containerType: 'BIDON_20L',
-                                              quantity: 0,
-                                            ),
-                                          )
-                                          .quantity;
-                                      final sifon = balances
-                                          .firstWhere(
-                                            (b) => b.containerType == 'SIFON_2L',
-                                            orElse: () => CustomerContainerBalance(
-                                              customerId: customer.id,
-                                              containerType: 'SIFON_2L',
-                                              quantity: 0,
-                                            ),
-                                          )
-                                          .quantity;
-
+                                      final custody = custodyByContainerType(
+                                        balances,
+                                      );
                                       return Column(
                                         children: [
-                                          _buildProfileCustodyRow(
-                                            icon: Icons.water_drop_outlined,
-                                            label: 'Bidón 20L',
-                                            count: bidon,
-                                          ),
-                                          const SizedBox(height: 8),
-                                          _buildProfileCustodyRow(
-                                            icon: Icons.local_drink_outlined,
-                                            label: 'Sifón 2L',
-                                            count: sifon,
-                                          ),
+                                          for (final (index, type)
+                                              in containerTypes.indexed) ...[
+                                            if (index > 0)
+                                              const SizedBox(height: 8),
+                                            _buildProfileCustodyRow(
+                                              icon: containerTypeIcon(index),
+                                              label: type.label,
+                                              count: custody[type.code] ?? 0,
+                                            ),
+                                          ],
                                         ],
                                       );
                                     },
                                     loading: () => const SizedBox(
                                       height: 16,
                                       width: 16,
-                                      child: CircularProgressIndicator(strokeWidth: 2),
+                                      child: CircularProgressIndicator(
+                                        strokeWidth: 2,
+                                      ),
                                     ),
                                     error: (_, __) => Text(
                                       'Sin comodatos',
                                       style: TextStyle(
                                         fontSize: 13,
-                                        color: Colors.grey.shade500,
+                                        color: context.marilin.textMuted,
                                         fontStyle: FontStyle.italic,
                                       ),
                                     ),
@@ -530,12 +524,12 @@ class _CustomerProfileScreenState extends ConsumerState<CustomerProfileScreen> {
   Widget _buildTabBar() {
     final tabs = ['Historial', 'Preferencias', 'Acuerdos', 'Datos'];
     return Container(
-      color: Colors.white,
+      color: context.marilin.surface,
       padding: const EdgeInsets.symmetric(horizontal: 16),
       child: Container(
-        decoration: const BoxDecoration(
+        decoration: BoxDecoration(
           border: Border(
-            bottom: BorderSide(color: Color(0xFFE2E8F0), width: 1.5),
+            bottom: BorderSide(color: context.marilin.border, width: 1.5),
           ),
         ),
         child: Row(
@@ -555,7 +549,7 @@ class _CustomerProfileScreenState extends ConsumerState<CustomerProfileScreen> {
                     border: Border(
                       bottom: BorderSide(
                         color: isSelected
-                            ? const Color(0xFF1565C0)
+                            ? MarilinColors.brandBlue
                             : Colors.transparent,
                         width: 3.0,
                       ),
@@ -570,8 +564,8 @@ class _CustomerProfileScreenState extends ConsumerState<CustomerProfileScreen> {
                           ? FontWeight.w700
                           : FontWeight.w500,
                       color: isSelected
-                          ? const Color(0xFF1565C0)
-                          : Colors.grey.shade500,
+                          ? MarilinColors.brandBlue
+                          : context.marilin.textMuted,
                     ),
                   ),
                 ),
@@ -590,7 +584,7 @@ class _CustomerProfileScreenState extends ConsumerState<CustomerProfileScreen> {
       case 1:
         return _buildPreferencesTab(customer);
       case 2:
-        return _buildAcuerdosTab();
+        return CustomerAgreementsTab(customerId: customer.id);
       case 3:
         return _buildDatosTab(customer);
       default:
@@ -621,22 +615,14 @@ class _CustomerProfileScreenState extends ConsumerState<CustomerProfileScreen> {
   }
 
   Widget _buildPreferencesTab(Customer customer) {
-    if (customer.preferences.isEmpty) {
-      return _buildEmptyState(
-        icon: Icons.schedule_outlined,
-        title: 'Sin preferencias',
-        subtitle: 'Este cliente no tiene horarios de entrega configurados.',
-      );
-    }
-
     return Container(
       padding: const EdgeInsets.all(16),
       child: Container(
         padding: const EdgeInsets.all(16),
         decoration: BoxDecoration(
-          color: Colors.white,
+          color: context.marilin.surface,
           borderRadius: BorderRadius.circular(16),
-          border: Border.all(color: const Color(0xFFE2E8F0)),
+          border: Border.all(color: context.marilin.border),
           boxShadow: [
             BoxShadow(
               color: Colors.black.withValues(alpha: 0.015),
@@ -645,243 +631,26 @@ class _CustomerProfileScreenState extends ConsumerState<CustomerProfileScreen> {
             ),
           ],
         ),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            const Row(
-              children: [
-                Icon(
-                  Icons.schedule_outlined,
-                  color: Color(0xFF1565C0),
-                  size: 20,
-                ),
-                SizedBox(width: 8),
-                Text(
-                  'Horarios de Visita Preferidos',
-                  style: TextStyle(
-                    fontSize: 15,
-                    fontWeight: FontWeight.w700,
-                    color: Color(0xFF0D1B3E),
-                  ),
-                ),
-              ],
-            ),
-            const Divider(height: 24, color: Color(0xFFE2E8F0)),
-            ...customer.preferences.map((pref) {
-              final day = _dayName(pref.dayOfWeek);
-              return Padding(
-                padding: const EdgeInsets.only(bottom: 12),
-                child: Row(
-                  children: [
-                    Container(
-                      width: 8,
-                      height: 8,
-                      decoration: const BoxDecoration(
-                        color: Color(0xFF1565C0),
-                        shape: BoxShape.circle,
-                      ),
-                    ),
-                    const SizedBox(width: 12),
-                    Expanded(
-                      child: Row(
-                        children: [
-                          Text(
-                            '$day: ',
-                            style: const TextStyle(
-                              fontWeight: FontWeight.w700,
-                              fontSize: 14,
-                              color: Color(0xFF0D1B3E),
-                            ),
-                          ),
-                          Text(
-                            'de ${pref.timeWindowStart} a ${pref.timeWindowEnd ?? ''} hs',
-                            style: const TextStyle(
-                              fontSize: 14,
-                              fontWeight: FontWeight.w500,
-                              color: Color(0xFF4B5563),
-                            ),
-                          ),
-                        ],
-                      ),
-                    ),
-                  ],
-                ),
-              );
-            }),
-          ],
-        ),
-      ),
-    );
-  }
-
-  Widget _buildAcuerdosTab() {
-    return Container(
-      padding: const EdgeInsets.all(16),
-      child: Container(
-        padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 32),
-        decoration: BoxDecoration(
-          color: Colors.white,
-          borderRadius: BorderRadius.circular(16),
-          border: Border.all(color: const Color(0xFFE2E8F0)),
-        ),
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            Container(
-              padding: const EdgeInsets.all(16),
-              decoration: const BoxDecoration(
-                color: Color(0xFFF1F5F9),
-                shape: BoxShape.circle,
-              ),
-              child: const Icon(
-                Icons.handshake_outlined,
-                size: 32,
-                color: Color(0xFF475569),
-              ),
-            ),
-            const SizedBox(height: 16),
-            const Text(
-              'Acuerdos Comerciales',
-              style: TextStyle(
-                fontSize: 16,
-                fontWeight: FontWeight.w700,
-                color: Color(0xFF0D1B3E),
-              ),
-            ),
-            const SizedBox(height: 6),
-            Text(
-              'Próximamente disponible. Aquí se listarán los contratos especiales de comodato y precios fijos.',
-              textAlign: TextAlign.center,
-              style: TextStyle(
-                fontSize: 13,
-                color: Colors.grey.shade500,
-                height: 1.4,
-              ),
-            ),
-          ],
-        ),
+        child: CustomerPreferencesSection(customerId: customer.id),
       ),
     );
   }
 
   Widget _buildDatosTab(Customer customer) {
-    final addresses = customer.addresses;
-    final addr =
-        addresses.where((a) => a.isPrimary).firstOrNull ??
-        addresses.firstOrNull;
-
     return Container(
       padding: const EdgeInsets.all(16),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          // Card 1: Dirección principal
+          // Card 1: Direcciones de entrega
           Container(
             padding: const EdgeInsets.all(16),
             decoration: BoxDecoration(
-              color: Colors.white,
+              color: context.marilin.surface,
               borderRadius: BorderRadius.circular(16),
-              border: Border.all(color: const Color(0xFFE2E8F0)),
+              border: Border.all(color: context.marilin.border),
             ),
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                const Row(
-                  children: [
-                    Icon(
-                      Icons.location_on_outlined,
-                      color: Color(0xFF1565C0),
-                      size: 20,
-                    ),
-                    SizedBox(width: 8),
-                    Text(
-                      'Dirección de Entrega',
-                      style: TextStyle(
-                        fontSize: 15,
-                        fontWeight: FontWeight.w700,
-                        color: Color(0xFF0D1B3E),
-                      ),
-                    ),
-                  ],
-                ),
-                const Divider(height: 24, color: Color(0xFFE2E8F0)),
-                if (addr != null) ...[
-                  Text(
-                    AddressFormatter.format(
-                      street: addr.street,
-                      floor: addr.floor,
-                      apartment: addr.apartment,
-                      visualReference: addr.visualReference,
-                    ),
-                    style: const TextStyle(
-                      fontSize: 15,
-                      fontWeight: FontWeight.w700,
-                      color: Color(0xFF0D1B3E),
-                    ),
-                  ),
-                  if (addr.latitude != null && addr.longitude != null) ...[
-                    const SizedBox(height: 8),
-                    Row(
-                      children: [
-                        const Icon(Icons.check_circle, size: 16, color: Colors.green),
-                        const SizedBox(width: 8),
-                        Text(
-                          'Ubicación fijada (${addr.latitude!.toStringAsFixed(6)}, ${addr.longitude!.toStringAsFixed(6)})',
-                          style: const TextStyle(
-                            fontSize: 13,
-                            color: Colors.green,
-                            fontWeight: FontWeight.w500,
-                          ),
-                        ),
-                      ],
-                    ),
-                  ],
-                  const SizedBox(height: 14),
-                  SizedBox(
-                    width: double.infinity,
-                    child: OutlinedButton.icon(
-                      onPressed: () async {
-                        await Navigator.of(context).push<LatLng>(
-                          MaterialPageRoute(
-                            builder: (context) => AddressPickerMap(
-                              initialLatitude: addr.latitude,
-                              initialLongitude: addr.longitude,
-                              initialSearchQuery: addr.street,
-                              onSave: (latLng) async {
-                                await _updateCoordinates(
-                                  context,
-                                  addr.id,
-                                  latLng.latitude,
-                                  latLng.longitude,
-                                );
-                              },
-                            ),
-                            fullscreenDialog: true,
-                          ),
-                        );
-                      },
-                      icon: const Icon(Icons.map_outlined, size: 16),
-                      label: Text(
-                        addr.latitude != null && addr.longitude != null
-                            ? 'Ver / Editar Ubicación'
-                            : 'Ubicar en Mapa',
-                      ),
-                      style: OutlinedButton.styleFrom(
-                        foregroundColor: const Color(0xFF1565C0),
-                        side: const BorderSide(color: Color(0xFF1565C0)),
-                        shape: RoundedRectangleBorder(
-                          borderRadius: BorderRadius.circular(10),
-                        ),
-                      ),
-                    ),
-                  ),
-                ] else
-                  Text(
-                    'Sin dirección cargada',
-                    style: TextStyle(color: Colors.grey.shade500),
-                  ),
-              ],
-            ),
+            child: CustomerAddressesSection(customerId: customer.id),
           ),
 
           const SizedBox(height: 16),
@@ -890,18 +659,18 @@ class _CustomerProfileScreenState extends ConsumerState<CustomerProfileScreen> {
           Container(
             padding: const EdgeInsets.all(16),
             decoration: BoxDecoration(
-              color: Colors.white,
+              color: context.marilin.surface,
               borderRadius: BorderRadius.circular(16),
-              border: Border.all(color: const Color(0xFFE2E8F0)),
+              border: Border.all(color: context.marilin.border),
             ),
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                const Row(
+                Row(
                   children: [
                     Icon(
                       Icons.person_outline_rounded,
-                      color: Color(0xFF1565C0),
+                      color: MarilinColors.brandBlue,
                       size: 20,
                     ),
                     SizedBox(width: 8),
@@ -910,18 +679,18 @@ class _CustomerProfileScreenState extends ConsumerState<CustomerProfileScreen> {
                       style: TextStyle(
                         fontSize: 15,
                         fontWeight: FontWeight.w700,
-                        color: Color(0xFF0D1B3E),
+                        color: context.marilin.ink,
                       ),
                     ),
                   ],
                 ),
-                const Divider(height: 24, color: Color(0xFFE2E8F0)),
+                Divider(height: 24, color: context.marilin.border),
                 _buildDataRow(
                   label: 'Teléfono',
                   value: customer.phone ?? 'No registrado',
                   icon: Icons.phone_android_rounded,
                 ),
-                const Divider(height: 16, color: Color(0xFFF1F5F9)),
+                Divider(height: 16, color: context.marilin.fill),
                 _buildDataRow(
                   label: 'Frecuencia de compra',
                   value: customer.isFrequent
@@ -948,7 +717,7 @@ class _CustomerProfileScreenState extends ConsumerState<CustomerProfileScreen> {
   }) {
     return Row(
       children: [
-        Icon(icon, size: 18, color: Colors.grey.shade400),
+        Icon(icon, size: 18, color: context.marilin.inkHint),
         const SizedBox(width: 12),
         Expanded(
           child: Column(
@@ -957,9 +726,9 @@ class _CustomerProfileScreenState extends ConsumerState<CustomerProfileScreen> {
               Text(
                 label,
                 style: TextStyle(
-                  fontSize: 11,
+                  fontSize: 12,
                   fontWeight: FontWeight.w600,
-                  color: Colors.grey.shade400,
+                  color: context.marilin.inkHint,
                 ),
               ),
               const SizedBox(height: 2),
@@ -968,7 +737,7 @@ class _CustomerProfileScreenState extends ConsumerState<CustomerProfileScreen> {
                 style: TextStyle(
                   fontSize: 14,
                   fontWeight: FontWeight.w600,
-                  color: valueColor ?? const Color(0xFF0D1B3E),
+                  color: valueColor ?? context.marilin.ink,
                 ),
               ),
             ],
@@ -984,7 +753,7 @@ class _CustomerProfileScreenState extends ConsumerState<CustomerProfileScreen> {
     required int count,
   }) {
     final hasStock = count > 0;
-    final color = hasStock ? const Color(0xFF1565C0) : Colors.grey.shade400;
+    final color = hasStock ? MarilinColors.brandBlue : context.marilin.inkHint;
 
     return Row(
       children: [
@@ -992,8 +761,8 @@ class _CustomerProfileScreenState extends ConsumerState<CustomerProfileScreen> {
           padding: const EdgeInsets.all(4),
           decoration: BoxDecoration(
             color: hasStock
-                ? const Color(0xFF1565C0).withValues(alpha: 0.08)
-                : Colors.grey.shade100,
+                ? MarilinColors.brandBlue.withValues(alpha: 0.08)
+                : context.marilin.fill,
             shape: BoxShape.circle,
           ),
           child: Icon(icon, size: 14, color: color),
@@ -1005,7 +774,7 @@ class _CustomerProfileScreenState extends ConsumerState<CustomerProfileScreen> {
             style: TextStyle(
               fontSize: 12,
               fontWeight: FontWeight.w600,
-              color: hasStock ? const Color(0xFF0D1B3E) : Colors.grey.shade500,
+              color: hasStock ? context.marilin.ink : context.marilin.textMuted,
             ),
           ),
         ),
@@ -1032,181 +801,24 @@ class _CustomerProfileScreenState extends ConsumerState<CustomerProfileScreen> {
       child: Column(
         mainAxisSize: MainAxisSize.min,
         children: [
-          Icon(icon, size: 48, color: Colors.grey.shade300),
+          Icon(icon, size: 48, color: context.marilin.lineStrong),
           const SizedBox(height: 16),
           Text(
             title,
-            style: const TextStyle(
+            style: TextStyle(
               fontSize: 15,
               fontWeight: FontWeight.w700,
-              color: Color(0xFF0D1B3E),
+              color: context.marilin.ink,
             ),
           ),
           const SizedBox(height: 6),
           Text(
             subtitle,
             textAlign: TextAlign.center,
-            style: TextStyle(fontSize: 13, color: Colors.grey.shade500),
+            style: TextStyle(fontSize: 13, color: context.marilin.textMuted),
           ),
         ],
       ),
-    );
-  }
-}
-
-class ProfileContainerReturnDialog extends ConsumerStatefulWidget {
-  const ProfileContainerReturnDialog({super.key, required this.customer});
-
-  final Customer customer;
-
-  @override
-  ConsumerState<ProfileContainerReturnDialog> createState() =>
-      _ProfileContainerReturnDialogState();
-}
-
-class _ProfileContainerReturnDialogState
-    extends ConsumerState<ProfileContainerReturnDialog> {
-  final Map<String, int> _returns = {'BIDON_20L': 0, 'SIFON_2L': 0};
-
-  @override
-  Widget build(BuildContext context) {
-    final balancesAsync = ref.watch(
-      customerContainerBalancesProvider(widget.customer.id),
-    );
-    final balances = balancesAsync.maybeWhen(
-      data: (list) => list,
-      orElse: () => <CustomerContainerBalance>[],
-    );
-
-    return AlertDialog(
-      title: const Text(
-        'Registrar Retorno de Envases',
-        style: TextStyle(fontWeight: FontWeight.bold),
-      ),
-      content: SingleChildScrollView(
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            const Text(
-              'Ajustá la cantidad de envases vacíos que devuelve el cliente.',
-              style: TextStyle(color: Colors.grey, fontSize: 14),
-            ),
-            const SizedBox(height: 16),
-            ...['BIDON_20L', 'SIFON_2L'].map((type) {
-              final returned = _returns[type] ?? 0;
-              final label = type == 'BIDON_20L' ? 'Bidón 20L' : 'Sifón 2L';
-              final balance = balances
-                  .firstWhere(
-                    (b) => b.containerType == type,
-                    orElse: () => CustomerContainerBalance(
-                      customerId: widget.customer.id,
-                      containerType: type,
-                      quantity: 0,
-                    ),
-                  )
-                  .quantity;
-
-              return Padding(
-                padding: const EdgeInsets.symmetric(vertical: 8.0),
-                child: Row(
-                  children: [
-                    Expanded(
-                      child: Text(
-                        label,
-                        style: const TextStyle(
-                          fontWeight: FontWeight.bold,
-                          fontSize: 16,
-                        ),
-                      ),
-                    ),
-                    Row(
-                      children: [
-                        IconButton(
-                          onPressed: returned > 0
-                              ? () {
-                                  setState(() {
-                                    _returns[type] = returned - 1;
-                                  });
-                                }
-                              : null,
-                          icon: const Icon(Icons.remove_circle_outline),
-                          color: const Color(0xFFEF4444),
-                        ),
-                        SizedBox(
-                          width: 32,
-                          child: Text(
-                            '$returned',
-                            textAlign: TextAlign.center,
-                            style: const TextStyle(
-                              fontSize: 16,
-                              fontWeight: FontWeight.bold,
-                            ),
-                          ),
-                        ),
-                        IconButton(
-                          onPressed: returned < balance
-                              ? () {
-                                  setState(() {
-                                    _returns[type] = returned + 1;
-                                  });
-                                }
-                              : null,
-                          icon: const Icon(Icons.add_circle_outline),
-                          color: const Color(0xFF1565C0),
-                        ),
-                      ],
-                    ),
-                  ],
-                ),
-              );
-            }),
-          ],
-        ),
-      ),
-      actions: [
-        TextButton(
-          onPressed: () => Navigator.of(context).pop(),
-          child: const Text('Cancelar'),
-        ),
-        FilledButton(
-          onPressed: () async {
-            final repository = ref.read(inventoryRepositoryProvider);
-            for (final type in ['BIDON_20L', 'SIFON_2L']) {
-              final returnedQty = _returns[type] ?? 0;
-              if (returnedQty > 0) {
-                final movement = ContainerMovement(
-                  id: const Uuid().v4(),
-                  customerId: widget.customer.id,
-                  containerType: type,
-                  deliveredQuantity: 0,
-                  returnedQuantity: returnedQty,
-                  createdAt: DateTime.now(),
-                );
-                await repository.recordContainerMovement(movement);
-              }
-            }
-
-            ref.invalidate(
-              customerContainerBalancesProvider(widget.customer.id),
-            );
-
-            if (context.mounted) {
-              Navigator.of(context).pop();
-              TopToast.show(
-                context,
-                message: 'Retorno de envases registrado',
-                icon: Icons.check_circle_rounded,
-                color: const Color(0xFF10B981),
-              );
-            }
-          },
-          style: FilledButton.styleFrom(
-            backgroundColor: const Color(0xFF1565C0),
-          ),
-          child: const Text('Guardar'),
-        ),
-      ],
     );
   }
 }

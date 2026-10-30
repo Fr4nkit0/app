@@ -28,19 +28,4 @@ extension PaymentMethodLabel on PaymentMethod {
         return 'Rinde Ruta';
     }
   }
-
-  String get icon {
-    switch (this) {
-      case PaymentMethod.cash:
-        return '💵';
-      case PaymentMethod.transfer:
-        return '🏦';
-      case PaymentMethod.mixed:
-        return '🔀';
-      case PaymentMethod.credit:
-        return '🗓️';
-      case PaymentMethod.route:
-        return '🚛';
-    }
-  }
 }

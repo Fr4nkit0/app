@@ -1,11 +1,20 @@
-import 'package:app/core/utils/resource.dart';
+import 'package:app/core/errors/domain_failure.dart';
 import 'package:app/features/customers/domain/models/customer.dart';
+import 'package:app/features/customers/domain/models/customer_edit.dart';
 
 abstract class CustomerRepository {
-  Future<Resource<void>> saveCustomer(Customer customer);
-  Future<Resource<Customer?>> getCustomerById(String id);
-  Future<Resource<void>> updateCustomer(Customer customer);
-  Future<Resource<void>> deleteCustomer(String customerId);
+  // Writes queue their pending change; run them inside a use case's unit
+  // of work.
+  Future<void> saveCustomer(Customer customer);
+  Future<Customer?> getCustomerById(String id);
+
+  /// Writes the name, phone and delivery address of [edit] and queues the
+  /// customer. Throws [NotFoundFailure] when the customer does not exist.
+  Future<void> editCustomer(CustomerEdit edit);
+
+  /// Disables the customer, which hides it from every list, and queues it.
+  /// Throws [NotFoundFailure] when the customer does not exist.
+  Future<void> disableCustomer(String customerId);
   Stream<int> watchCustomerCount();
   Stream<List<Customer>> watchAllCustomers();
   Future<List<Customer>> getCustomersPage({
@@ -17,9 +26,4 @@ abstract class CustomerRepository {
     required int page,
     required int pageSize,
   });
-  Future<Resource<void>> updateAddressCoordinates(
-    String addressId,
-    double latitude,
-    double longitude,
-  );
 }

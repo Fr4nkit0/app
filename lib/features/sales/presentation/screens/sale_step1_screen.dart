@@ -1,8 +1,12 @@
+import 'package:app/core/utils/money_formatter.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:app/core/theme/marilin_tokens.dart';
+import 'package:app/core/widgets/error_state.dart';
 import 'package:app/core/theme/sales_tokens.dart';
 import 'package:app/core/widgets/screen_header.dart';
 import 'package:app/core/widgets/core_search_bar.dart';
+import 'package:app/core/utils/string_utils.dart';
 import 'package:app/features/customers/domain/models/customer.dart';
 import 'package:app/features/customers/presentation/providers/customer_count_provider.dart';
 import 'package:app/features/customers/presentation/screens/create_customer_screens.dart';
@@ -38,12 +42,11 @@ class _SaleStep1ScreenState extends ConsumerState<SaleStep1Screen> {
 
   bool _matches(Customer c, String query) {
     if (query.isEmpty) return true;
-    final q = query.toLowerCase().trim();
-    if (c.name.toLowerCase().contains(q)) return true;
-    if (c.phone != null && c.phone!.toLowerCase().contains(q)) return true;
-    return c.addresses.any(
-      (a) => a.street != null && a.street!.toLowerCase().contains(q),
-    );
+    final addressesStr = c.addresses
+        .map((a) => '${a.street ?? ''} ${a.neighborhood ?? ''}')
+        .join(' ');
+    final target = '${c.name} ${c.phone ?? ''} $addressesStr';
+    return StringUtils.fuzzyMatch(query, target);
   }
 
   // ─── Habitual order apply ──────────────────────────────────────────────────
@@ -104,7 +107,7 @@ class _SaleStep1ScreenState extends ConsumerState<SaleStep1Screen> {
 
     return Scaffold(
       primary: false,
-      backgroundColor: Colors.white,
+      backgroundColor: context.marilin.scaffoldMuted,
       body: Column(
         children: [
           Expanded(
@@ -114,7 +117,9 @@ class _SaleStep1ScreenState extends ConsumerState<SaleStep1Screen> {
                 children: [
                   ScreenHeader(
                     title: 'Nueva Venta',
-                    subtitle: 'Elegí el cliente para registrar la venta',
+                    subtitle: inSelectedMode
+                        ? 'Elegí los productos de la venta'
+                        : 'Elegí el cliente para registrar la venta',
                     onBackPressed: Navigator.canPop(context)
                         ? () => Navigator.of(context).pop()
                         : null,
@@ -135,7 +140,9 @@ class _SaleStep1ScreenState extends ConsumerState<SaleStep1Screen> {
                         ? _SelectedMode(
                             customer: customer,
                             onChangeCustomer: () {
-                              ref.read(saleDraftProvider.notifier).clearCustomer();
+                              ref
+                                  .read(saleDraftProvider.notifier)
+                                  .clearCustomer();
                               setState(() {
                                 _query = '';
                                 _searchController.clear();
@@ -151,22 +158,29 @@ class _SaleStep1ScreenState extends ConsumerState<SaleStep1Screen> {
                             onSelectCustomer: (c) => ref
                                 .read(saleDraftProvider.notifier)
                                 .selectCustomer(c),
-                            onNewCustomer: () => Navigator.of(context).push(
-                              MaterialPageRoute(
-                                builder: (_) => const CreateCustomerScreen(),
-                              ),
-                            ),
+                            onNewCustomer: () async {
+                              final created = await Navigator.of(context)
+                                  .push<Customer>(
+                                    MaterialPageRoute(
+                                      builder: (_) =>
+                                          const CreateCustomerScreen(),
+                                    ),
+                                  );
+                              // The new customer is selected so the sale goes
+                              // straight to picking products.
+                              if (created != null) {
+                                ref
+                                    .read(saleDraftProvider.notifier)
+                                    .selectCustomer(created);
+                              }
+                            },
                           ),
                   ),
                 ],
               ),
             ),
           ),
-          _StickyFooter(
-            draft: draft,
-            label: ctaLabel,
-            onTap: ctaAction,
-          ),
+          _StickyFooter(draft: draft, label: ctaLabel, onTap: ctaAction),
           SizedBox(height: bottomInset),
         ],
       ),
@@ -267,8 +281,13 @@ class _SearchMode extends ConsumerWidget {
               );
             },
             loading: () => const Center(child: CircularProgressIndicator()),
-            error: (e, _) =>
-                const Center(child: Text('Error al cargar clientes')),
+            error: (e, _) => ErrorState(
+              title: 'No pudimos cargar los clientes',
+              message:
+                  'Revisá la conexión y reintentá. '
+                  'Lo que ya cargaste sigue guardado en el teléfono.',
+              onRetry: () => ref.invalidate(customerListProvider),
+            ),
           ),
         ),
       ],
@@ -292,7 +311,8 @@ class _SelectedMode extends ConsumerWidget {
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final tokens = Theme.of(context).extension<SalesTokens>()!;
-    final productsAsync = ref.watch(productListProvider);
+    // Priced for this customer: agreement in force, else list price.
+    final productsAsync = ref.watch(customerProductListProvider(customer.id));
 
     final draft = ref.watch(saleDraftProvider);
     final isFromRouteStop = draft.visitId != null;
@@ -356,9 +376,9 @@ class _SelectedMode extends ConsumerWidget {
                   child: Text(
                     'PRODUCTOS',
                     style: TextStyle(
-                      fontSize: 11,
+                      fontSize: 13,
                       fontWeight: FontWeight.w700,
-                      color: Colors.grey.shade500,
+                      color: context.marilin.textMuted,
                       letterSpacing: 0.8,
                     ),
                   ),
@@ -385,13 +405,22 @@ class _SelectedMode extends ConsumerWidget {
                           SaleItem(product: p, quantity: 0),
                           qty - 1,
                         ),
+                    onQuantitySubmitted: (value) => ref
+                        .read(saleDraftProvider.notifier)
+                        .setQuantity(SaleItem(product: p, quantity: 0), value),
                   );
                 }),
               ],
             ),
             loading: () => const Center(child: CircularProgressIndicator()),
-            error: (e, _) =>
-                const Center(child: Text('Error al cargar productos')),
+            error: (e, _) => ErrorState(
+              title: 'No pudimos cargar los productos',
+              message:
+                  'Revisá la conexión y reintentá. '
+                  'Lo que ya cargaste sigue guardado en el teléfono.',
+              onRetry: () =>
+                  ref.invalidate(customerProductListProvider(customer.id)),
+            ),
           ),
         ),
       ],
@@ -444,7 +473,10 @@ class _HabitualOrderCard extends StatelessWidget {
                 ),
                 Text(
                   labels.join(' · '),
-                  style: TextStyle(fontSize: 12, color: Colors.grey.shade600),
+                  style: TextStyle(
+                    fontSize: 12,
+                    color: context.marilin.inkSecondary,
+                  ),
                 ),
               ],
             ),
@@ -480,13 +512,13 @@ class _EmptyState extends StatelessWidget {
       child: Column(
         mainAxisAlignment: MainAxisAlignment.center,
         children: [
-          Icon(Icons.search_off, size: 48, color: Colors.grey.shade300),
+          Icon(Icons.search_off, size: 48, color: context.marilin.lineStrong),
           const SizedBox(height: 16),
           Text(
             'Sin resultados para "$query"',
             style: TextStyle(
               fontWeight: FontWeight.w700,
-              color: Colors.grey.shade600,
+              color: context.marilin.inkSecondary,
               fontSize: 15,
             ),
             textAlign: TextAlign.center,
@@ -494,7 +526,7 @@ class _EmptyState extends StatelessWidget {
           const SizedBox(height: 8),
           Text(
             '¿Buscás por teléfono o dirección?',
-            style: TextStyle(color: Colors.grey.shade400, fontSize: 13),
+            style: TextStyle(color: context.marilin.inkHint, fontSize: 13),
             textAlign: TextAlign.center,
           ),
         ],
@@ -516,9 +548,9 @@ class _SectionHeader extends StatelessWidget {
       child: Text(
         label.toUpperCase(),
         style: TextStyle(
-          fontSize: 11,
+          fontSize: 13,
           fontWeight: FontWeight.w700,
-          color: Colors.grey.shade500,
+          color: context.marilin.textMuted,
           letterSpacing: 0.8,
         ),
       ),
@@ -545,8 +577,10 @@ class _StickyFooter extends StatelessWidget {
     final enabled = onTap != null;
     return Container(
       decoration: BoxDecoration(
-        color: Colors.white,
-        border: Border(top: BorderSide(color: Colors.grey.shade200, width: 1)),
+        color: context.marilin.surface,
+        border: Border(
+          top: BorderSide(color: context.marilin.border, width: 1),
+        ),
         boxShadow: [
           BoxShadow(
             color: Colors.black.withValues(alpha: 0.05),
@@ -567,13 +601,13 @@ class _StickyFooter extends StatelessWidget {
                 Text(
                   '${draft.items.length} producto${draft.items.length != 1 ? 's' : ''}',
                   style: TextStyle(
-                    color: Colors.grey.shade500,
+                    color: context.marilin.textMuted,
                     fontSize: 14,
                     fontWeight: FontWeight.w600,
                   ),
                 ),
                 Text(
-                  'Total: \$${draft.total.toStringAsFixed(0)}',
+                  'Total: ${formatMoney(draft.total)}',
                   style: TextStyle(
                     fontWeight: FontWeight.w900,
                     color: tokens.primary,
@@ -591,11 +625,10 @@ class _StickyFooter extends StatelessWidget {
             height: 56,
             child: FilledButton(
               onPressed: onTap,
+              // Disabled colors come from the theme: a visible, inactive shape.
               style: FilledButton.styleFrom(
-                backgroundColor: enabled
-                    ? tokens.primary
-                    : Colors.grey.shade200,
-                foregroundColor: enabled ? Colors.white : Colors.grey.shade400,
+                backgroundColor: tokens.primary,
+                foregroundColor: Colors.white,
                 minimumSize: const Size(double.infinity, 56),
                 elevation: enabled ? 4 : 0,
                 shadowColor: tokens.primary.withValues(alpha: 0.4),

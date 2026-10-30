@@ -46,6 +46,30 @@ void main() {
       );
       expect(find.text('Soda 1.5L'), findsOneWidget);
       expect(find.textContaining('\$900'), findsOneWidget);
+      expect(find.textContaining('acuerdo'), findsNothing);
+    });
+
+    testWidgets('marks a price that comes from the customer agreement', (
+      tester,
+    ) async {
+      const product = Product(
+        id: 'p1',
+        name: 'Agua 20L',
+        unitLabel: 'bidón',
+        price: 1200,
+        agreementId: 31,
+      );
+      await tester.pumpWidget(
+        _wrap(
+          ProductQuantityRow(
+            product: product,
+            quantity: 0,
+            onIncrement: () {},
+            onDecrement: () {},
+          ),
+        ),
+      );
+      expect(find.text('\$1.200 c/u · acuerdo'), findsOneWidget);
     });
 
     testWidgets('calls onIncrement when + button is tapped', (tester) async {
@@ -86,22 +110,7 @@ void main() {
       expect(decrementCalled, 1);
     });
 
-    testWidgets('shows subtotal text when quantity > 0', (tester) async {
-      final product = _makeProduct(price: 1000);
-      await tester.pumpWidget(
-        _wrap(
-          ProductQuantityRow(
-            product: product,
-            quantity: 3,
-            onIncrement: () {},
-            onDecrement: () {},
-          ),
-        ),
-      );
-      // Subtotal = 1000 * 3 = 3000
-      expect(find.textContaining('Subtotal'), findsOneWidget);
-      expect(find.textContaining('3000'), findsOneWidget);
-    });
+    // Subtotal test removed as ProductQuantityRow no longer displays subtotal
 
     testWidgets('decrement button is disabled when quantity is 0', (
       tester,
@@ -122,6 +131,70 @@ void main() {
       await tester.tap(find.byIcon(Icons.remove_rounded), warnIfMissed: false);
       await tester.pump();
       expect(decrementCalled, 0);
+    });
+  
+    testWidgets('a product without price shows it and cannot be incremented', (
+      tester,
+    ) async {
+      var incrementCalled = 0;
+      await tester.pumpWidget(
+        _wrap(
+          ProductQuantityRow(
+            product: _makeProduct(price: 0),
+            quantity: 0,
+            onIncrement: () => incrementCalled++,
+            onDecrement: () {},
+          ),
+        ),
+      );
+
+      expect(find.text('Sin precio · no se puede vender'), findsOneWidget);
+      await tester.tap(find.byIcon(Icons.add_rounded));
+      expect(incrementCalled, 0);
+    });
+  });
+
+  group('ProductQuantityRow truck stock warning', () {
+    Product stocked(int available) => Product(
+      id: 'p1',
+      name: 'Agua 20L',
+      unitLabel: 'bidón',
+      price: 1500,
+      available: available,
+    );
+
+    testWidgets('warns when the quantity exceeds the truck stock and still '
+        'allows adding more', (tester) async {
+      var increments = 0;
+      await tester.pumpWidget(
+        _wrap(
+          ProductQuantityRow(
+            product: stocked(3),
+            quantity: 5,
+            onIncrement: () => increments++,
+            onDecrement: () {},
+          ),
+        ),
+      );
+
+      expect(find.text('Solo quedan 3 en el camión'), findsOneWidget);
+      await tester.tap(find.byIcon(Icons.add_rounded));
+      expect(increments, 1);
+    });
+
+    testWidgets('shows no warning within the truck stock', (tester) async {
+      await tester.pumpWidget(
+        _wrap(
+          ProductQuantityRow(
+            product: stocked(3),
+            quantity: 3,
+            onIncrement: () {},
+            onDecrement: () {},
+          ),
+        ),
+      );
+
+      expect(find.textContaining('Solo quedan'), findsNothing);
     });
   });
 }

@@ -20,6 +20,11 @@ class SaleTable extends Table with Timestamps {
   late final visitId = text().nullable()();
   late final cashAmount = real().nullable()();
   late final transferAmount = real().nullable()();
+  late final status = text().withDefault(
+    const Constant('CONFIRMED'),
+  )(); // RecordStatus.confirmed, as a literal the generated code can copy
+  late final cancelledAt = dateTime().nullable()();
+  late final cancellationReason = text().nullable()();
 
   @override
   Set<Column<Object>> get primaryKey => {saleId};

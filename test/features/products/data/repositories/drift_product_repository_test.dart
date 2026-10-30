@@ -50,4 +50,135 @@ void main() {
       'Bidón',
     ); // Mapping description to unitLabel? Let's check Product model
   });
+
+  test('watchProductsFor uses the list price when the customer has no agreement', () async {
+    await db.into(db.productTable).insert(
+          ProductTableCompanion.insert(
+            productId: const drift.Value('prod-1'),
+            name: 'Bidón 20L',
+            price: 800.0,
+          ),
+        );
+
+    final products = await sut.watchProductsFor('cust-1').first;
+
+    expect(products.single.price, 800.0);
+    expect(products.single.agreementId, isNull);
+  });
+
+  group('watchProductsFor with two agreements in force from the same day', () {
+    Future<void> seed() async {
+      await db.into(db.customerTable).insert(
+            CustomerTableCompanion.insert(
+              customerId: const drift.Value('cust-1'),
+              name: 'Kiosco Norte',
+            ),
+          );
+      await db.into(db.productTable).insert(
+            ProductTableCompanion.insert(
+              productId: const drift.Value('prod-1'),
+              name: 'Bidón 20L',
+              price: 800.0,
+            ),
+          );
+    }
+
+    Future<void> agreement(String id, double price, {int? serverId}) =>
+        db.into(db.customerAgreementTable).insert(
+              CustomerAgreementTableCompanion.insert(
+                agreementId: drift.Value(id),
+                customerId: 'cust-1',
+                productId: 'prod-1',
+                unitPrice: price,
+                validFrom: '2026-10-01',
+                serverId: drift.Value(serverId),
+              ),
+            );
+
+    test('the one with the highest server id wins, like the server', () async {
+      await seed();
+      await agreement('a-low', 650.0, serverId: 3);
+      await agreement('a-high', 700.0, serverId: 9);
+
+      final products = await sut
+          .watchProductsFor('cust-1', day: DateTime(2026, 10, 20))
+          .first;
+
+      expect(products.single.price, 700.0);
+      expect(products.single.agreementId, 9);
+    });
+
+    test('one not yet synced wins, because the server will give it the highest id', () async {
+      await seed();
+      await agreement('a-synced', 700.0, serverId: 9);
+      await agreement('a-local', 600.0);
+
+      final products = await sut
+          .watchProductsFor('cust-1', day: DateTime(2026, 10, 20))
+          .first;
+
+      expect(products.single.price, 600.0);
+      expect(products.single.agreementUuid, 'a-local');
+    });
+  });
+
+  group('containerType', () {
+    Future<void> seedProduct(String id, String name, {int? containerTypeId}) =>
+        db.into(db.productTable).insert(
+              ProductTableCompanion.insert(
+                productId: drift.Value(id),
+                name: name,
+                price: 800.0,
+                containerTypeId: drift.Value(containerTypeId),
+              ),
+            );
+
+    setUp(() async {
+      await db.into(db.containerTypeTable).insert(
+            ContainerTypeTableCompanion.insert(
+              id: const drift.Value(7),
+              code: 'JUG_12L',
+              description: const drift.Value('Jug 12L'),
+            ),
+          );
+    });
+
+    test('is the catalog code of the product containerTypeId', () async {
+      // The name would guess another type: the catalog link wins.
+      await seedProduct('prod-1', 'Agua 20L', containerTypeId: 7);
+
+      final product = (await sut.watchAllProducts().first).single;
+
+      expect(product.containerType, 'JUG_12L');
+    });
+
+    test('is null without a containerTypeId, whatever the name says', () async {
+      await seedProduct('prod-1', 'Agua 20L');
+      await seedProduct('prod-2', 'Sifón 1.5L');
+      await seedProduct('prod-3', 'Hielo');
+
+      final products = await sut.watchAllProducts().first;
+
+      expect(
+        {for (final p in products) p.id: p.containerType},
+        {'prod-1': null, 'prod-2': null, 'prod-3': null},
+      );
+    });
+
+    test('is null when the catalog lacks the type, e.g. a disabled one', () async {
+      await seedProduct('prod-1', 'Agua 20L', containerTypeId: 99);
+
+      final product = (await sut.watchAllProducts().first).single;
+
+      expect(product.containerType, isNull);
+    });
+
+    test('is resolved for customer priced products too', () async {
+      await seedProduct('prod-1', 'Hielo', containerTypeId: 7);
+
+      final product = (await sut.watchProductsFor('cust-1').first).single;
+
+      expect(product.containerType, 'JUG_12L');
+    });
+  });
 }
