@@ -1,6 +1,7 @@
 import 'package:drift/drift.dart';
 
 import 'package:app/core/services/database.helper.dart';
+import 'package:app/features/sales/data/database/record_status.dart';
 import 'package:app/features/sync/data/repositories/pending_change.repository.dart';
 import 'package:app/features/sync/domain/models/pending_change.dart';
 import 'package:app/features/visits/data/repositories/visit.repository.dart';
@@ -105,7 +106,11 @@ class DriftVisitRepository implements VisitRepository {
   Future<bool> stopHasSales(String routeStopId) async {
     final sale =
         await (_db.select(_db.saleTable)
-              ..where((t) => t.visitId.equals(routeStopId))
+              ..where(
+                (t) =>
+                    t.visitId.equals(routeStopId) &
+                    t.status.equals(RecordStatus.confirmed),
+              )
               ..limit(1))
             .getSingleOrNull();
     return sale != null;

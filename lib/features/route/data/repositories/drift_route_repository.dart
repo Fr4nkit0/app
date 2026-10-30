@@ -45,7 +45,7 @@ class DriftRouteRepository implements RouteRepository {
           _db.routeTable.route_date.equals(todayStr) &
               _db.routeTable.enabled.equals(true) &
               _db.routeStopTable.enabled.equals(true) &
-              _db.customerTable.enabled.equals(true),
+              (_db.customerTable.enabled.equals(true) | _closedStop()),
         );
 
     // The joined query alone would not re-emit when a visit or one of its
@@ -150,6 +150,18 @@ class DriftRouteRepository implements RouteRepository {
 
       return stops;
     });
+  }
+
+  /// Whether the joined stop is closed: no longer pending or with a recorded
+  /// visit. Disabling a customer hides only its open stops, so the work done
+  /// today stays on the route and in its counters.
+  Expression<bool> _closedStop() {
+    final visits = _db.select(_db.visitTable)
+      ..where(
+        (v) => v.routeStopId.equalsExp(_db.routeStopTable.routeStopId),
+      );
+    return _db.routeStopTable.status.equals(StopStatus.pending.name).not() |
+        existsQuery(visits);
   }
 
   /// The summary of each stop in [stopIds] with a recorded visit. Sales,

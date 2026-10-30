@@ -609,6 +609,157 @@ void main() {
       expect(emissions.last.single.visit?.collected, 2000);
     });
   });
+
+  // ──────────────────────────────────────────────────────────────────────────
+  // A disabled customer keeps its closed stops of the day
+  // ──────────────────────────────────────────────────────────────────────────
+
+  group('watchDayStops — disabled customer', () {
+    final now = DateTime.now();
+    DateTime at(int hour) => DateTime(now.year, now.month, now.day, hour);
+
+    Future<void> disableCustomer(String customerId) => (db.update(
+      db.customerTable,
+    )..where((t) => t.customerId.equals(customerId))).write(
+      const CustomerTableCompanion(enabled: drift.Value(false)),
+    );
+
+    Future<void> visit(String stopId, String customerId) => db
+        .into(db.visitTable)
+        .insert(
+          VisitTableCompanion.insert(
+            routeStopId: stopId,
+            customerId: customerId,
+            visitType: 'sale',
+            arrived_at: now,
+          ),
+        );
+
+    setUp(() async {
+      await insertRoute('route-today', todayStr);
+      // mock-customer-1: a stop closed with a cash sale; a pending one later.
+      await insertStop(
+        stopId: 'stop-closed',
+        routeId: 'route-today',
+        customerId: 'mock-customer-1',
+        sequence: 1,
+        status: 'done',
+        scheduledAt: at(9),
+      );
+      await visit('stop-closed', 'mock-customer-1');
+      await db
+          .into(db.saleTable)
+          .insert(
+            SaleTableCompanion.insert(
+              saleId: const drift.Value('sale-1'),
+              customerId: 'mock-customer-1',
+              totalAmount: 5700,
+              paymentMethod: 'cash',
+              quantity: 0,
+              shipping_amount: 0,
+              visitId: const drift.Value('stop-closed'),
+            ),
+          );
+      await insertStop(
+        stopId: 'stop-pending',
+        routeId: 'route-today',
+        customerId: 'mock-customer-1',
+        sequence: 2,
+        scheduledAt: at(15),
+      );
+      // mock-customer-2 stays enabled with one pending stop.
+      await insertStop(
+        stopId: 'stop-other',
+        routeId: 'route-today',
+        customerId: 'mock-customer-2',
+        sequence: 3,
+        scheduledAt: at(11),
+      );
+    });
+
+    test('its closed stop stays with its visit summary', () async {
+      await disableCustomer('mock-customer-1');
+
+      final stops = await sut.watchDayStops().first;
+      final closed = stops.where((s) => s.id == 'stop-closed').single;
+
+      expect(closed.status, StopStatus.done);
+      expect(closed.customer.name, 'José García');
+      expect(closed.visit?.salesTotal, 5700);
+      expect(closed.visit?.saleMethods, [PaymentMethod.cash]);
+    });
+
+    test('its absent and rescheduled stops stay too', () async {
+      await insertStop(
+        stopId: 'stop-absent',
+        routeId: 'route-today',
+        customerId: 'mock-customer-1',
+        sequence: 4,
+        status: 'absent',
+        scheduledAt: at(10),
+      );
+      await insertStop(
+        stopId: 'stop-rescheduled',
+        routeId: 'route-today',
+        customerId: 'mock-customer-1',
+        sequence: 5,
+        status: 'rescheduled',
+        scheduledAt: at(12),
+      );
+      await disableCustomer('mock-customer-1');
+
+      final ids = (await sut.watchDayStops().first).map((s) => s.id);
+
+      expect(ids, containsAll(['stop-absent', 'stop-rescheduled']));
+    });
+
+    test('a pending stop with a recorded visit stays', () async {
+      await visit('stop-pending', 'mock-customer-1');
+      await disableCustomer('mock-customer-1');
+
+      final ids = (await sut.watchDayStops().first).map((s) => s.id);
+
+      expect(ids, contains('stop-pending'));
+    });
+
+    test('its pending stop without a visit is hidden', () async {
+      await disableCustomer('mock-customer-1');
+
+      final ids = (await sut.watchDayStops().first).map((s) => s.id);
+
+      expect(ids, isNot(contains('stop-pending')));
+      expect(ids, containsAll(['stop-closed', 'stop-other']));
+    });
+
+    test('the day counters count the closed stop and not the pending '
+        'one', () async {
+      await disableCustomer('mock-customer-1');
+
+      final stops = await sut.watchDayStops().first;
+      final pending = stops.where((s) => s.status == StopStatus.pending);
+
+      expect(stops.length, 2);
+      expect(stops.length - pending.length, 1);
+      expect(pending.map((s) => s.id), ['stop-other']);
+    });
+
+    test('disabling the customer while watching drops only the pending '
+        'stop', () async {
+      final emissions = <List<RouteStop>>[];
+      final sub = sut.watchDayStops().listen(emissions.add);
+      addTearDown(sub.cancel);
+      await Future.delayed(const Duration(milliseconds: 30));
+      expect(emissions.last.length, 3);
+
+      await disableCustomer('mock-customer-1');
+      await Future.delayed(const Duration(milliseconds: 30));
+
+      expect(emissions.last.map((s) => s.id), [
+        'stop-other',
+        'stop-closed',
+      ]);
+    });
+  });
 }
 
 // ──────────────────────────────────────────────────────────────────────────

@@ -104,8 +104,26 @@ void main() {
           findsOneWidget,
         );
         expect(find.text('Sin paradas por ahora'), findsNothing);
+        expect(find.text('Descargando la ruta de hoy…'), findsNothing);
         final button = find.widgetWithText(OutlinedButton, 'Sincronizar ahora');
         expect(tester.widget<OutlinedButton>(button).onPressed, isNotNull);
+      },
+    );
+
+    testWidgets(
+      'with no route for today and a sync running ($lastResult), it shows '
+      'the route downloading',
+      (tester) async {
+        await pumpRoute(tester, lastResult: lastResult, syncRunning: true);
+
+        expect(find.text('Descargando la ruta de hoy…'), findsOneWidget);
+        expect(find.text('Falta la ruta de hoy'), findsNothing);
+        expect(
+          find.text('Conectate a internet para descargar la ruta de hoy.'),
+          findsNothing,
+        );
+        expect(find.text('Sin paradas por ahora'), findsNothing);
+        expect(find.byType(OutlinedButton), findsNothing);
       },
     );
   }

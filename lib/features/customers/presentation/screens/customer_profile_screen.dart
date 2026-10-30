@@ -78,7 +78,11 @@ class _CustomerProfileScreenState extends ConsumerState<CustomerProfileScreen> {
     // Kept live so the disable dialog knows about today's stop.
     ref.watch(routeAllStopsProvider);
 
+    // Every address or preference write re-emits the customer list, which
+    // reloads this provider; keeping the shown customer keeps the scroll view
+    // (and its position) instead of swapping in the loading scaffold.
     return customerAsync.when(
+      skipLoadingOnReload: true,
       data: (customer) {
         if (customer == null) {
           return Scaffold(

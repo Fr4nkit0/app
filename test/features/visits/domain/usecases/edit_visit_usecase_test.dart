@@ -5,6 +5,7 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:app/core/errors/domain_failure.dart';
 import 'package:app/core/services/database.helper.dart';
 import 'package:app/core/usecases/drift_transaction_runner.dart';
+import 'package:app/features/sales/data/database/record_status.dart';
 import 'package:app/features/sync/domain/models/pending_change.dart';
 import 'package:app/features/sync/data/repositories/pending_change.repository.dart';
 import 'package:app/features/visits/data/repositories/drift_visit.repository.dart';
@@ -97,6 +98,20 @@ void main() {
     ),
   );
 
+  Future<void> recordSale({String status = RecordStatus.confirmed}) => db
+      .into(db.saleTable)
+      .insert(
+        SaleTableCompanion.insert(
+          customerId: 'c-1',
+          totalAmount: 100,
+          paymentMethod: 'cash',
+          quantity: 1,
+          shipping_amount: 0,
+          visitId: const drift.Value('s-1'),
+          status: drift.Value(status),
+        ),
+      );
+
   Future<VisitTableData> row() => db.select(db.visitTable).getSingle();
 
   Future<List<PendingChange>> updates() async => [
@@ -128,6 +143,18 @@ void main() {
     final queued = await updates();
     expect(queued, hasLength(1));
     expect(queued.single.entityId, 'v-1');
+  });
+
+  test('a visit whose only sale was cancelled can be edited', () async {
+    await recordVisit();
+    await recordSale(status: RecordStatus.cancelled);
+
+    await sut.execute(visitId: 'v-1', outcomeId: 1, notes: 'No estaba');
+
+    final visit = await row();
+    expect(visit.outcomeId, 1);
+    expect(visit.observations, 'No estaba');
+    expect(await updates(), hasLength(1));
   });
 
   test('null notes clear them', () async {
@@ -166,18 +193,15 @@ void main() {
 
     test('a visit with a sale', () async {
       await recordVisit();
-      await db
-          .into(db.saleTable)
-          .insert(
-            SaleTableCompanion.insert(
-              customerId: 'c-1',
-              totalAmount: 100,
-              paymentMethod: 'cash',
-              quantity: 1,
-              shipping_amount: 0,
-              visitId: const drift.Value('s-1'),
-            ),
-          );
+      await recordSale();
+
+      await expectRejected();
+    });
+
+    test('a visit with a confirmed sale next to a cancelled one', () async {
+      await recordVisit();
+      await recordSale(status: RecordStatus.cancelled);
+      await recordSale();
 
       await expectRejected();
     });

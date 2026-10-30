@@ -205,6 +205,8 @@ void main() {
       payments: [_payment(cancelled: true)],
     );
 
+    expect(find.text('Venta anulada'), findsOneWidget);
+    expect(find.text('Venta registrada'), findsNothing);
     expect(find.text('Anulada'), findsOneWidget);
     expect(find.text('Anulado'), findsOneWidget);
     expect(cancelSaleAction, findsNothing);
@@ -228,8 +230,19 @@ void main() {
     await tester.pumpAndSettle();
 
     expect(cancelSale.calls, [('sale-1', 'Devolvió el bidón')]);
+    expect(find.text('Venta anulada'), findsWidgets);
+    expect(find.text('Venta registrada'), findsNothing);
     expect(find.text('Anulada'), findsOneWidget);
     expect(cancelSaleAction, findsNothing);
+  });
+
+  testWidgets('a confirmed sale keeps the "Venta registrada" header', (
+    tester,
+  ) async {
+    await pumpVisit(tester, sales: [_sale()]);
+
+    expect(find.text('Venta registrada'), findsOneWidget);
+    expect(find.text('Venta anulada'), findsNothing);
   });
 
   testWidgets('backing out of the dialog cancels nothing', (tester) async {

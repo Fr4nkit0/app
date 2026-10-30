@@ -8,6 +8,7 @@ import 'package:app/features/route/domain/models/stop_status.dart';
 import 'package:app/features/route/presentation/providers/route_repository_provider.dart';
 import 'package:app/features/visits/presentation/screens/visit_screen.dart';
 import 'package:app/features/route/presentation/widgets/next_stop_card.dart';
+import 'package:app/features/route/presentation/widgets/route_downloading_state.dart';
 import 'package:app/features/route/presentation/widgets/route_progress_line.dart';
 import 'package:app/features/route/presentation/widgets/route_stop_card.dart';
 import 'package:app/features/inventory/presentation/providers/inventory_repository_provider.dart';
@@ -65,6 +66,8 @@ class _RouteDayScreenState extends ConsumerState<RouteDayScreen> {
     final lastSyncResult = ref.watch(syncStatusProvider).value?.lastResult;
     final routeNotDownloaded =
         lastSyncResult == null || lastSyncResult == SyncCycleResult.offline;
+    // A running sync is downloading it right now (e.g. the first sync).
+    final routeDownloading = routeNotDownloaded && isSyncRunning;
 
     return Scaffold(
       body: SafeArea(
@@ -102,23 +105,25 @@ class _RouteDayScreenState extends ConsumerState<RouteDayScreen> {
                   SliverFillRemaining(
                     // Taller than what is left on a small phone: scroll instead of overflowing.
                     hasScrollBody: false,
-                    child: EmptyState(
-                      icon: routeNotDownloaded
-                          ? Icons.cloud_off_outlined
-                          : Icons.route_outlined,
-                      title: routeNotDownloaded
-                          ? 'Falta la ruta de hoy'
-                          : 'Sin paradas por ahora',
-                      message: routeNotDownloaded
-                          ? 'Conectate a internet para descargar la ruta de hoy.'
-                          : 'Cuando la ruta del día esté cargada, va a aparecer acá.',
-                      actionLabel: isSyncRunning
-                          ? 'Sincronizando…'
-                          : 'Sincronizar ahora',
-                      onAction: isSyncRunning
-                          ? null
-                          : () => ref.read(syncEngineProvider).runCycle(),
-                    ),
+                    child: routeDownloading
+                        ? const RouteDownloadingState()
+                        : EmptyState(
+                            icon: routeNotDownloaded
+                                ? Icons.cloud_off_outlined
+                                : Icons.route_outlined,
+                            title: routeNotDownloaded
+                                ? 'Falta la ruta de hoy'
+                                : 'Sin paradas por ahora',
+                            message: routeNotDownloaded
+                                ? 'Conectate a internet para descargar la ruta de hoy.'
+                                : 'Cuando la ruta del día esté cargada, va a aparecer acá.',
+                            actionLabel: isSyncRunning
+                                ? 'Sincronizando…'
+                                : 'Sincronizar ahora',
+                            onAction: isSyncRunning
+                                ? null
+                                : () => ref.read(syncEngineProvider).runCycle(),
+                          ),
                   )
                 else ...[
                   SliverPadding(
