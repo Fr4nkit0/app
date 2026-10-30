@@ -52,6 +52,26 @@ void main() {
     expect(movement.reversesMovementId, isNull);
   });
 
+  test('a fresh install stores route stops as not requested', () async {
+    final db = AppDatabase(NativeDatabase.memory());
+    addTearDown(db.close);
+    await db.customStatement(
+      "INSERT INTO customers (customer_id, name) VALUES ('c-1', 'Ana')",
+    );
+    await db.customStatement(
+      "INSERT INTO routes (route_id, route_date) VALUES ('r-1', '2026-10-30')",
+    );
+    await db.customStatement(
+      'INSERT INTO route_stops (route_stop_id, route_id, customer_id, '
+      "sequence, scheduled_at) VALUES ('s-1', 'r-1', 'c-1', 1, 0)",
+    );
+
+    final stop = await db.select(db.routeStopTable).getSingle();
+    expect(stop.isRequested, isFalse);
+    expect(stop.note, isNull);
+    expect(stop.scheduledVisitId, isNull);
+  });
+
   test('reopening an existing empty database does not reseed it', () async {
     final dir = Directory.systemTemp.createTempSync('marilin_db_test_');
     addTearDown(() => dir.deleteSync(recursive: true));
