@@ -34,6 +34,24 @@ void main() {
     expect(sale.cancelledAt, isNull);
   });
 
+  test('a fresh install stores container movements without a sale or '
+      'reversal link', () async {
+    final db = AppDatabase(NativeDatabase.memory());
+    addTearDown(db.close);
+    await db.customStatement(
+      "INSERT INTO customers (customer_id, name) VALUES ('c-1', 'Ana')",
+    );
+    await db.customStatement(
+      'INSERT INTO container_movements (container_movement_id, customer_id, '
+      "container_type, delivered_quantity, returned_quantity) "
+      "VALUES ('mov-1', 'c-1', 'BIDON_20L', 1, 0)",
+    );
+
+    final movement = await db.select(db.containerMovementTable).getSingle();
+    expect(movement.saleId, isNull);
+    expect(movement.reversesMovementId, isNull);
+  });
+
   test('reopening an existing empty database does not reseed it', () async {
     final dir = Directory.systemTemp.createTempSync('marilin_db_test_');
     addTearDown(() => dir.deleteSync(recursive: true));

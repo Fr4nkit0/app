@@ -499,8 +499,82 @@ void main() {
       expect(sale.cancellationReason, 'x');
     });
 
-    test('the schema version is 15', () {
-      expect(db.schemaVersion, 15);
+  });
+
+  group('Database Schema Migration V15 -> V16', () {
+    late AppDatabase db;
+
+    setUp(() async {
+      db = AppDatabase(NativeDatabase.memory());
+      // Rebuild the v15 shape: container movements without their sale or
+      // reversed movement.
+      await db.customStatement(
+        'ALTER TABLE container_movements DROP COLUMN sale_id',
+      );
+      await db.customStatement(
+        'ALTER TABLE container_movements DROP COLUMN reverses_movement_id',
+      );
+      await db.customStatement(
+        "INSERT INTO customers (customer_id, name) VALUES ('c-1', 'Kiosco Norte')",
+      );
+      await db.customStatement(
+        'INSERT INTO container_movements (container_movement_id, customer_id, '
+        'container_type, delivered_quantity, returned_quantity, visit_id, '
+        "server_id) VALUES ('mov-1', 'c-1', 'BIDON_20L', 2, 1, 's-1', 801)",
+      );
+      await db.customStatement(
+        'INSERT INTO pending_changes (entity, entity_id, action) '
+        "VALUES ('container_movement', 'mov-1', 'insert')",
+      );
+    });
+
+    tearDown(() async {
+      await db.close();
+    });
+
+    test('adds the sale and reversal links and keeps existing movements and '
+        'their pending changes', () async {
+      final pending = (await db.customSelect('SELECT * FROM pending_changes')
+              .get())
+          .map((r) => r.data)
+          .toList();
+
+      await db.migration.onUpgrade(db.createMigrator(), 15, 16);
+
+      final movement = await db.select(db.containerMovementTable).getSingle();
+      expect(movement.containerMovementId, 'mov-1');
+      expect(movement.customerId, 'c-1');
+      expect(movement.containerType, 'BIDON_20L');
+      expect(movement.deliveredQuantity, 2);
+      expect(movement.returnedQuantity, 1);
+      expect(movement.visitId, 's-1');
+      expect(movement.serverId, 801);
+      expect(movement.saleId, isNull);
+      expect(movement.reversesMovementId, isNull);
+      expect(
+        (await db.customSelect('SELECT * FROM pending_changes').get())
+            .map((r) => r.data)
+            .toList(),
+        pending,
+      );
+    });
+
+    test('re-running 15->16 keeps the stored links', () async {
+      await db.migration.onUpgrade(db.createMigrator(), 15, 16);
+      await db.customStatement(
+        "UPDATE container_movements SET sale_id = 'sale-1', "
+        "reverses_movement_id = 'mov-0'",
+      );
+
+      await db.migration.onUpgrade(db.createMigrator(), 15, 16);
+
+      final movement = await db.select(db.containerMovementTable).getSingle();
+      expect(movement.saleId, 'sale-1');
+      expect(movement.reversesMovementId, 'mov-0');
+    });
+
+    test('the schema version is 16', () {
+      expect(db.schemaVersion, 16);
     });
   });
 }

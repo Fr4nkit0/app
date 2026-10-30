@@ -28,6 +28,9 @@ class ContainerMovementTable extends Table with Timestamps {
     #routeId,
     onDelete: KeyAction.setNull,
   )();
+  late final saleId = text().nullable()(); // The sale it delivered with
+  late final reversesMovementId =
+      text().nullable()(); // The movement a server reversal undoes
 
   @override
   Set<Column<Object>> get primaryKey => {containerMovementId};

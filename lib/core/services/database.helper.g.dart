@@ -9950,6 +9950,26 @@ class $ContainerMovementTableTable extends ContainerMovementTable
       'REFERENCES routes (route_id) ON DELETE SET NULL',
     ),
   );
+  static const VerificationMeta _saleIdMeta = const VerificationMeta('saleId');
+  @override
+  late final GeneratedColumn<String> saleId = GeneratedColumn<String>(
+    'sale_id',
+    aliasedName,
+    true,
+    type: DriftSqlType.string,
+    requiredDuringInsert: false,
+  );
+  static const VerificationMeta _reversesMovementIdMeta =
+      const VerificationMeta('reversesMovementId');
+  @override
+  late final GeneratedColumn<String> reversesMovementId =
+      GeneratedColumn<String>(
+        'reverses_movement_id',
+        aliasedName,
+        true,
+        type: DriftSqlType.string,
+        requiredDuringInsert: false,
+      );
   @override
   List<GeneratedColumn> get $columns => [
     createdAt,
@@ -9963,6 +9983,8 @@ class $ContainerMovementTableTable extends ContainerMovementTable
     returnedQuantity,
     visitId,
     routeId,
+    saleId,
+    reversesMovementId,
   ];
   @override
   String get aliasedName => _alias ?? actualTableName;
@@ -10065,6 +10087,21 @@ class $ContainerMovementTableTable extends ContainerMovementTable
         routeId.isAcceptableOrUnknown(data['route_id']!, _routeIdMeta),
       );
     }
+    if (data.containsKey('sale_id')) {
+      context.handle(
+        _saleIdMeta,
+        saleId.isAcceptableOrUnknown(data['sale_id']!, _saleIdMeta),
+      );
+    }
+    if (data.containsKey('reverses_movement_id')) {
+      context.handle(
+        _reversesMovementIdMeta,
+        reversesMovementId.isAcceptableOrUnknown(
+          data['reverses_movement_id']!,
+          _reversesMovementIdMeta,
+        ),
+      );
+    }
     return context;
   }
 
@@ -10121,6 +10158,14 @@ class $ContainerMovementTableTable extends ContainerMovementTable
         DriftSqlType.string,
         data['${effectivePrefix}route_id'],
       ),
+      saleId: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}sale_id'],
+      ),
+      reversesMovementId: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}reverses_movement_id'],
+      ),
     );
   }
 
@@ -10143,6 +10188,8 @@ class ContainerMovementTableData extends DataClass
   final int returnedQuantity;
   final String? visitId;
   final String? routeId;
+  final String? saleId;
+  final String? reversesMovementId;
   const ContainerMovementTableData({
     required this.createdAt,
     required this.lastModifiedDate,
@@ -10155,6 +10202,8 @@ class ContainerMovementTableData extends DataClass
     required this.returnedQuantity,
     this.visitId,
     this.routeId,
+    this.saleId,
+    this.reversesMovementId,
   });
   @override
   Map<String, Expression> toColumns(bool nullToAbsent) {
@@ -10175,6 +10224,12 @@ class ContainerMovementTableData extends DataClass
     }
     if (!nullToAbsent || routeId != null) {
       map['route_id'] = Variable<String>(routeId);
+    }
+    if (!nullToAbsent || saleId != null) {
+      map['sale_id'] = Variable<String>(saleId);
+    }
+    if (!nullToAbsent || reversesMovementId != null) {
+      map['reverses_movement_id'] = Variable<String>(reversesMovementId);
     }
     return map;
   }
@@ -10198,6 +10253,12 @@ class ContainerMovementTableData extends DataClass
       routeId: routeId == null && nullToAbsent
           ? const Value.absent()
           : Value(routeId),
+      saleId: saleId == null && nullToAbsent
+          ? const Value.absent()
+          : Value(saleId),
+      reversesMovementId: reversesMovementId == null && nullToAbsent
+          ? const Value.absent()
+          : Value(reversesMovementId),
     );
   }
 
@@ -10220,6 +10281,10 @@ class ContainerMovementTableData extends DataClass
       returnedQuantity: serializer.fromJson<int>(json['returnedQuantity']),
       visitId: serializer.fromJson<String?>(json['visitId']),
       routeId: serializer.fromJson<String?>(json['routeId']),
+      saleId: serializer.fromJson<String?>(json['saleId']),
+      reversesMovementId: serializer.fromJson<String?>(
+        json['reversesMovementId'],
+      ),
     );
   }
   @override
@@ -10237,6 +10302,8 @@ class ContainerMovementTableData extends DataClass
       'returnedQuantity': serializer.toJson<int>(returnedQuantity),
       'visitId': serializer.toJson<String?>(visitId),
       'routeId': serializer.toJson<String?>(routeId),
+      'saleId': serializer.toJson<String?>(saleId),
+      'reversesMovementId': serializer.toJson<String?>(reversesMovementId),
     };
   }
 
@@ -10252,6 +10319,8 @@ class ContainerMovementTableData extends DataClass
     int? returnedQuantity,
     Value<String?> visitId = const Value.absent(),
     Value<String?> routeId = const Value.absent(),
+    Value<String?> saleId = const Value.absent(),
+    Value<String?> reversesMovementId = const Value.absent(),
   }) => ContainerMovementTableData(
     createdAt: createdAt ?? this.createdAt,
     lastModifiedDate: lastModifiedDate ?? this.lastModifiedDate,
@@ -10264,6 +10333,10 @@ class ContainerMovementTableData extends DataClass
     returnedQuantity: returnedQuantity ?? this.returnedQuantity,
     visitId: visitId.present ? visitId.value : this.visitId,
     routeId: routeId.present ? routeId.value : this.routeId,
+    saleId: saleId.present ? saleId.value : this.saleId,
+    reversesMovementId: reversesMovementId.present
+        ? reversesMovementId.value
+        : this.reversesMovementId,
   );
   ContainerMovementTableData copyWithCompanion(
     ContainerMovementTableCompanion data,
@@ -10292,6 +10365,10 @@ class ContainerMovementTableData extends DataClass
           : this.returnedQuantity,
       visitId: data.visitId.present ? data.visitId.value : this.visitId,
       routeId: data.routeId.present ? data.routeId.value : this.routeId,
+      saleId: data.saleId.present ? data.saleId.value : this.saleId,
+      reversesMovementId: data.reversesMovementId.present
+          ? data.reversesMovementId.value
+          : this.reversesMovementId,
     );
   }
 
@@ -10308,7 +10385,9 @@ class ContainerMovementTableData extends DataClass
           ..write('deliveredQuantity: $deliveredQuantity, ')
           ..write('returnedQuantity: $returnedQuantity, ')
           ..write('visitId: $visitId, ')
-          ..write('routeId: $routeId')
+          ..write('routeId: $routeId, ')
+          ..write('saleId: $saleId, ')
+          ..write('reversesMovementId: $reversesMovementId')
           ..write(')'))
         .toString();
   }
@@ -10326,6 +10405,8 @@ class ContainerMovementTableData extends DataClass
     returnedQuantity,
     visitId,
     routeId,
+    saleId,
+    reversesMovementId,
   );
   @override
   bool operator ==(Object other) =>
@@ -10341,7 +10422,9 @@ class ContainerMovementTableData extends DataClass
           other.deliveredQuantity == this.deliveredQuantity &&
           other.returnedQuantity == this.returnedQuantity &&
           other.visitId == this.visitId &&
-          other.routeId == this.routeId);
+          other.routeId == this.routeId &&
+          other.saleId == this.saleId &&
+          other.reversesMovementId == this.reversesMovementId);
 }
 
 class ContainerMovementTableCompanion
@@ -10357,6 +10440,8 @@ class ContainerMovementTableCompanion
   final Value<int> returnedQuantity;
   final Value<String?> visitId;
   final Value<String?> routeId;
+  final Value<String?> saleId;
+  final Value<String?> reversesMovementId;
   final Value<int> rowid;
   const ContainerMovementTableCompanion({
     this.createdAt = const Value.absent(),
@@ -10370,6 +10455,8 @@ class ContainerMovementTableCompanion
     this.returnedQuantity = const Value.absent(),
     this.visitId = const Value.absent(),
     this.routeId = const Value.absent(),
+    this.saleId = const Value.absent(),
+    this.reversesMovementId = const Value.absent(),
     this.rowid = const Value.absent(),
   });
   ContainerMovementTableCompanion.insert({
@@ -10384,6 +10471,8 @@ class ContainerMovementTableCompanion
     required int returnedQuantity,
     this.visitId = const Value.absent(),
     this.routeId = const Value.absent(),
+    this.saleId = const Value.absent(),
+    this.reversesMovementId = const Value.absent(),
     this.rowid = const Value.absent(),
   }) : customerId = Value(customerId),
        containerType = Value(containerType),
@@ -10401,6 +10490,8 @@ class ContainerMovementTableCompanion
     Expression<int>? returnedQuantity,
     Expression<String>? visitId,
     Expression<String>? routeId,
+    Expression<String>? saleId,
+    Expression<String>? reversesMovementId,
     Expression<int>? rowid,
   }) {
     return RawValuesInsertable({
@@ -10416,6 +10507,9 @@ class ContainerMovementTableCompanion
       if (returnedQuantity != null) 'returned_quantity': returnedQuantity,
       if (visitId != null) 'visit_id': visitId,
       if (routeId != null) 'route_id': routeId,
+      if (saleId != null) 'sale_id': saleId,
+      if (reversesMovementId != null)
+        'reverses_movement_id': reversesMovementId,
       if (rowid != null) 'rowid': rowid,
     });
   }
@@ -10432,6 +10526,8 @@ class ContainerMovementTableCompanion
     Value<int>? returnedQuantity,
     Value<String?>? visitId,
     Value<String?>? routeId,
+    Value<String?>? saleId,
+    Value<String?>? reversesMovementId,
     Value<int>? rowid,
   }) {
     return ContainerMovementTableCompanion(
@@ -10446,6 +10542,8 @@ class ContainerMovementTableCompanion
       returnedQuantity: returnedQuantity ?? this.returnedQuantity,
       visitId: visitId ?? this.visitId,
       routeId: routeId ?? this.routeId,
+      saleId: saleId ?? this.saleId,
+      reversesMovementId: reversesMovementId ?? this.reversesMovementId,
       rowid: rowid ?? this.rowid,
     );
   }
@@ -10488,6 +10586,12 @@ class ContainerMovementTableCompanion
     if (routeId.present) {
       map['route_id'] = Variable<String>(routeId.value);
     }
+    if (saleId.present) {
+      map['sale_id'] = Variable<String>(saleId.value);
+    }
+    if (reversesMovementId.present) {
+      map['reverses_movement_id'] = Variable<String>(reversesMovementId.value);
+    }
     if (rowid.present) {
       map['rowid'] = Variable<int>(rowid.value);
     }
@@ -10508,6 +10612,8 @@ class ContainerMovementTableCompanion
           ..write('returnedQuantity: $returnedQuantity, ')
           ..write('visitId: $visitId, ')
           ..write('routeId: $routeId, ')
+          ..write('saleId: $saleId, ')
+          ..write('reversesMovementId: $reversesMovementId, ')
           ..write('rowid: $rowid')
           ..write(')'))
         .toString();
@@ -23604,6 +23710,8 @@ typedef $$ContainerMovementTableTableCreateCompanionBuilder =
       required int returnedQuantity,
       Value<String?> visitId,
       Value<String?> routeId,
+      Value<String?> saleId,
+      Value<String?> reversesMovementId,
       Value<int> rowid,
     });
 typedef $$ContainerMovementTableTableUpdateCompanionBuilder =
@@ -23619,6 +23727,8 @@ typedef $$ContainerMovementTableTableUpdateCompanionBuilder =
       Value<int> returnedQuantity,
       Value<String?> visitId,
       Value<String?> routeId,
+      Value<String?> saleId,
+      Value<String?> reversesMovementId,
       Value<int> rowid,
     });
 
@@ -23751,6 +23861,16 @@ class $$ContainerMovementTableTableFilterComposer
     builder: (column) => ColumnFilters(column),
   );
 
+  ColumnFilters<String> get saleId => $composableBuilder(
+    column: $table.saleId,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get reversesMovementId => $composableBuilder(
+    column: $table.reversesMovementId,
+    builder: (column) => ColumnFilters(column),
+  );
+
   $$CustomerTableTableFilterComposer get customerId {
     final $$CustomerTableTableFilterComposer composer = $composerBuilder(
       composer: this,
@@ -23870,6 +23990,16 @@ class $$ContainerMovementTableTableOrderingComposer
     builder: (column) => ColumnOrderings(column),
   );
 
+  ColumnOrderings<String> get saleId => $composableBuilder(
+    column: $table.saleId,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<String> get reversesMovementId => $composableBuilder(
+    column: $table.reversesMovementId,
+    builder: (column) => ColumnOrderings(column),
+  );
+
   $$CustomerTableTableOrderingComposer get customerId {
     final $$CustomerTableTableOrderingComposer composer = $composerBuilder(
       composer: this,
@@ -23980,6 +24110,14 @@ class $$ContainerMovementTableTableAnnotationComposer
 
   GeneratedColumn<int> get returnedQuantity => $composableBuilder(
     column: $table.returnedQuantity,
+    builder: (column) => column,
+  );
+
+  GeneratedColumn<String> get saleId =>
+      $composableBuilder(column: $table.saleId, builder: (column) => column);
+
+  GeneratedColumn<String> get reversesMovementId => $composableBuilder(
+    column: $table.reversesMovementId,
     builder: (column) => column,
   );
 
@@ -24103,6 +24241,8 @@ class $$ContainerMovementTableTableTableManager
                 Value<int> returnedQuantity = const Value.absent(),
                 Value<String?> visitId = const Value.absent(),
                 Value<String?> routeId = const Value.absent(),
+                Value<String?> saleId = const Value.absent(),
+                Value<String?> reversesMovementId = const Value.absent(),
                 Value<int> rowid = const Value.absent(),
               }) => ContainerMovementTableCompanion(
                 createdAt: createdAt,
@@ -24116,6 +24256,8 @@ class $$ContainerMovementTableTableTableManager
                 returnedQuantity: returnedQuantity,
                 visitId: visitId,
                 routeId: routeId,
+                saleId: saleId,
+                reversesMovementId: reversesMovementId,
                 rowid: rowid,
               ),
           createCompanionCallback:
@@ -24131,6 +24273,8 @@ class $$ContainerMovementTableTableTableManager
                 required int returnedQuantity,
                 Value<String?> visitId = const Value.absent(),
                 Value<String?> routeId = const Value.absent(),
+                Value<String?> saleId = const Value.absent(),
+                Value<String?> reversesMovementId = const Value.absent(),
                 Value<int> rowid = const Value.absent(),
               }) => ContainerMovementTableCompanion.insert(
                 createdAt: createdAt,
@@ -24144,6 +24288,8 @@ class $$ContainerMovementTableTableTableManager
                 returnedQuantity: returnedQuantity,
                 visitId: visitId,
                 routeId: routeId,
+                saleId: saleId,
+                reversesMovementId: reversesMovementId,
                 rowid: rowid,
               ),
           withReferenceMapper: (p0) => p0
