@@ -249,6 +249,38 @@ void main() {
     });
   });
 
+  group('execute — container movements', () {
+    test('movements recorded with the sale carry its id', () async {
+      ContainerMovement movement(String id, String type) => ContainerMovement(
+            id: id,
+            customerId: testCustomer.id,
+            containerType: type,
+            deliveredQuantity: 2,
+            returnedQuantity: 1,
+            createdAt: DateTime(2026),
+          );
+
+      await sut.execute(
+        makeSale(),
+        containerMovements: [movement('m-1', 'JUG'), movement('m-2', 'SIPHON')],
+      );
+
+      final rows = await db.select(db.containerMovementTable).get();
+      expect(
+        {for (final r in rows) r.containerMovementId: r.saleId},
+        {'m-1': 'sale-test-1', 'm-2': 'sale-test-1'},
+      );
+      final payloads = [
+        for (final c in await db.select(db.pendingChangeTable).get())
+          if (c.entity == 'container_movement') c.payload,
+      ];
+      expect(payloads, hasLength(2));
+      for (final p in payloads) {
+        expect(p, contains('"saleId":"sale-test-1"'));
+      }
+    });
+  });
+
   group('execute — atomic', () {
     test('a failing second write leaves no rows and no pending changes', () async {
       ContainerMovement movement() => ContainerMovement(

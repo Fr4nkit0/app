@@ -7,7 +7,9 @@ import 'pull/address_applier.dart';
 import 'pull/agreement_applier.dart';
 import 'pull/balance_applier.dart';
 import 'pull/catalogs_applier.dart';
+import 'pull/container_movement_applier.dart';
 import 'pull/customer_applier.dart';
+import 'pull/payment_applier.dart';
 import 'pull/preference_applier.dart';
 import 'pull/product_applier.dart';
 import 'pull/pull_applier.dart';
@@ -41,6 +43,8 @@ class SyncService {
       _stops = StopApplier(_db),
       _visits = VisitApplier(_db),
       _sales = SaleApplier(_db),
+      _payments = PaymentApplier(_db),
+      _movements = ContainerMovementApplier(_db),
       _truckInventory = TruckInventoryApplier(
         _db,
         today: today ?? DateTime.now,
@@ -62,6 +66,8 @@ class SyncService {
   final StopApplier _stops;
   final VisitApplier _visits;
   final SaleApplier _sales;
+  final PaymentApplier _payments;
+  final ContainerMovementApplier _movements;
   final TruckInventoryApplier _truckInventory;
 
   /// Appliers of the incremental pull in dependency order: a row is applied
@@ -142,9 +148,22 @@ class SyncService {
           context,
         );
       }
-      // Only the bootstrap carries today's visits and sales.
+      // Only the bootstrap carries today's visits, sales, payments and
+      // container movements.
       await _visits.storeToday(jsonList(data['visits']), context);
-      await _sales.storeToday(jsonList(data['sales']), context);
+      final newSales = await _sales.storeToday(
+        jsonList(data['sales']),
+        context,
+      );
+      await _payments.storeToday(jsonList(data['payments']), context);
+      // A download without payments keeps the method its sales imply.
+      if (data.containsKey('payments')) {
+        await _sales.settleFromPayments(newSales);
+      }
+      await _movements.storeToday(
+        jsonList(data['container_movements']),
+        context,
+      );
       await _saveCursor(data['server_time'] as String);
     });
   }

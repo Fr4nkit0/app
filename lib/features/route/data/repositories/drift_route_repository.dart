@@ -76,6 +76,7 @@ class DriftRouteRepository implements RouteRepository {
       final scheduledAtById = {
         for (final stop in stopRows) stop.routeStopId: stop.scheduledAt,
       };
+      final rowById = {for (final stop in stopRows) stop.routeStopId: stop};
       final rescheduledToById = {
         for (final stop in stopRows)
           if (stop.rescheduledFromStopId != null)
@@ -114,6 +115,18 @@ class DriftRouteRepository implements RouteRepository {
               ]
             : const <CustomerAddress>[];
 
+        // A stop rescheduled from a requested one keeps showing the request:
+        // the server owns the mark, so it is read from the original instead
+        // of being copied onto the new stop.
+        RouteStopTableData? requestedRow = stopRow;
+        final seen = <String>{};
+        while (requestedRow != null &&
+            !requestedRow.isRequested &&
+            seen.add(requestedRow.routeStopId)) {
+          requestedRow = rowById[requestedRow.rescheduledFromStopId];
+        }
+        final isRequested = requestedRow?.isRequested ?? false;
+
         final currentBalance = _account.balanceIn(row);
         final debtAmount = currentBalance > 0 ? currentBalance : 0.0;
 
@@ -136,6 +149,8 @@ class DriftRouteRepository implements RouteRepository {
             rescheduledFromAt: scheduledAtById[stopRow.rescheduledFromStopId],
             rescheduledToAt: rescheduledToById[stopRow.routeStopId],
             visit: visits[stopRow.routeStopId],
+            isRequested: isRequested,
+            note: isRequested ? requestedRow!.note : null,
           ),
         );
       }

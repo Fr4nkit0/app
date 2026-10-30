@@ -2786,15 +2786,6 @@ class $RouteStopTableTable extends RouteStopTable
     type: DriftSqlType.dateTime,
     requiredDuringInsert: false,
   );
-  static const VerificationMeta _notesMeta = const VerificationMeta('notes');
-  @override
-  late final GeneratedColumn<String> notes = GeneratedColumn<String>(
-    'notes',
-    aliasedName,
-    true,
-    type: DriftSqlType.string,
-    requiredDuringInsert: false,
-  );
   static const VerificationMeta _scheduledTimeMeta = const VerificationMeta(
     'scheduledTime',
   );
@@ -2817,6 +2808,41 @@ class $RouteStopTableTable extends RouteStopTable
         type: DriftSqlType.string,
         requiredDuringInsert: false,
       );
+  static const VerificationMeta _isRequestedMeta = const VerificationMeta(
+    'isRequested',
+  );
+  @override
+  late final GeneratedColumn<bool> isRequested = GeneratedColumn<bool>(
+    'is_requested',
+    aliasedName,
+    false,
+    type: DriftSqlType.bool,
+    requiredDuringInsert: false,
+    defaultConstraints: GeneratedColumn.constraintIsAlways(
+      'CHECK ("is_requested" IN (0, 1))',
+    ),
+    defaultValue: const Constant(false),
+  );
+  static const VerificationMeta _noteMeta = const VerificationMeta('note');
+  @override
+  late final GeneratedColumn<String> note = GeneratedColumn<String>(
+    'note',
+    aliasedName,
+    true,
+    type: DriftSqlType.string,
+    requiredDuringInsert: false,
+  );
+  static const VerificationMeta _scheduledVisitIdMeta = const VerificationMeta(
+    'scheduledVisitId',
+  );
+  @override
+  late final GeneratedColumn<int> scheduledVisitId = GeneratedColumn<int>(
+    'scheduled_visit_id',
+    aliasedName,
+    true,
+    type: DriftSqlType.int,
+    requiredDuringInsert: false,
+  );
   @override
   List<GeneratedColumn> get $columns => [
     createdAt,
@@ -2831,9 +2857,11 @@ class $RouteStopTableTable extends RouteStopTable
     status,
     scheduledAt,
     visitedAt,
-    notes,
     scheduledTime,
     rescheduledFromStopId,
+    isRequested,
+    note,
+    scheduledVisitId,
   ];
   @override
   String get aliasedName => _alias ?? actualTableName;
@@ -2939,12 +2967,6 @@ class $RouteStopTableTable extends RouteStopTable
         visitedAt.isAcceptableOrUnknown(data['visited_at']!, _visitedAtMeta),
       );
     }
-    if (data.containsKey('notes')) {
-      context.handle(
-        _notesMeta,
-        notes.isAcceptableOrUnknown(data['notes']!, _notesMeta),
-      );
-    }
     if (data.containsKey('scheduled_time')) {
       context.handle(
         _scheduledTimeMeta,
@@ -2960,6 +2982,30 @@ class $RouteStopTableTable extends RouteStopTable
         rescheduledFromStopId.isAcceptableOrUnknown(
           data['rescheduled_from_stop_id']!,
           _rescheduledFromStopIdMeta,
+        ),
+      );
+    }
+    if (data.containsKey('is_requested')) {
+      context.handle(
+        _isRequestedMeta,
+        isRequested.isAcceptableOrUnknown(
+          data['is_requested']!,
+          _isRequestedMeta,
+        ),
+      );
+    }
+    if (data.containsKey('note')) {
+      context.handle(
+        _noteMeta,
+        note.isAcceptableOrUnknown(data['note']!, _noteMeta),
+      );
+    }
+    if (data.containsKey('scheduled_visit_id')) {
+      context.handle(
+        _scheduledVisitIdMeta,
+        scheduledVisitId.isAcceptableOrUnknown(
+          data['scheduled_visit_id']!,
+          _scheduledVisitIdMeta,
         ),
       );
     }
@@ -3020,10 +3066,6 @@ class $RouteStopTableTable extends RouteStopTable
         DriftSqlType.dateTime,
         data['${effectivePrefix}visited_at'],
       ),
-      notes: attachedDatabase.typeMapping.read(
-        DriftSqlType.string,
-        data['${effectivePrefix}notes'],
-      ),
       scheduledTime: attachedDatabase.typeMapping.read(
         DriftSqlType.string,
         data['${effectivePrefix}scheduled_time'],
@@ -3031,6 +3073,18 @@ class $RouteStopTableTable extends RouteStopTable
       rescheduledFromStopId: attachedDatabase.typeMapping.read(
         DriftSqlType.string,
         data['${effectivePrefix}rescheduled_from_stop_id'],
+      ),
+      isRequested: attachedDatabase.typeMapping.read(
+        DriftSqlType.bool,
+        data['${effectivePrefix}is_requested'],
+      )!,
+      note: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}note'],
+      ),
+      scheduledVisitId: attachedDatabase.typeMapping.read(
+        DriftSqlType.int,
+        data['${effectivePrefix}scheduled_visit_id'],
       ),
     );
   }
@@ -3055,9 +3109,15 @@ class RouteStopTableData extends DataClass
   final String status;
   final DateTime scheduledAt;
   final DateTime? visitedAt;
-  final String? notes;
   final String? scheduledTime;
   final String? rescheduledFromStopId;
+
+  /// Set by the server when the stop carries a visit the admin scheduled.
+  final bool isRequested;
+
+  /// The admin's note for a requested visit.
+  final String? note;
+  final int? scheduledVisitId;
   const RouteStopTableData({
     required this.createdAt,
     required this.lastModifiedDate,
@@ -3071,9 +3131,11 @@ class RouteStopTableData extends DataClass
     required this.status,
     required this.scheduledAt,
     this.visitedAt,
-    this.notes,
     this.scheduledTime,
     this.rescheduledFromStopId,
+    required this.isRequested,
+    this.note,
+    this.scheduledVisitId,
   });
   @override
   Map<String, Expression> toColumns(bool nullToAbsent) {
@@ -3096,14 +3158,18 @@ class RouteStopTableData extends DataClass
     if (!nullToAbsent || visitedAt != null) {
       map['visited_at'] = Variable<DateTime>(visitedAt);
     }
-    if (!nullToAbsent || notes != null) {
-      map['notes'] = Variable<String>(notes);
-    }
     if (!nullToAbsent || scheduledTime != null) {
       map['scheduled_time'] = Variable<String>(scheduledTime);
     }
     if (!nullToAbsent || rescheduledFromStopId != null) {
       map['rescheduled_from_stop_id'] = Variable<String>(rescheduledFromStopId);
+    }
+    map['is_requested'] = Variable<bool>(isRequested);
+    if (!nullToAbsent || note != null) {
+      map['note'] = Variable<String>(note);
+    }
+    if (!nullToAbsent || scheduledVisitId != null) {
+      map['scheduled_visit_id'] = Variable<int>(scheduledVisitId);
     }
     return map;
   }
@@ -3128,15 +3194,17 @@ class RouteStopTableData extends DataClass
       visitedAt: visitedAt == null && nullToAbsent
           ? const Value.absent()
           : Value(visitedAt),
-      notes: notes == null && nullToAbsent
-          ? const Value.absent()
-          : Value(notes),
       scheduledTime: scheduledTime == null && nullToAbsent
           ? const Value.absent()
           : Value(scheduledTime),
       rescheduledFromStopId: rescheduledFromStopId == null && nullToAbsent
           ? const Value.absent()
           : Value(rescheduledFromStopId),
+      isRequested: Value(isRequested),
+      note: note == null && nullToAbsent ? const Value.absent() : Value(note),
+      scheduledVisitId: scheduledVisitId == null && nullToAbsent
+          ? const Value.absent()
+          : Value(scheduledVisitId),
     );
   }
 
@@ -3160,11 +3228,13 @@ class RouteStopTableData extends DataClass
       status: serializer.fromJson<String>(json['status']),
       scheduledAt: serializer.fromJson<DateTime>(json['scheduledAt']),
       visitedAt: serializer.fromJson<DateTime?>(json['visitedAt']),
-      notes: serializer.fromJson<String?>(json['notes']),
       scheduledTime: serializer.fromJson<String?>(json['scheduledTime']),
       rescheduledFromStopId: serializer.fromJson<String?>(
         json['rescheduledFromStopId'],
       ),
+      isRequested: serializer.fromJson<bool>(json['isRequested']),
+      note: serializer.fromJson<String?>(json['note']),
+      scheduledVisitId: serializer.fromJson<int?>(json['scheduledVisitId']),
     );
   }
   @override
@@ -3183,11 +3253,13 @@ class RouteStopTableData extends DataClass
       'status': serializer.toJson<String>(status),
       'scheduledAt': serializer.toJson<DateTime>(scheduledAt),
       'visitedAt': serializer.toJson<DateTime?>(visitedAt),
-      'notes': serializer.toJson<String?>(notes),
       'scheduledTime': serializer.toJson<String?>(scheduledTime),
       'rescheduledFromStopId': serializer.toJson<String?>(
         rescheduledFromStopId,
       ),
+      'isRequested': serializer.toJson<bool>(isRequested),
+      'note': serializer.toJson<String?>(note),
+      'scheduledVisitId': serializer.toJson<int?>(scheduledVisitId),
     };
   }
 
@@ -3204,9 +3276,11 @@ class RouteStopTableData extends DataClass
     String? status,
     DateTime? scheduledAt,
     Value<DateTime?> visitedAt = const Value.absent(),
-    Value<String?> notes = const Value.absent(),
     Value<String?> scheduledTime = const Value.absent(),
     Value<String?> rescheduledFromStopId = const Value.absent(),
+    bool? isRequested,
+    Value<String?> note = const Value.absent(),
+    Value<int?> scheduledVisitId = const Value.absent(),
   }) => RouteStopTableData(
     createdAt: createdAt ?? this.createdAt,
     lastModifiedDate: lastModifiedDate ?? this.lastModifiedDate,
@@ -3222,13 +3296,17 @@ class RouteStopTableData extends DataClass
     status: status ?? this.status,
     scheduledAt: scheduledAt ?? this.scheduledAt,
     visitedAt: visitedAt.present ? visitedAt.value : this.visitedAt,
-    notes: notes.present ? notes.value : this.notes,
     scheduledTime: scheduledTime.present
         ? scheduledTime.value
         : this.scheduledTime,
     rescheduledFromStopId: rescheduledFromStopId.present
         ? rescheduledFromStopId.value
         : this.rescheduledFromStopId,
+    isRequested: isRequested ?? this.isRequested,
+    note: note.present ? note.value : this.note,
+    scheduledVisitId: scheduledVisitId.present
+        ? scheduledVisitId.value
+        : this.scheduledVisitId,
   );
   RouteStopTableData copyWithCompanion(RouteStopTableCompanion data) {
     return RouteStopTableData(
@@ -3254,13 +3332,19 @@ class RouteStopTableData extends DataClass
           ? data.scheduledAt.value
           : this.scheduledAt,
       visitedAt: data.visitedAt.present ? data.visitedAt.value : this.visitedAt,
-      notes: data.notes.present ? data.notes.value : this.notes,
       scheduledTime: data.scheduledTime.present
           ? data.scheduledTime.value
           : this.scheduledTime,
       rescheduledFromStopId: data.rescheduledFromStopId.present
           ? data.rescheduledFromStopId.value
           : this.rescheduledFromStopId,
+      isRequested: data.isRequested.present
+          ? data.isRequested.value
+          : this.isRequested,
+      note: data.note.present ? data.note.value : this.note,
+      scheduledVisitId: data.scheduledVisitId.present
+          ? data.scheduledVisitId.value
+          : this.scheduledVisitId,
     );
   }
 
@@ -3279,9 +3363,11 @@ class RouteStopTableData extends DataClass
           ..write('status: $status, ')
           ..write('scheduledAt: $scheduledAt, ')
           ..write('visitedAt: $visitedAt, ')
-          ..write('notes: $notes, ')
           ..write('scheduledTime: $scheduledTime, ')
-          ..write('rescheduledFromStopId: $rescheduledFromStopId')
+          ..write('rescheduledFromStopId: $rescheduledFromStopId, ')
+          ..write('isRequested: $isRequested, ')
+          ..write('note: $note, ')
+          ..write('scheduledVisitId: $scheduledVisitId')
           ..write(')'))
         .toString();
   }
@@ -3300,9 +3386,11 @@ class RouteStopTableData extends DataClass
     status,
     scheduledAt,
     visitedAt,
-    notes,
     scheduledTime,
     rescheduledFromStopId,
+    isRequested,
+    note,
+    scheduledVisitId,
   );
   @override
   bool operator ==(Object other) =>
@@ -3320,9 +3408,11 @@ class RouteStopTableData extends DataClass
           other.status == this.status &&
           other.scheduledAt == this.scheduledAt &&
           other.visitedAt == this.visitedAt &&
-          other.notes == this.notes &&
           other.scheduledTime == this.scheduledTime &&
-          other.rescheduledFromStopId == this.rescheduledFromStopId);
+          other.rescheduledFromStopId == this.rescheduledFromStopId &&
+          other.isRequested == this.isRequested &&
+          other.note == this.note &&
+          other.scheduledVisitId == this.scheduledVisitId);
 }
 
 class RouteStopTableCompanion extends UpdateCompanion<RouteStopTableData> {
@@ -3338,9 +3428,11 @@ class RouteStopTableCompanion extends UpdateCompanion<RouteStopTableData> {
   final Value<String> status;
   final Value<DateTime> scheduledAt;
   final Value<DateTime?> visitedAt;
-  final Value<String?> notes;
   final Value<String?> scheduledTime;
   final Value<String?> rescheduledFromStopId;
+  final Value<bool> isRequested;
+  final Value<String?> note;
+  final Value<int?> scheduledVisitId;
   final Value<int> rowid;
   const RouteStopTableCompanion({
     this.createdAt = const Value.absent(),
@@ -3355,9 +3447,11 @@ class RouteStopTableCompanion extends UpdateCompanion<RouteStopTableData> {
     this.status = const Value.absent(),
     this.scheduledAt = const Value.absent(),
     this.visitedAt = const Value.absent(),
-    this.notes = const Value.absent(),
     this.scheduledTime = const Value.absent(),
     this.rescheduledFromStopId = const Value.absent(),
+    this.isRequested = const Value.absent(),
+    this.note = const Value.absent(),
+    this.scheduledVisitId = const Value.absent(),
     this.rowid = const Value.absent(),
   });
   RouteStopTableCompanion.insert({
@@ -3373,9 +3467,11 @@ class RouteStopTableCompanion extends UpdateCompanion<RouteStopTableData> {
     this.status = const Value.absent(),
     required DateTime scheduledAt,
     this.visitedAt = const Value.absent(),
-    this.notes = const Value.absent(),
     this.scheduledTime = const Value.absent(),
     this.rescheduledFromStopId = const Value.absent(),
+    this.isRequested = const Value.absent(),
+    this.note = const Value.absent(),
+    this.scheduledVisitId = const Value.absent(),
     this.rowid = const Value.absent(),
   }) : routeId = Value(routeId),
        customerId = Value(customerId),
@@ -3394,9 +3490,11 @@ class RouteStopTableCompanion extends UpdateCompanion<RouteStopTableData> {
     Expression<String>? status,
     Expression<DateTime>? scheduledAt,
     Expression<DateTime>? visitedAt,
-    Expression<String>? notes,
     Expression<String>? scheduledTime,
     Expression<String>? rescheduledFromStopId,
+    Expression<bool>? isRequested,
+    Expression<String>? note,
+    Expression<int>? scheduledVisitId,
     Expression<int>? rowid,
   }) {
     return RawValuesInsertable({
@@ -3412,10 +3510,12 @@ class RouteStopTableCompanion extends UpdateCompanion<RouteStopTableData> {
       if (status != null) 'status': status,
       if (scheduledAt != null) 'scheduled_at': scheduledAt,
       if (visitedAt != null) 'visited_at': visitedAt,
-      if (notes != null) 'notes': notes,
       if (scheduledTime != null) 'scheduled_time': scheduledTime,
       if (rescheduledFromStopId != null)
         'rescheduled_from_stop_id': rescheduledFromStopId,
+      if (isRequested != null) 'is_requested': isRequested,
+      if (note != null) 'note': note,
+      if (scheduledVisitId != null) 'scheduled_visit_id': scheduledVisitId,
       if (rowid != null) 'rowid': rowid,
     });
   }
@@ -3433,9 +3533,11 @@ class RouteStopTableCompanion extends UpdateCompanion<RouteStopTableData> {
     Value<String>? status,
     Value<DateTime>? scheduledAt,
     Value<DateTime?>? visitedAt,
-    Value<String?>? notes,
     Value<String?>? scheduledTime,
     Value<String?>? rescheduledFromStopId,
+    Value<bool>? isRequested,
+    Value<String?>? note,
+    Value<int?>? scheduledVisitId,
     Value<int>? rowid,
   }) {
     return RouteStopTableCompanion(
@@ -3451,10 +3553,12 @@ class RouteStopTableCompanion extends UpdateCompanion<RouteStopTableData> {
       status: status ?? this.status,
       scheduledAt: scheduledAt ?? this.scheduledAt,
       visitedAt: visitedAt ?? this.visitedAt,
-      notes: notes ?? this.notes,
       scheduledTime: scheduledTime ?? this.scheduledTime,
       rescheduledFromStopId:
           rescheduledFromStopId ?? this.rescheduledFromStopId,
+      isRequested: isRequested ?? this.isRequested,
+      note: note ?? this.note,
+      scheduledVisitId: scheduledVisitId ?? this.scheduledVisitId,
       rowid: rowid ?? this.rowid,
     );
   }
@@ -3498,9 +3602,6 @@ class RouteStopTableCompanion extends UpdateCompanion<RouteStopTableData> {
     if (visitedAt.present) {
       map['visited_at'] = Variable<DateTime>(visitedAt.value);
     }
-    if (notes.present) {
-      map['notes'] = Variable<String>(notes.value);
-    }
     if (scheduledTime.present) {
       map['scheduled_time'] = Variable<String>(scheduledTime.value);
     }
@@ -3508,6 +3609,15 @@ class RouteStopTableCompanion extends UpdateCompanion<RouteStopTableData> {
       map['rescheduled_from_stop_id'] = Variable<String>(
         rescheduledFromStopId.value,
       );
+    }
+    if (isRequested.present) {
+      map['is_requested'] = Variable<bool>(isRequested.value);
+    }
+    if (note.present) {
+      map['note'] = Variable<String>(note.value);
+    }
+    if (scheduledVisitId.present) {
+      map['scheduled_visit_id'] = Variable<int>(scheduledVisitId.value);
     }
     if (rowid.present) {
       map['rowid'] = Variable<int>(rowid.value);
@@ -3530,9 +3640,11 @@ class RouteStopTableCompanion extends UpdateCompanion<RouteStopTableData> {
           ..write('status: $status, ')
           ..write('scheduledAt: $scheduledAt, ')
           ..write('visitedAt: $visitedAt, ')
-          ..write('notes: $notes, ')
           ..write('scheduledTime: $scheduledTime, ')
           ..write('rescheduledFromStopId: $rescheduledFromStopId, ')
+          ..write('isRequested: $isRequested, ')
+          ..write('note: $note, ')
+          ..write('scheduledVisitId: $scheduledVisitId, ')
           ..write('rowid: $rowid')
           ..write(')'))
         .toString();
@@ -9950,6 +10062,26 @@ class $ContainerMovementTableTable extends ContainerMovementTable
       'REFERENCES routes (route_id) ON DELETE SET NULL',
     ),
   );
+  static const VerificationMeta _saleIdMeta = const VerificationMeta('saleId');
+  @override
+  late final GeneratedColumn<String> saleId = GeneratedColumn<String>(
+    'sale_id',
+    aliasedName,
+    true,
+    type: DriftSqlType.string,
+    requiredDuringInsert: false,
+  );
+  static const VerificationMeta _reversesMovementIdMeta =
+      const VerificationMeta('reversesMovementId');
+  @override
+  late final GeneratedColumn<String> reversesMovementId =
+      GeneratedColumn<String>(
+        'reverses_movement_id',
+        aliasedName,
+        true,
+        type: DriftSqlType.string,
+        requiredDuringInsert: false,
+      );
   @override
   List<GeneratedColumn> get $columns => [
     createdAt,
@@ -9963,6 +10095,8 @@ class $ContainerMovementTableTable extends ContainerMovementTable
     returnedQuantity,
     visitId,
     routeId,
+    saleId,
+    reversesMovementId,
   ];
   @override
   String get aliasedName => _alias ?? actualTableName;
@@ -10065,6 +10199,21 @@ class $ContainerMovementTableTable extends ContainerMovementTable
         routeId.isAcceptableOrUnknown(data['route_id']!, _routeIdMeta),
       );
     }
+    if (data.containsKey('sale_id')) {
+      context.handle(
+        _saleIdMeta,
+        saleId.isAcceptableOrUnknown(data['sale_id']!, _saleIdMeta),
+      );
+    }
+    if (data.containsKey('reverses_movement_id')) {
+      context.handle(
+        _reversesMovementIdMeta,
+        reversesMovementId.isAcceptableOrUnknown(
+          data['reverses_movement_id']!,
+          _reversesMovementIdMeta,
+        ),
+      );
+    }
     return context;
   }
 
@@ -10121,6 +10270,14 @@ class $ContainerMovementTableTable extends ContainerMovementTable
         DriftSqlType.string,
         data['${effectivePrefix}route_id'],
       ),
+      saleId: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}sale_id'],
+      ),
+      reversesMovementId: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}reverses_movement_id'],
+      ),
     );
   }
 
@@ -10143,6 +10300,8 @@ class ContainerMovementTableData extends DataClass
   final int returnedQuantity;
   final String? visitId;
   final String? routeId;
+  final String? saleId;
+  final String? reversesMovementId;
   const ContainerMovementTableData({
     required this.createdAt,
     required this.lastModifiedDate,
@@ -10155,6 +10314,8 @@ class ContainerMovementTableData extends DataClass
     required this.returnedQuantity,
     this.visitId,
     this.routeId,
+    this.saleId,
+    this.reversesMovementId,
   });
   @override
   Map<String, Expression> toColumns(bool nullToAbsent) {
@@ -10175,6 +10336,12 @@ class ContainerMovementTableData extends DataClass
     }
     if (!nullToAbsent || routeId != null) {
       map['route_id'] = Variable<String>(routeId);
+    }
+    if (!nullToAbsent || saleId != null) {
+      map['sale_id'] = Variable<String>(saleId);
+    }
+    if (!nullToAbsent || reversesMovementId != null) {
+      map['reverses_movement_id'] = Variable<String>(reversesMovementId);
     }
     return map;
   }
@@ -10198,6 +10365,12 @@ class ContainerMovementTableData extends DataClass
       routeId: routeId == null && nullToAbsent
           ? const Value.absent()
           : Value(routeId),
+      saleId: saleId == null && nullToAbsent
+          ? const Value.absent()
+          : Value(saleId),
+      reversesMovementId: reversesMovementId == null && nullToAbsent
+          ? const Value.absent()
+          : Value(reversesMovementId),
     );
   }
 
@@ -10220,6 +10393,10 @@ class ContainerMovementTableData extends DataClass
       returnedQuantity: serializer.fromJson<int>(json['returnedQuantity']),
       visitId: serializer.fromJson<String?>(json['visitId']),
       routeId: serializer.fromJson<String?>(json['routeId']),
+      saleId: serializer.fromJson<String?>(json['saleId']),
+      reversesMovementId: serializer.fromJson<String?>(
+        json['reversesMovementId'],
+      ),
     );
   }
   @override
@@ -10237,6 +10414,8 @@ class ContainerMovementTableData extends DataClass
       'returnedQuantity': serializer.toJson<int>(returnedQuantity),
       'visitId': serializer.toJson<String?>(visitId),
       'routeId': serializer.toJson<String?>(routeId),
+      'saleId': serializer.toJson<String?>(saleId),
+      'reversesMovementId': serializer.toJson<String?>(reversesMovementId),
     };
   }
 
@@ -10252,6 +10431,8 @@ class ContainerMovementTableData extends DataClass
     int? returnedQuantity,
     Value<String?> visitId = const Value.absent(),
     Value<String?> routeId = const Value.absent(),
+    Value<String?> saleId = const Value.absent(),
+    Value<String?> reversesMovementId = const Value.absent(),
   }) => ContainerMovementTableData(
     createdAt: createdAt ?? this.createdAt,
     lastModifiedDate: lastModifiedDate ?? this.lastModifiedDate,
@@ -10264,6 +10445,10 @@ class ContainerMovementTableData extends DataClass
     returnedQuantity: returnedQuantity ?? this.returnedQuantity,
     visitId: visitId.present ? visitId.value : this.visitId,
     routeId: routeId.present ? routeId.value : this.routeId,
+    saleId: saleId.present ? saleId.value : this.saleId,
+    reversesMovementId: reversesMovementId.present
+        ? reversesMovementId.value
+        : this.reversesMovementId,
   );
   ContainerMovementTableData copyWithCompanion(
     ContainerMovementTableCompanion data,
@@ -10292,6 +10477,10 @@ class ContainerMovementTableData extends DataClass
           : this.returnedQuantity,
       visitId: data.visitId.present ? data.visitId.value : this.visitId,
       routeId: data.routeId.present ? data.routeId.value : this.routeId,
+      saleId: data.saleId.present ? data.saleId.value : this.saleId,
+      reversesMovementId: data.reversesMovementId.present
+          ? data.reversesMovementId.value
+          : this.reversesMovementId,
     );
   }
 
@@ -10308,7 +10497,9 @@ class ContainerMovementTableData extends DataClass
           ..write('deliveredQuantity: $deliveredQuantity, ')
           ..write('returnedQuantity: $returnedQuantity, ')
           ..write('visitId: $visitId, ')
-          ..write('routeId: $routeId')
+          ..write('routeId: $routeId, ')
+          ..write('saleId: $saleId, ')
+          ..write('reversesMovementId: $reversesMovementId')
           ..write(')'))
         .toString();
   }
@@ -10326,6 +10517,8 @@ class ContainerMovementTableData extends DataClass
     returnedQuantity,
     visitId,
     routeId,
+    saleId,
+    reversesMovementId,
   );
   @override
   bool operator ==(Object other) =>
@@ -10341,7 +10534,9 @@ class ContainerMovementTableData extends DataClass
           other.deliveredQuantity == this.deliveredQuantity &&
           other.returnedQuantity == this.returnedQuantity &&
           other.visitId == this.visitId &&
-          other.routeId == this.routeId);
+          other.routeId == this.routeId &&
+          other.saleId == this.saleId &&
+          other.reversesMovementId == this.reversesMovementId);
 }
 
 class ContainerMovementTableCompanion
@@ -10357,6 +10552,8 @@ class ContainerMovementTableCompanion
   final Value<int> returnedQuantity;
   final Value<String?> visitId;
   final Value<String?> routeId;
+  final Value<String?> saleId;
+  final Value<String?> reversesMovementId;
   final Value<int> rowid;
   const ContainerMovementTableCompanion({
     this.createdAt = const Value.absent(),
@@ -10370,6 +10567,8 @@ class ContainerMovementTableCompanion
     this.returnedQuantity = const Value.absent(),
     this.visitId = const Value.absent(),
     this.routeId = const Value.absent(),
+    this.saleId = const Value.absent(),
+    this.reversesMovementId = const Value.absent(),
     this.rowid = const Value.absent(),
   });
   ContainerMovementTableCompanion.insert({
@@ -10384,6 +10583,8 @@ class ContainerMovementTableCompanion
     required int returnedQuantity,
     this.visitId = const Value.absent(),
     this.routeId = const Value.absent(),
+    this.saleId = const Value.absent(),
+    this.reversesMovementId = const Value.absent(),
     this.rowid = const Value.absent(),
   }) : customerId = Value(customerId),
        containerType = Value(containerType),
@@ -10401,6 +10602,8 @@ class ContainerMovementTableCompanion
     Expression<int>? returnedQuantity,
     Expression<String>? visitId,
     Expression<String>? routeId,
+    Expression<String>? saleId,
+    Expression<String>? reversesMovementId,
     Expression<int>? rowid,
   }) {
     return RawValuesInsertable({
@@ -10416,6 +10619,9 @@ class ContainerMovementTableCompanion
       if (returnedQuantity != null) 'returned_quantity': returnedQuantity,
       if (visitId != null) 'visit_id': visitId,
       if (routeId != null) 'route_id': routeId,
+      if (saleId != null) 'sale_id': saleId,
+      if (reversesMovementId != null)
+        'reverses_movement_id': reversesMovementId,
       if (rowid != null) 'rowid': rowid,
     });
   }
@@ -10432,6 +10638,8 @@ class ContainerMovementTableCompanion
     Value<int>? returnedQuantity,
     Value<String?>? visitId,
     Value<String?>? routeId,
+    Value<String?>? saleId,
+    Value<String?>? reversesMovementId,
     Value<int>? rowid,
   }) {
     return ContainerMovementTableCompanion(
@@ -10446,6 +10654,8 @@ class ContainerMovementTableCompanion
       returnedQuantity: returnedQuantity ?? this.returnedQuantity,
       visitId: visitId ?? this.visitId,
       routeId: routeId ?? this.routeId,
+      saleId: saleId ?? this.saleId,
+      reversesMovementId: reversesMovementId ?? this.reversesMovementId,
       rowid: rowid ?? this.rowid,
     );
   }
@@ -10488,6 +10698,12 @@ class ContainerMovementTableCompanion
     if (routeId.present) {
       map['route_id'] = Variable<String>(routeId.value);
     }
+    if (saleId.present) {
+      map['sale_id'] = Variable<String>(saleId.value);
+    }
+    if (reversesMovementId.present) {
+      map['reverses_movement_id'] = Variable<String>(reversesMovementId.value);
+    }
     if (rowid.present) {
       map['rowid'] = Variable<int>(rowid.value);
     }
@@ -10508,6 +10724,8 @@ class ContainerMovementTableCompanion
           ..write('returnedQuantity: $returnedQuantity, ')
           ..write('visitId: $visitId, ')
           ..write('routeId: $routeId, ')
+          ..write('saleId: $saleId, ')
+          ..write('reversesMovementId: $reversesMovementId, ')
           ..write('rowid: $rowid')
           ..write(')'))
         .toString();
@@ -16839,9 +17057,11 @@ typedef $$RouteStopTableTableCreateCompanionBuilder =
       Value<String> status,
       required DateTime scheduledAt,
       Value<DateTime?> visitedAt,
-      Value<String?> notes,
       Value<String?> scheduledTime,
       Value<String?> rescheduledFromStopId,
+      Value<bool> isRequested,
+      Value<String?> note,
+      Value<int?> scheduledVisitId,
       Value<int> rowid,
     });
 typedef $$RouteStopTableTableUpdateCompanionBuilder =
@@ -16858,9 +17078,11 @@ typedef $$RouteStopTableTableUpdateCompanionBuilder =
       Value<String> status,
       Value<DateTime> scheduledAt,
       Value<DateTime?> visitedAt,
-      Value<String?> notes,
       Value<String?> scheduledTime,
       Value<String?> rescheduledFromStopId,
+      Value<bool> isRequested,
+      Value<String?> note,
+      Value<int?> scheduledVisitId,
       Value<int> rowid,
     });
 
@@ -17017,11 +17239,6 @@ class $$RouteStopTableTableFilterComposer
     builder: (column) => ColumnFilters(column),
   );
 
-  ColumnFilters<String> get notes => $composableBuilder(
-    column: $table.notes,
-    builder: (column) => ColumnFilters(column),
-  );
-
   ColumnFilters<String> get scheduledTime => $composableBuilder(
     column: $table.scheduledTime,
     builder: (column) => ColumnFilters(column),
@@ -17029,6 +17246,21 @@ class $$RouteStopTableTableFilterComposer
 
   ColumnFilters<String> get rescheduledFromStopId => $composableBuilder(
     column: $table.rescheduledFromStopId,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<bool> get isRequested => $composableBuilder(
+    column: $table.isRequested,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get note => $composableBuilder(
+    column: $table.note,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<int> get scheduledVisitId => $composableBuilder(
+    column: $table.scheduledVisitId,
     builder: (column) => ColumnFilters(column),
   );
 
@@ -17181,11 +17413,6 @@ class $$RouteStopTableTableOrderingComposer
     builder: (column) => ColumnOrderings(column),
   );
 
-  ColumnOrderings<String> get notes => $composableBuilder(
-    column: $table.notes,
-    builder: (column) => ColumnOrderings(column),
-  );
-
   ColumnOrderings<String> get scheduledTime => $composableBuilder(
     column: $table.scheduledTime,
     builder: (column) => ColumnOrderings(column),
@@ -17193,6 +17420,21 @@ class $$RouteStopTableTableOrderingComposer
 
   ColumnOrderings<String> get rescheduledFromStopId => $composableBuilder(
     column: $table.rescheduledFromStopId,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<bool> get isRequested => $composableBuilder(
+    column: $table.isRequested,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<String> get note => $composableBuilder(
+    column: $table.note,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<int> get scheduledVisitId => $composableBuilder(
+    column: $table.scheduledVisitId,
     builder: (column) => ColumnOrderings(column),
   );
 
@@ -17309,9 +17551,6 @@ class $$RouteStopTableTableAnnotationComposer
   GeneratedColumn<DateTime> get visitedAt =>
       $composableBuilder(column: $table.visitedAt, builder: (column) => column);
 
-  GeneratedColumn<String> get notes =>
-      $composableBuilder(column: $table.notes, builder: (column) => column);
-
   GeneratedColumn<String> get scheduledTime => $composableBuilder(
     column: $table.scheduledTime,
     builder: (column) => column,
@@ -17319,6 +17558,19 @@ class $$RouteStopTableTableAnnotationComposer
 
   GeneratedColumn<String> get rescheduledFromStopId => $composableBuilder(
     column: $table.rescheduledFromStopId,
+    builder: (column) => column,
+  );
+
+  GeneratedColumn<bool> get isRequested => $composableBuilder(
+    column: $table.isRequested,
+    builder: (column) => column,
+  );
+
+  GeneratedColumn<String> get note =>
+      $composableBuilder(column: $table.note, builder: (column) => column);
+
+  GeneratedColumn<int> get scheduledVisitId => $composableBuilder(
+    column: $table.scheduledVisitId,
     builder: (column) => column,
   );
 
@@ -17465,9 +17717,11 @@ class $$RouteStopTableTableTableManager
                 Value<String> status = const Value.absent(),
                 Value<DateTime> scheduledAt = const Value.absent(),
                 Value<DateTime?> visitedAt = const Value.absent(),
-                Value<String?> notes = const Value.absent(),
                 Value<String?> scheduledTime = const Value.absent(),
                 Value<String?> rescheduledFromStopId = const Value.absent(),
+                Value<bool> isRequested = const Value.absent(),
+                Value<String?> note = const Value.absent(),
+                Value<int?> scheduledVisitId = const Value.absent(),
                 Value<int> rowid = const Value.absent(),
               }) => RouteStopTableCompanion(
                 createdAt: createdAt,
@@ -17482,9 +17736,11 @@ class $$RouteStopTableTableTableManager
                 status: status,
                 scheduledAt: scheduledAt,
                 visitedAt: visitedAt,
-                notes: notes,
                 scheduledTime: scheduledTime,
                 rescheduledFromStopId: rescheduledFromStopId,
+                isRequested: isRequested,
+                note: note,
+                scheduledVisitId: scheduledVisitId,
                 rowid: rowid,
               ),
           createCompanionCallback:
@@ -17501,9 +17757,11 @@ class $$RouteStopTableTableTableManager
                 Value<String> status = const Value.absent(),
                 required DateTime scheduledAt,
                 Value<DateTime?> visitedAt = const Value.absent(),
-                Value<String?> notes = const Value.absent(),
                 Value<String?> scheduledTime = const Value.absent(),
                 Value<String?> rescheduledFromStopId = const Value.absent(),
+                Value<bool> isRequested = const Value.absent(),
+                Value<String?> note = const Value.absent(),
+                Value<int?> scheduledVisitId = const Value.absent(),
                 Value<int> rowid = const Value.absent(),
               }) => RouteStopTableCompanion.insert(
                 createdAt: createdAt,
@@ -17518,9 +17776,11 @@ class $$RouteStopTableTableTableManager
                 status: status,
                 scheduledAt: scheduledAt,
                 visitedAt: visitedAt,
-                notes: notes,
                 scheduledTime: scheduledTime,
                 rescheduledFromStopId: rescheduledFromStopId,
+                isRequested: isRequested,
+                note: note,
+                scheduledVisitId: scheduledVisitId,
                 rowid: rowid,
               ),
           withReferenceMapper: (p0) => p0
@@ -23604,6 +23864,8 @@ typedef $$ContainerMovementTableTableCreateCompanionBuilder =
       required int returnedQuantity,
       Value<String?> visitId,
       Value<String?> routeId,
+      Value<String?> saleId,
+      Value<String?> reversesMovementId,
       Value<int> rowid,
     });
 typedef $$ContainerMovementTableTableUpdateCompanionBuilder =
@@ -23619,6 +23881,8 @@ typedef $$ContainerMovementTableTableUpdateCompanionBuilder =
       Value<int> returnedQuantity,
       Value<String?> visitId,
       Value<String?> routeId,
+      Value<String?> saleId,
+      Value<String?> reversesMovementId,
       Value<int> rowid,
     });
 
@@ -23751,6 +24015,16 @@ class $$ContainerMovementTableTableFilterComposer
     builder: (column) => ColumnFilters(column),
   );
 
+  ColumnFilters<String> get saleId => $composableBuilder(
+    column: $table.saleId,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get reversesMovementId => $composableBuilder(
+    column: $table.reversesMovementId,
+    builder: (column) => ColumnFilters(column),
+  );
+
   $$CustomerTableTableFilterComposer get customerId {
     final $$CustomerTableTableFilterComposer composer = $composerBuilder(
       composer: this,
@@ -23870,6 +24144,16 @@ class $$ContainerMovementTableTableOrderingComposer
     builder: (column) => ColumnOrderings(column),
   );
 
+  ColumnOrderings<String> get saleId => $composableBuilder(
+    column: $table.saleId,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<String> get reversesMovementId => $composableBuilder(
+    column: $table.reversesMovementId,
+    builder: (column) => ColumnOrderings(column),
+  );
+
   $$CustomerTableTableOrderingComposer get customerId {
     final $$CustomerTableTableOrderingComposer composer = $composerBuilder(
       composer: this,
@@ -23980,6 +24264,14 @@ class $$ContainerMovementTableTableAnnotationComposer
 
   GeneratedColumn<int> get returnedQuantity => $composableBuilder(
     column: $table.returnedQuantity,
+    builder: (column) => column,
+  );
+
+  GeneratedColumn<String> get saleId =>
+      $composableBuilder(column: $table.saleId, builder: (column) => column);
+
+  GeneratedColumn<String> get reversesMovementId => $composableBuilder(
+    column: $table.reversesMovementId,
     builder: (column) => column,
   );
 
@@ -24103,6 +24395,8 @@ class $$ContainerMovementTableTableTableManager
                 Value<int> returnedQuantity = const Value.absent(),
                 Value<String?> visitId = const Value.absent(),
                 Value<String?> routeId = const Value.absent(),
+                Value<String?> saleId = const Value.absent(),
+                Value<String?> reversesMovementId = const Value.absent(),
                 Value<int> rowid = const Value.absent(),
               }) => ContainerMovementTableCompanion(
                 createdAt: createdAt,
@@ -24116,6 +24410,8 @@ class $$ContainerMovementTableTableTableManager
                 returnedQuantity: returnedQuantity,
                 visitId: visitId,
                 routeId: routeId,
+                saleId: saleId,
+                reversesMovementId: reversesMovementId,
                 rowid: rowid,
               ),
           createCompanionCallback:
@@ -24131,6 +24427,8 @@ class $$ContainerMovementTableTableTableManager
                 required int returnedQuantity,
                 Value<String?> visitId = const Value.absent(),
                 Value<String?> routeId = const Value.absent(),
+                Value<String?> saleId = const Value.absent(),
+                Value<String?> reversesMovementId = const Value.absent(),
                 Value<int> rowid = const Value.absent(),
               }) => ContainerMovementTableCompanion.insert(
                 createdAt: createdAt,
@@ -24144,6 +24442,8 @@ class $$ContainerMovementTableTableTableManager
                 returnedQuantity: returnedQuantity,
                 visitId: visitId,
                 routeId: routeId,
+                saleId: saleId,
+                reversesMovementId: reversesMovementId,
                 rowid: rowid,
               ),
           withReferenceMapper: (p0) => p0

@@ -274,7 +274,7 @@ void main() {
   Future<double> displayedBalance() =>
       payments.watchCustomerBalance('c-1').first;
 
-  test('sales and payments travel after visits and container movements', () async {
+  test('sales travel after visits and before container movements and payments', () async {
     await pay();
     await sell();
     await recordVisit();
@@ -293,8 +293,8 @@ void main() {
 
     expect(server.pushBodies.single.keys.toList(), [
       'visits',
-      'container_movements',
       'sales',
+      'container_movements',
       'payments',
     ]);
   });

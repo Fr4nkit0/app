@@ -4,6 +4,7 @@ import 'package:url_launcher/url_launcher.dart';
 import 'package:app/core/theme/marilin_tokens.dart';
 import 'package:app/core/utils/address_formatter.dart';
 import 'package:app/features/route/domain/models/route_stop.dart';
+import 'package:app/features/route/presentation/widgets/stop_requested_label.dart';
 import 'package:app/core/widgets/top_toast.dart';
 
 BoxDecoration _heroDecoration(BuildContext context) => BoxDecoration(
@@ -91,6 +92,7 @@ class NextStopCard extends StatelessWidget {
                     color: context.marilin.inkSecondary,
                   ),
                 ),
+                StopRequestedLabel(stop: stop, fontSize: 14),
                 if (stop.hasScheduledTime) ...[
                   const SizedBox(height: 8),
                   Text(

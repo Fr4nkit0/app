@@ -7,6 +7,7 @@ import 'package:app/core/services/database.helper.dart';
 import 'package:app/core/usecases/drift_transaction_runner.dart';
 import 'package:app/features/customers/domain/models/customer.dart';
 import 'package:app/features/inventory/data/repositories/inventory.repository.dart';
+import 'package:app/features/inventory/domain/models/container_movement.dart';
 import 'package:app/features/payments/data/repositories/payment.repository.dart';
 import 'package:app/features/payments/domain/models/payment.dart';
 import 'package:app/features/products/domain/models/product.dart';
@@ -54,9 +55,25 @@ void main() {
       CancelSaleUseCase(
         saleRepo: sales,
         paymentRepo: paymentRepo ?? payments,
+        inventoryRepo: DriftInventoryRepository(db),
         transaction: driftTransactionRunner(db),
         now: () => now,
       );
+
+  ContainerMovement movement(
+    String id, {
+    String type = 'JUG',
+    int delivered = 0,
+    int returned = 0,
+  }) => ContainerMovement(
+    id: id,
+    customerId: 'c-1',
+    containerType: type,
+    deliveredQuantity: delivered,
+    returnedQuantity: returned,
+    createdAt: soldAt,
+    visitId: 's-1',
+  );
 
   Future<Sale> sell({
     String id = 'sale-1',
@@ -64,6 +81,7 @@ void main() {
     DateTime? date,
     double? cash,
     double? transfer,
+    List<ContainerMovement>? containers,
   }) async {
     final sale = Sale(
       id: id,
@@ -81,9 +99,14 @@ void main() {
       paymentRepo: payments,
       inventoryRepo: DriftInventoryRepository(db),
       transaction: driftTransactionRunner(db),
-    ).execute(sale);
+    ).execute(sale, containerMovements: containers);
     return sale;
   }
+
+  Future<Map<String, int>> custody() async => {
+    for (final b in await db.select(db.customerContainerBalanceTable).get())
+      b.containerType: b.quantity,
+  };
 
   Future<void> payDebt() => payments.recordPayment(
     Payment(
@@ -267,6 +290,74 @@ void main() {
       useCase().execute('missing'),
       throwsA(isA<NotFoundFailure>()),
     );
+  });
+
+  group('containers delivered and returned with the sale', () {
+    test('go back to where they were before it, in custody, while a return '
+        'without a sale stays and nothing new is queued', () async {
+      await sell(
+        containers: [
+          movement('m-jug', delivered: 3, returned: 1),
+          movement('m-siphon', type: 'SIPHON', returned: 2),
+        ],
+      );
+      await DriftInventoryRepository(
+        db,
+      ).recordContainerMovement(movement('m-loose', returned: 1));
+      expect(await custody(), {'JUG': 3 - 1 - 1, 'SIPHON': -2});
+      final movementsQueued = await queued(PendingEntity.containerMovement);
+
+      await useCase().execute('sale-1');
+
+      // Only the standalone return is left in custody.
+      expect(await custody(), {'JUG': -1, 'SIPHON': 0});
+      expect(
+        (await queued(PendingEntity.containerMovement)).map((c) => c.id),
+        movementsQueued.map((c) => c.id),
+      );
+      final reversals = {
+        for (final m in await db.select(db.containerMovementTable).get())
+          if (m.reversesMovementId != null) m.reversesMovementId!: m,
+      };
+      expect(reversals.keys, unorderedEquals(['m-jug', 'm-siphon']));
+      final jug = reversals['m-jug']!;
+      expect((jug.deliveredQuantity, jug.returnedQuantity), (-3, -1));
+      expect(jug.saleId, 'sale-1');
+      expect(jug.customerId, 'c-1');
+      expect(jug.containerType, 'JUG');
+      expect(jug.visitId, 's-1');
+      expect(jug.createdAt, now);
+      expect(jug.serverId, isNull);
+      final siphon = reversals['m-siphon']!;
+      expect((siphon.deliveredQuantity, siphon.returnedQuantity), (0, -2));
+    });
+
+    test('cancelling twice reverses them once', () async {
+      await sell(containers: [movement('m-jug', delivered: 2)]);
+      await useCase().execute('sale-1');
+
+      await useCase().execute('sale-1');
+
+      expect(await custody(), {'JUG': 0});
+      expect(await db.select(db.containerMovementTable).get(), hasLength(2));
+    });
+
+    test('a failure inside the unit of work leaves them in custody', () async {
+      await sell(containers: [movement('m-jug', delivered: 2, returned: 1)]);
+
+      await expectLater(
+        useCase(paymentRepo: _FailingPaymentRepository(db)).execute('sale-1'),
+        throwsA(isA<Exception>()),
+      );
+
+      expect(await custody(), {'JUG': 1});
+      expect(
+        (await db.select(
+          db.containerMovementTable,
+        ).get()).map((m) => m.containerMovementId),
+        ['m-jug'],
+      );
+    });
   });
 
   test('a failure inside the unit of work changes nothing', () async {

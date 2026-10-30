@@ -3,6 +3,7 @@ import 'package:uuid/uuid.dart';
 
 import '../../../core/services/database.helper.dart';
 import '../../sales/data/database/record_status.dart';
+import '../../payments/domain/models/payment.dart';
 import '../../sales/domain/models/payment_method.dart';
 import 'pull_applier.dart';
 
@@ -13,9 +14,9 @@ import 'pull_applier.dart';
 /// server balances and truck inventory already include these sales, so
 /// they move no balance or stock and nothing is queued for push.
 ///
-/// A cancelled sale is stored as cancelled, with its credit note. Limit of
-/// the download: payments are not in it, so the method is `credit` for a
-/// credit sale and `cash` otherwise.
+/// A cancelled sale is stored as cancelled, with its credit note. The
+/// method is `credit` for a credit sale and `cash` otherwise until
+/// [settleFromPayments] reads it from the downloaded payments.
 class SaleApplier {
   SaleApplier(this._db);
 
@@ -23,8 +24,9 @@ class SaleApplier {
 
   /// A sale already on the device (by client uuid or server id) is only
   /// linked to its server id. Lines whose product the download did not
-  /// carry are dropped.
-  Future<void> storeToday(List<Json> sales, PullContext context) async {
+  /// carry are dropped. Returns the ids of the sales it created.
+  Future<Set<String>> storeToday(List<Json> sales, PullContext context) async {
+    final created = <String>{};
     for (final s in sales) {
       final serverId = s['id'] as int;
       final clientUuid = s['client_uuid'] as String?;
@@ -41,6 +43,7 @@ class SaleApplier {
         await (_db.update(_db.saleTable)
               ..where((t) => t.saleId.equals(existing.saleId)))
             .write(SaleTableCompanion(serverId: Value(serverId)));
+        context.ids.recordSale(serverId, existing.saleId);
         continue;
       }
       final customerId = await context.ids.customer(s['customer_id'] as int?);
@@ -64,7 +67,7 @@ class SaleApplier {
               quantity: 0,
               shipping_amount: 0,
               visitId: Value(
-                await _stopOfVisit(s['visit_id'] as int?, context),
+                await context.ids.stopOfVisit(s['visit_id'] as int?),
               ),
               serverId: Value(serverId),
               status: Value(
@@ -72,6 +75,8 @@ class SaleApplier {
               ),
             ),
           );
+      context.ids.recordSale(serverId, saleId);
+      created.add(saleId);
       for (final d in jsonList(s['details'])) {
         final productId = await context.ids.product(d['product_id'] as int?);
         if (productId == null) continue;
@@ -121,14 +126,49 @@ class SaleApplier {
             );
       }
     }
+    return created;
   }
 
-  /// Sales of a visit carry its stop's id, like the ones made on the device.
-  Future<String?> _stopOfVisit(int? serverId, PullContext context) async {
-    final visitId = await context.ids.visit(serverId);
-    if (visitId == null) return null;
-    return (await (_db.select(
-      _db.visitTable,
-    )..where((t) => t.visitId.equals(visitId))).getSingleOrNull())?.routeStopId;
+  /// Sets the method of each of [saleIds] from its stored payments: cash
+  /// only, transfer only, both (mixed, with the split) or none (credit). A
+  /// confirmed sale counts its confirmed payments; a cancelled one, the
+  /// payments cancelled with it.
+  Future<void> settleFromPayments(Set<String> saleIds) async {
+    for (final saleId in saleIds) {
+      final sale = await (_db.select(
+        _db.saleTable,
+      )..where((t) => t.saleId.equals(saleId))).getSingle();
+      final payments =
+          await (_db.select(_db.paymentTable)..where(
+                (t) =>
+                    t.saleId.equals(saleId) &
+                    (sale.status == RecordStatus.cancelled
+                        ? const Constant(true)
+                        : t.status.equals(RecordStatus.confirmed)),
+              ))
+              .get();
+      double paidBy(PaymentType type) => payments
+          .where((p) => PaymentType.fromDb(p.paymentMethod) == type)
+          .fold(0.0, (sum, p) => sum + p.amount);
+      final cash = paidBy(PaymentType.cash);
+      final transfer = paidBy(PaymentType.transfer);
+      final method = payments.isEmpty
+          ? PaymentMethod.credit
+          : cash > 0 && transfer > 0
+          ? PaymentMethod.mixed
+          : transfer > 0
+          ? PaymentMethod.transfer
+          : PaymentMethod.cash;
+      final mixed = method == PaymentMethod.mixed;
+      await (_db.update(
+        _db.saleTable,
+      )..where((t) => t.saleId.equals(saleId))).write(
+        SaleTableCompanion(
+          paymentMethod: Value(method.name),
+          cashAmount: Value(mixed ? cash : null),
+          transferAmount: Value(mixed ? transfer : null),
+        ),
+      );
+    }
   }
 }

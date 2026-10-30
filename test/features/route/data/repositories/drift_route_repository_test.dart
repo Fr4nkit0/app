@@ -454,6 +454,109 @@ void main() {
     });
   });
 
+  group('watchDayStops — requested visit', () {
+    Future<void> markRequested(
+      String stopId, {
+      String? note,
+      bool enabled = true,
+    }) => (db.update(
+      db.routeStopTable,
+    )..where((t) => t.routeStopId.equals(stopId))).write(
+      RouteStopTableCompanion(
+        isRequested: const drift.Value(true),
+        note: drift.Value(note),
+        enabled: drift.Value(enabled),
+      ),
+    );
+
+    Future<void> seedTodayStop(String stopId, {int hour = 9}) async {
+      final now = DateTime.now();
+      await insertStop(
+        stopId: stopId,
+        routeId: 'route-today',
+        customerId: 'mock-customer-1',
+        scheduledAt: DateTime(now.year, now.month, now.day, hour),
+      );
+    }
+
+    setUp(() => insertRoute('route-today', todayStr));
+
+    test('exposes the mark and the note of a requested stop', () async {
+      await seedTodayStop('stop-1');
+      await seedTodayStop('stop-2', hour: 10);
+      await markRequested('stop-1', note: 'Llamar antes');
+
+      final stops = await sut.watchDayStops().first;
+
+      final requested = stops.singleWhere((s) => s.id == 'stop-1');
+      expect(requested.isRequested, isTrue);
+      expect(requested.note, 'Llamar antes');
+      final normal = stops.singleWhere((s) => s.id == 'stop-2');
+      expect(normal.isRequested, isFalse);
+      expect(normal.note, isNull);
+    });
+
+    test('hides a disabled requested stop', () async {
+      await seedTodayStop('stop-1');
+      await markRequested('stop-1', note: 'Llamar antes', enabled: false);
+
+      expect(await sut.watchDayStops().first, isEmpty);
+    });
+
+    test(
+      'a stop rescheduled from a requested stop shows the same mark',
+      () async {
+        await seedTodayStop('stop-1');
+        await markRequested('stop-1', note: 'Llamar antes');
+        final now = DateTime.now();
+
+        final newId = await sut.rescheduleStop(
+          'stop-1',
+          DateTime(now.year, now.month, now.day, 16, 30),
+        );
+
+        final created = (await sut.watchDayStops().first).singleWhere(
+          (s) => s.id == newId,
+        );
+        expect(created.isRequested, isTrue);
+        expect(created.note, 'Llamar antes');
+        // The mark is read from the original, not copied onto the new row.
+        final row = await (db.select(
+          db.routeStopTable,
+        )..where((t) => t.routeStopId.equals(newId))).getSingle();
+        expect(row.isRequested, isFalse);
+        expect(row.note, isNull);
+
+        // Rescheduling again still reaches the requested original.
+        final againId = await sut.rescheduleStop(
+          newId,
+          DateTime(now.year, now.month, now.day, 18),
+        );
+        final again = (await sut.watchDayStops().first).singleWhere(
+          (s) => s.id == againId,
+        );
+        expect(again.isRequested, isTrue);
+        expect(again.note, 'Llamar antes');
+      },
+    );
+
+    test('a stop rescheduled from a normal stop is not requested', () async {
+      await seedTodayStop('stop-1');
+      final now = DateTime.now();
+
+      final newId = await sut.rescheduleStop(
+        'stop-1',
+        DateTime(now.year, now.month, now.day, 16, 30),
+      );
+
+      final created = (await sut.watchDayStops().first).singleWhere(
+        (s) => s.id == newId,
+      );
+      expect(created.isRequested, isFalse);
+      expect(created.note, isNull);
+    });
+  });
+
   group('watchDayStops — visit summary', () {
     Future<void> closedStop(String stopId, {int? outcomeId}) async {
       final now = DateTime.now();

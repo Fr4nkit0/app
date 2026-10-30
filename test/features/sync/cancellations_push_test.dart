@@ -204,6 +204,7 @@ void main() {
   Future<void> cancelSale({String? reason}) => CancelSaleUseCase(
     saleRepo: DriftSaleRepository(db),
     paymentRepo: payments,
+    inventoryRepo: DriftInventoryRepository(db),
     transaction: driftTransactionRunner(db),
     now: () => now,
   ).execute('sale-1', reason: reason);

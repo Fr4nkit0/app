@@ -23,6 +23,13 @@ class RouteStop {
   /// What the visit recorded; null until a visit is recorded at the stop.
   final VisitSummary? visit;
 
+  /// True when the admin scheduled a visit at this stop. It is not an
+  /// order: the visit works as any other.
+  final bool isRequested;
+
+  /// The admin's note for a requested visit.
+  final String? note;
+
   const RouteStop({
     required this.id,
     required this.customer,
@@ -33,6 +40,8 @@ class RouteStop {
     this.rescheduledFromAt,
     this.rescheduledToAt,
     this.visit,
+    this.isRequested = false,
+    this.note,
   });
 
   RouteStop copyWith({StopStatus? status}) => RouteStop(
@@ -45,5 +54,7 @@ class RouteStop {
     rescheduledFromAt: rescheduledFromAt,
     rescheduledToAt: rescheduledToAt,
     visit: visit,
+    isRequested: isRequested,
+    note: note,
   );
 }

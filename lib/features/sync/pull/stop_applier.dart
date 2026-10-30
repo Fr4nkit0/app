@@ -4,7 +4,8 @@ import '../../../core/services/database.helper.dart';
 import 'pull_applier.dart';
 
 /// Route stops. A stop with an unsent change (or an unsent visit) keeps its
-/// local copy.
+/// local copy. A stop may carry a visit the admin scheduled (its mark and
+/// note); a stop created only for a cancelled visit arrives disabled.
 class StopApplier implements PullApplier {
   StopApplier(this._db);
 
@@ -51,6 +52,11 @@ class StopApplier implements PullApplier {
           await context.ids.stop(s['is_rescheduled_from'] as int?),
         ),
         enabled: enabledOf(s),
+        isRequested: _isRequested(s),
+        note: _note(s),
+        scheduledVisitId: s.containsKey('scheduled_visit_id')
+            ? Value(s['scheduled_visit_id'] as int?)
+            : const Value.absent(),
         serverId: Value(serverId),
       );
       if (existing != null) {
@@ -106,6 +112,8 @@ class StopApplier implements PullApplier {
         status: Value(_status(s['status'] as String?)),
         scheduledAt: Value(_scheduledAt(route.route_date, time)),
         scheduledTime: Value(time),
+        isRequested: _isRequested(s),
+        note: _note(s),
         serverId: Value(serverId),
       );
       final existing = await (_db.select(
@@ -139,6 +147,16 @@ class StopApplier implements PullApplier {
       );
     }
   }
+
+  /// A server older than scheduled visits sends no mark: the stored one
+  /// stays, and a new stop is not requested.
+  static Value<bool> _isRequested(Json s) => s.containsKey('is_requested')
+      ? Value(s['is_requested'] == true)
+      : const Value.absent();
+
+  static Value<String?> _note(Json s) => s.containsKey('note')
+      ? Value(s['note'] as String?)
+      : const Value.absent();
 
   static String _status(String? serverStatus) => switch (serverStatus) {
     'FINISHED' => 'done',

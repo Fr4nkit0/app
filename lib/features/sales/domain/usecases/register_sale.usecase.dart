@@ -29,9 +29,9 @@ class RegisterSaleUseCase {
   /// than this; such a sale would stay stuck in the outbox.
   static const totalTolerance = 0.005;
 
-  /// Records [sale], its settling payments and [containerMovements] in one
-  /// unit of work. Throws [ValidationFailure] for a sale without items or
-  /// whose total does not match its items.
+  /// Records [sale], its settling payments and [containerMovements] (linked
+  /// to the sale) in one unit of work. Throws [ValidationFailure] for a sale
+  /// without items or whose total does not match its items.
   Future<void> execute(
     Sale sale, {
     Payment? payment,
@@ -55,7 +55,9 @@ class RegisterSaleUseCase {
       }
       if (containerMovements != null) {
         for (final movement in containerMovements) {
-          await _inventoryRepo.recordContainerMovement(movement);
+          await _inventoryRepo.recordContainerMovement(
+            movement.withSale(sale.id),
+          );
         }
       }
     });

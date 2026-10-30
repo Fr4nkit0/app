@@ -10,6 +10,7 @@ import 'package:app/core/widgets/top_toast.dart';
 import 'package:app/features/route/domain/models/route_stop.dart';
 import 'package:app/features/route/domain/models/stop_status.dart';
 import 'package:app/features/route/presentation/providers/route_repository_provider.dart';
+import 'package:app/features/route/presentation/widgets/stop_requested_label.dart';
 import 'package:app/features/sales/presentation/providers/sale_draft_provider.dart';
 import 'package:app/features/sales/presentation/screens/sale_step1_screen.dart';
 import 'package:app/features/sales/domain/models/sale.dart';
@@ -201,6 +202,11 @@ class _VisitScreenState extends ConsumerState<VisitScreen> {
                               ? () => _openWhatsApp(stop.customer.phone!)
                               : null,
                         ),
+                        if (stop.isRequested)
+                          Padding(
+                            padding: const EdgeInsets.only(top: 8),
+                            child: StopRequestedLabel(stop: stop, fontSize: 14),
+                          ),
                         const SizedBox(height: 24),
                         const VisitSectionHeader(
                           title: 'Cuenta y envases',
