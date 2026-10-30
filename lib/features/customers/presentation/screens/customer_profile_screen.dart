@@ -4,7 +4,6 @@ import 'package:app/core/theme/marilin_tokens.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:url_launcher/url_launcher.dart';
 import 'package:app/core/utils/avatar_utils.dart';
-import 'package:app/core/utils/address_formatter.dart';
 import 'package:app/features/customers/domain/models/customer.dart';
 import 'package:app/core/presentation/failure_message.dart';
 import 'package:app/features/customers/presentation/providers/customer_count_provider.dart';
@@ -12,6 +11,7 @@ import 'package:app/features/customers/presentation/providers/customer_usecase_p
 import 'package:app/features/customers/presentation/widgets/disable_customer_dialog.dart';
 import 'package:app/features/route/presentation/providers/route_repository_provider.dart';
 import 'package:app/features/customers/presentation/screens/edit_customer_screen.dart';
+import 'package:app/features/customers/presentation/widgets/customer_addresses_section.dart';
 import 'package:app/features/customers/presentation/widgets/customer_agreements_tab.dart';
 import 'package:app/features/history/domain/models/history_entry.dart';
 import 'package:app/features/history/presentation/providers/history_list_provider.dart';
@@ -708,17 +708,12 @@ class _CustomerProfileScreenState extends ConsumerState<CustomerProfileScreen> {
   }
 
   Widget _buildDatosTab(Customer customer) {
-    final addresses = customer.addresses;
-    final addr =
-        addresses.where((a) => a.isPrimary).firstOrNull ??
-        addresses.firstOrNull;
-
     return Container(
       padding: const EdgeInsets.all(16),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          // Card 1: Dirección principal
+          // Card 1: Direcciones de entrega
           Container(
             padding: const EdgeInsets.all(16),
             decoration: BoxDecoration(
@@ -726,71 +721,7 @@ class _CustomerProfileScreenState extends ConsumerState<CustomerProfileScreen> {
               borderRadius: BorderRadius.circular(16),
               border: Border.all(color: context.marilin.border),
             ),
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Row(
-                  children: [
-                    Icon(
-                      Icons.location_on_outlined,
-                      color: MarilinColors.brandBlue,
-                      size: 20,
-                    ),
-                    SizedBox(width: 8),
-                    Text(
-                      'Dirección de Entrega',
-                      style: TextStyle(
-                        fontSize: 15,
-                        fontWeight: FontWeight.w700,
-                        color: context.marilin.ink,
-                      ),
-                    ),
-                  ],
-                ),
-                Divider(height: 24, color: context.marilin.border),
-                if (addr != null) ...[
-                  Text(
-                    AddressFormatter.format(
-                      street: addr.street,
-                      neighborhood: addr.neighborhood,
-                      floor: addr.floor,
-                      apartment: addr.apartment,
-                      visualReference: addr.visualReference,
-                    ),
-                    style: TextStyle(
-                      fontSize: 15,
-                      fontWeight: FontWeight.w700,
-                      color: context.marilin.ink,
-                    ),
-                  ),
-                  if (addr.latitude != null && addr.longitude != null) ...[
-                    const SizedBox(height: 8),
-                    Row(
-                      children: [
-                        Icon(
-                          Icons.check_circle,
-                          size: 16,
-                          color: context.marilin.success,
-                        ),
-                        const SizedBox(width: 8),
-                        Text(
-                          'Ubicación fijada',
-                          style: TextStyle(
-                            fontSize: 13,
-                            color: context.marilin.success,
-                            fontWeight: FontWeight.w500,
-                          ),
-                        ),
-                      ],
-                    ),
-                  ],
-                ] else
-                  Text(
-                    'Sin dirección cargada',
-                    style: TextStyle(color: context.marilin.textMuted),
-                  ),
-              ],
-            ),
+            child: CustomerAddressesSection(customerId: customer.id),
           ),
 
           const SizedBox(height: 16),
