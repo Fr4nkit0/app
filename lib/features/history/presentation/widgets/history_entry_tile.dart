@@ -1,3 +1,4 @@
+import 'package:app/core/presentation/rejection_message.dart';
 import 'package:app/core/utils/money_formatter.dart';
 import 'package:flutter/material.dart';
 import 'package:app/core/theme/marilin_tokens.dart';
@@ -23,6 +24,7 @@ class HistoryEntryTile extends StatelessWidget {
       baseColor: AvatarUtils.getPastelColor(entry.customerName),
     );
     final initials = AvatarUtils.getInitials(entry.customerName);
+    final rejectionReason = entry.rejectionReason;
     final showAmount =
         entry.amount != null &&
         (entry.type == HistoryEntryType.sale ||
@@ -108,10 +110,10 @@ class HistoryEntryTile extends StatelessWidget {
                     ),
                   ],
                   if (entry.status == PendingStatus.rejected &&
-                      entry.rejectionReason != null) ...[
+                      rejectionReason != null) ...[
                     const SizedBox(height: 6),
                     Text(
-                      'Motivo: ${entry.rejectionReason}',
+                      'Motivo: ${rejectionMessage(rejectionReason)}',
                       style: TextStyle(
                         fontSize: 12,
                         fontWeight: FontWeight.w700,

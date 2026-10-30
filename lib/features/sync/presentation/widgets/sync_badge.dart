@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:app/core/presentation/rejection_message.dart';
 import 'package:app/core/theme/marilin_tokens.dart';
 import 'package:app/features/sync/domain/models/pending_change.dart';
 
@@ -101,7 +102,7 @@ class _RejectedBadge extends StatelessWidget {
   }
 
   Future<void> _showReason(BuildContext context) {
-    final text = reason?.trim() ?? '';
+    final text = rejectionMessage(reason ?? '');
     return showDialog<void>(
       context: context,
       builder: (dialogContext) => AlertDialog(

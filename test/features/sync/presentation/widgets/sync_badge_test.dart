@@ -108,6 +108,24 @@ void main() {
     expect(find.byType(AlertDialog), findsNothing);
   });
 
+  testWidgets('a known English server reason is shown in Spanish', (
+    tester,
+  ) async {
+    const stored = "Only today's records can be cancelled.";
+    final change = _change(PendingStatus.rejected, reason: stored);
+    await pump(tester, change);
+
+    await tester.tap(find.text('Rechazado'));
+    await tester.pumpAndSettle();
+
+    expect(
+      find.text('Solo se pueden anular registros del día.'),
+      findsOneWidget,
+    );
+    expect(find.text(stored), findsNothing);
+    expect(change.rejectionReason, stored);
+  });
+
   testWidgets('an empty reason falls back to "Sin motivo informado."', (
     tester,
   ) async {

@@ -54,6 +54,16 @@ void main() {
     expect(find.text('Motivo: Cliente dado de baja'), findsOneWidget);
   });
 
+  testWidgets('shows a known English server reason in Spanish', (tester) async {
+    const stored = 'The sale belongs to another driver.';
+    final entry = _entry(PendingStatus.rejected, reason: stored);
+    await pump(tester, entry);
+
+    expect(find.text('Motivo: Pertenece a otro repartidor.'), findsOneWidget);
+    expect(find.text('Motivo: $stored'), findsNothing);
+    expect(entry.rejectionReason, stored);
+  });
+
   testWidgets('does not show a reason for records that were not rejected', (
     tester,
   ) async {
