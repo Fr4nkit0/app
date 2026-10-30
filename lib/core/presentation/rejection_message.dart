@@ -1,6 +1,16 @@
 /// Server rejection reasons the driver sees in Spanish, keyed by the exact
 /// English text the server sends. Add new reasons here as the server adds them.
 const _spanishRejections = {
+  "The cancellation was not made on the record's day.":
+      'La anulación no se hizo el mismo día del registro.',
+  'The cancellation is more than 3 days old.':
+      'La anulación tiene más de 3 días.',
+  "The edit was not made on the visit's day.":
+      'La edición no se hizo el mismo día de la visita.',
+  'The edit is more than 3 days old.': 'La edición tiene más de 3 días.',
+  'The sale is cancelled.': 'La venta está anulada.',
+  'The sale belongs to another customer.':
+      'La venta pertenece a otro cliente.',
   "Only today's records can be cancelled.":
       'Solo se pueden anular registros del día.',
   "Only today's visits can be edited.":
