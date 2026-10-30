@@ -563,6 +563,27 @@ void main() {
       expect(visit.returned, 3);
     });
 
+    test('cancelled sales and payments no longer count in the '
+        'summary', () async {
+      await closedStop('stop-1');
+      await sale('sale-1', 'stop-1', 5000, 'cash');
+      await sale('sale-2', 'stop-1', 700, 'credit');
+      await payment('stop-1', 300);
+      await payment('stop-1', 200);
+      await db.customStatement(
+        "UPDATE sales SET status = 'CANCELLED' WHERE sale_id = 'sale-2'",
+      );
+      await db.customStatement(
+        "UPDATE payments SET status = 'CANCELLED' WHERE amount = 200",
+      );
+
+      final visit = (await sut.watchDayStops().first).single.visit!;
+
+      expect(visit.salesTotal, 5000);
+      expect(visit.saleMethods, [PaymentMethod.cash]);
+      expect(visit.collected, 300);
+    });
+
     test('a stop without a visit has no summary', () async {
       final now = DateTime.now();
       await insertStop(

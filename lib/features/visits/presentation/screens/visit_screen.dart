@@ -15,6 +15,8 @@ import 'package:app/features/sales/presentation/screens/sale_step1_screen.dart';
 import 'package:app/features/sales/domain/models/sale.dart';
 import 'package:app/features/sales/domain/models/payment_method.dart';
 import 'package:app/features/sales/presentation/providers/sale_repository_provider.dart';
+import 'package:app/features/sales/presentation/providers/cancel_sale_usecase_provider.dart';
+import 'package:app/features/sales/presentation/widgets/cancel_record_dialog.dart';
 import 'package:app/features/visits/domain/models/visit_outcome.dart';
 import 'package:app/features/visits/presentation/providers/visit_repository_provider.dart';
 import 'package:app/features/inventory/domain/models/container_movement.dart';
@@ -94,9 +96,10 @@ class _VisitScreenState extends ConsumerState<VisitScreen> {
               const <ContainerMovement>[])
         if (movement.returnedQuantity > 0) movement,
     ];
+    final now = ref.watch(clockProvider)();
     final canEditVisit =
         stop.status != StopStatus.rescheduled &&
-        (stop.visit?.isEditableOn(ref.watch(clockProvider)()) ?? false);
+        (stop.visit?.isEditableOn(now) ?? false);
     // A reschedule adds a stop, so it is not an outcome an edit can pick.
     final editOutcomes = canEditVisit
         ? [
@@ -115,8 +118,8 @@ class _VisitScreenState extends ConsumerState<VisitScreen> {
     return salesAsync.when(
       data: (sales) {
         final records = [
-          ...sales.map(_buildRegisteredSaleCard),
-          ...payments.map(_buildPaymentRecord),
+          for (final sale in sales) _buildRegisteredSaleCard(sale, now),
+          for (final payment in payments) _buildPaymentRecord(payment, now),
           if (returns.isNotEmpty) _buildReturnRecord(returns, containerLabels),
         ];
         const recordsHeader = VisitSectionHeader(
@@ -450,6 +453,72 @@ class _VisitScreenState extends ConsumerState<VisitScreen> {
     );
   }
 
+  /// Cancels a sale of today, with the payments that settled it.
+  Future<void> _cancelSale(Sale sale) async {
+    final confirmation = await confirmCancelRecord(
+      context,
+      title: '¿Anular la venta?',
+      message:
+          'También se anulan los cobros de esta venta: la deuda vuelve a '
+          'como estaba antes y los productos vuelven al camión.',
+    );
+    if (confirmation == null || !mounted) return;
+    await _runCancellation(
+      () => ref
+          .read(cancelSaleUseCaseProvider)
+          .execute(sale.id, reason: confirmation.reason),
+      done: 'Venta anulada',
+    );
+  }
+
+  /// Cancels a payment of today that did not settle a sale.
+  Future<void> _cancelPayment(Payment payment) async {
+    final confirmation = await confirmCancelRecord(
+      context,
+      title: '¿Anular el cobro?',
+      message: 'El monto vuelve a sumarse a la deuda del cliente.',
+    );
+    if (confirmation == null || !mounted) return;
+    await _runCancellation(
+      () => ref
+          .read(cancelPaymentUseCaseProvider)
+          .execute(payment.id, reason: confirmation.reason),
+      done: 'Cobro anulado',
+    );
+  }
+
+  Future<void> _runCancellation(
+    Future<void> Function() cancel, {
+    required String done,
+  }) async {
+    try {
+      await cancel();
+    } catch (error) {
+      if (!mounted) return;
+      TopToast.show(
+        context,
+        message: failureMessage(error, fallback: 'No se anuló. Reintentá.'),
+        icon: Icons.error_outline,
+        color: MarilinColors.destructive,
+      );
+      return;
+    }
+    if (!mounted) return;
+    TopToast.show(
+      context,
+      message: done,
+      icon: Icons.check_circle_rounded,
+      color: MarilinColors.success,
+    );
+  }
+
+  Widget _cancelAction(String label, VoidCallback onPressed) => TextButton.icon(
+    style: TextButton.styleFrom(foregroundColor: MarilinColors.destructive),
+    icon: const Icon(Icons.block, size: 18),
+    label: Text(label),
+    onPressed: onPressed,
+  );
+
   Future<void> _pickRescheduleTime() async {
     final picked = await showTimePicker(
       context: context,
@@ -614,8 +683,12 @@ class _VisitScreenState extends ConsumerState<VisitScreen> {
     );
   }
 
-  Widget _buildPaymentRecord(Payment payment) {
+  Widget _buildPaymentRecord(Payment payment, DateTime now) {
     return VisitRecordTile(
+      statusLabel: payment.isCancelled ? 'Anulado' : null,
+      action: payment.isCancellableOn(now)
+          ? _cancelAction('Anular cobro', () => _cancelPayment(payment))
+          : null,
       icon: Icons.payments_outlined,
       title: 'Cobro registrado',
       detail: switch (payment.type) {
@@ -650,7 +723,7 @@ class _VisitScreenState extends ConsumerState<VisitScreen> {
     );
   }
 
-  Widget _buildRegisteredSaleCard(Sale sale) {
+  Widget _buildRegisteredSaleCard(Sale sale, DateTime now) {
     // Description of products
     final itemsDesc = sale.items
         .map((item) => '${item.quantity}x ${item.product.name}')
@@ -765,24 +838,32 @@ class _VisitScreenState extends ConsumerState<VisitScreen> {
                       ),
                     ),
                     const SizedBox(height: 8),
-                    Container(
-                      padding: const EdgeInsets.symmetric(
-                        horizontal: 8,
-                        vertical: 4,
-                      ),
-                      decoration: BoxDecoration(
-                        color: badgeBg,
-                        borderRadius: BorderRadius.circular(6),
-                      ),
-                      child: Text(
-                        methodText,
-                        style: TextStyle(
-                          fontSize: 13,
-                          fontWeight: FontWeight.w900,
-                          color: badgeColor,
-                          letterSpacing: 0.5,
+                    Wrap(
+                      spacing: 8,
+                      runSpacing: 4,
+                      children: [
+                        Container(
+                          padding: const EdgeInsets.symmetric(
+                            horizontal: 8,
+                            vertical: 4,
+                          ),
+                          decoration: BoxDecoration(
+                            color: badgeBg,
+                            borderRadius: BorderRadius.circular(6),
+                          ),
+                          child: Text(
+                            methodText,
+                            style: TextStyle(
+                              fontSize: 13,
+                              fontWeight: FontWeight.w900,
+                              color: badgeColor,
+                              letterSpacing: 0.5,
+                            ),
+                          ),
                         ),
-                      ),
+                        if (sale.isCancelled)
+                          const RecordStatusBadge(label: 'Anulada'),
+                      ],
                     ),
                   ],
                 ),
@@ -794,19 +875,32 @@ class _VisitScreenState extends ConsumerState<VisitScreen> {
                 style: TextStyle(
                   fontSize: 20,
                   fontWeight: FontWeight.w900,
-                  color: context.marilin.ink,
+                  color: sale.isCancelled
+                      ? context.marilin.inkHint
+                      : context.marilin.ink,
                   letterSpacing: -0.5,
+                  decoration: sale.isCancelled
+                      ? TextDecoration.lineThrough
+                      : null,
                 ),
               ),
             ],
           ),
         ),
-        Align(
-          alignment: Alignment.centerLeft,
-          child: SyncBadgeContainer(
-            entity: PendingEntity.sale,
-            entityId: sale.id,
-          ),
+        Row(
+          children: [
+            Expanded(
+              child: Align(
+                alignment: Alignment.centerLeft,
+                child: SyncBadgeContainer(
+                  entity: PendingEntity.sale,
+                  entityId: sale.id,
+                ),
+              ),
+            ),
+            if (sale.isCancellableOn(now))
+              _cancelAction('Anular venta', () => _cancelSale(sale)),
+          ],
         ),
       ],
     );

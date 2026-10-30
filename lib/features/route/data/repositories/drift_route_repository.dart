@@ -7,6 +7,7 @@ import 'package:app/features/payments/data/repositories/customer_account.dart';
 import 'package:app/features/route/data/repositories/route.repository.dart';
 import 'package:app/features/route/domain/models/route_stop.dart';
 import 'package:app/features/route/domain/models/stop_status.dart';
+import 'package:app/features/sales/data/database/record_status.dart';
 import 'package:app/features/sales/domain/models/payment_method.dart';
 import 'package:app/features/sync/data/repositories/pending_change.repository.dart';
 import 'package:app/features/sync/domain/models/pending_change.dart';
@@ -187,14 +188,24 @@ class DriftRouteRepository implements RouteRepository {
     if (outcomes.isEmpty) return const {};
     final visited = outcomes.keys.toList();
 
+    // Cancelled sales and payments no longer count.
     final sales =
         await (_db.select(_db.saleTable)
-              ..where((t) => t.visitId.isIn(visited))
+              ..where(
+                (t) =>
+                    t.visitId.isIn(visited) &
+                    t.status.equals(RecordStatus.confirmed),
+              )
               ..orderBy([(t) => OrderingTerm.asc(t.saleDate)]))
             .get();
-    final payments = await (_db.select(
-      _db.paymentTable,
-    )..where((t) => t.visitId.isIn(visited) & t.saleId.isNull())).get();
+    final payments =
+        await (_db.select(_db.paymentTable)..where(
+              (t) =>
+                  t.visitId.isIn(visited) &
+                  t.saleId.isNull() &
+                  t.status.equals(RecordStatus.confirmed),
+            ))
+            .get();
     final movements = await (_db.select(
       _db.containerMovementTable,
     )..where((t) => t.visitId.isIn(visited))).get();
