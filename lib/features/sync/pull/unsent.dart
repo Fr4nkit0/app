@@ -12,6 +12,7 @@ class Unsent {
     this.addresses = const {},
     this.addressOwners = const {},
     this.preferences = const {},
+    this.movements = const {},
   });
 
   final Set<String> customers;
@@ -28,6 +29,9 @@ class Unsent {
 
   /// Preferences with their own unsent change.
   final Set<String> preferences;
+
+  /// Container movements with their own unsent change.
+  final Set<String> movements;
 
   bool get hasSales => sales.isNotEmpty;
 
@@ -69,6 +73,7 @@ class Unsent {
       addresses: addressIds,
       addressOwners: addressOwners,
       preferences: ids(PendingEntity.customerPreference),
+      movements: ids(PendingEntity.containerMovement),
       stops: stops,
       visits: visitIds,
       // A cancellation moved the truck stock back, like a sale moved it out.

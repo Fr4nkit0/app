@@ -597,6 +597,208 @@ void main() {
       unorderedEquals([('cust-uuid-11', 0), ('cust-uuid-12', 5 + 2 - 3)]),
     );
   });
+
+  for (final returnFirst in [false, true]) {
+    test('a reinstalled device rebuilds both halves of one local movement '
+        '(return first: $returnFirst)', () async {
+      const x = 'mov-local-x';
+      final halves = [
+        _movement(id: 801, clientUuid: x, quantity: 2, date: today),
+        _movement(
+          id: 802,
+          clientUuid: ContainerMovementPusher.returnUuid(x),
+          type: 'RETURNED',
+          quantity: 3,
+          direction: -1,
+          date: today,
+        ),
+      ];
+      response = _payload(
+        today,
+        visits: [_visit(501, 'visit-uuid-501', 72, 12, today)],
+        movements: returnFirst ? halves.reversed.toList() : halves,
+      );
+
+      await service().bootstrap();
+      await service().bootstrap();
+
+      final rows = await db.select(db.containerMovementTable).get();
+      expect(rows.fold<int>(0, (s, m) => s + m.deliveredQuantity), 2);
+      expect(rows.fold<int>(0, (s, m) => s + m.returnedQuantity), 3);
+      // The row keeps its delivery's server id.
+      expect(rows.firstWhere((m) => m.containerMovementId == x).serverId, 801);
+      final stops = await DriftRouteRepository(db).watchDayStops().first;
+      expect(
+        stops
+            .firstWhere((s) => s.customer.id == 'cust-uuid-12')
+            .visit
+            ?.returned,
+        3,
+      );
+      expect(await db.select(db.pendingChangeTable).get(), isEmpty);
+    });
+  }
+
+  test(
+    'both reversals of a rebuilt movement take back each half once',
+    () async {
+      const x = 'mov-local-x';
+      response = _payload(
+        today,
+        visits: [_visit(501, 'visit-uuid-501', 72, 12, today)],
+        movements: [
+          _movement(id: 801, clientUuid: x, quantity: 2, date: today),
+          _movement(
+            id: 802,
+            clientUuid: ContainerMovementPusher.returnUuid(x),
+            type: 'RETURNED',
+            quantity: 3,
+            direction: -1,
+            date: today,
+          ),
+          // The server reverses each half with the opposite type.
+          _movement(
+            id: 803,
+            type: 'RETURNED',
+            quantity: 2,
+            direction: -1,
+            reverses: 801,
+            date: today,
+          ),
+          _movement(id: 804, quantity: 3, reverses: 802, date: today),
+        ],
+      );
+
+      await service().bootstrap();
+      await service().bootstrap();
+
+      final rows = {
+        for (final m in await db.select(db.containerMovementTable).get())
+          m.serverId: (
+            m.containerMovementId,
+            m.deliveredQuantity,
+            m.returnedQuantity,
+            m.reversesMovementId,
+          ),
+      };
+      // The RETURNED reversal is never merged into its original as a return.
+      expect(rows.keys, unorderedEquals([801, 803, 804]));
+      expect(rows[801], (x, 2, 3, null));
+      expect((rows[803]!.$2, rows[803]!.$3, rows[803]!.$4), (-2, 0, x));
+      expect((rows[804]!.$2, rows[804]!.$3, rows[804]!.$4), (0, -3, x));
+      final stops = await DriftRouteRepository(db).watchDayStops().first;
+      expect(
+        stops
+            .firstWhere((s) => s.customer.id == 'cust-uuid-12')
+            .visit
+            ?.returned,
+        0,
+      );
+    },
+  );
+
+  test('a movement the device recorded and already sent keeps its halves '
+      'when the bootstrap brings both', () async {
+    response = _payload(today);
+    await service().bootstrap();
+    final stopId = (await stopsByServerId())[72]!.routeStopId;
+    const x = 'mov-local-x';
+    // Sent before: no pending change, no server id recorded yet.
+    await db
+        .into(db.containerMovementTable)
+        .insert(
+          ContainerMovementTableCompanion.insert(
+            containerMovementId: const Value(x),
+            customerId: 'cust-uuid-12',
+            containerType: 'BIDON_20L',
+            deliveredQuantity: 2,
+            returnedQuantity: 3,
+            visitId: Value(stopId),
+          ),
+        );
+    response = _payload(
+      today,
+      visits: [_visit(501, 'visit-uuid-501', 72, 12, today)],
+      movements: [
+        _movement(
+          id: 802,
+          clientUuid: ContainerMovementPusher.returnUuid(x),
+          type: 'RETURNED',
+          quantity: 3,
+          direction: -1,
+          date: today,
+        ),
+        _movement(id: 801, clientUuid: x, quantity: 2, date: today),
+      ],
+    );
+
+    await service().bootstrap();
+    await service().bootstrap();
+
+    final movement = await db.select(db.containerMovementTable).getSingle();
+    expect(
+      (
+        movement.containerMovementId,
+        movement.serverId,
+        movement.deliveredQuantity,
+        movement.returnedQuantity,
+      ),
+      (x, 801, 2, 3),
+    );
+    expect(await db.select(db.pendingChangeTable).get(), isEmpty);
+  });
+
+  test('a movement with an unsent change keeps its local quantities', () async {
+    response = _payload(today);
+    await service().bootstrap();
+    final stopId = (await stopsByServerId())[72]!.routeStopId;
+    const x = 'mov-local-x';
+    // Recorded as a delivery only; its return half is not on the device.
+    await db
+        .into(db.containerMovementTable)
+        .insert(
+          ContainerMovementTableCompanion.insert(
+            containerMovementId: const Value(x),
+            customerId: 'cust-uuid-12',
+            containerType: 'BIDON_20L',
+            deliveredQuantity: 2,
+            returnedQuantity: 0,
+            visitId: Value(stopId),
+          ),
+        );
+    await DriftPendingChangeRepository(db).enqueue(
+      entity: PendingEntity.containerMovement,
+      entityId: x,
+      action: PendingAction.update,
+    );
+    response = _payload(
+      today,
+      visits: [_visit(501, 'visit-uuid-501', 72, 12, today)],
+      movements: [
+        _movement(id: 801, clientUuid: x, quantity: 2, date: today),
+        _movement(
+          id: 802,
+          clientUuid: ContainerMovementPusher.returnUuid(x),
+          type: 'RETURNED',
+          quantity: 3,
+          direction: -1,
+          date: today,
+        ),
+      ],
+    );
+
+    await service().bootstrap();
+
+    final movement = await db.select(db.containerMovementTable).getSingle();
+    expect(
+      (
+        movement.serverId,
+        movement.deliveredQuantity,
+        movement.returnedQuantity,
+      ),
+      (801, 2, 0),
+    );
+  });
 }
 
 /// Two sale lines, five payment lines and one adjustment.

@@ -31,8 +31,10 @@ class ContainerMovementApplier {
   static const _returned = 'RETURNED';
 
   /// A movement already on the device (by server id, by client uuid, or as
-  /// the return half of a local movement) is only linked to its server id
-  /// and sale. One whose customer, container type or reversed movement the
+  /// the return half of a local movement) is linked to its server id and
+  /// sale. When that row is still missing this half's quantity (a reinstalled
+  /// device rebuilt it from the other half), the quantity is filled in; a row
+  /// with unsent changes keeps its local values. One whose customer, container type or reversed movement the
   /// download did not carry is dropped.
   Future<void> storeToday(List<Json> movements, PullContext context) async {
     final typeOf = {
@@ -66,6 +68,9 @@ class ContainerMovementApplier {
         // Like the push: the row keeps its delivery's server id, or its
         // return's when it only returned containers.
         final keepsServerId = side == _delivered || existing.serverId == null;
+        final quantity = reversedId == null
+            ? _missingHalf(existing, side!, m, context)
+            : null;
         await (_db.update(_db.containerMovementTable)..where(
               (t) => t.containerMovementId.equals(existing.containerMovementId),
             ))
@@ -76,6 +81,12 @@ class ContainerMovementApplier {
                     : const Value.absent(),
                 saleId: existing.saleId == null && saleId != null
                     ? Value(saleId)
+                    : const Value.absent(),
+                deliveredQuantity: side == _delivered && quantity != null
+                    ? Value(quantity)
+                    : const Value.absent(),
+                returnedQuantity: side == _returned && quantity != null
+                    ? Value(quantity)
                     : const Value.absent(),
               ),
             );
@@ -108,6 +119,25 @@ class ContainerMovementApplier {
           );
       context.ids.recordMovement(serverId, movementId);
     }
+  }
+
+  /// The quantity of [movement]'s [side] when [existing] lacks it: the other
+  /// half of the same local movement rebuilt it first. A reversal row, a row
+  /// with unsent changes or one that already holds this side is left as is.
+  int? _missingHalf(
+    ContainerMovementTableData existing,
+    String side,
+    Json movement,
+    PullContext context,
+  ) {
+    if (existing.reversesMovementId != null) return null;
+    if (context.unsent.movements.contains(existing.containerMovementId)) {
+      return null;
+    }
+    final held = side == _delivered
+        ? existing.deliveredQuantity
+        : existing.returnedQuantity;
+    return held == 0 ? (movement['quantity'] as num).toInt() : null;
   }
 
   Future<ContainerMovementTableData?> _existing(
