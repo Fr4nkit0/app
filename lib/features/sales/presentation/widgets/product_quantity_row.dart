@@ -119,7 +119,7 @@ class ProductQuantityRow extends StatelessWidget {
                     if (overStock) ...[
                       const SizedBox(height: 3),
                       Text(
-                        'Solo quedan ${available < 0 ? 0 : available} en el camión',
+                        _stockWarning(available),
                         style: TextStyle(
                           fontSize: 12,
                           fontWeight: FontWeight.w700,
@@ -146,6 +146,12 @@ class ProductQuantityRow extends StatelessWidget {
       ),
     );
   }
+
+  /// The truck stock may already be negative (an oversold load the admin
+  /// corrects later), so it is shown as is, never as 0.
+  static String _stockWarning(int available) => available > 0
+      ? 'Solo quedan $available en el camión'
+      : 'Sin stock en el camión ($available)';
 }
 
 class _QuantityStepper extends StatelessWidget {

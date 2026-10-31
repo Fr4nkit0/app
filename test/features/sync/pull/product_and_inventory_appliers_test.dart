@@ -65,6 +65,22 @@ void main() {
       },
     );
 
+    test('a bootstrap keeps a negative truck stock as is', () async {
+      await seedProduct(db, id: 'prod-1', serverId: 21, stock: 7);
+
+      await ProductApplier(db).applySnapshot(
+        [
+          {'id': 21, 'name': 'Water 20L'},
+        ],
+        [
+          {'id': 900, 'product_id': 21, 'current_quantity': '-3.00'},
+        ],
+        await bootstrapContext(db),
+      );
+
+      expect((await product('prod-1')).stock, -3);
+    });
+
     test('a bootstrap keeps the stock while sales are unsent', () async {
       await seedProduct(db, id: 'prod-1', serverId: 21, stock: 7);
       await enqueueUnsent(db, PendingEntity.sale, 'sale-1');
@@ -84,13 +100,16 @@ void main() {
   });
 
   group('TruckInventoryApplier', () {
-    Map<String, List<Map<String, dynamic>>> inventory({int productId = 21}) => {
+    Map<String, List<Map<String, dynamic>>> inventory({
+      int productId = 21,
+      String quantity = '20.00',
+    }) => {
       'route_inventories': [
         {
           'id': 900,
           'route_id': 7,
           'product_id': productId,
-          'current_quantity': '20.00',
+          'current_quantity': quantity,
         },
       ],
     };
@@ -112,6 +131,38 @@ void main() {
         20,
       );
       expect((await product('prod-1')).stock, 20);
+    });
+
+    test('keeps a negative current_quantity as is', () async {
+      await seedRoute(db, id: 'route-1', serverId: 7, date: dayOf(today));
+
+      await TruckInventoryApplier(
+        db,
+        today: () => today,
+      ).applyChanges(inventory(quantity: '-1.00'), await pullContext(db));
+
+      expect(
+        (await db.select(db.routeInventoryLoadTable).getSingle()).quantity,
+        -1,
+      );
+      expect((await product('prod-1')).stock, -1);
+    });
+
+    test('a bootstrap keeps a negative current_quantity as is', () async {
+      await seedRoute(db, id: 'route-1', serverId: 7, date: dayOf(today));
+      final context = await bootstrapContext(db);
+      context.ids.recordProduct(21, 'prod-1');
+
+      await TruckInventoryApplier(db, today: () => today).replaceRoute(
+        'route-1',
+        inventory(quantity: '-2.00')['route_inventories']!,
+        context,
+      );
+
+      expect(
+        (await db.select(db.routeInventoryLoadTable).getSingle()).quantity,
+        -2,
+      );
     });
 
     test(

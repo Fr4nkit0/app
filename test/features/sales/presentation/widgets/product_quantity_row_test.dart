@@ -4,6 +4,8 @@ import 'package:app/features/sales/presentation/widgets/product_quantity_row.dar
 import 'package:app/features/products/domain/models/product.dart';
 import 'package:app/core/theme/sales_tokens.dart';
 
+import '../../../../support/real_fonts.dart';
+
 // Helper to create a test Product
 Product _makeProduct({String name = 'Agua 20L', double price = 1500}) {
   return Product(id: 'p1', name: name, unitLabel: 'bidón', price: price);
@@ -195,6 +197,78 @@ void main() {
       );
 
       expect(find.textContaining('Solo quedan'), findsNothing);
+    });
+
+    testWidgets('shows a negative truck stock as negative and still allows '
+        'adding more', (tester) async {
+      var increments = 0;
+      await tester.pumpWidget(
+        _wrap(
+          ProductQuantityRow(
+            product: stocked(-1),
+            quantity: 1,
+            onIncrement: () => increments++,
+            onDecrement: () {},
+          ),
+        ),
+      );
+
+      expect(find.text('Sin stock en el camión (-1)'), findsOneWidget);
+      expect(find.textContaining('Solo quedan'), findsNothing);
+      await tester.tap(find.byIcon(Icons.add_rounded));
+      expect(increments, 1);
+    });
+
+    testWidgets('a day without a route (stock 0) warns without blocking', (
+      tester,
+    ) async {
+      var increments = 0;
+      await tester.pumpWidget(
+        _wrap(
+          ProductQuantityRow(
+            product: stocked(0),
+            quantity: 1,
+            onIncrement: () => increments++,
+            onDecrement: () {},
+          ),
+        ),
+      );
+
+      expect(find.text('Sin stock en el camión (0)'), findsOneWidget);
+      expect(find.textContaining('Solo quedan'), findsNothing);
+      await tester.tap(find.byIcon(Icons.add_rounded));
+      expect(increments, 1);
+    });
+
+    testWidgets('the negative warning is no taller than the low stock one on '
+        'a narrow phone', (tester) async {
+      expect(
+        await loadRealFonts(),
+        isTrue,
+        reason: 'Roboto was not found in the Flutter SDK cache',
+      );
+      await tester.binding.setSurfaceSize(const Size(360, 800));
+      addTearDown(() => tester.binding.setSurfaceSize(null));
+
+      Future<double> rowHeight(int available) async {
+        await tester.pumpWidget(
+          _wrap(
+            Align(
+              alignment: Alignment.topCenter,
+              child: ProductQuantityRow(
+                product: stocked(available),
+                quantity: 5,
+                onIncrement: () {},
+                onDecrement: () {},
+              ),
+            ),
+          ),
+        );
+        return tester.getSize(find.byType(ProductQuantityRow)).height;
+      }
+
+      final lowStock = await rowHeight(3);
+      expect(await rowHeight(-12), lessThanOrEqualTo(lowStock));
     });
   });
 
