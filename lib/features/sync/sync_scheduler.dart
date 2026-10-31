@@ -1,5 +1,7 @@
 import 'dart:async';
 
+import 'package:app/features/sync/domain/models/sync_status.dart';
+
 typedef PeriodicTimerFactory =
     Timer Function(Duration interval, void Function(Timer) onTick);
 
@@ -10,16 +12,26 @@ typedef DelayedTimerFactory =
 /// foreground, when connectivity comes back, on a timer while the app is in
 /// the foreground, shortly after a new local change, and on demand.
 ///
+/// When a cycle cannot reach the server while the phone looks online, it
+/// retries with a growing delay, so a server that comes back is noticed
+/// without waiting for the timer or a connectivity change.
+///
 /// Platform signals arrive as plain streams so this has no plugin
 /// dependency; the engine's single-flight guard absorbs overlapping triggers.
 class SyncScheduler {
   SyncScheduler({
-    required Future<void> Function() runCycle,
+    required Future<SyncStatus> Function() runCycle,
     required Stream<bool> foreground,
     required Stream<bool> online,
     required Stream<int> pendingCount,
     this.interval = const Duration(minutes: 5),
     this.debounce = const Duration(seconds: 3),
+    this.retryBackoff = const [
+      Duration(seconds: 15),
+      Duration(seconds: 30),
+      Duration(seconds: 60),
+      Duration(seconds: 120),
+    ],
     PeriodicTimerFactory? periodic,
     DelayedTimerFactory? delayed,
   }) : _runCycle = runCycle,
@@ -34,7 +46,11 @@ class SyncScheduler {
   /// Quiet time after the last new local change before its cycle runs, so a
   /// burst of writes is sent in one cycle.
   final Duration debounce;
-  final Future<void> Function() _runCycle;
+
+  /// Delays between retries while the server is unreachable; the last one
+  /// repeats until the server answers.
+  final List<Duration> retryBackoff;
+  final Future<SyncStatus> Function() _runCycle;
   final Stream<bool> _foregroundSignal;
   final Stream<bool> _onlineSignal;
   final Stream<int> _pendingCountSignal;
@@ -43,6 +59,9 @@ class SyncScheduler {
   final _subscriptions = <StreamSubscription<Object>>[];
   Timer? _timer;
   Timer? _debounceTimer;
+  Timer? _retryTimer;
+  int _retryStep = 0;
+  bool _disposed = false;
   bool? _online;
   bool _foreground = true;
   int? _pendingCount;
@@ -58,7 +77,7 @@ class SyncScheduler {
   }
 
   /// Manual trigger (sync button).
-  Future<void> syncNow() => _runCycle();
+  Future<void> syncNow() => _cycle();
 
   void _onForeground(bool isForeground) {
     _foreground = isForeground;
@@ -68,6 +87,7 @@ class SyncScheduler {
     } else {
       _stopTimer();
       _cancelDebounce();
+      _cancelRetry();
     }
   }
 
@@ -75,7 +95,10 @@ class SyncScheduler {
     final wasOffline = _online == false;
     _online = isOnline;
     if (isOnline && wasOffline) _trigger();
-    if (!isOnline) _cancelDebounce();
+    if (!isOnline) {
+      _cancelDebounce();
+      _cancelRetry();
+    }
   }
 
   /// Only an increase is a new local change. The count stays up while
@@ -107,11 +130,44 @@ class SyncScheduler {
     _debounceTimer = null;
   }
 
-  void _trigger() => unawaited(_runCycle());
+  void _cancelRetry() {
+    _retryTimer?.cancel();
+    _retryTimer = null;
+    _retryStep = 0;
+  }
+
+  void _trigger() => unawaited(_cycle());
+
+  /// Every cycle this starts goes through here, so its result decides the
+  /// retry.
+  Future<void> _cycle() async {
+    final status = await _runCycle();
+    if (_disposed) return;
+    if (status.lastResult == SyncCycleResult.offline) {
+      _scheduleRetry();
+    } else {
+      // The server answered: nothing to retry.
+      _cancelRetry();
+    }
+  }
+
+  /// Replaces any pending retry, so there is never more than one.
+  void _scheduleRetry() {
+    if (!_foreground || _online == false) return;
+    _retryTimer?.cancel();
+    final delay = retryBackoff[_retryStep];
+    if (_retryStep < retryBackoff.length - 1) _retryStep++;
+    _retryTimer = _delayed(delay, () {
+      _retryTimer = null;
+      _trigger();
+    });
+  }
 
   void dispose() {
+    _disposed = true;
     _stopTimer();
     _cancelDebounce();
+    _cancelRetry();
     for (final s in _subscriptions) {
       s.cancel();
     }
