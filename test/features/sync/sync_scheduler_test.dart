@@ -256,6 +256,32 @@ void main() {
       expect(cycles, 2);
     });
 
+    test('triggers that joined one cycle advance the backoff once', () async {
+      // The engine hands every trigger that joins its in-flight cycle the
+      // same status.
+      final cycle = Completer<SyncStatus>();
+      final joined = SyncScheduler(
+        runCycle: () => cycle.future,
+        foreground: const Stream.empty(),
+        online: const Stream.empty(),
+        pendingCount: const Stream.empty(),
+        periodic: (interval, onTick) => _ManualTimer(interval, onTick),
+        delayed: (duration, callback) {
+          final timer = _ManualTimer(duration, (_) => callback());
+          retries.add(timer);
+          return timer;
+        },
+      );
+      addTearDown(joined.dispose);
+
+      joined.start();
+      unawaited(joined.syncNow());
+      cycle.complete(const SyncStatus(lastResult: SyncCycleResult.offline));
+      await pumpEventQueue();
+
+      expect(pendingRetries().single.interval, const Duration(seconds: 15));
+    });
+
     test('backs off 15, 30, 60, 120 and then stays at 120 seconds', () async {
       await startUnreachable();
 

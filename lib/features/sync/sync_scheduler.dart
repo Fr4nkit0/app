@@ -61,6 +61,7 @@ class SyncScheduler {
   Timer? _debounceTimer;
   Timer? _retryTimer;
   int _retryStep = 0;
+  SyncStatus? _lastStatus;
   bool _disposed = false;
   bool? _online;
   bool _foreground = true;
@@ -142,7 +143,10 @@ class SyncScheduler {
   /// retry.
   Future<void> _cycle() async {
     final status = await _runCycle();
-    if (_disposed) return;
+    // Triggers that joined the engine's in-flight cycle get the same status:
+    // react to it once.
+    if (_disposed || identical(status, _lastStatus)) return;
+    _lastStatus = status;
     if (status.lastResult == SyncCycleResult.offline) {
       _scheduleRetry();
     } else {
