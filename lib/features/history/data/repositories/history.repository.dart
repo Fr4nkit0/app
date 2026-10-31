@@ -9,6 +9,7 @@ import 'package:app/features/history/domain/models/history_entry_type.dart';
 import 'package:app/features/payments/domain/models/payment.dart';
 import 'package:app/features/sales/data/database/record_status.dart';
 import 'package:app/features/sales/domain/models/payment_method.dart';
+import 'package:app/features/sync/data/repositories/admin_cancellations.dart';
 import 'package:app/features/sync/domain/models/pending_change.dart';
 
 abstract class HistoryRepository {
@@ -23,9 +24,10 @@ abstract class HistoryRepository {
 /// Builds the history from the sync queue: each queued change is one record
 /// of the driver, and its status is the one the sync engine left on it.
 class DriftHistoryRepository implements HistoryRepository {
-  DriftHistoryRepository(this._db);
+  DriftHistoryRepository(this._db) : _admin = AdminCancellations(_db);
 
   final AppDatabase _db;
+  final AdminCancellations _admin;
 
   static const _unknownCustomer = 'Cliente desconocido';
 
@@ -48,6 +50,7 @@ class DriftHistoryRepository implements HistoryRepository {
         _db.saleItemTable,
         _db.paymentTable,
         _db.containerMovementTable,
+        _admin.watchedTable,
       ]),
     )) {
       yield await _customerRecords(customerId);
@@ -93,6 +96,7 @@ class DriftHistoryRepository implements HistoryRepository {
         _db.productTable.productId.equalsExp(_db.saleItemTable.productId),
       ),
     ])..where(_db.saleItemTable.saleId.isIn(sales.map((s) => s.saleId)));
+    final byAdmin = await _admin.saleIds();
     final itemsBySale = <String, List<CustomerRecordItem>>{};
     for (final row in await itemsQuery.get()) {
       final item = row.readTable(_db.saleItemTable);
@@ -113,6 +117,8 @@ class DriftHistoryRepository implements HistoryRepository {
           date: sale.saleDate,
           amount: sale.totalAmount,
           isCancelled: sale.status == RecordStatus.cancelled,
+          cancelledByAdmin: byAdmin.contains(sale.saleId),
+          visitId: sale.visitId,
           saleMethod: PaymentMethod.values.firstWhere(
             (m) => m.name == sale.paymentMethod,
             orElse: () => PaymentMethod.cash,
@@ -126,6 +132,7 @@ class DriftHistoryRepository implements HistoryRepository {
     final payments = await (_db.select(
       _db.paymentTable,
     )..where((t) => t.customerId.equals(customerId))).get();
+    final byAdmin = await _admin.paymentIds();
     return [
       for (final payment in payments)
         CustomerRecord(
@@ -134,6 +141,9 @@ class DriftHistoryRepository implements HistoryRepository {
           date: payment.createdAt,
           amount: payment.amount,
           isCancelled: payment.status == RecordStatus.cancelled,
+          cancelledByAdmin: byAdmin.contains(payment.paymentId),
+          visitId: payment.visitId,
+          saleId: payment.saleId,
           paymentType: PaymentType.fromDb(payment.paymentMethod),
           observations: _nonBlank(payment.notes),
         ),

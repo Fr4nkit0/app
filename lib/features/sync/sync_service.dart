@@ -6,6 +6,7 @@ import '../../core/services/database.helper.dart';
 import 'pull/address_applier.dart';
 import 'pull/agreement_applier.dart';
 import 'pull/balance_applier.dart';
+import 'pull/cancellation_applier.dart';
 import 'pull/catalogs_applier.dart';
 import 'pull/container_movement_applier.dart';
 import 'pull/customer_applier.dart';
@@ -38,6 +39,7 @@ class SyncService {
       _addresses = AddressApplier(_db),
       _preferences = PreferenceApplier(_db),
       _agreements = AgreementApplier(_db),
+      _cancellations = CancellationApplier(_db),
       _balances = BalanceApplier(_db),
       _routes = RouteApplier(_db),
       _stops = StopApplier(_db),
@@ -61,6 +63,7 @@ class SyncService {
   final AddressApplier _addresses;
   final PreferenceApplier _preferences;
   final AgreementApplier _agreements;
+  final CancellationApplier _cancellations;
   final BalanceApplier _balances;
   final RouteApplier _routes;
   final StopApplier _stops;
@@ -71,7 +74,9 @@ class SyncService {
   final TruckInventoryApplier _truckInventory;
 
   /// Appliers of the incremental pull in dependency order: a row is applied
-  /// after the rows it references.
+  /// after the rows it references. Cancellations go before the balances and
+  /// the truck inventory, which already count them and replace the local
+  /// values.
   late final List<PullApplier> _pullOrder = [
     _catalogs,
     _products,
@@ -79,6 +84,7 @@ class SyncService {
     _addresses,
     _preferences,
     _agreements,
+    _cancellations,
     _balances,
     _routes,
     _stops,

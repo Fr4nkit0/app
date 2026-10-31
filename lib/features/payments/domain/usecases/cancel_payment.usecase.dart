@@ -45,4 +45,26 @@ class CancelPaymentUseCase {
       await _paymentRepo.cancelPayment(payment, at: now, reason: note);
     });
   }
+
+  /// Applies a cancellation the server already holds (the office or a
+  /// previous push cancelled [paymentId] at [at]): its amount goes back on
+  /// the customer account, whatever its day or sale, and nothing is queued.
+  ///
+  /// Returns false, changing nothing, when the payment is not on the device
+  /// or is already cancelled.
+  Future<bool> applyServerCancellation(
+    String paymentId, {
+    required DateTime at,
+    String? reason,
+  }) => _transaction(() async {
+    final payment = await _paymentRepo.findPayment(paymentId);
+    if (payment == null || payment.isCancelled) return false;
+    await _paymentRepo.cancelPayment(
+      payment,
+      at: at,
+      reason: reason,
+      queue: false,
+    );
+    return true;
+  });
 }

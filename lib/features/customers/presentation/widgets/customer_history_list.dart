@@ -5,6 +5,7 @@ import 'package:app/features/history/domain/models/customer_record.dart';
 import 'package:app/features/history/presentation/widgets/history_date_utils.dart';
 import 'package:app/features/payments/domain/models/payment.dart';
 import 'package:app/features/sales/domain/models/payment_method.dart';
+import 'package:app/features/sales/presentation/widgets/cancel_record_dialog.dart';
 import 'package:app/features/visits/presentation/visit_outcome_display.dart';
 import 'package:app/features/visits/presentation/widgets/visit_record_tile.dart';
 
@@ -14,12 +15,22 @@ class CustomerHistoryList extends StatelessWidget {
     super.key,
     required this.records,
     required this.containerLabels,
+    required this.now,
+    required this.onCancelSale,
+    required this.onCancelPayment,
   });
 
   final List<CustomerRecord> records;
 
   /// Short name of each container type by its catalog code.
   final Map<String, String> containerLabels;
+
+  /// Decides which records can still be cancelled.
+  final DateTime now;
+
+  /// The driver asked to cancel the sale or payment with this id.
+  final ValueChanged<String> onCancelSale;
+  final ValueChanged<String> onCancelPayment;
 
   @override
   Widget build(BuildContext context) {
@@ -39,15 +50,37 @@ class CustomerHistoryList extends StatelessWidget {
               amount: record.amount == null
                   ? null
                   : formatMoney(record.amount!),
-              statusLabel: record.isCancelled
-                  ? (record.type == CustomerRecordType.payment
-                        ? 'Anulado'
-                        : 'Anulada')
+              statusLabel: _statusLabel(record),
+              action: record.isCancellableOn(now)
+                  ? _cancelAction(record)
                   : null,
             ),
         ],
       ),
     );
+  }
+
+  /// Off-route sales and payments; a visit's are cancelled from the visit.
+  Widget _cancelAction(CustomerRecord record) =>
+      record.type == CustomerRecordType.payment
+      ? CancelRecordAction(
+          label: 'Anular cobro',
+          onPressed: () => onCancelPayment(record.id),
+        )
+      : CancelRecordAction(
+          label: 'Anular venta',
+          onPressed: () => onCancelSale(record.id),
+        );
+
+  static String? _statusLabel(CustomerRecord record) {
+    if (!record.isCancelled) return null;
+    final isPayment = record.type == CustomerRecordType.payment;
+    if (record.cancelledByAdmin) {
+      return isPayment
+          ? 'Anulado por el administrador'
+          : 'Anulada por el administrador';
+    }
+    return isPayment ? 'Anulado' : 'Anulada';
   }
 
   static IconData _icon(CustomerRecordType type) => switch (type) {

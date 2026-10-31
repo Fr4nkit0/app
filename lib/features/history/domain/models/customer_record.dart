@@ -2,6 +2,7 @@ import 'package:flutter/foundation.dart';
 
 import 'package:app/features/payments/domain/models/payment.dart';
 import 'package:app/features/sales/domain/models/payment_method.dart';
+import 'package:app/features/sales/domain/same_day.dart';
 
 enum CustomerRecordType { visit, sale, payment, containerMovement }
 
@@ -25,6 +26,9 @@ class CustomerRecord {
     required this.date,
     this.amount,
     this.isCancelled = false,
+    this.cancelledByAdmin = false,
+    this.visitId,
+    this.saleId,
     this.outcomeName,
     this.observations,
     this.saleMethod,
@@ -46,6 +50,16 @@ class CustomerRecord {
   /// A cancelled sale or payment, or a movement of a cancelled sale.
   final bool isCancelled;
 
+  /// A sale or payment the office cancelled, not the driver.
+  final bool cancelledByAdmin;
+
+  /// The visit (its stop's id) a sale or payment was made in; null for an
+  /// off-route one, made from the customer profile.
+  final String? visitId;
+
+  /// The sale a payment settled.
+  final String? saleId;
+
   /// Visit outcome as the catalog names it.
   final String? outcomeName;
   final String? observations;
@@ -59,4 +73,18 @@ class CustomerRecord {
   final String? containerType;
   final int deliveredQuantity;
   final int returnedQuantity;
+
+  /// An off-route sale, or an off-route payment that did not settle a sale,
+  /// of [now]'s day that still counts: the driver can cancel it from the
+  /// profile. A visit's records are cancelled from the visit.
+  bool isCancellableOn(DateTime now) =>
+      !isCancelled &&
+      visitId == null &&
+      switch (type) {
+        CustomerRecordType.sale => true,
+        CustomerRecordType.payment => saleId == null,
+        CustomerRecordType.visit ||
+        CustomerRecordType.containerMovement => false,
+      } &&
+      isSameDay(date, now);
 }

@@ -97,6 +97,8 @@ const _entities = [
   'container_types',
   'payment_methods',
   'visit_outcomes',
+  'sale_cancellations',
+  'payment_cancellations',
 ];
 
 /// One pull page shaped like the server's: every entity key present.
@@ -373,6 +375,81 @@ void main() {
     expect(containers.quantity, 7);
     final stops = await DriftRouteRepository(db).watchDayStops().first;
     expect(stops.firstWhere((s) => s.customer.name == 'Ana').customer.debtAmount, 250.75);
+  });
+
+  test('a sale cancelled on the server and the balance and stock that '
+      'already count it, in one download, reverse the sale once', () async {
+    final ana = await customer(11);
+    final water = await (db.select(
+      db.productTable,
+    )..where((t) => t.serverId.equals(21))).getSingle();
+    await db
+        .into(db.saleTable)
+        .insert(
+          SaleTableCompanion.insert(
+            saleId: const Value('srv-sale'),
+            customerId: ana.customerId,
+            totalAmount: 200,
+            paymentMethod: 'credit',
+            quantity: 0,
+            shipping_amount: 0,
+            serverId: const Value(950),
+          ),
+        );
+    await db
+        .into(db.saleItemTable)
+        .insert(
+          SaleItemTableCompanion.insert(
+            saleId: 'srv-sale',
+            productId: water.productId,
+            quantity: 2,
+            unitPrice: 100,
+            subtotal: 200,
+          ),
+        );
+    pages = [
+      _page({
+        'sale_cancellations': [
+          {
+            'sale_id': 950,
+            'client_uuid': null,
+            'cancelled_at': '2026-10-19T12:30:00+00:00',
+            'reason': null,
+            'cancelled_by_admin': true,
+          },
+        ],
+        'customer_balances': [
+          {
+            'id': 500,
+            'customer_id': 11,
+            'current_balance': '1300.50',
+            'enabled': true,
+          },
+        ],
+        'route_inventories': [
+          {
+            'id': 900,
+            'route_id': 7,
+            'product_id': 21,
+            'current_quantity': '22.00',
+          },
+        ],
+      }),
+    ];
+
+    await service.pull();
+
+    final sale = await (db.select(
+      db.saleTable,
+    )..where((t) => t.saleId.equals('srv-sale'))).getSingle();
+    expect(sale.status, 'CANCELLED');
+    final balance = await db.select(db.customerBalanceTable).getSingle();
+    expect(balance.currentBalance, 1300.50);
+    final stock = await (db.select(
+      db.productTable,
+    )..where((t) => t.serverId.equals(21))).getSingle();
+    expect(stock.stock, 22);
+    expect(await DriftPendingChangeRepository(db).getPending(), isEmpty);
   });
 
   group('custody', () {

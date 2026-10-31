@@ -56,4 +56,24 @@ class CancelSaleUseCase {
       }
     });
   }
+
+  /// Applies a cancellation the server already holds (the office or a
+  /// previous push cancelled [saleId] at [at]) with the same effects on the
+  /// sale as [execute], whatever its day, and queues nothing. Its payments
+  /// are left alone: the server does not cancel them with the sale and
+  /// reports each one it cancels on its own.
+  ///
+  /// Returns false, changing nothing, when the sale is not on the device or
+  /// is already cancelled.
+  Future<bool> applyServerCancellation(
+    String saleId, {
+    required DateTime at,
+    String? reason,
+  }) => _transaction(() async {
+    final sale = await _saleRepo.findSale(saleId);
+    if (sale == null || sale.isCancelled) return false;
+    await _saleRepo.cancelSale(sale, at: at, reason: reason, queue: false);
+    await _inventoryRepo.reverseSaleMovements(sale.id, at: at);
+    return true;
+  });
 }

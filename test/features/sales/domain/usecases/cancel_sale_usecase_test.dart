@@ -29,8 +29,9 @@ class _FailingPaymentRepository extends DriftPaymentRepository {
     Payment payment, {
     required DateTime at,
     String? reason,
+    bool queue = true,
   }) async {
-    await super.cancelPayment(payment, at: at, reason: reason);
+    await super.cancelPayment(payment, at: at, reason: reason, queue: queue);
     throw Exception('Simulated failure after the payment cancellation');
   }
 }

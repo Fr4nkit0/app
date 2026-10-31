@@ -8,6 +8,7 @@ import 'package:app/features/history/domain/models/customer_record.dart';
 import 'package:app/features/payments/domain/models/payment.dart';
 import 'package:app/features/sales/data/database/record_status.dart';
 import 'package:app/features/sales/domain/models/payment_method.dart';
+import 'package:app/features/sync/data/repositories/admin_cancellations.dart';
 
 /// Records as the bootstrap stores them: server ids, no pending changes.
 Future<void> seedBootstrappedRecords(AppDatabase db) async {
@@ -246,6 +247,37 @@ void main() {
     expect(payment.amount, 2000);
     expect(payment.paymentType, PaymentType.cash);
     expect(payment.isCancelled, isFalse);
+  });
+
+  test('a sale carries its visit and a payment its visit and sale, so '
+      'off-route records are told apart', () async {
+    final records = await sut.watchCustomerRecords('cus-1').first;
+
+    final sale = records.singleWhere((r) => r.id == 'sale-18');
+    expect(sale.visitId, 'visit-19');
+    final payment = records.singleWhere((r) => r.id == 'pay-1');
+    expect(payment.visitId, isNull);
+    expect(payment.saleId, isNull);
+  });
+
+  test('a sale or payment the office cancelled is marked so', () async {
+    await AdminCancellations(db).setSale('sale-cancelled', byAdmin: true);
+    await AdminCancellations(db).setPayment('pay-1', byAdmin: true);
+
+    final records = await sut.watchCustomerRecords('cus-1').first;
+
+    expect(
+      records.singleWhere((r) => r.id == 'sale-cancelled').cancelledByAdmin,
+      isTrue,
+    );
+    expect(
+      records.singleWhere((r) => r.id == 'pay-1').cancelledByAdmin,
+      isTrue,
+    );
+    expect(
+      records.singleWhere((r) => r.id == 'sale-18').cancelledByAdmin,
+      isFalse,
+    );
   });
 
   test('a container movement carries its type and quantities', () async {
