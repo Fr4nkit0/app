@@ -59,23 +59,10 @@ class AddressApplier implements PullApplier {
             : (_db.select(_db.customerAddressTable)
                     ..where((t) => t.addressId.equals(clientUuid)))
                   .getSingleOrNull());
-    final fields = CustomerAddressTableCompanion(
-      customerId: Value(customerId),
-      street: Value(a['street'] as String?),
-      apartment: Value(a['apartment'] as String?),
-      // Older server rows stored the floor as an integer, so a free-text floor
-      // ("PB") could come back as null; keep the device's value then.
-      floor: a['floor'] == null && _isFreeTextFloor(existing?.floor)
-          ? const Value.absent()
-          : Value(a['floor']?.toString()),
-      visualReference: Value(a['visual_reference'] as String?),
-      isPrimary: Value(a['is_primary'] == true),
-      latitude: Value(toNullableDouble(a['latitude'])),
-      longitude: Value(toNullableDouble(a['longitude'])),
-      neighborhood: Value(a['neighborhood'] as String?),
-      enabled: enabledOf(a),
-      serverId: Value(serverId),
-    );
+    final fields = fieldsOf(
+      a,
+      localFloor: existing?.floor,
+    ).copyWith(customerId: Value(customerId));
     if (existing == null) {
       final row = await _db
           .into(_db.customerAddressTable)
@@ -122,6 +109,26 @@ class AddressApplier implements PullApplier {
                 ..limit(1))
               .get())
           .isNotEmpty;
+
+  /// The local columns of the server address row [a], server id included
+  /// and customer left out. [localFloor] is the device's floor of the row.
+  static CustomerAddressTableCompanion fieldsOf(Json a, {String? localFloor}) =>
+      CustomerAddressTableCompanion(
+        street: Value(a['street'] as String?),
+        apartment: Value(a['apartment'] as String?),
+        // Older server rows stored the floor as an integer, so a free-text
+        // floor ("PB") could come back as null; keep the device's value then.
+        floor: a['floor'] == null && _isFreeTextFloor(localFloor)
+            ? const Value.absent()
+            : Value(a['floor']?.toString()),
+        visualReference: Value(a['visual_reference'] as String?),
+        isPrimary: Value(a['is_primary'] == true),
+        latitude: Value(toNullableDouble(a['latitude'])),
+        longitude: Value(toNullableDouble(a['longitude'])),
+        neighborhood: Value(a['neighborhood'] as String?),
+        enabled: enabledOf(a),
+        serverId: Value(a['id'] as int),
+      );
 
   static bool _isFreeTextFloor(String? floor) =>
       floor != null &&

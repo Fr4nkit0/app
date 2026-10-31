@@ -37,12 +37,7 @@ class CustomerApplier implements PullApplier {
             ))
             .getSingleOrNull();
 
-    final fields = CustomerTableCompanion(
-      name: Value(c['name'] as String),
-      phone: Value(c['phone_number'] as String?),
-      enabled: enabledOf(c),
-      serverId: Value(serverId),
-    );
+    final fields = fieldsOf(c);
     final String localId;
     if (existing == null) {
       localId =
@@ -69,4 +64,12 @@ class CustomerApplier implements PullApplier {
     context.ids.recordCustomer(serverId, localId);
     return localId;
   }
+
+  /// The local columns of the server customer row [c], server id included.
+  static CustomerTableCompanion fieldsOf(Json c) => CustomerTableCompanion(
+    name: Value(c['name'] as String),
+    phone: Value(c['phone_number'] as String?),
+    enabled: enabledOf(c),
+    serverId: Value(c['id'] as int),
+  );
 }

@@ -79,6 +79,8 @@ abstract class EntityPusher {
 /// (a customer balance), which a rejection has to take back.
 abstract interface class RejectionAware {
   /// Called once per local record ([PendingChange.entityId]) whose queued
-  /// change was just rejected, on the device or by the server.
-  Future<void> applyRejected(String localId);
+  /// change was just rejected, on the device or by the server. [current] is
+  /// the server row the server's answer carries (pull shape), when it has
+  /// one.
+  Future<void> applyRejected(String localId, {Json? current});
 }

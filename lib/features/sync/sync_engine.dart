@@ -125,7 +125,9 @@ class SyncEngine {
   ///
   /// A rejected record is rolled back by its pusher ([RejectionAware]); an
   /// outdated one (the server applied none of it) is marked outdated and its
-  /// row shows the server's values again ([ServerShadow]). Once the queue is
+  /// row shows the server's values again ([ServerShadow]). Both take the
+  /// server row the answer carries (`current`) when there is one, over the
+  /// values last known; an accepted answer carries none. Once the queue is
   /// settled, the server values kept for rows with nothing pending are
   /// forgotten.
   Future<void> push() async {
@@ -181,6 +183,7 @@ class SyncEngine {
         };
         // A change settles only after every record built from it did.
         final rejectedWith = <int, String>{};
+        final currentOf = <String, Json>{};
         final unanswered = <int>{};
         final accepted = <int>{};
         final outdated = <int>{};
@@ -201,6 +204,14 @@ class SyncEngine {
             } else {
               outdated.addAll(record.changeIds);
               outdatedRows[record.localId] = record.changeIds;
+              final current = _currentOf(result);
+              if (current != null) {
+                await _shadow.keepCurrent(
+                  pusher.entity,
+                  record.localId,
+                  current,
+                );
+              }
             }
           } else if (status == 'rejected') {
             final reason =
@@ -208,6 +219,8 @@ class SyncEngine {
             for (final id in record.changeIds) {
               rejectedWith.putIfAbsent(id, () => reason);
             }
+            final current = _currentOf(result);
+            if (current != null) currentOf[record.localId] = current;
           } else {
             // No answer for this record: it stays pending for the next cycle.
             unanswered.addAll(record.changeIds);
@@ -216,7 +229,12 @@ class SyncEngine {
         for (final MapEntry(key: id, value: reason) in rejectedWith.entries) {
           await _queue.markRejected(id, reason);
         }
-        await _applyRejected(pusher, rejectedWith.keys, entityIdOf);
+        await _applyRejected(
+          pusher,
+          rejectedWith.keys,
+          entityIdOf,
+          currentOf: currentOf,
+        );
         bool settles(int id) =>
             !rejectedWith.containsKey(id) && !unanswered.contains(id);
         await _queue.markSent([
@@ -240,18 +258,29 @@ class SyncEngine {
   }
 
   /// Lets [pusher] take back what its rejected local records moved, once
-  /// per local record.
+  /// per local record, with the server row the answer carried for it
+  /// ([currentOf], by local id).
   Future<void> _applyRejected(
     EntityPusher pusher,
     Iterable<int> changeIds,
-    Map<int, String> entityIdOf,
-  ) async {
+    Map<int, String> entityIdOf, {
+    Map<String, Json> currentOf = const {},
+  }) async {
     if (pusher is! RejectionAware) return;
     final localIds = {for (final id in changeIds) ?entityIdOf[id]};
     for (final localId in localIds) {
-      await (pusher as RejectionAware).applyRejected(localId);
+      await (pusher as RejectionAware).applyRejected(
+        localId,
+        current: currentOf[localId],
+      );
     }
   }
+
+  /// The server row an answer carries, in pull shape.
+  static Json? _currentOf(Json result) => switch (result['current']) {
+    final Map current => Map<String, dynamic>.from(current),
+    _ => null,
+  };
 
   Future<SyncStatus> status() => _statusQuery().getSingle();
 

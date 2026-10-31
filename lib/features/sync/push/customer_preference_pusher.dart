@@ -14,9 +14,10 @@ import 'references.dart';
 /// were first queued. The customer record carries no preferences, so a
 /// known customer never waits for them.
 ///
-/// A rejected preference goes back to the server's values, or is deleted
-/// when the server never stored it: the pull then brings the server's
-/// preference in that slot as a row of its own.
+/// A rejected preference goes back to the server's values (the server row
+/// the answer carries, or the last ones known), or is deleted when the
+/// server never stored it: the pull then brings the server's preference in
+/// that slot as a row of its own.
 class CustomerPreferencePusher implements EntityPusher, RejectionAware {
   CustomerPreferencePusher(this._db);
 
@@ -71,7 +72,7 @@ class CustomerPreferencePusher implements EntityPusher, RejectionAware {
   }
 
   @override
-  Future<void> applyRejected(String localId) async {
+  Future<void> applyRejected(String localId, {Json? current}) async {
     final preference = await (_db.select(
       _db.customerPreferenceTable,
     )..where((t) => t.customerPreferenceId.equals(localId))).getSingleOrNull();
@@ -81,6 +82,7 @@ class CustomerPreferencePusher implements EntityPusher, RejectionAware {
       localId,
       refused: _values(preference),
       stored: preference.serverId != null,
+      current: current,
       delete: () async {
         await (_db.delete(
           _db.customerPreferenceTable,

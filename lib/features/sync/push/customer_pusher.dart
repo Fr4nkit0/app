@@ -21,8 +21,9 @@ import 'entity_pusher.dart';
 /// changes is unsent: once those are in, the server's primary is the local
 /// one again.
 ///
-/// A rejected customer goes back to the server's values, or, when the
-/// server never stored it, is deleted unless other records reference it.
+/// A rejected customer goes back to the server's values (the server row the
+/// answer carries, or the last ones known), or, when the server never stored
+/// it, is deleted unless other records reference it.
 class CustomerPusher implements EntityPusher, RejectionAware {
   CustomerPusher(this._db);
 
@@ -165,7 +166,7 @@ class CustomerPusher implements EntityPusher, RejectionAware {
   }
 
   @override
-  Future<void> applyRejected(String localId) async {
+  Future<void> applyRejected(String localId, {Json? current}) async {
     final customer = await (_db.select(
       _db.customerTable,
     )..where((t) => t.customerId.equals(localId))).getSingleOrNull();
@@ -184,6 +185,7 @@ class CustomerPusher implements EntityPusher, RejectionAware {
               '$_addressPrefix$key': value,
       },
       stored: customer.serverId != null,
+      current: current,
       delete: () => _deleteUnreferenced(localId),
     );
   }

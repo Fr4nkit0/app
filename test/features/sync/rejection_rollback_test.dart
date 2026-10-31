@@ -770,4 +770,280 @@ void main() {
       isEmpty,
     );
   });
+
+  group('an answer that carries the server row (current)', () {
+    const foreignOwner = 'The server_id belongs to another app record.';
+
+    Json serverAddress({
+      String street = 'Belgrano 100',
+      String? visualReference = 'Porton web',
+      String? latitude = '-24.7821000',
+      String? longitude = '-65.4123000',
+    }) => {
+      'id': 101,
+      'client_uuid': null,
+      'customer_id': 10,
+      'street': street,
+      'apartment': null,
+      'floor': null,
+      'visual_reference': visualReference,
+      'neighborhood': 'Centro',
+      'latitude': latitude,
+      'longitude': longitude,
+      'is_primary': true,
+      'enabled': true,
+    };
+
+    Json serverCustomer({String? phone = '3874009999', Json? address}) => {
+      'id': 10,
+      'client_uuid': null,
+      'name': 'Kiosco Norte',
+      'phone_number': phone,
+      'enabled': true,
+      'address': address,
+    };
+
+    Json Function(String, Json) answerWith(
+      String status,
+      Json current, {
+      String error = _slotTaken,
+    }) =>
+        (entity, r) => {
+          'uuid': r['uuid'],
+          'status': status,
+          'server_id': status == 'rejected' ? null : r['server_id'],
+          if (status == 'rejected') 'error': error,
+          'review_reason': null,
+          'current': current,
+        };
+
+    test('an outdated customer edit shows the server row, with the primary '
+        'address values the device never pulled (A1)', () async {
+      await editCustomer(phone: '111');
+      answer = answerWith('outdated', serverCustomer(address: serverAddress()));
+
+      await engine.push();
+
+      expect((await customer('c-1')).phone, '3874009999');
+      final row = await address('a-1');
+      expect(row.visualReference, 'Porton web');
+      expect(row.latitude, -24.7821);
+      expect(row.longitude, -65.4123);
+      expect(row.serverId, 101);
+      expect(
+        (await latest(PendingEntity.customer, 'c-1'))?.status,
+        PendingStatus.outdated,
+      );
+      expect(
+        await ServerShadow(db).read(PendingEntity.customer, 'c-1'),
+        isNull,
+      );
+    });
+
+    test('an outdated answer without server_id links current.id and shows '
+        'its values', () async {
+      await db
+          .into(db.customerPreferenceTable)
+          .insert(
+            CustomerPreferenceTableCompanion.insert(
+              customerPreferenceId: const drift.Value('p-new'),
+              customerId: const drift.Value('c-1'),
+              dayOfWeek: const drift.Value(3),
+              timeWindowStart: '08:00',
+            ),
+          );
+      await queue.enqueue(
+        entity: PendingEntity.customerPreference,
+        entityId: 'p-new',
+        action: PendingAction.insert,
+      );
+      answer = (entity, r) => {
+        'uuid': r['uuid'],
+        'status': 'outdated',
+        'server_id': null,
+        'review_reason': null,
+        'current': serverPreference(
+          77,
+          clientUuid: 'p-new',
+          day: 3,
+          start: '08:30:00',
+          end: '10:00:00',
+        ),
+      };
+
+      await engine.push();
+
+      final row = await preference('p-new');
+      expect(row.serverId, 77);
+      expect(row.timeWindowStart, '08:30');
+      expect(row.timeWindowEnd, '10:00');
+    });
+
+    test('a rejected address edit is restored to the server row', () async {
+      await editAddress(
+        const AddressDetails(
+          street: 'Belgrano 999',
+          neighborhood: 'Centro',
+          visualReference: 'Porton verde',
+        ),
+      );
+      answer = answerWith(
+        'rejected',
+        serverAddress(street: 'Belgrano 120', visualReference: 'Reja negra'),
+        error: 'invalid',
+      );
+
+      await engine.push();
+
+      final row = await address('a-1');
+      expect(row.street, 'Belgrano 120');
+      expect(row.visualReference, 'Reja negra');
+      expect(row.latitude, -24.7821);
+      expect(row.longitude, -65.4123);
+      expect(row.serverId, 101);
+      final rejected = (await queue.getRejected()).single;
+      expect(rejected.rollback, RejectionRollback.restored);
+      expect(
+        (rejected.payload?[PendingChange.rejectedValuesKey] as Map)['street'],
+        'Belgrano 999',
+      );
+    });
+
+    test('a preference edit moved onto a taken slot is restored to its own '
+        'server row (S6)', () async {
+      await editPreference(
+        'p-1',
+        const PreferenceDetails(dayOfWeek: 4, start: '14:00', end: '16:00'),
+      );
+      answer = answerWith(
+        'rejected',
+        serverPreference(201, day: 4, start: '14:00:00', end: '15:00:00'),
+      );
+
+      await engine.push();
+
+      final row = await preference('p-1');
+      expect(row.dayOfWeek, 4);
+      expect(row.timeWindowStart, '14:00');
+      expect(row.timeWindowEnd, '15:00');
+      expect(row.serverId, 201);
+      final rejected = (await queue.getRejected()).single;
+      expect(rejected.rollback, RejectionRollback.restored);
+      expect(rejected.payload?[PendingChange.rejectedValuesKey], {
+        'day_of_week': 4,
+        'time_window_start': '14:00',
+        'time_window_end': '16:00',
+        'enabled': true,
+      });
+    });
+
+    test('a rejection because the server row belongs to another app record '
+        'shows that row\'s values on the row linked to it, without taking its '
+        'client uuid (S5)', () async {
+      await editPreference(
+        'p-1',
+        const PreferenceDetails(dayOfWeek: 1, start: '10:00', end: '13:00'),
+      );
+      answer = answerWith(
+        'rejected',
+        serverPreference(
+          201,
+          clientUuid: 'p-other',
+          day: 1,
+          start: '07:00:00',
+          end: '08:00:00',
+        ),
+        error: foreignOwner,
+      );
+
+      await engine.push();
+
+      final rows = await db.select(db.customerPreferenceTable).get();
+      expect(rows.map((r) => r.customerPreferenceId), ['p-1']);
+      final row = rows.single;
+      expect(row.serverId, 201);
+      expect(row.timeWindowStart, '07:00');
+      expect(row.timeWindowEnd, '08:00');
+      expect(
+        (await queue.getRejected()).single.rollback,
+        RejectionRollback.restored,
+      );
+    });
+
+    test('a rejection carrying another app record\'s row the local row is not '
+        'linked to keeps the row as it is (S5)', () async {
+      await editPreference(
+        'p-1',
+        const PreferenceDetails(dayOfWeek: 1, start: '10:00', end: '13:00'),
+      );
+      answer = answerWith(
+        'rejected',
+        serverPreference(
+          999,
+          clientUuid: 'p-other',
+          day: 1,
+          start: '07:00:00',
+          end: '08:00:00',
+        ),
+        error: foreignOwner,
+      );
+
+      await engine.push();
+
+      final rows = await db.select(db.customerPreferenceTable).get();
+      expect(rows.map((r) => r.customerPreferenceId), ['p-1']);
+      final row = rows.single;
+      expect(row.serverId, 201);
+      expect(row.timeWindowStart, '10:00');
+      expect(row.timeWindowEnd, '13:00');
+      expect(
+        (await queue.getRejected()).single.rollback,
+        RejectionRollback.kept,
+      );
+    });
+
+    test('a customer rollback to the server row never overwrites a pending '
+        'address edit, and a later address rollback shows the server row '
+        '(B1)', () async {
+      await editCustomer(phone: '111');
+      answer = answerWith(
+        'rejected',
+        serverCustomer(address: serverAddress()),
+        error: 'invalid',
+      );
+      onPush = () => editAddress(
+        const AddressDetails(
+          street: 'Belgrano 999',
+          neighborhood: 'Centro',
+          visualReference: 'Porton verde',
+        ),
+      );
+
+      await engine.push();
+
+      expect((await customer('c-1')).phone, '3874009999');
+      expect((await address('a-1')).street, 'Belgrano 999');
+      expect((await address('a-1')).visualReference, 'Porton verde');
+
+      answer = rejectAll;
+      await engine.push();
+
+      final row = await address('a-1');
+      expect(row.street, 'Belgrano 100');
+      expect(row.visualReference, 'Porton web');
+    });
+
+    test('an accepted answer never applies a current it carries', () async {
+      await editCustomer(phone: '111');
+      answer = answerWith(
+        'accepted',
+        serverCustomer(phone: '000', address: serverAddress()),
+      );
+
+      await engine.push();
+
+      expect((await customer('c-1')).phone, '111');
+      expect((await address('a-1')).visualReference, 'Porton verde');
+    });
+  });
 }

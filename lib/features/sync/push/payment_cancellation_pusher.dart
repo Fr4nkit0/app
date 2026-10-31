@@ -73,6 +73,6 @@ class PaymentCancellationPusher implements EntityPusher, RejectionAware {
   Future<void> applyAccepted(PushRecord record, int serverId) async {}
 
   @override
-  Future<void> applyRejected(String localId) =>
+  Future<void> applyRejected(String localId, {Json? current}) =>
       _payments.undoCancellation(localId);
 }

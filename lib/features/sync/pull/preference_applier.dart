@@ -50,19 +50,7 @@ class PreferenceApplier implements PullApplier {
   Future<void> _upsert(Json p, String customerId, PullContext context) async {
     final serverId = p['id'] as int;
     final clientUuid = p['client_uuid'] as String?;
-    final fields = CustomerPreferenceTableCompanion(
-      customerId: Value(customerId),
-      dayOfWeek: Value(p['day_of_week'] as int),
-      timeWindowStart: Value(
-        PreferenceDetails.hhmm(p['time_window_start'] as String?) ??
-            PreferenceDetails.noStart,
-      ),
-      timeWindowEnd: Value(
-        PreferenceDetails.hhmm(p['time_window_end'] as String?),
-      ),
-      enabled: enabledOf(p),
-      serverId: Value(serverId),
-    );
+    final fields = fieldsOf(p).copyWith(customerId: Value(customerId));
     final existing =
         await (_db.select(
           _db.customerPreferenceTable,
@@ -105,6 +93,22 @@ class PreferenceApplier implements PullApplier {
               : fields,
         );
   }
+
+  /// The local columns of the server preference row [p], server id included
+  /// and customer left out.
+  static CustomerPreferenceTableCompanion fieldsOf(Json p) =>
+      CustomerPreferenceTableCompanion(
+        dayOfWeek: Value(p['day_of_week'] as int),
+        timeWindowStart: Value(
+          PreferenceDetails.hhmm(p['time_window_start'] as String?) ??
+              PreferenceDetails.noStart,
+        ),
+        timeWindowEnd: Value(
+          PreferenceDetails.hhmm(p['time_window_end'] as String?),
+        ),
+        enabled: enabledOf(p),
+        serverId: Value(p['id'] as int),
+      );
 
   Future<CustomerPreferenceTableData?> _unlinkedInSlot(
     String customerId,

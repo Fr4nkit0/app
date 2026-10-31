@@ -16,8 +16,9 @@ import 'references.dart';
 /// first: the server unsets the previous primary when it gets the new one,
 /// and refuses to leave a customer without a primary in between.
 ///
-/// A rejected address goes back to the server's values, or is deleted when
-/// the server never stored it.
+/// A rejected address goes back to the server's values (the server row the
+/// answer carries, or the last ones known), or is deleted when the server
+/// never stored it.
 class CustomerAddressPusher implements EntityPusher, RejectionAware {
   CustomerAddressPusher(this._db);
 
@@ -86,7 +87,7 @@ class CustomerAddressPusher implements EntityPusher, RejectionAware {
   }
 
   @override
-  Future<void> applyRejected(String localId) async {
+  Future<void> applyRejected(String localId, {Json? current}) async {
     final address = await (_db.select(
       _db.customerAddressTable,
     )..where((t) => t.addressId.equals(localId))).getSingleOrNull();
@@ -103,6 +104,7 @@ class CustomerAddressPusher implements EntityPusher, RejectionAware {
         'enabled': address.enabled,
       },
       stored: address.serverId != null,
+      current: current,
       delete: () async {
         await (_db.delete(
           _db.customerAddressTable,

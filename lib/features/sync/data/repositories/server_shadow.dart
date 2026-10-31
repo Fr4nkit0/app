@@ -4,6 +4,9 @@ import 'package:drift/drift.dart';
 
 import '../../../../core/services/database.helper.dart';
 import '../../domain/models/pending_change.dart';
+import '../../pull/address_applier.dart';
+import '../../pull/customer_applier.dart';
+import '../../pull/preference_applier.dart';
 import '../../push/customer_pusher.dart';
 import '../../push/entity_pusher.dart' show Json;
 import 'pending_change.repository.dart';
@@ -27,8 +30,8 @@ import 'pending_change.repository.dart';
 ///
 /// Captured from the row before its first queued edit (its values then are
 /// the server's as of the last download) and refreshed when the pull skips
-/// the row because of that edit. Forgotten once the row has no pending
-/// change left.
+/// the row because of that edit, or when a push answer carries the server
+/// row ([keepCurrent]). Forgotten once the row has no pending change left.
 class ServerShadow {
   ServerShadow(this._db) : _queue = DriftPendingChangeRepository(_db);
 
@@ -112,6 +115,121 @@ class ServerShadow {
     _preferenceJson(fields),
   );
 
+  /// Keeps the server row [current] (pull shape, as an `outdated` or
+  /// `rejected` answer carries it) as the row's server values; returns
+  /// false, keeping nothing, when it is not this row's.
+  ///
+  /// It is this row's when the row is linked to it (same server id) or the
+  /// server stored it under the row's uuid; an unlinked row is then linked
+  /// to it. A server row of another app record (rejected with "The
+  /// server_id belongs to another app record.") is never linked and its
+  /// uuid never taken: its values are kept only for the row already linked
+  /// to it, which then shows the server's values like any rolled back row.
+  ///
+  /// A customer's `current.address` is the server's primary address: it is
+  /// kept as the values of the address the customer's record carries when
+  /// it is that address, and as that address's own server values when it
+  /// has an unsent change of its own (a restore leaves that change alone).
+  Future<bool> keepCurrent(
+    PendingEntity entity,
+    String localId,
+    Json current,
+  ) async {
+    final serverId = current['id'] as int?;
+    bool owns(int? linkedId) =>
+        (linkedId != null && linkedId == serverId) ||
+        current['client_uuid'] == localId;
+    final link = current['client_uuid'] == localId && serverId != null;
+    switch (entity) {
+      case PendingEntity.customer:
+        final row = await (_db.select(
+          _db.customerTable,
+        )..where((t) => t.customerId.equals(localId))).getSingleOrNull();
+        if (row == null || !owns(row.serverId)) return false;
+        await _merge(keyOf(entity, localId), {
+          ..._customerJson(CustomerApplier.fieldsOf(current)),
+          ...?await _currentCarriedAddress(localId, current['address']),
+        });
+        if (link && row.serverId == null) {
+          await (_db.update(_db.customerTable)
+                ..where((t) => t.customerId.equals(localId)))
+              .write(CustomerTableCompanion(serverId: Value(serverId)));
+        }
+      case PendingEntity.customerAddress:
+        final row = await (_db.select(
+          _db.customerAddressTable,
+        )..where((t) => t.addressId.equals(localId))).getSingleOrNull();
+        if (row == null || !owns(row.serverId)) return false;
+        await storePulledAddress(
+          row.customerId,
+          localId,
+          AddressApplier.fieldsOf(current, localFloor: row.floor),
+          ownChange: true,
+        );
+        if (link && row.serverId == null) {
+          await (_db.update(_db.customerAddressTable)
+                ..where((t) => t.addressId.equals(localId)))
+              .write(CustomerAddressTableCompanion(serverId: Value(serverId)));
+        }
+      case PendingEntity.customerPreference:
+        final row =
+            await (_db.select(_db.customerPreferenceTable)
+                  ..where((t) => t.customerPreferenceId.equals(localId)))
+                .getSingleOrNull();
+        if (row == null || !owns(row.serverId)) return false;
+        await storePulledPreference(
+          localId,
+          PreferenceApplier.fieldsOf(current),
+        );
+        if (link && row.serverId == null) {
+          await (_db.update(
+            _db.customerPreferenceTable,
+          )..where((t) => t.customerPreferenceId.equals(localId))).write(
+            CustomerPreferenceTableCompanion(serverId: Value(serverId)),
+          );
+        }
+      default:
+        return false;
+    }
+    return true;
+  }
+
+  /// The `address` entry of a customer's kept values for the server's
+  /// primary address [current], when it is the address the customer's
+  /// record carries; null otherwise.
+  Future<Json?> _currentCarriedAddress(
+    String customerId,
+    Object? current,
+  ) async {
+    if (current is! Map) return null;
+    final server = Map<String, dynamic>.from(current);
+    final kept = (await read(PendingEntity.customer, customerId))?['address'];
+    final addressId = kept is Map
+        ? kept['uuid'] as String?
+        : (await CustomerPusher.pushedAddress(_db, customerId))?.addressId;
+    if (addressId == null) return null;
+    final row = await (_db.select(
+      _db.customerAddressTable,
+    )..where((t) => t.addressId.equals(addressId))).getSingleOrNull();
+    if (row == null ||
+        (server['id'] != row.serverId && server['client_uuid'] != addressId)) {
+      return null;
+    }
+    final values = _addressJson(
+      AddressApplier.fieldsOf(server, localFloor: row.floor),
+    );
+    if (await _hasPending(PendingEntity.customerAddress, addressId)) {
+      await _merge(keyOf(PendingEntity.customerAddress, addressId), values);
+    }
+    return {
+      'address': {
+        'uuid': addressId,
+        for (final MapEntry(:key, :value) in values.entries)
+          if (_carriedAddressKeys.contains(key)) key: value,
+      },
+    };
+  }
+
   /// Writes the kept server values back onto the row; false when none are
   /// kept.
   Future<bool> restore(PendingEntity entity, String localId) async {
@@ -158,9 +276,15 @@ class ServerShadow {
   /// Rolls back the row of a rejected change and records on its rejected
   /// changes the [refused] values (by wire name) and what was done:
   ///
+  /// The server row the answer carries ([current]) is kept first
+  /// ([keepCurrent]), so it is what goes back. Then:
+  ///
   /// - a newer change of the row waits to be sent: the row is kept;
-  /// - the server never stored the row ([stored] is false): [delete] removes
-  ///   it, or returns false to keep it;
+  /// - [current] is another app record's row the row is not linked to: the
+  ///   row is kept, since the values it holds belong to neither;
+  /// - the server never stored the row ([stored] is false and there is no
+  ///   [current] of its own): [delete] removes it, or returns false to keep
+  ///   it;
   /// - otherwise the kept server values are written back, when there are
   ///   any.
   Future<RejectionRollback> rollBackRejected(
@@ -169,11 +293,15 @@ class ServerShadow {
     required Json refused,
     required bool stored,
     required Future<bool> Function() delete,
+    Json? current,
   }) async {
+    final ownCurrent =
+        current != null && await keepCurrent(entity, localId, current);
     final RejectionRollback rollback;
-    if (await _hasPending(entity, localId)) {
+    if (await _hasPending(entity, localId) ||
+        (current != null && !ownCurrent)) {
       rollback = RejectionRollback.kept;
-    } else if (!stored) {
+    } else if (!stored && !ownCurrent) {
       rollback = await delete()
           ? RejectionRollback.deleted
           : RejectionRollback.kept;
