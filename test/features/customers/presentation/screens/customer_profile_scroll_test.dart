@@ -72,9 +72,20 @@ void main() {
   });
   tearDown(() => db.close());
 
-  Future<void> pumpProfile(WidgetTester tester) async {
-    tester.view.physicalSize = const Size(800, 600);
-    tester.view.devicePixelRatio = 1;
+  Future<void> pumpProfile(
+    WidgetTester tester, {
+    Size physicalSize = const Size(800, 600),
+    double devicePixelRatio = 1,
+    double bottomInset = 0,
+  }) async {
+    tester.view.physicalSize = physicalSize;
+    tester.view.devicePixelRatio = devicePixelRatio;
+    tester.view.padding = FakeViewPadding(
+      bottom: bottomInset * devicePixelRatio,
+    );
+    tester.view.viewPadding = FakeViewPadding(
+      bottom: bottomInset * devicePixelRatio,
+    );
     addTearDown(tester.view.reset);
     await tester.pumpWidget(
       ProviderScope(
@@ -270,38 +281,124 @@ void main() {
     await unmount(tester);
   });
 
-  group(
-    'scrolled to the end, the Nueva Venta button leaves the last options menu reachable',
-    () {
-      for (final (tab, tooltip) in [
-        ('Datos', 'Opciones de dirección'),
-        ('Preferencias', 'Opciones de horario'),
-      ]) {
-        testWidgets('$tooltip in $tab', (tester) async {
-          await pumpProfile(tester);
-          await tester.tap(find.text(tab));
-          await settle(tester);
-
-          // Scrolled to the end, the last menu sits above the button.
-          final position = profileScroll(tester);
-          position.jumpTo(position.maxScrollExtent);
-          await tester.pump();
-
-          final fab = tester.getRect(find.byType(FloatingActionButton));
-          final menus = find.byTooltip(tooltip);
-          expect(menus, findsWidgets);
-          final last = menus.last;
-          expect(tester.getRect(last).overlaps(fab), isFalse);
-          expect(last.hitTestable(), findsOneWidget);
-
-          await tester.tap(last);
-          await settle(tester);
-          expect(find.text('Dar de baja'), findsWidgets);
-
-          await tester.pump(const Duration(seconds: 5));
-          await unmount(tester);
-        });
+  group('Nueva Venta never covers an options menu on a Moto G6', () {
+    /// The menus fully inside the scroll viewport, and those of them a tap
+    /// at their center reaches.
+    (int, int) visibleAndReachable(WidgetTester tester, String tooltip) {
+      final viewport = tester.getRect(
+        find
+            .descendant(
+              of: find.byType(SingleChildScrollView),
+              matching: find.byType(Scrollable),
+            )
+            .first,
+      );
+      final menus = find.byTooltip(tooltip);
+      var visible = 0;
+      for (var i = 0; i < menus.evaluate().length; i++) {
+        final rect = tester.getRect(menus.at(i));
+        if (viewport.contains(rect.topLeft) &&
+            viewport.contains(rect.bottomRight)) {
+          visible++;
+        }
       }
-    },
-  );
+      return (visible, menus.hitTestable().evaluate().length);
+    }
+
+    for (final (tab, tooltip) in [
+      ('Datos', 'Opciones de dirección'),
+      ('Preferencias', 'Opciones de horario'),
+    ]) {
+      testWidgets('$tooltip in $tab, at rest and scrolled to the end', (
+        tester,
+      ) async {
+        // The test font (Ahem) draws every glyph as a square, much wider than
+        // the real one, so the balance cards' header rows overflow here only.
+        final onError = FlutterError.onError;
+        FlutterError.onError = (details) {
+          if (details.exceptionAsString().contains('RenderFlex overflowed')) {
+            return;
+          }
+          onError?.call(details);
+        };
+        addTearDown(() => FlutterError.onError = onError);
+
+        await pumpProfile(
+          tester,
+          // A Moto G6 with the 3-button navigation bar.
+          physicalSize: const Size(1080, 2160),
+          devicePixelRatio: 2.625,
+          bottomInset: 48,
+        );
+        await tester.tap(find.text(tab));
+        await settle(tester);
+
+        final position = profileScroll(tester);
+        for (final offset in [
+          0.0,
+          position.maxScrollExtent / 2,
+          position.maxScrollExtent,
+        ]) {
+          position.jumpTo(offset);
+          await tester.pump();
+          final (visible, reachable) = visibleAndReachable(tester, tooltip);
+          if (offset == position.maxScrollExtent) {
+            expect(visible, greaterThan(0), reason: 'at the end');
+          }
+          expect(reachable, visible, reason: 'at offset $offset');
+        }
+
+        // The last menu opens its own options, not the sale.
+        await tester.tap(find.byTooltip(tooltip).last);
+        await settle(tester);
+        expect(find.text('Dar de baja'), findsWidgets);
+
+        await tester.pump(const Duration(seconds: 5));
+        await unmount(tester);
+      });
+    }
+
+    testWidgets('a preference menu is on screen at rest', (tester) async {
+      final onError = FlutterError.onError;
+      FlutterError.onError = (details) {
+        if (details.exceptionAsString().contains('RenderFlex overflowed')) {
+          return;
+        }
+        onError?.call(details);
+      };
+      addTearDown(() => FlutterError.onError = onError);
+      await pumpProfile(
+        tester,
+        physicalSize: const Size(1080, 2160),
+        devicePixelRatio: 2.625,
+        bottomInset: 48,
+      );
+      await tester.tap(find.text('Preferencias'));
+      await settle(tester);
+
+      // Guards the test above: at rest it really checks a menu.
+      final (visible, reachable) = visibleAndReachable(
+        tester,
+        'Opciones de horario',
+      );
+      expect(visible, greaterThan(0));
+      expect(reachable, visible);
+
+      await tester.pump(const Duration(seconds: 5));
+      await unmount(tester);
+    });
+  });
+
+  testWidgets('Nueva Venta starts a sale for this customer', (tester) async {
+    await pumpProfile(tester);
+
+    final button = find.widgetWithText(FilledButton, 'Nueva Venta');
+    expect(button.hitTestable(), findsOneWidget);
+    await tester.tap(button);
+    await settle(tester);
+
+    expect(find.byType(CustomerProfileScreen), findsNothing);
+    await tester.pump(const Duration(seconds: 5));
+    await unmount(tester);
+  });
 }
