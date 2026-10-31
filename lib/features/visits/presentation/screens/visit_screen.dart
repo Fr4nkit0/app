@@ -714,6 +714,10 @@ class _VisitScreenState extends ConsumerState<VisitScreen> {
   Widget _buildPaymentRecord(Payment payment, DateTime now) {
     return VisitRecordTile(
       statusLabel: payment.isCancelled ? 'Anulado' : null,
+      syncStatus: SyncBadgeContainer(
+        entity: PendingEntity.payment,
+        entityId: payment.id,
+      ),
       action: payment.isCancellableOn(now)
           ? _cancelAction('Anular cobro', () => _cancelPayment(payment))
           : null,
