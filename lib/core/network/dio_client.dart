@@ -10,6 +10,11 @@ import '../config/app_config.dart';
 const authTokenKey = 'auth_token';
 const authRefreshTokenKey = 'auth_refresh_token';
 
+/// Bounds of every request, so a hung server ends the call with a retryable
+/// timeout instead of leaving the sync running forever.
+const apiConnectTimeout = Duration(seconds: 10);
+const apiTransferTimeout = Duration(seconds: 30);
+
 const _retriedFlag = 'auth_retried';
 const _noRefreshPaths = {'/auth/login', '/auth/refresh'};
 
@@ -43,7 +48,13 @@ final dioProvider = Provider<Dio>((ref) {
   }
 
   final dio = Dio(
-    BaseOptions(baseUrl: baseUrl, headers: {'Accept': 'application/json'}),
+    BaseOptions(
+      baseUrl: baseUrl,
+      headers: {'Accept': 'application/json'},
+      connectTimeout: apiConnectTimeout,
+      sendTimeout: apiTransferTimeout,
+      receiveTimeout: apiTransferTimeout,
+    ),
   );
 
   final storage = ref.watch(secureStorageProvider);
@@ -132,6 +143,9 @@ class _TokenRefresher {
     final refreshClient = Dio(
       BaseOptions(
         baseUrl: dio.options.baseUrl,
+        connectTimeout: apiConnectTimeout,
+        sendTimeout: apiTransferTimeout,
+        receiveTimeout: apiTransferTimeout,
         headers: {
           'Accept': 'application/json',
           'Authorization': 'Bearer $refreshToken',

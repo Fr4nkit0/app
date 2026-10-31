@@ -43,6 +43,46 @@ void main() {
     });
   });
 
+  group('timeouts', () {
+    void expectBounded(RequestOptions options) {
+      expect(options.connectTimeout, apiConnectTimeout, reason: options.path);
+      expect(options.sendTimeout, apiTransferTimeout, reason: options.path);
+      expect(options.receiveTimeout, apiTransferTimeout, reason: options.path);
+    }
+
+    test('bound every request, so a hung server ends the call', () async {
+      final adapter = FakeHttpAdapter(
+        (_) => FakeHttpAdapter.json(200, {'ok': true}),
+      );
+      final client = _client(adapter);
+
+      await client.dio.post('/sync/push', data: {'visits': []});
+      await client.dio.get('/sync/pull');
+
+      expect(adapter.requests, hasLength(2));
+      adapter.requests.forEach(expectBounded);
+    });
+
+    test('also bound the token refresh call', () async {
+      final adapter = FakeHttpAdapter((options) {
+        if (options.path == '/auth/refresh') return _refreshed();
+        return _bearer(options) == 'Bearer new-access'
+            ? FakeHttpAdapter.json(200, {'ok': true})
+            : FakeHttpAdapter.json(401, {'message': 'Unauthenticated.'});
+      });
+      final client = _client(adapter);
+
+      await client.dio.get('/sync/pull');
+
+      expect(adapter.requests.map((r) => r.path), [
+        '/sync/pull',
+        '/auth/refresh',
+        '/sync/pull',
+      ]);
+      adapter.requests.forEach(expectBounded);
+    });
+  });
+
   group('expired access token', () {
     test(
       'is renewed with the refresh token and the request retried once',
