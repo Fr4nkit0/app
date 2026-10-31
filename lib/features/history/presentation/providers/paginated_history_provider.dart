@@ -69,13 +69,13 @@ class PaginatedHistoryNotifier extends Notifier<PaginatedHistoryState> {
   List<HistoryEntry> _allEntries = [];
   static const int pageSize = 6;
 
-  List<HistoryEntry> get _visibleSource {
+  List<HistoryEntry> _visibleSource(PaginatedHistoryState from) {
     Iterable<HistoryEntry> list = _allEntries;
-    final filter = state.typeFilter;
+    final filter = from.typeFilter;
     if (filter != null) {
       list = list.where((e) => e.type == filter);
     }
-    final q = state.searchQuery.trim().toLowerCase();
+    final q = from.searchQuery.trim().toLowerCase();
     if (q.isNotEmpty) {
       list = list.where((e) {
         final name = e.customerName.toLowerCase();
@@ -122,18 +122,20 @@ class PaginatedHistoryNotifier extends Notifier<PaginatedHistoryState> {
     );
   }
 
-  void _applySlice() {
-    final source = _visibleSource;
-    final int currentEntriesCount = pageSize * state.currentPage;
+  PaginatedHistoryState _sliced(PaginatedHistoryState from) {
+    final source = _visibleSource(from);
+    final int currentEntriesCount = pageSize * from.currentPage;
     final slicedEntries = source.take(currentEntriesCount).toList();
 
-    state = state.copyWith(
+    return from.copyWith(
       entries: slicedEntries,
       isLoading: false,
       hasReachedMax: slicedEntries.length >= source.length,
       todaySummary: _computeTodaySummary(),
     );
   }
+
+  void _applySlice() => state = _sliced(state);
 
   @override
   PaginatedHistoryState build() {
@@ -151,9 +153,17 @@ class PaginatedHistoryNotifier extends Notifier<PaginatedHistoryState> {
         },
         loading: () {},
       );
-    }, fireImmediately: true);
+    });
 
-    return const PaginatedHistoryState(entries: [], isLoading: true);
+    // What build returns replaces any state set while it runs, so a list
+    // already loaded (the screen opened again) is sliced here.
+    const initial = PaginatedHistoryState(entries: []);
+    final current = ref.read(historyListProvider);
+    if (current case AsyncData(:final value)) {
+      _allEntries = value;
+      return _sliced(initial);
+    }
+    return current.hasError ? initial.copyWith(isLoading: false) : initial;
   }
 
   void setSearchQuery(String query) {
@@ -191,14 +201,12 @@ class PaginatedHistoryNotifier extends Notifier<PaginatedHistoryState> {
     _applySlice();
   }
 
+  /// The list follows the queue live, so a refresh only goes back to the
+  /// first page; showing the loader again would wait for an emission that
+  /// may never come.
   void refresh() {
-    state = PaginatedHistoryState(
-      entries: [],
-      isLoading: true,
-      searchQuery: state.searchQuery,
-      typeFilter: state.typeFilter,
-    );
-    ref.invalidateSelf();
+    state = state.copyWith(currentPage: 1, hasReachedMax: false);
+    _applySlice();
   }
 }
 
