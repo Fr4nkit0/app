@@ -335,6 +335,41 @@ void main() {
       final linked = (await thursday()).where((p) => p.serverId == 58).single;
       expect(linked.timeWindowEnd, '15:00');
     });
+
+    test('a dismissed rejected create is no longer counted but is still '
+        'never adopted by the pull (APP-29, APP-30)', () async {
+      await db
+          .into(db.customerPreferenceTable)
+          .insert(
+            CustomerPreferenceTableCompanion.insert(
+              customerPreferenceId: const drift.Value('p-old'),
+              customerId: const drift.Value('c-1'),
+              dayOfWeek: const drift.Value(4),
+              timeWindowStart: '14:00',
+              timeWindowEnd: const drift.Value('16:00'),
+            ),
+          );
+      await queue.enqueue(
+        entity: PendingEntity.customerPreference,
+        entityId: 'p-old',
+        action: PendingAction.insert,
+      );
+      final id = (await queue.getPending()).single.id;
+      await queue.markRejected(id, _slotTaken);
+      expect((await engine.watchStatus().first).rejectedCount, 1);
+
+      await queue.dismiss(id);
+      pullRows = {
+        'customer_preferences': [serverPreference(58)],
+      };
+      await sync.pull();
+
+      expect((await engine.watchStatus().first).rejectedCount, 0);
+      expect(await db.select(db.pendingChangeTable).get(), hasLength(1));
+      expect((await preference('p-old')).serverId, isNull);
+      final linked = (await thursday()).where((p) => p.serverId == 58).single;
+      expect(linked.timeWindowEnd, '15:00');
+    });
   });
 
   test('a rejected address left by an older version is never adopted by a '

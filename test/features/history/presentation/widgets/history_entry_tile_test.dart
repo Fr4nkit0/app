@@ -18,13 +18,108 @@ HistoryEntry _entry(PendingStatus status, {String? reason}) => HistoryEntry(
   rejectionReason: reason,
 );
 
+HistoryEntry _issue(
+  PendingStatus status, {
+  String? reason,
+  Map<String, dynamic>? values,
+  RejectionRollback? rollback,
+  List<String>? fields,
+}) => HistoryEntry(
+  id: 2,
+  type: HistoryEntryType.customer,
+  customerId: 'cus-1',
+  customerName: 'Ana Gómez',
+  date: DateTime(2026, 10, 19, 10, 15),
+  description: 'Preferencia agregada',
+  status: status,
+  rejectionReason: reason,
+  rejectedValues: values,
+  rollback: rollback,
+  changedFields: fields,
+);
+
 void main() {
-  Future<void> pump(WidgetTester tester, HistoryEntry entry) =>
-      tester.pumpWidget(
-        MaterialApp(
-          home: Scaffold(body: HistoryEntryTile(entry: entry)),
-        ),
-      );
+  Future<void> pump(
+    WidgetTester tester,
+    HistoryEntry entry, {
+    VoidCallback? onTap,
+  }) => tester.pumpWidget(
+    MaterialApp(
+      home: Scaffold(
+        body: HistoryEntryTile(entry: entry, onTap: onTap),
+      ),
+    ),
+  );
+
+  testWidgets('a rejected preference shows its day, window, reason and that '
+      'it was undone, and can be opened', (tester) async {
+    var taps = 0;
+    await pump(
+      tester,
+      _issue(
+        PendingStatus.rejected,
+        reason: 'The customer already has a preference for that day and time.',
+        values: {
+          'day_of_week': 4,
+          'time_window_start': '14:00',
+          'time_window_end': '16:00',
+          'enabled': true,
+        },
+        rollback: RejectionRollback.deleted,
+      ),
+      onTap: () => taps++,
+    );
+
+    expect(find.text('Jueves 14:00–16:00'), findsOneWidget);
+    expect(
+      find.text(
+        'Motivo: El cliente ya tiene una preferencia para ese día y horario.',
+      ),
+      findsOneWidget,
+    );
+    expect(find.text('Se deshizo en el teléfono'), findsOneWidget);
+
+    await tester.tap(find.text('Ana Gómez'));
+    expect(taps, 1);
+  });
+
+  testWidgets('a rejected customer edit shows the refused fields readably', (
+    tester,
+  ) async {
+    await pump(
+      tester,
+      _issue(
+        PendingStatus.rejected,
+        reason: 'invalid',
+        values: {
+          'phone_number': '111',
+          'address.visual_reference': 'Porton AZUL',
+        },
+        rollback: RejectionRollback.kept,
+      ),
+    );
+
+    expect(find.text('Teléfono: 111'), findsOneWidget);
+    expect(find.text('Referencia: Porton AZUL'), findsOneWidget);
+    expect(find.text('Se mantuvo en el teléfono'), findsOneWidget);
+  });
+
+  testWidgets('an outdated edit reads as dropped, with its fields', (
+    tester,
+  ) async {
+    await pump(
+      tester,
+      _issue(
+        PendingStatus.outdated,
+        fields: ['phone_number', 'address.visual_reference'],
+      ),
+    );
+
+    expect(find.text('Edición descartada'), findsOneWidget);
+    expect(find.text('Descartada'), findsOneWidget);
+    expect(find.text('Campos: Teléfono, Referencia'), findsOneWidget);
+    expect(find.textContaining('Motivo:'), findsNothing);
+  });
 
   testWidgets('shows a pending record as unsent', (tester) async {
     await pump(tester, _entry(PendingStatus.pending));

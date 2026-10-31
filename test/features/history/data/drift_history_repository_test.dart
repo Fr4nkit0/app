@@ -414,6 +414,39 @@ void main() {
     expect(entry.description, 'Venta registrada');
   });
 
+  test(
+    'a rejected or outdated edit carries what was refused or dropped',
+    () async {
+      for (final fields in [
+        ['phone_number'],
+        ['name'],
+      ]) {
+        await queue.enqueue(
+          entity: PendingEntity.customer,
+          entityId: 'cus-1',
+          action: PendingAction.update,
+          payload: {PendingChange.changedFieldsKey: fields},
+        );
+      }
+      final [rejected, outdated] = await queue.getPending();
+      await queue.markRejected(rejected.id, 'invalid');
+      await queue.recordRejection(
+        entity: PendingEntity.customer,
+        entityId: 'cus-1',
+        refused: {'phone_number': '111'},
+        rollback: RejectionRollback.restored,
+      );
+      await queue.markOutdated([outdated.id]);
+
+      final [dropped, refused] = await sut.watchHistory().first;
+
+      expect(refused.rejectedValues, {'phone_number': '111'});
+      expect(refused.rollback, RejectionRollback.restored);
+      expect(dropped.status, PendingStatus.outdated);
+      expect(dropped.changedFields, ['name']);
+    },
+  );
+
   test('is empty when the driver has recorded nothing', () async {
     expect(await sut.watchHistory().first, isEmpty);
   });

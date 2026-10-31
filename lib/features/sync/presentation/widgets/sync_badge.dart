@@ -6,7 +6,8 @@ import 'package:app/features/sync/domain/models/pending_change.dart';
 /// Shows whether one record still has to reach the server.
 ///
 /// Nothing for a record with no queue row or one already sent; "Sin enviar"
-/// while pending; "Rechazado" (tappable, shows the server reason) when refused.
+/// while pending; "Rechazado" (tappable, shows the server reason) when refused;
+/// a neutral "Descartada" when the server kept newer values (APP-26).
 class SyncBadge extends StatelessWidget {
   const SyncBadge({super.key, required this.change});
 
@@ -17,17 +18,16 @@ class SyncBadge extends StatelessWidget {
     final current = change;
     if (current == null) return const SizedBox.shrink();
     return switch (current.status) {
-      // An outdated edit is surfaced with the rejection notices.
-      PendingStatus.sent || PendingStatus.outdated => const SizedBox.shrink(),
-      PendingStatus.pending => const SyncStatusPill(
-        status: PendingStatus.pending,
-      ),
+      PendingStatus.sent || PendingStatus.dismissed => const SizedBox.shrink(),
+      PendingStatus.pending ||
+      PendingStatus.outdated => SyncStatusPill(status: current.status),
       PendingStatus.rejected => _RejectedBadge(reason: current.rejectionReason),
     };
   }
 }
 
-/// The non-interactive pill for [status]; empty when the status is sent.
+/// The non-interactive pill for [status]; empty when the status is sent or
+/// dismissed.
 class SyncStatusPill extends StatelessWidget {
   const SyncStatusPill({super.key, required this.status});
 
@@ -47,7 +47,12 @@ class SyncStatusPill extends StatelessWidget {
         Icons.error_outline_rounded,
         tokens.destructive,
       ),
-      PendingStatus.sent || PendingStatus.outdated => (null, null, null),
+      PendingStatus.outdated => (
+        'Descartada',
+        Icons.info_outline_rounded,
+        tokens.inkSecondary,
+      ),
+      PendingStatus.sent || PendingStatus.dismissed => (null, null, null),
     };
     if (label == null || icon == null || color == null) {
       return const SizedBox.shrink();

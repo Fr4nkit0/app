@@ -41,6 +41,10 @@ void main() {
         'El registro pertenece a otro cliente.',
     'Customer is assigned to another driver.':
         'El cliente está asignado a otro repartidor.',
+    'The server_id belongs to another app record.':
+        'El registro del servidor pertenece a otro registro de la app.',
+    'The visit reference does not match any record.':
+        'No se encontró la visita en el servidor.',
   };
 
   for (final MapEntry(key: reason, value: spanish) in known.entries) {

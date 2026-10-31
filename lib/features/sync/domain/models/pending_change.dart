@@ -52,7 +52,11 @@ enum PendingStatus {
 
   /// The server applied nothing: it holds newer values for every field the
   /// record carried. The device shows the server's values again.
-  outdated('outdated');
+  outdated('outdated'),
+
+  /// A rejected or outdated change the driver already read and put away.
+  /// Its row stays in the queue: the pull still treats it as rejected.
+  dismissed('dismissed');
 
   const PendingStatus(this.wireName);
 

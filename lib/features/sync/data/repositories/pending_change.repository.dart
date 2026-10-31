@@ -40,6 +40,10 @@ abstract class PendingChangeRepository {
   /// left untouched.
   Future<void> markOutdated(List<int> ids);
 
+  /// rejected or outdated → dismissed, keeping the row and its reason. Other
+  /// states are left untouched.
+  Future<void> dismiss(int id);
+
   /// Records on the rejected changes of the record that do not have it yet
   /// what the server refused ([PendingChange.rejectedValuesKey]; an edit
   /// that names its fields keeps only those) and what the device did with
@@ -132,6 +136,24 @@ class DriftPendingChangeRepository implements PendingChangeRepository {
               t.status.equals(PendingStatus.pending.wireName),
         ))
         .write(_transition(PendingStatus.outdated));
+  }
+
+  @override
+  Future<void> dismiss(int id) async {
+    await (_db.update(_db.pendingChangeTable)..where(
+          (t) =>
+              t.pendingChangeId.equals(id) &
+              t.status.isIn([
+                PendingStatus.rejected.wireName,
+                PendingStatus.outdated.wireName,
+              ]),
+        ))
+        .write(
+          PendingChangeTableCompanion(
+            status: Value(PendingStatus.dismissed.wireName),
+            lastModifiedDate: Value(DateTime.now()),
+          ),
+        );
   }
 
   @override

@@ -286,4 +286,29 @@ void main() {
       expect(rejected.changedFields, {'phone_number'});
     });
   });
+
+  group('dismiss', () {
+    test('moves a rejected or outdated change to dismissed and keeps the '
+        'row with its reason', () async {
+      for (final id in ['a', 'b', 'c']) {
+        await enqueueSale(id);
+      }
+      final [a, b, c] = await sut.getPending();
+      await sut.markRejected(a.id, 'invalid');
+      await sut.markOutdated([b.id]);
+
+      for (final change in [a, b, c]) {
+        await sut.dismiss(change.id);
+      }
+
+      final rows = await db.select(db.pendingChangeTable).get();
+      expect(
+        [for (final r in rows) r.status],
+        ['dismissed', 'dismissed', 'pending'],
+      );
+      expect(rows.first.rejectionReason, 'invalid');
+      expect(await sut.getRejected(), isEmpty);
+      expect(await sut.countPending(), 1);
+    });
+  });
 }

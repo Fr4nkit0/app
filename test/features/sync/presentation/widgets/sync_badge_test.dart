@@ -39,6 +39,22 @@ void main() {
     expect(find.byType(Icon), findsNothing);
   });
 
+  testWidgets('an outdated edit shows a neutral "Descartada" badge', (
+    tester,
+  ) async {
+    await pump(tester, _change(PendingStatus.outdated));
+
+    expect(find.text('Descartada'), findsOneWidget);
+    final text = tester.widget<Text>(find.text('Descartada'));
+    expect(text.style?.color, isNot(MarilinColors.destructive));
+  });
+
+  testWidgets('renders nothing for a dismissed change', (tester) async {
+    await pump(tester, _change(PendingStatus.dismissed));
+
+    expect(find.byType(Text), findsNothing);
+  });
+
   testWidgets('pending shows "Sin enviar" with the brand style', (
     tester,
   ) async {

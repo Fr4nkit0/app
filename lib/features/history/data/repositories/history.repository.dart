@@ -199,6 +199,11 @@ class DriftHistoryRepository implements HistoryRepository {
     return shown.map((row) {
       final entity = PendingEntity.fromWire(row.entity);
       final action = PendingAction.fromWire(row.action);
+      final payload = row.payload == null
+          ? null
+          : jsonDecode(row.payload!) as Map<String, dynamic>;
+      final refused = payload?[PendingChange.rejectedValuesKey];
+      final fields = payload?[PendingChange.changedFieldsKey];
       final detail = entity == PendingEntity.customer
           ? _Detail(customerId: row.entityId)
           : details[_key(entity, row.entityId)] ?? const _Detail();
@@ -220,6 +225,11 @@ class DriftHistoryRepository implements HistoryRepository {
         },
         status: PendingStatus.fromWire(row.status),
         rejectionReason: row.rejectionReason,
+        rejectedValues: refused is Map<String, dynamic> ? refused : null,
+        rollback: RejectionRollback.fromWire(
+          payload?[PendingChange.rollbackKey],
+        ),
+        changedFields: fields is List ? fields.cast<String>() : null,
       );
     }).toList();
   }

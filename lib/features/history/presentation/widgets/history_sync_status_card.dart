@@ -9,11 +9,20 @@ class HistorySyncStatusCard extends StatelessWidget {
     required this.status,
     required this.isRunning,
     required this.onSync,
+    this.onToggleRejected,
+    this.showingRejected = false,
   });
 
   final SyncStatus status;
   final bool isRunning;
   final VoidCallback onSync;
+
+  /// Switches the list between the rejected records and all of them; the
+  /// rest of the card still syncs.
+  final VoidCallback? onToggleRejected;
+
+  /// Whether the list shows only the rejected records.
+  final bool showingRejected;
 
   static String _time(DateTime t) =>
       '${t.hour.toString().padLeft(2, '0')}:${t.minute.toString().padLeft(2, '0')}';
@@ -98,6 +107,18 @@ class HistorySyncStatusCard extends StatelessWidget {
                       '${_count(status.rejectedCount, 'rechazado', 'rechazados')}',
                       style: tokens.subtitle.copyWith(fontSize: 12),
                     ),
+                    if (onToggleRejected != null &&
+                        (showingRejected || status.rejectedCount > 0))
+                      TextButton(
+                        onPressed: onToggleRejected,
+                        style: TextButton.styleFrom(
+                          padding: EdgeInsets.zero,
+                          alignment: Alignment.centerLeft,
+                        ),
+                        child: Text(
+                          showingRejected ? 'Ver todos' : 'Ver rechazados',
+                        ),
+                      ),
                     if (status.heldLabel case final held?) ...[
                       const SizedBox(height: 2),
                       Text(held, style: tokens.subtitle.copyWith(fontSize: 12)),

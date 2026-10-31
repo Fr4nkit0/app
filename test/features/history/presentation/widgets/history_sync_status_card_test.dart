@@ -11,6 +11,8 @@ void main() {
     SyncStatus status, {
     bool isRunning = false,
     VoidCallback? onSync,
+    VoidCallback? onToggleRejected,
+    bool showingRejected = false,
   }) => tester.pumpWidget(
     MaterialApp(
       home: Scaffold(
@@ -18,6 +20,8 @@ void main() {
           status: status,
           isRunning: isRunning,
           onSync: onSync ?? () {},
+          onToggleRejected: onToggleRejected,
+          showingRejected: showingRejected,
         ),
       ),
     ),
@@ -102,6 +106,33 @@ void main() {
     expect(find.text('Sincronizando…'), findsOneWidget);
     await tester.tap(find.byType(HistorySyncStatusCard));
     expect(taps, 1);
+  });
+
+  testWidgets('"Ver rechazados" leads to the rejected records instead of '
+      'syncing', (tester) async {
+    var syncs = 0;
+    var toggles = 0;
+    await pump(
+      tester,
+      const SyncStatus(rejectedCount: 1),
+      onSync: () => syncs++,
+      onToggleRejected: () => toggles++,
+    );
+
+    await tester.tap(find.text('Ver rechazados'));
+    expect(toggles, 1);
+    expect(syncs, 0);
+
+    await pump(
+      tester,
+      const SyncStatus(rejectedCount: 1),
+      showingRejected: true,
+      onToggleRejected: () => toggles++,
+    );
+    expect(find.text('Ver todos'), findsOneWidget);
+
+    await pump(tester, const SyncStatus(), onToggleRejected: () {});
+    expect(find.text('Ver rechazados'), findsNothing);
   });
 
   testWidgets('tells records held by an open visit apart from pending', (
