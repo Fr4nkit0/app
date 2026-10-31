@@ -191,6 +191,7 @@ class DriftSaleRepository implements SaleRepository {
     Sale sale, {
     required DateTime at,
     String? reason,
+    bool queue = true,
   }) async {
     await (_db.update(
       _db.saleTable,
@@ -223,6 +224,7 @@ class DriftSaleRepository implements SaleRepository {
         );
     await _account.post(sale.customer.id, -sale.total, lastEntryId: entryId);
 
+    if (!queue) return;
     await _queue.enqueue(
       entity: PendingEntity.saleCancellation,
       entityId: sale.id,

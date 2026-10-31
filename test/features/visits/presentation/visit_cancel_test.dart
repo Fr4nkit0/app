@@ -118,6 +118,13 @@ class _FakeCancelSale implements CancelSaleUseCase {
     calls.add((saleId, reason));
     onCancel();
   }
+
+  @override
+  Future<bool> applyServerCancellation(
+    String saleId, {
+    required DateTime at,
+    String? reason,
+  }) => throw UnimplementedError();
 }
 
 class _FakeCancelPayment implements CancelPaymentUseCase {
@@ -127,6 +134,13 @@ class _FakeCancelPayment implements CancelPaymentUseCase {
   Future<void> execute(String paymentId, {String? reason}) async {
     calls.add((paymentId, reason));
   }
+
+  @override
+  Future<bool> applyServerCancellation(
+    String paymentId, {
+    required DateTime at,
+    String? reason,
+  }) => throw UnimplementedError();
 }
 
 void main() {

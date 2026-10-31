@@ -1,3 +1,4 @@
+import 'package:app/core/providers/clock_provider.dart';
 import 'package:app/core/utils/money_formatter.dart';
 import 'package:flutter/material.dart';
 import 'package:app/core/theme/marilin_tokens.dart';
@@ -16,7 +17,9 @@ import 'package:app/features/customers/presentation/widgets/customer_agreements_
 import 'package:app/features/customers/presentation/widgets/customer_preferences_section.dart';
 import 'package:app/features/customers/presentation/widgets/customer_history_list.dart';
 import 'package:app/features/history/presentation/providers/customer_history_provider.dart';
+import 'package:app/features/sales/presentation/providers/cancel_sale_usecase_provider.dart';
 import 'package:app/features/sales/presentation/providers/sale_draft_provider.dart';
+import 'package:app/features/sales/presentation/widgets/cancel_record_dialog.dart';
 import 'package:app/features/sales/presentation/screens/sale_step1_screen.dart';
 import 'package:app/features/inventory/presentation/providers/inventory_repository_provider.dart';
 import 'package:app/features/inventory/domain/custody.dart';
@@ -623,6 +626,9 @@ class _CustomerProfileScreenState extends ConsumerState<CustomerProfileScreen> {
               : CustomerHistoryList(
                   records: records,
                   containerLabels: containerLabels,
+                  now: ref.watch(clockProvider)(),
+                  onCancelSale: _cancelSale,
+                  onCancelPayment: _cancelPayment,
                 ),
           loading: () => const Padding(
             padding: EdgeInsets.all(32),
@@ -634,6 +640,32 @@ class _CustomerProfileScreenState extends ConsumerState<CustomerProfileScreen> {
             subtitle: 'Volvé a abrir el perfil para reintentar.',
           ),
         );
+  }
+
+  /// Cancels an off-route sale of today, with the payments that settled it.
+  Future<void> _cancelSale(String saleId) async {
+    final confirmation = await confirmCancelSale(context);
+    if (confirmation == null || !mounted) return;
+    await runCancellation(
+      context,
+      () => ref
+          .read(cancelSaleUseCaseProvider)
+          .execute(saleId, reason: confirmation.reason),
+      done: 'Venta anulada',
+    );
+  }
+
+  /// Cancels an off-route payment of today that did not settle a sale.
+  Future<void> _cancelPayment(String paymentId) async {
+    final confirmation = await confirmCancelPayment(context);
+    if (confirmation == null || !mounted) return;
+    await runCancellation(
+      context,
+      () => ref
+          .read(cancelPaymentUseCaseProvider)
+          .execute(paymentId, reason: confirmation.reason),
+      done: 'Cobro anulado',
+    );
   }
 
   Widget _buildPreferencesTab(Customer customer) {

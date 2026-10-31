@@ -481,15 +481,10 @@ class _VisitScreenState extends ConsumerState<VisitScreen> {
 
   /// Cancels a sale of today, with the payments that settled it.
   Future<void> _cancelSale(Sale sale) async {
-    final confirmation = await confirmCancelRecord(
-      context,
-      title: '¿Anular la venta?',
-      message:
-          'También se anulan los cobros de esta venta: la deuda vuelve a '
-          'como estaba antes y los productos vuelven al camión.',
-    );
+    final confirmation = await confirmCancelSale(context);
     if (confirmation == null || !mounted) return;
-    await _runCancellation(
+    await runCancellation(
+      context,
       () => ref
           .read(cancelSaleUseCaseProvider)
           .execute(sale.id, reason: confirmation.reason),
@@ -499,51 +494,16 @@ class _VisitScreenState extends ConsumerState<VisitScreen> {
 
   /// Cancels a payment of today that did not settle a sale.
   Future<void> _cancelPayment(Payment payment) async {
-    final confirmation = await confirmCancelRecord(
-      context,
-      title: '¿Anular el cobro?',
-      message: 'El monto vuelve a sumarse a la deuda del cliente.',
-    );
+    final confirmation = await confirmCancelPayment(context);
     if (confirmation == null || !mounted) return;
-    await _runCancellation(
+    await runCancellation(
+      context,
       () => ref
           .read(cancelPaymentUseCaseProvider)
           .execute(payment.id, reason: confirmation.reason),
       done: 'Cobro anulado',
     );
   }
-
-  Future<void> _runCancellation(
-    Future<void> Function() cancel, {
-    required String done,
-  }) async {
-    try {
-      await cancel();
-    } catch (error) {
-      if (!mounted) return;
-      TopToast.show(
-        context,
-        message: failureMessage(error, fallback: 'No se anuló. Reintentá.'),
-        icon: Icons.error_outline,
-        color: MarilinColors.destructive,
-      );
-      return;
-    }
-    if (!mounted) return;
-    TopToast.show(
-      context,
-      message: done,
-      icon: Icons.check_circle_rounded,
-      color: MarilinColors.success,
-    );
-  }
-
-  Widget _cancelAction(String label, VoidCallback onPressed) => TextButton.icon(
-    style: TextButton.styleFrom(foregroundColor: MarilinColors.destructive),
-    icon: const Icon(Icons.block, size: 18),
-    label: Text(label),
-    onPressed: onPressed,
-  );
 
   Future<void> _pickRescheduleTime() async {
     final picked = await showTimePicker(
@@ -719,7 +679,10 @@ class _VisitScreenState extends ConsumerState<VisitScreen> {
         entityId: payment.id,
       ),
       action: payment.isCancellableOn(now)
-          ? _cancelAction('Anular cobro', () => _cancelPayment(payment))
+          ? CancelRecordAction(
+              label: 'Anular cobro',
+              onPressed: () => _cancelPayment(payment),
+            )
           : null,
       icon: Icons.payments_outlined,
       title: 'Cobro registrado',
@@ -933,7 +896,10 @@ class _VisitScreenState extends ConsumerState<VisitScreen> {
               ),
             ),
             if (sale.isCancellableOn(now))
-              _cancelAction('Anular venta', () => _cancelSale(sale)),
+              CancelRecordAction(
+                label: 'Anular venta',
+                onPressed: () => _cancelSale(sale),
+              ),
           ],
         ),
       ],

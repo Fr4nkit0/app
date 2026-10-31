@@ -12,7 +12,13 @@ abstract class SaleRepository {
   Future<Sale?> findSale(String saleId);
 
   /// Marks [sale] cancelled at [at], books its credit note, takes it out of
-  /// the customer balance, returns its stock to the truck and queues the
-  /// cancellation; run it inside the use case's unit of work.
-  Future<void> cancelSale(Sale sale, {required DateTime at, String? reason});
+  /// the customer balance, returns its stock to the truck and, unless
+  /// [queue] is false (the server already holds the cancellation), queues
+  /// the cancellation; run it inside the use case's unit of work.
+  Future<void> cancelSale(
+    Sale sale, {
+    required DateTime at,
+    String? reason,
+    bool queue = true,
+  });
 }
