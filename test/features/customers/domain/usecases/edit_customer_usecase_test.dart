@@ -1,3 +1,5 @@
+import 'dart:convert';
+
 import 'package:drift/drift.dart' hide isNull;
 import 'package:drift/native.dart';
 import 'package:flutter_test/flutter_test.dart';
@@ -121,6 +123,20 @@ void main() {
       expect(change.entity, PendingEntity.customer.wireName);
       expect(change.entityId, 'cust-1');
       expect(change.action, PendingAction.update.wireName);
+      // The push sends only these, so untouched fields stay as the server
+      // holds them.
+      expect(
+        jsonDecode(change.payload!)[PendingChange.changedFieldsKey],
+        unorderedEquals([
+          'name',
+          'phone_number',
+          'address.street',
+          'address.neighborhood',
+          'address.apartment',
+          'address.floor',
+          'address.visual_reference',
+        ]),
+      );
     },
   );
 

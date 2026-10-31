@@ -171,11 +171,19 @@ class SyncEngine {
         final accepted = <int>{};
         for (final record in plan.records) {
           final result = results[record.uuid];
-          if (result?['status'] == 'accepted') {
+          final status = result?['status'];
+          if (status == 'accepted' || status == 'outdated') {
             // An accepted record that waits for review is still accepted.
-            await pusher.applyAccepted(record, result!['server_id'] as int);
+            // An outdated one changed nothing (the server holds newer values
+            // for every field it carried) and the next pull brings those
+            // values; it settles the same way, and telling the driver about
+            // it is part of the rejection notices (T4).
+            final serverId = result!['server_id'];
+            if (status == 'accepted' || serverId != null) {
+              await pusher.applyAccepted(record, serverId as int);
+            }
             accepted.addAll(record.changeIds);
-          } else if (result?['status'] == 'rejected') {
+          } else if (status == 'rejected') {
             final reason =
                 (result!['error'] as String?) ?? 'Rechazado por el servidor.';
             for (final id in record.changeIds) {

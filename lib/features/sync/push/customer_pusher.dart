@@ -6,9 +6,13 @@ import 'entity_pusher.dart';
 
 /// Customers created or edited on the street.
 ///
-/// Queued payloads may be partial (a coordinates fix carries only lat/lng),
-/// so the record is rebuilt from the current local row: every change of the
-/// same customer collapses into one record carrying its latest state.
+/// Every change of the same customer collapses into one record built from
+/// the current local row. A customer the server does not know yet travels
+/// whole. An edit of a known customer carries only the fields its queued
+/// changes name ([PendingChange.changedFields]) with their latest values:
+/// the server merges it field by field, so a field the driver did not touch
+/// never overwrites the office's newer value. An edit queued by an older
+/// version, which does not name its fields, still travels whole.
 ///
 /// The server writes the record's address onto whichever address it holds
 /// as primary, and customers are processed before `customer_addresses`. So
@@ -33,15 +37,17 @@ class CustomerPusher implements EntityPusher {
 
   @override
   Future<PushPlan> plan(List<PendingChange> changes) async {
-    final idsByCustomer = <String, List<int>>{};
+    final changesByCustomer = <String, List<PendingChange>>{};
     for (final c in changes) {
-      idsByCustomer.putIfAbsent(c.entityId, () => []).add(c.id);
+      changesByCustomer.putIfAbsent(c.entityId, () => []).add(c);
     }
 
     final records = <PushRecord>[];
     final rejections = <LocalRejection>[];
-    for (final MapEntry(key: customerId, value: changeIds)
-        in idsByCustomer.entries) {
+    final settled = <int>[];
+    for (final MapEntry(key: customerId, value: ofCustomer)
+        in changesByCustomer.entries) {
+      final changeIds = [for (final c in ofCustomer) c.id];
       final customer = await (_db.select(
         _db.customerTable,
       )..where((t) => t.customerId.equals(customerId))).getSingleOrNull();
@@ -53,15 +59,20 @@ class CustomerPusher implements EntityPusher {
           await _hasPendingAddressChanges(customerId)) {
         continue;
       }
+      final fields = PendingChange.changedFieldsOf(ofCustomer);
+      final body = customer.serverId == null || fields == null
+          ? await _body(customer)
+          : await _editBody(customer, fields);
+      if (body == null) {
+        // Nothing left to tell the server.
+        settled.addAll(changeIds);
+        continue;
+      }
       records.add(
-        PushRecord(
-          uuid: customerId,
-          body: await _body(customer),
-          changeIds: changeIds,
-        ),
+        PushRecord(uuid: customerId, body: body, changeIds: changeIds),
       );
     }
-    return PushPlan(records: records, rejections: rejections);
+    return PushPlan(records: records, rejections: rejections, settled: settled);
   }
 
   @override
@@ -100,13 +111,62 @@ class CustomerPusher implements EntityPusher {
     return trimmed == null || trimmed.isEmpty ? null : trimmed;
   }
 
-  Future<Json> _body(CustomerTableData customer) async {
+  /// The address fields a customer record carries, as the server names
+  /// them under `address`.
+  static Json addressValues(CustomerAddressTableData? address) => {
+    'street': address?.street,
+    'apartment': address?.apartment,
+    'floor': floorOf(address?.floor),
+    'visual_reference': address?.visualReference,
+    'neighborhood': address?.neighborhood,
+    'latitude': address?.latitude,
+    'longitude': address?.longitude,
+  };
+
+  static const _addressPrefix = 'address.';
+
+  /// The edit of a customer the server knows: [fields] with their current
+  /// values, or null when none of them has anything to send.
+  Future<Json?> _editBody(
+    CustomerTableData customer,
+    Set<String> fields,
+  ) async {
+    final addressFields = {
+      for (final f in fields)
+        if (f.startsWith(_addressPrefix)) f.substring(_addressPrefix.length),
+    };
+    final address = addressFields.isEmpty
+        ? null
+        : await _pushedAddress(customer.customerId);
+    final values = addressValues(address);
+    final changes = <String, dynamic>{
+      if (fields.contains('name')) 'name': customer.name,
+      if (fields.contains('phone_number')) 'phone_number': customer.phone,
+      // Drivers can only disable; re-enabling is up to the office.
+      if (fields.contains('enabled') && !customer.enabled) 'enabled': false,
+      if (address != null)
+        'address': {
+          'uuid': address.addressId,
+          for (final f in addressFields)
+            if (values.containsKey(f)) f: values[f],
+        },
+    };
+    if (changes.isEmpty) return null;
+    return {
+      'uuid': customer.customerId,
+      'server_id': customer.serverId,
+      'modified_at': _modifiedAt(customer, address),
+      ...changes,
+    };
+  }
+
+  /// The address the record carries: the primary, or the oldest enabled
+  /// one when there is no primary.
+  Future<CustomerAddressTableData?> _pushedAddress(String customerId) async {
     final addresses =
         await (_db.select(_db.customerAddressTable)
               ..where(
-                (t) =>
-                    t.customerId.equals(customer.customerId) &
-                    t.enabled.equals(true),
+                (t) => t.customerId.equals(customerId) & t.enabled.equals(true),
               )
               ..orderBy([
                 (t) => OrderingTerm.desc(t.isPrimary),
@@ -114,13 +174,23 @@ class CustomerPusher implements EntityPusher {
               ])
               ..limit(1))
             .get();
-    final address = addresses.isEmpty ? null : addresses.first;
+    return addresses.isEmpty ? null : addresses.first;
+  }
 
+  /// The latest local modification of what the record carries.
+  static String _modifiedAt(
+    CustomerTableData customer,
+    CustomerAddressTableData? address,
+  ) {
     var modifiedAt = customer.lastModifiedDate;
     if (address != null && address.lastModifiedDate.isAfter(modifiedAt)) {
       modifiedAt = address.lastModifiedDate;
     }
+    return modifiedAt.toUtc().toIso8601String();
+  }
 
+  Future<Json> _body(CustomerTableData customer) async {
+    final address = await _pushedAddress(customer.customerId);
     return {
       'uuid': customer.customerId,
       'server_id': ?customer.serverId,
@@ -129,17 +199,11 @@ class CustomerPusher implements EntityPusher {
       // Drivers can only disable; re-enabling is up to the office, so an
       // enabled customer leaves the server's flag as it is.
       if (!customer.enabled) 'enabled': false,
-      'modified_at': modifiedAt.toUtc().toIso8601String(),
+      'modified_at': _modifiedAt(customer, address),
       'address': {
         // Lets a later address edit reach the same server row.
         'uuid': address?.addressId,
-        'street': address?.street,
-        'apartment': address?.apartment,
-        'floor': floorOf(address?.floor),
-        'visual_reference': address?.visualReference,
-        'neighborhood': address?.neighborhood,
-        'latitude': address?.latitude,
-        'longitude': address?.longitude,
+        ...addressValues(address),
       },
     };
   }

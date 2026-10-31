@@ -83,4 +83,31 @@ class PendingChange {
   final PendingStatus status;
   final String? rejectionReason;
   final DateTime createdAt;
+
+  /// Payload key of an edit listing the wire fields it changed, compared
+  /// with the stored row before the write: `{'fields': ['phone_number']}`.
+  /// A customer's address fields carry an `address.` prefix
+  /// (`address.visual_reference`).
+  static const changedFieldsKey = 'fields';
+
+  /// The wire fields this edit changed, or null when they are unknown: an
+  /// insert, or an edit queued by a version that did not record them. A
+  /// record with unknown fields travels whole.
+  Set<String>? get changedFields {
+    if (action != PendingAction.update) return null;
+    final fields = payload?[changedFieldsKey];
+    return fields is List ? {for (final f in fields) f as String} : null;
+  }
+
+  /// The fields any of [changes] changed, or null when any of them is
+  /// unknown.
+  static Set<String>? changedFieldsOf(Iterable<PendingChange> changes) {
+    final union = <String>{};
+    for (final change in changes) {
+      final fields = change.changedFields;
+      if (fields == null) return null;
+      union.addAll(fields);
+    }
+    return union;
+  }
 }

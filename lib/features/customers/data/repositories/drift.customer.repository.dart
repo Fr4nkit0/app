@@ -50,13 +50,53 @@ class DriftCustomerRepository implements CustomerRepository {
     ],
   };
 
+  /// What the customer push carries for [customerId], keyed by the wire
+  /// names its edits record ([PendingChange.changedFieldsKey]); null when
+  /// the customer does not exist.
+  Future<Map<String, Object?>?> _wireValues(String customerId) async {
+    final customer = await (db.select(
+      db.customerTable,
+    )..where((t) => t.customerId.equals(customerId))).getSingleOrNull();
+    if (customer == null) return null;
+    final address = await _pushedAddress(customerId);
+    return {
+      'name': customer.name,
+      'phone_number': customer.phone,
+      'enabled': customer.enabled,
+      _addressUuid: address?.addressId,
+      'address.street': address?.street,
+      'address.apartment': address?.apartment,
+      'address.floor': address?.floor,
+      'address.visual_reference': address?.visualReference,
+      'address.neighborhood': address?.neighborhood,
+      'address.latitude': address?.latitude,
+      'address.longitude': address?.longitude,
+    };
+  }
+
+  static const _addressUuid = 'address.uuid';
+
+  /// The wire fields that differ between [before] and [after]. When the
+  /// pushed address itself changed, every address field differs: the
+  /// server's copy holds the other address.
+  static List<String> _changedFields(
+    Map<String, Object?> before,
+    Map<String, Object?> after,
+  ) {
+    final addressMoved = before[_addressUuid] != after[_addressUuid];
+    return [
+      for (final MapEntry(:key, :value) in after.entries)
+        if (key != _addressUuid &&
+            (before[key] != value ||
+                (addressMoved && key.startsWith('address.'))))
+          key,
+    ];
+  }
+
   @override
   Future<void> saveCustomer(Customer customer) async {
-    final existed =
-        await (db.select(db.customerTable)
-              ..where((t) => t.customerId.equals(customer.id)))
-            .getSingleOrNull() !=
-        null;
+    final before = await _wireValues(customer.id);
+    final existed = before != null;
     await db
         .into(db.customerTable)
         .insertOnConflictUpdate(
@@ -110,7 +150,14 @@ class DriftCustomerRepository implements CustomerRepository {
       entity: PendingEntity.customer,
       entityId: customer.id,
       action: existed ? PendingAction.update : PendingAction.insert,
-      payload: _payload(customer),
+      payload: {
+        ..._payload(customer),
+        if (existed)
+          PendingChange.changedFieldsKey: _changedFields(
+            before,
+            (await _wireValues(customer.id))!,
+          ),
+      },
     );
     // Preferences travel on their own, after the customer they belong to.
     for (final pref in customer.preferences) {
@@ -128,8 +175,25 @@ class DriftCustomerRepository implements CustomerRepository {
   /// The address is edited in place, keeping its id and server id, so the
   /// pull keeps it linked instead of adding a second one. Preferences, other
   /// addresses and coordinates are left as they are: they do not travel.
+  ///
+  /// The queued change names the fields that differ from the stored ones,
+  /// and an edit that changes nothing is neither written nor queued.
   @override
   Future<void> editCustomer(CustomerEdit edit) async {
+    final before = await _wireValues(edit.customerId);
+    if (before == null) throw const NotFoundFailure('customer');
+    final changed = _changedFields(before, {
+      ...before,
+      'name': edit.name,
+      'phone_number': edit.phone,
+      'address.street': edit.street,
+      'address.apartment': edit.apartment,
+      'address.floor': edit.floor,
+      'address.visual_reference': edit.visualReference,
+      'address.neighborhood': edit.neighborhood,
+    });
+    if (changed.isEmpty) return;
+
     final now = DateTime.now();
     final updated =
         await (db.update(
@@ -162,9 +226,9 @@ class DriftCustomerRepository implements CustomerRepository {
             ),
           );
     } else {
-      await (db.update(db.customerAddressTable)
-            ..where((t) => t.addressId.equals(address.addressId)))
-          .write(fields);
+      await (db.update(
+        db.customerAddressTable,
+      )..where((t) => t.addressId.equals(address.addressId))).write(fields);
     }
 
     await _queue.enqueue(
@@ -182,6 +246,7 @@ class DriftCustomerRepository implements CustomerRepository {
           'floor': edit.floor,
           'visualReference': edit.visualReference,
         },
+        PendingChange.changedFieldsKey: changed,
       },
     );
   }
@@ -189,6 +254,12 @@ class DriftCustomerRepository implements CustomerRepository {
   /// Only the office re-enables a customer, so this goes one way.
   @override
   Future<void> disableCustomer(String customerId) async {
+    final stored = await (db.select(
+      db.customerTable,
+    )..where((t) => t.customerId.equals(customerId))).getSingleOrNull();
+    if (stored == null) throw const NotFoundFailure('customer');
+    if (!stored.enabled) return;
+
     final updated =
         await (db.update(
           db.customerTable,
@@ -204,7 +275,11 @@ class DriftCustomerRepository implements CustomerRepository {
       entity: PendingEntity.customer,
       entityId: customerId,
       action: PendingAction.update,
-      payload: {'customerId': customerId, 'enabled': false},
+      payload: {
+        'customerId': customerId,
+        'enabled': false,
+        PendingChange.changedFieldsKey: const ['enabled'],
+      },
     );
   }
 
@@ -283,22 +358,27 @@ class DriftCustomerRepository implements CustomerRepository {
     required int pageSize,
   }) async {
     final offset = page * pageSize;
-    final customerRows = await (db.select(db.customerTable)
-          ..where((t) => t.enabled.equals(true))
-          ..limit(pageSize, offset: offset))
-        .get();
+    final customerRows =
+        await (db.select(db.customerTable)
+              ..where((t) => t.enabled.equals(true))
+              ..limit(pageSize, offset: offset))
+            .get();
 
     if (customerRows.isEmpty) return [];
 
     final customerIds = customerRows.map((c) => c.customerId).toList();
 
-    final addresses = await (db.select(db.customerAddressTable)
-          ..where((t) => t.customerId.isIn(customerIds) & t.enabled.equals(true)))
-        .get();
+    final addresses =
+        await (db.select(db.customerAddressTable)..where(
+              (t) => t.customerId.isIn(customerIds) & t.enabled.equals(true),
+            ))
+            .get();
 
-    final preferences = await (db.select(db.customerPreferenceTable)
-          ..where((t) => t.customerId.isIn(customerIds) & t.enabled.equals(true)))
-        .get();
+    final preferences =
+        await (db.select(db.customerPreferenceTable)..where(
+              (t) => t.customerId.isIn(customerIds) & t.enabled.equals(true),
+            ))
+            .get();
 
     final balanceMap = await _account.balancesOf(customerIds);
 
@@ -357,13 +437,17 @@ class DriftCustomerRepository implements CustomerRepository {
 
     final customerIds = customerRows.map((c) => c.customerId).toList();
 
-    final addresses = await (db.select(db.customerAddressTable)
-          ..where((t) => t.customerId.isIn(customerIds) & t.enabled.equals(true)))
-        .get();
+    final addresses =
+        await (db.select(db.customerAddressTable)..where(
+              (t) => t.customerId.isIn(customerIds) & t.enabled.equals(true),
+            ))
+            .get();
 
-    final preferences = await (db.select(db.customerPreferenceTable)
-          ..where((t) => t.customerId.isIn(customerIds) & t.enabled.equals(true)))
-        .get();
+    final preferences =
+        await (db.select(db.customerPreferenceTable)..where(
+              (t) => t.customerId.isIn(customerIds) & t.enabled.equals(true),
+            ))
+            .get();
 
     final balanceMap = await _account.balancesOf(customerIds);
 

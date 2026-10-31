@@ -7,8 +7,9 @@ import 'package:app/features/sync/data/repositories/pending_change.repository.da
 import 'package:app/features/sync/domain/models/pending_change.dart';
 import 'package:drift/drift.dart';
 
-/// Each write queues one `customer_address` change per address it touched;
-/// the push rebuilds the record from the stored row.
+/// Each write queues one `customer_address` change per address it touched,
+/// naming the wire fields it changed ([PendingChange.changedFieldsKey]); the
+/// push builds the record from the stored row.
 class DriftCustomerAddressRepository implements CustomerAddressRepository {
   DriftCustomerAddressRepository(this._db, {DateTime Function()? now})
     : _queue = DriftPendingChangeRepository(_db),
@@ -71,16 +72,29 @@ class DriftCustomerAddressRepository implements CustomerAddressRepository {
     return row.addressId;
   }
 
+  /// An edit that changes nothing is neither written nor queued.
   @override
   Future<void> edit(String addressId, AddressDetails details) async {
-    if (await _enabledRow(addressId) == null) {
-      throw const NotFoundFailure('address');
-    }
+    final stored = await _enabledRow(addressId);
+    if (stored == null) throw const NotFoundFailure('address');
+    final changed = [
+      for (final (field, before, after) in [
+        ('street', stored.street, details.street),
+        ('apartment', stored.apartment, details.apartment),
+        ('floor', stored.floor, details.floor),
+        ('visual_reference', stored.visualReference, details.visualReference),
+        ('neighborhood', stored.neighborhood, details.neighborhood),
+      ])
+        if (before != after) field,
+    ];
+    if (changed.isEmpty) return;
     await _write(
       addressId,
       _fields(details).copyWith(lastModifiedDate: Value(_now())),
     );
-    await _enqueue(addressId, PendingAction.update, const {});
+    await _enqueue(addressId, PendingAction.update, {
+      PendingChange.changedFieldsKey: changed,
+    });
   }
 
   @override
@@ -92,7 +106,10 @@ class DriftCustomerAddressRepository implements CustomerAddressRepository {
         lastModifiedDate: Value(_now()),
       ),
     );
-    await _enqueue(addressId, PendingAction.update, const {'enabled': false});
+    await _enqueue(addressId, PendingAction.update, const {
+      'enabled': false,
+      PendingChange.changedFieldsKey: ['enabled'],
+    });
   }
 
   /// The previous primary is queued after the new one and dated a second
@@ -110,7 +127,10 @@ class DriftCustomerAddressRepository implements CustomerAddressRepository {
         lastModifiedDate: Value(now),
       ),
     );
-    await _enqueue(addressId, PendingAction.update, const {'isPrimary': true});
+    await _enqueue(addressId, PendingAction.update, const {
+      'isPrimary': true,
+      PendingChange.changedFieldsKey: ['is_primary'],
+    });
 
     final previous =
         await (_db.select(_db.customerAddressTable)..where(
@@ -130,6 +150,7 @@ class DriftCustomerAddressRepository implements CustomerAddressRepository {
       );
       await _enqueue(p.addressId, PendingAction.update, const {
         'isPrimary': false,
+        PendingChange.changedFieldsKey: ['is_primary'],
       });
     }
   }

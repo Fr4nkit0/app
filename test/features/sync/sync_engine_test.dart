@@ -383,15 +383,14 @@ void main() {
       expect(record['name'], 'Kiosco Sur');
       expect(record['phone_number'], '3874009988');
       expect(record['address'], {
-        // The address edited in place keeps its uuid.
+        // The address edited in place keeps its uuid; the coordinates are
+        // not part of the edit, so they do not travel.
         'uuid': 'addr-c-1',
         'street': 'Mitre 50',
         'apartment': 'B',
         'floor': 'PB',
         'visual_reference': 'Portón verde',
         'neighborhood': 'Tres Cerritos',
-        'latitude': -24.785,
-        'longitude': -65.411,
       });
       expect(
         DateTime.parse(record['modified_at'] as String).isAfter(
