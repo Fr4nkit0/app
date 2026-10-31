@@ -531,6 +531,25 @@ void main() {
       expect(await queue.countPending(), 0);
     });
 
+    test('the status counts them as held by their stop until it closes', () async {
+      await sell(visitId: 's-1');
+      await pay(id: 'pay-debt', visitId: 's-1');
+      await returnContainers(visitId: 's-1');
+      final linked = await queue.countPending();
+      await pay(id: 'pay-profile');
+
+      final status = await engine.status();
+      expect(status.heldCount, linked);
+      expect(status.heldStopIds, {'s-1'});
+      expect(status.pendingCount, linked + 1);
+
+      final held = engine.watchStatus().map((s) => s.heldCount);
+      final closed = expectLater(held, emitsThrough(0));
+      await recordVisit();
+      await closed;
+      expect((await engine.status()).heldStopIds, isEmpty);
+    });
+
     test('a payment without a visit is not held by an open stop', () async {
       await sell(method: PaymentMethod.cash, visitId: 's-1');
       await pay(id: 'pay-profile');

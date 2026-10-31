@@ -18,6 +18,7 @@ class RouteStopCard extends StatelessWidget {
     this.isFirst = false,
     this.isLast = false,
     this.isNext = false,
+    this.holdsRecords = false,
   });
 
   final RouteStop stop;
@@ -27,6 +28,9 @@ class RouteStopCard extends StatelessWidget {
 
   /// Marks the stop shown in the next-stop hero with a small pill.
   final bool isNext;
+
+  /// The stop's visit is open and holds records in the sync queue.
+  final bool holdsRecords;
 
   @override
   Widget build(BuildContext context) {
@@ -41,6 +45,7 @@ class RouteStopCard extends StatelessWidget {
     final hasMetaRow =
         stop.hasScheduledTime ||
         isNext ||
+        holdsRecords ||
         isDone ||
         isAbsent ||
         stop.customer.debtAmount > 0;
@@ -217,7 +222,9 @@ class RouteStopCard extends StatelessWidget {
                                         isDone: isDone,
                                         isAbsent: isAbsent,
                                       ),
-                                    if (isNext) _buildNextPill(),
+                                    if (isNext) _buildPill('Próxima'),
+                                    if (holdsRecords)
+                                      _buildPill('Visita abierta'),
                                     if (isDone || isAbsent)
                                       SyncBadgeContainer(
                                         entity: PendingEntity.routeStop,
@@ -264,16 +271,16 @@ class RouteStopCard extends StatelessWidget {
     );
   }
 
-  Widget _buildNextPill() {
+  Widget _buildPill(String label) {
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
       decoration: BoxDecoration(
         color: MarilinColors.brandBlue.withValues(alpha: 0.12),
         borderRadius: BorderRadius.circular(20),
       ),
-      child: const Text(
-        'Próxima',
-        style: TextStyle(
+      child: Text(
+        label,
+        style: const TextStyle(
           fontSize: 13,
           fontWeight: FontWeight.w700,
           color: MarilinColors.brandBlue,

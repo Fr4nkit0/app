@@ -101,6 +101,7 @@ void main() {
     WidgetTester tester,
     List<RouteStop> stops, {
     int custody = 0,
+    Set<String> heldStopIds = const {},
   }) async {
     await tester.binding.setSurfaceSize(const Size(360, 800));
     addTearDown(() => tester.binding.setSurfaceSize(null));
@@ -112,8 +113,9 @@ void main() {
             SyncStatus(
               lastCycleAt: DateTime(2026, 10, 28, 18, 27),
               lastResult: SyncCycleResult.success,
-              pendingCount: 0,
-              rejectedCount: 0,
+              pendingCount: heldStopIds.length,
+              heldCount: heldStopIds.length,
+              heldStopIds: heldStopIds,
             ),
           ),
         ),
@@ -249,6 +251,33 @@ void main() {
     expect(find.text('1 de 3 paradas · 2 pendientes'), findsOneWidget);
     expect(find.text('Progreso de la jornada'), findsNothing);
   });
+
+  testWidgets(
+    'the list card of a stop whose open visit holds records says so',
+    (tester) async {
+      await pumpRoute(
+        tester,
+        [
+          _stop('s-1', status: StopStatus.done),
+          _stop('s-2', name: 'Almacén Sur', hour: 10),
+          _stop('s-3', name: 'Bar Este', hour: 11),
+        ],
+        heldStopIds: {'s-3'},
+      );
+
+      expect(
+        find.descendant(
+          of: find.ancestor(
+            of: find.text('Bar Este'),
+            matching: find.byType(RouteStopCard),
+          ),
+          matching: find.text('Visita abierta'),
+        ),
+        findsOneWidget,
+      );
+      expect(find.text('Visita abierta'), findsOneWidget);
+    },
+  );
 
   testWidgets('only the list card of the next stop shows "Próxima"', (
     tester,

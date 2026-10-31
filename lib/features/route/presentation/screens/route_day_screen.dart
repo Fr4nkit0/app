@@ -63,7 +63,9 @@ class _RouteDayScreenState extends ConsumerState<RouteDayScreen> {
     final isSyncRunning = ref.watch(syncRunningProvider).value ?? false;
     // Without a cycle that reached the server, an empty day means today's
     // route was never downloaded, not that the server has none.
-    final lastSyncResult = ref.watch(syncStatusProvider).value?.lastResult;
+    final syncStatus = ref.watch(syncStatusProvider).value;
+    final lastSyncResult = syncStatus?.lastResult;
+    final heldStopIds = syncStatus?.heldStopIds ?? const <String>{};
     final routeNotDownloaded =
         lastSyncResult == null || lastSyncResult == SyncCycleResult.offline;
     // A running sync is downloading it right now (e.g. the first sync).
@@ -135,6 +137,7 @@ class _RouteDayScreenState extends ConsumerState<RouteDayScreen> {
                           isFirst: i == 0,
                           isLast: i == stops.length - 1 && isFullyLoaded,
                           isNext: stops[i].id == nextStop?.id,
+                          holdsRecords: heldStopIds.contains(stops[i].id),
                           onTap: () => Navigator.of(context).push(
                             MaterialPageRoute(
                               builder: (_) => VisitScreen(stopId: stops[i].id),
