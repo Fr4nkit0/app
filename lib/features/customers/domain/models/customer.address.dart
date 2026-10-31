@@ -20,4 +20,23 @@ class CustomerAddress {
     this.longitude,
     this.neighborhood,
   });
+
+  CustomerAddress copyWith({
+    String? street,
+    String? apartment,
+    String? floor,
+    String? visualReference,
+    bool? isPrimary,
+    String? neighborhood,
+  }) => CustomerAddress(
+    id: id,
+    street: street ?? this.street,
+    apartment: apartment ?? this.apartment,
+    floor: floor ?? this.floor,
+    visualReference: visualReference ?? this.visualReference,
+    isPrimary: isPrimary ?? this.isPrimary,
+    latitude: latitude,
+    longitude: longitude,
+    neighborhood: neighborhood ?? this.neighborhood,
+  );
 }

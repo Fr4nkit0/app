@@ -22,24 +22,28 @@ void main() {
 
   setUp(() async {
     db = AppDatabase(NativeDatabase.memory());
-    await db.into(db.customerTable).insert(
-      CustomerTableCompanion.insert(
-        customerId: const drift.Value('cust-1'),
-        name: 'Kiosco Norte',
-        phone: const drift.Value('3874001122'),
-        serverId: const drift.Value(501),
-      ),
-    );
-    await db.into(db.customerAddressTable).insert(
-      CustomerAddressTableCompanion.insert(
-        addressId: const drift.Value('addr-1'),
-        customerId: const drift.Value('cust-1'),
-        street: const drift.Value('Belgrano 1200'),
-        neighborhood: const drift.Value('Centro'),
-        isPrimary: const drift.Value(true),
-        serverId: const drift.Value(601),
-      ),
-    );
+    await db
+        .into(db.customerTable)
+        .insert(
+          CustomerTableCompanion.insert(
+            customerId: const drift.Value('cust-1'),
+            name: 'Kiosco Norte',
+            phone: const drift.Value('3874001122'),
+            serverId: const drift.Value(501),
+          ),
+        );
+    await db
+        .into(db.customerAddressTable)
+        .insert(
+          CustomerAddressTableCompanion.insert(
+            addressId: const drift.Value('addr-1'),
+            customerId: const drift.Value('cust-1'),
+            street: const drift.Value('Belgrano 1200'),
+            neighborhood: const drift.Value('Centro'),
+            isPrimary: const drift.Value(true),
+            serverId: const drift.Value(601),
+          ),
+        );
   });
   tearDown(() => db.close());
 
@@ -63,7 +67,10 @@ void main() {
     // The form opens with the customer's current data.
     expect(find.text('Editar cliente'), findsOneWidget);
     final name = find.widgetWithText(TextFormField, 'Nombre completo');
-    expect(find.descendant(of: name, matching: find.text('Kiosco Norte')), findsOneWidget);
+    expect(
+      find.descendant(of: name, matching: find.text('Kiosco Norte')),
+      findsOneWidget,
+    );
 
     await tester.enterText(name, 'Kiosco Sur');
     await tester.enterText(
@@ -74,8 +81,14 @@ void main() {
     await tester.tap(find.text('Siguiente'));
     await settle(tester);
 
-    final street = find.widgetWithText(TextFormField, 'Calle y altura / Manzana');
-    expect(find.descendant(of: street, matching: find.text('Belgrano 1200')), findsOneWidget);
+    final street = find.widgetWithText(
+      TextFormField,
+      'Calle y altura / Manzana',
+    );
+    expect(
+      find.descendant(of: street, matching: find.text('Belgrano 1200')),
+      findsOneWidget,
+    );
     await tester.enterText(street, 'Mitre 50');
     await tester.pump();
     await tester.tap(find.text('Guardar cambios'));
@@ -99,6 +112,37 @@ void main() {
     expect(find.text('Kiosco Norte'), findsNothing);
 
     // Drift schedules a zero-duration timer when a watched query is cancelled.
+    await tester.pumpWidget(const SizedBox());
+    await tester.pump(Duration.zero);
+  });
+
+  testWidgets('Enter on the phone moves on to the address step', (
+    tester,
+  ) async {
+    await tester.pumpWidget(
+      ProviderScope(
+        overrides: [databaseProvider.overrideWithValue(db)],
+        child: MaterialApp(
+          theme: AppTheme.lightTheme,
+          home: const CustomerProfileScreen(customerId: 'cust-1'),
+        ),
+      ),
+    );
+    await settle(tester);
+    await tester.tap(find.byTooltip('Editar'));
+    await settle(tester);
+
+    await tester.showKeyboard(
+      find.widgetWithText(TextFormField, 'Teléfono (opcional)'),
+    );
+    await tester.testTextInput.receiveAction(TextInputAction.next);
+    await settle(tester);
+
+    expect(
+      find.widgetWithText(TextFormField, 'Calle y altura / Manzana'),
+      findsOneWidget,
+    );
+
     await tester.pumpWidget(const SizedBox());
     await tester.pump(Duration.zero);
   });

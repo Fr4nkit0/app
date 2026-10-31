@@ -149,25 +149,46 @@ class _CustomerProfileScreenState extends ConsumerState<CustomerProfileScreen> {
               const SizedBox(height: 16),
               _buildTabBar(),
               _buildTabContent(customer),
-              const SizedBox(height: 80),
             ],
           ),
         ),
       ),
-      floatingActionButton: FloatingActionButton.extended(
-        heroTag: 'fab_new_sale',
-        onPressed: () {
-          ref.read(saleDraftProvider.notifier).selectCustomer(customer);
-          Navigator.of(
-            context,
-          ).push(MaterialPageRoute(builder: (_) => const SaleStep1Screen()));
-        },
-        backgroundColor: MarilinColors.brandBlue,
-        foregroundColor: Colors.white,
-        icon: const Icon(Icons.point_of_sale_outlined),
-        label: const Text(
-          'Nueva Venta',
-          style: TextStyle(fontWeight: FontWeight.w700),
+      // A fixed bar instead of a floating button: the content ends above it,
+      // so it never covers an address or preference menu.
+      bottomNavigationBar: Container(
+        decoration: BoxDecoration(
+          color: context.marilin.surface,
+          boxShadow: [
+            BoxShadow(
+              color: Colors.black.withValues(alpha: 0.06),
+              blurRadius: 12,
+              offset: const Offset(0, -4),
+            ),
+          ],
+        ),
+        child: SafeArea(
+          top: false,
+          child: Padding(
+            padding: const EdgeInsets.fromLTRB(20, 12, 20, 12),
+            child: FilledButton.icon(
+              onPressed: () {
+                ref.read(saleDraftProvider.notifier).selectCustomer(customer);
+                Navigator.of(context).push(
+                  MaterialPageRoute(builder: (_) => const SaleStep1Screen()),
+                );
+              },
+              style: FilledButton.styleFrom(
+                backgroundColor: MarilinColors.brandBlue,
+                foregroundColor: Colors.white,
+                minimumSize: const Size.fromHeight(52),
+              ),
+              icon: const Icon(Icons.point_of_sale_outlined),
+              label: const Text(
+                'Nueva Venta',
+                style: TextStyle(fontWeight: FontWeight.w700),
+              ),
+            ),
+          ),
         ),
       ),
     );
