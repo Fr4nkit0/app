@@ -200,6 +200,27 @@ void main() {
       expect(pushBodies, hasLength(1));
     });
 
+    test(
+      'is recognised by the Spanish review reason the server sends now',
+      () async {
+        await editPhone('111');
+        answer = (_, r) => {
+          'uuid': r['uuid'],
+          'status': 'accepted',
+          'server_id': r['server_id'],
+          'review_reasons': ['El cliente está asignado a otro repartidor.'],
+        };
+
+        await engine.push();
+
+        expect((await customer('c-1')).phone, '111');
+        expect(
+          (await latest(PendingEntity.customer, 'c-1'))?.status,
+          PendingStatus.awaitingApproval,
+        );
+      },
+    );
+
     test('of a preference is not rolled back to the server values', () async {
       await EditPreferenceUseCase(
         preferenceRepo: DriftCustomerPreferenceRepository(db, now: () => now),

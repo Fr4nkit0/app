@@ -53,6 +53,13 @@ class SyncEngine {
   static const foreignCustomerReason =
       'Customer is assigned to another driver.';
 
+  /// The same reason as the server labels it since it answers in Spanish;
+  /// the English key is kept for servers that predate the translation.
+  static const foreignCustomerReasons = {
+    foreignCustomerReason,
+    'El cliente está asignado a otro repartidor.',
+  };
+
   /// Entities whose edits of another driver's customer wait for approval;
   /// sales and payments of that customer are still applied and only
   /// flagged.
@@ -216,7 +223,7 @@ class SyncEngine {
             if (serverId is int) await pusher.applyAccepted(record, serverId);
             if (status == 'accepted' &&
                 _approvalEntities.contains(pusher.entity) &&
-                _reviewReasonsOf(result).contains(foreignCustomerReason)) {
+                _reviewReasonsOf(result).any(foreignCustomerReasons.contains)) {
               awaiting.addAll(record.changeIds);
             } else if (status == 'accepted') {
               accepted.addAll(record.changeIds);
