@@ -103,4 +103,21 @@ void main() {
     await tester.tap(find.byType(HistorySyncStatusCard));
     expect(taps, 1);
   });
+
+  testWidgets('tells records held by an open visit apart from pending', (
+    tester,
+  ) async {
+    await pump(
+      tester,
+      SyncStatus(
+        lastCycleAt: DateTime(2026, 10, 19, 14, 5),
+        lastResult: SyncCycleResult.success,
+        pendingCount: 2,
+        heldCount: 1,
+      ),
+    );
+
+    expect(find.text('1 pendiente · 0 rechazados'), findsOneWidget);
+    expect(find.text('1 espera cierre de visita'), findsOneWidget);
+  });
 }

@@ -84,7 +84,7 @@ class SyncStatusButton extends StatelessWidget {
                             offline
                                 ? _saved(status.pendingCount)
                                 : _count(
-                                    status.pendingCount,
+                                    status.readyCount,
                                     'pendiente',
                                     'pendientes',
                                   ),
@@ -96,6 +96,20 @@ class SyncStatusButton extends StatelessWidget {
                             ),
                           ),
                         ),
+                        if (status.heldLabel case final held?) ...[
+                          const SizedBox(width: 6),
+                          Flexible(
+                            child: Text(
+                              held,
+                              maxLines: 1,
+                              overflow: TextOverflow.ellipsis,
+                              style: TextStyle(
+                                color: context.marilin.textMuted,
+                                fontSize: 13,
+                              ),
+                            ),
+                          ),
+                        ],
                         const SizedBox(width: 6),
                         Flexible(
                           child: Text(

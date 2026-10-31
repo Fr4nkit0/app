@@ -93,11 +93,15 @@ class HistorySyncStatusCard extends StatelessWidget {
                     ),
                     const SizedBox(height: 2),
                     Text(
-                      '${_count(status.pendingCount, 'pendiente', 'pendientes')}'
+                      '${_count(status.readyCount, 'pendiente', 'pendientes')}'
                       ' · '
                       '${_count(status.rejectedCount, 'rechazado', 'rechazados')}',
                       style: tokens.subtitle.copyWith(fontSize: 12),
                     ),
+                    if (status.heldLabel case final held?) ...[
+                      const SizedBox(height: 2),
+                      Text(held, style: tokens.subtitle.copyWith(fontSize: 12)),
+                    ],
                     if (failed && error != null && error.trim().isNotEmpty) ...[
                       const SizedBox(height: 2),
                       Text(

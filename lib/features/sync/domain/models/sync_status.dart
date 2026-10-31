@@ -29,6 +29,8 @@ class SyncStatus {
     this.lastError,
     this.pendingCount = 0,
     this.rejectedCount = 0,
+    this.heldCount = 0,
+    this.heldStopIds = const {},
   });
 
   /// When the last cycle finished; null before the first one.
@@ -40,6 +42,21 @@ class SyncStatus {
   final int pendingCount;
   final int rejectedCount;
 
+  /// Pending changes linked to an open visit: they wait for it to close
+  /// instead of travelling, and are part of [pendingCount].
+  final int heldCount;
+
+  /// Stops whose open visit holds those changes.
+  final Set<String> heldStopIds;
+
+  /// Pending changes that travel on the next cycle.
+  int get readyCount => pendingCount - heldCount;
+
+  /// Why the held changes wait, or null when none does.
+  String? get heldLabel => heldCount == 0
+      ? null
+      : '$heldCount ${heldCount == 1 ? 'espera' : 'esperan'} cierre de visita';
+
   @override
   bool operator ==(Object other) =>
       other is SyncStatus &&
@@ -47,7 +64,9 @@ class SyncStatus {
       other.lastResult == lastResult &&
       other.lastError == lastError &&
       other.pendingCount == pendingCount &&
-      other.rejectedCount == rejectedCount;
+      other.rejectedCount == rejectedCount &&
+      other.heldCount == heldCount &&
+      setEquals(other.heldStopIds, heldStopIds);
 
   @override
   int get hashCode => Object.hash(
@@ -56,5 +75,7 @@ class SyncStatus {
     lastError,
     pendingCount,
     rejectedCount,
+    heldCount,
+    Object.hashAllUnordered(heldStopIds),
   );
 }

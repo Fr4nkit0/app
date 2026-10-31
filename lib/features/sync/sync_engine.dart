@@ -8,6 +8,7 @@ import '../../core/services/database.helper.dart';
 import 'data/repositories/pending_change.repository.dart';
 import 'domain/models/pending_change.dart';
 import 'domain/models/sync_status.dart';
+import 'pull/pull_applier.dart' show dateOnly;
 import 'push/agreement_pusher.dart';
 import 'push/container_movement_pusher.dart';
 import 'push/customer_address_pusher.dart';
@@ -216,9 +217,32 @@ class SyncEngine {
 
   Stream<SyncStatus> watchStatus() => _statusQuery().watchSingle();
 
+  /// Pending changes held by an open visit, with the stop of that visit:
+  /// the same rule as `awaitsOpenVisit`, a pending stop of today's route
+  /// with no visit recorded. A cancellation waits with its record.
+  static const _heldSql =
+      'WITH open_stops AS ('
+      'SELECT s.route_stop_id AS id FROM route_stops s '
+      'JOIN routes r ON r.route_id = s.route_id '
+      "WHERE s.status = 'pending' AND r.route_date = ?6 AND NOT EXISTS "
+      '(SELECT 1 FROM visits v WHERE v.route_stop_id = s.route_stop_id)), '
+      'linked AS ('
+      "SELECT 'sale' AS entity, sale_id AS id, visit_id FROM sales "
+      "UNION ALL SELECT 'sale_cancellation', sale_id, visit_id FROM sales "
+      "UNION ALL SELECT 'payment', payment_id, visit_id FROM payments "
+      "UNION ALL SELECT 'payment_cancellation', payment_id, visit_id "
+      'FROM payments '
+      "UNION ALL SELECT 'container_movement', container_movement_id, "
+      'visit_id FROM container_movements), '
+      'held AS (SELECT l.visit_id AS stop_id FROM pending_changes c '
+      'JOIN linked l ON l.entity = c.entity AND l.id = c.entity_id '
+      'WHERE c.status = ?1 AND l.visit_id IN (SELECT id FROM open_stops)) ';
+
   Selectable<SyncStatus> _statusQuery() => _db
       .customSelect(
-        'SELECT '
+        '${_heldSql}SELECT '
+        '(SELECT COUNT(*) FROM held) AS held, '
+        '(SELECT group_concat(DISTINCT stop_id) FROM held) AS held_stops, '
         '(SELECT COUNT(*) FROM pending_changes WHERE status = ?1) AS pending, '
         '(SELECT COUNT(*) FROM pending_changes WHERE status = ?2) AS rejected, '
         '(SELECT value FROM sync_state WHERE key = ?3) AS at, '
@@ -230,15 +254,30 @@ class SyncEngine {
           Variable.withString(lastCycleAtKey),
           Variable.withString(lastCycleResultKey),
           Variable.withString(lastCycleErrorKey),
+          Variable.withString(dateOnly(_now())),
         ],
-        readsFrom: {_db.pendingChangeTable, _db.syncStateTable},
+        readsFrom: {
+          _db.pendingChangeTable,
+          _db.syncStateTable,
+          _db.routeTable,
+          _db.routeStopTable,
+          _db.visitTable,
+          _db.saleTable,
+          _db.paymentTable,
+          _db.containerMovementTable,
+        },
       )
       .map((row) {
         final at = row.readNullable<String>('at');
         final error = row.readNullable<String>('error');
+        final heldStops = row.readNullable<String>('held_stops');
         return SyncStatus(
           pendingCount: row.read<int>('pending'),
           rejectedCount: row.read<int>('rejected'),
+          heldCount: row.read<int>('held'),
+          heldStopIds: heldStops == null
+              ? const {}
+              : heldStops.split(',').toSet(),
           lastCycleAt: at == null ? null : DateTime.parse(at).toLocal(),
           lastResult: SyncCycleResult.fromWire(
             row.readNullable<String>('result'),
