@@ -18,38 +18,43 @@ class CustomerPreferencesSection extends ConsumerWidget {
   final String customerId;
 
   /// Adds a preference, or edits [existing], with the window the driver
-  /// picks in the dialog.
+  /// picks in the dialog. A refused window keeps the dialog open with the
+  /// reason.
   Future<void> _save(
     BuildContext context,
     WidgetRef ref, [
     CustomerPreference? existing,
   ]) async {
-    final picked = await showPreferenceDialog(context, existing: existing);
-    if (picked == null || !context.mounted) return;
-    final (day, start, end) = picked;
-    final details = PreferenceDetails(dayOfWeek: day, start: start, end: end);
-    try {
-      if (existing == null) {
-        await ref
-            .read(addPreferenceUseCaseProvider)
-            .execute(customerId: customerId, details: details);
-      } else {
-        await ref
-            .read(editPreferenceUseCaseProvider)
-            .execute(preferenceId: existing.id, details: details);
-      }
-      if (!context.mounted) return;
-      TopToast.showSuccess(
-        context,
-        existing == null ? 'Preferencia agregada' : 'Preferencia actualizada',
-      );
-    } catch (e) {
-      if (!context.mounted) return;
-      TopToast.showError(
-        context,
-        failureMessage(e, fallback: 'No se pudo guardar. Reintentá.'),
-      );
-    }
+    final saved = await showPreferenceDialog(
+      context,
+      existing: existing,
+      onSave: (day, start, end) async {
+        final details = PreferenceDetails(
+          dayOfWeek: day,
+          start: start,
+          end: end,
+        );
+        try {
+          if (existing == null) {
+            await ref
+                .read(addPreferenceUseCaseProvider)
+                .execute(customerId: customerId, details: details);
+          } else {
+            await ref
+                .read(editPreferenceUseCaseProvider)
+                .execute(preferenceId: existing.id, details: details);
+          }
+          return null;
+        } catch (e) {
+          return failureMessage(e, fallback: 'No se pudo guardar. Reintentá.');
+        }
+      },
+    );
+    if (!saved || !context.mounted) return;
+    TopToast.showSuccess(
+      context,
+      existing == null ? 'Preferencia agregada' : 'Preferencia actualizada',
+    );
   }
 
   Future<void> _disable(

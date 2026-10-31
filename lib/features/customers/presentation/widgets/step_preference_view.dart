@@ -1,6 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:app/core/theme/marilin_tokens.dart';
 import 'package:app/features/customers/domain/models/customer.preference.dart';
+import 'package:app/features/customers/domain/models/preference_details.dart';
+import 'package:app/features/customers/domain/usecases/add_preference.usecase.dart';
 import 'package:app/features/customers/presentation/widgets/preference_dialog.dart';
 
 class StepPreferenceView extends StatelessWidget {
@@ -25,24 +27,37 @@ class StepPreferenceView extends StatelessWidget {
     required this.onNewPreferenceSaved,
   });
 
+  /// Opens the dialog for a new preference, or to edit [existing]. A day
+  /// and start another preference of the form already takes is refused with
+  /// the same reason the create use case gives.
   void _openPreferenceModal(
     BuildContext context, {
     CustomerPreference? existing,
   }) {
-    showPreferenceDialog(context, existing: existing).then((result) {
-      if (result != null) {
+    showPreferenceDialog(
+      context,
+      existing: existing,
+      onSave: (day, start, end) async {
+        final window = PreferenceDetails(dayOfWeek: day, start: start);
+        final taken = preferences.any(
+          (p) =>
+              p.id != existing?.id &&
+              window.sameSlot(p.dayOfWeek, p.timeWindowStart),
+        );
+        if (taken) return AddPreferenceUseCase.slotTaken;
         if (existing != null) {
           onPreferenceChanged(
             existing.id,
-            dayOfWeek: result.$1,
-            timeWindowStart: result.$2,
-            timeWindowEnd: result.$3,
+            dayOfWeek: day,
+            timeWindowStart: start,
+            timeWindowEnd: end,
           );
         } else {
-          onNewPreferenceSaved(result.$1, result.$2, result.$3);
+          onNewPreferenceSaved(day, start, end);
         }
-      }
-    });
+        return null;
+      },
+    );
   }
 
   @override

@@ -26,38 +26,54 @@ String preferenceWindowLabel(CustomerPreference preference) {
   return end == null ? 'desde $start hs' : 'de $start a $end hs';
 }
 
-/// Opens the [PreferenceDialog]; returns `(day, start, end)` or null.
-Future<(int, String, String)?> showPreferenceDialog(
+/// Saves the window picked in the [PreferenceDialog]: completes with null
+/// when stored, or with the reason it was refused.
+typedef PreferenceSaver =
+    Future<String?> Function(int day, String start, String end);
+
+/// Opens the [PreferenceDialog]; completes with whether [onSave] stored the
+/// preference.
+Future<bool> showPreferenceDialog(
   BuildContext context, {
   CustomerPreference? existing,
-}) => showDialog<(int, String, String)>(
-  context: context,
-  builder: (_) => PreferenceDialog(existing: existing),
-);
+  required PreferenceSaver onSave,
+}) async =>
+    await showDialog<bool>(
+      context: context,
+      builder: (_) => PreferenceDialog(existing: existing, onSave: onSave),
+    ) ??
+    false;
 
-/// Picks the day and window of one delivery preference. Pops with
-/// `(day, start, end)`, or null when cancelled.
+/// Picks the day and window of one delivery preference and hands it to
+/// [onSave]. Stays open showing the reason when it is refused, so the driver
+/// can change it; pops with true once saved, or false when cancelled.
 class PreferenceDialog extends StatefulWidget {
   final CustomerPreference? existing;
+  final PreferenceSaver onSave;
 
-  const PreferenceDialog({super.key, this.existing});
+  const PreferenceDialog({super.key, this.existing, required this.onSave});
 
   @override
   State<PreferenceDialog> createState() => _PreferenceDialogState();
 }
 
 class _PreferenceDialogState extends State<PreferenceDialog> {
+  static const _endNotAfterStart =
+      'La hora "Hasta" tiene que ser posterior a "Desde".';
+
   late int _selectedDay;
   late String _startTime;
   late String _endTime;
   String? _errorMessage;
+  bool _saving = false;
 
   @override
   void initState() {
     super.initState();
-    _selectedDay = widget.existing?.dayOfWeek ?? 1;
-    _startTime = widget.existing?.timeWindowStart ?? '09:00';
-    _endTime = widget.existing?.timeWindowEnd ?? '12:00';
+    final existing = widget.existing;
+    _selectedDay = existing?.dayOfWeek ?? 1;
+    _startTime = PreferenceDetails.hhmm(existing?.timeWindowStart) ?? '09:00';
+    _endTime = PreferenceDetails.hhmm(existing?.timeWindowEnd) ?? '12:00';
   }
 
   /// Deliveries run Monday to Saturday; a preference the office set on
@@ -85,7 +101,10 @@ class _PreferenceDialogState extends State<PreferenceDialog> {
               primary: MarilinColors.brandBlue,
             ),
           ),
-          child: child!,
+          child: MediaQuery(
+            data: MediaQuery.of(ctx).copyWith(alwaysUse24HourFormat: true),
+            child: child!,
+          ),
         );
       },
     );
@@ -104,43 +123,29 @@ class _PreferenceDialogState extends State<PreferenceDialog> {
     }
   }
 
-  bool _isValidTime() {
-    final startParts = _startTime.split(':');
-    final startHour = int.tryParse(startParts[0]) ?? 0;
-    final startMinute = int.tryParse(startParts[1]) ?? 0;
+  /// Mirrors the server: the window only has to end after it starts.
+  /// `HH:mm` strings compare in time order.
+  bool get _endsAfterStart => _endTime.compareTo(_startTime) > 0;
 
-    final endParts = _endTime.split(':');
-    final endHour = int.tryParse(endParts[0]) ?? 0;
-    final endMinute = int.tryParse(endParts[1]) ?? 0;
-
-    final startMinutes = startHour * 60 + startMinute;
-    final endMinutes = endHour * 60 + endMinute;
-
-    if (endMinutes <= startMinutes) {
-      return false;
-    }
-
-    // Lunes (1) a Viernes (5)
-    if (_selectedDay >= 1 && _selectedDay <= 5) {
-      return startHour >= 9 && endHour <= 18;
-    }
-    // Sábado (6)
-    if (_selectedDay == 6) {
-      return startHour >= 9 && endHour <= 15;
-    }
-    // Domingo (7) - No deliveries
-    return false;
-  }
-
-  void _save() {
-    if (!_isValidTime()) {
-      setState(() {
-        _errorMessage =
-            'Horario inválido. La hora "Hasta" debe ser posterior a "Desde". L a V: 9-18hs, Sáb: 9-15hs';
-      });
+  Future<void> _save() async {
+    if (!_endsAfterStart) {
+      setState(() => _errorMessage = _endNotAfterStart);
       return;
     }
-    Navigator.of(context).pop((_selectedDay, _startTime, _endTime));
+    setState(() {
+      _saving = true;
+      _errorMessage = null;
+    });
+    final error = await widget.onSave(_selectedDay, _startTime, _endTime);
+    if (!mounted) return;
+    if (error == null) {
+      Navigator.of(context).pop(true);
+      return;
+    }
+    setState(() {
+      _saving = false;
+      _errorMessage = error;
+    });
   }
 
   @override
@@ -148,6 +153,7 @@ class _PreferenceDialogState extends State<PreferenceDialog> {
     final isEdit = widget.existing != null;
 
     return Dialog(
+      insetPadding: const EdgeInsets.symmetric(horizontal: 24, vertical: 24),
       shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
       child: Padding(
         padding: const EdgeInsets.all(18),
@@ -158,12 +164,14 @@ class _PreferenceDialogState extends State<PreferenceDialog> {
             Row(
               children: [
                 const SizedBox(width: 10),
-                Text(
-                  isEdit ? 'Editar horario' : 'Agregar Preferencia Horaria',
-                  style: TextStyle(
-                    fontSize: 18,
-                    fontWeight: FontWeight.w800,
-                    color: context.marilin.ink,
+                Expanded(
+                  child: Text(
+                    isEdit ? 'Editar horario' : 'Agregar Preferencia Horaria',
+                    style: TextStyle(
+                      fontSize: 18,
+                      fontWeight: FontWeight.w800,
+                      color: context.marilin.ink,
+                    ),
                   ),
                 ),
               ],
@@ -256,52 +264,54 @@ class _PreferenceDialogState extends State<PreferenceDialog> {
               ),
               const SizedBox(height: 16),
             ],
-            SizedBox(
-              width: double.infinity,
-              child: Row(
-                children: [
-                  Expanded(
-                    child: OutlinedButton(
-                      onPressed: () => Navigator.of(context).pop(),
-                      style: OutlinedButton.styleFrom(
-                        //foregroundBuilder: Colors.,
-                        //backgroundColor: const context.marilin.border,
-                        padding: const EdgeInsets.symmetric(vertical: 14),
-                        shape: RoundedRectangleBorder(
-                          borderRadius: BorderRadius.circular(12),
-                        ),
-                      ),
-                      child: const Text(
-                        'Cancelar',
-                        style: TextStyle(
-                          fontWeight: FontWeight.w700,
-                          fontSize: 15,
-                        ),
-                      ),
+            // Side by side when both labels fit, stacked otherwise, so a
+            // label never touches its button edges.
+            OverflowBar(
+              alignment: MainAxisAlignment.end,
+              spacing: 12,
+              overflowSpacing: 8,
+              overflowAlignment: OverflowBarAlignment.end,
+              overflowDirection: VerticalDirection.up,
+              children: [
+                OutlinedButton(
+                  onPressed: _saving
+                      ? null
+                      : () => Navigator.of(context).pop(false),
+                  style: OutlinedButton.styleFrom(
+                    padding: const EdgeInsets.symmetric(
+                      horizontal: 20,
+                      vertical: 14,
+                    ),
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(12),
                     ),
                   ),
-                  const SizedBox(width: 12),
-                  Expanded(
-                    child: FilledButton(
-                      onPressed: _save,
-                      style: FilledButton.styleFrom(
-                        backgroundColor: MarilinColors.brandBlue,
-                        padding: const EdgeInsets.symmetric(vertical: 14),
-                        shape: RoundedRectangleBorder(
-                          borderRadius: BorderRadius.circular(12),
-                        ),
-                      ),
-                      child: Text(
-                        isEdit ? 'Guardar cambios' : 'Agregar horario',
-                        style: const TextStyle(
-                          fontWeight: FontWeight.w700,
-                          fontSize: 15,
-                        ),
-                      ),
+                  child: const Text(
+                    'Cancelar',
+                    style: TextStyle(fontWeight: FontWeight.w700, fontSize: 15),
+                  ),
+                ),
+                FilledButton(
+                  onPressed: _saving ? null : _save,
+                  style: FilledButton.styleFrom(
+                    backgroundColor: MarilinColors.brandBlue,
+                    padding: const EdgeInsets.symmetric(
+                      horizontal: 20,
+                      vertical: 14,
+                    ),
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(12),
                     ),
                   ),
-                ],
-              ),
+                  child: Text(
+                    isEdit ? 'Guardar cambios' : 'Agregar horario',
+                    style: const TextStyle(
+                      fontWeight: FontWeight.w700,
+                      fontSize: 15,
+                    ),
+                  ),
+                ),
+              ],
             ),
           ],
         ),
