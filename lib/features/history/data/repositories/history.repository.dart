@@ -185,9 +185,24 @@ class DriftHistoryRepository implements HistoryRepository {
       for (final id in idsByEntity[PendingEntity.visit] ?? const <String>{})
         ?details[_key(PendingEntity.visit, id)]?.routeStopId,
     };
+    // A rejected create rolled back on the device has no local row left; its
+    // queue entry still carries the customer it belonged to.
+    final payloads = {
+      for (final row in rows)
+        row.pendingChangeId: row.payload == null
+            ? null
+            : jsonDecode(row.payload!) as Map<String, dynamic>,
+    };
+    String? payloadCustomer(int id) => switch (payloads[id]?['customerId']) {
+      final String customerId => customerId,
+      _ => null,
+    };
     final names = await _customerNames({
       ...details.values.map((d) => d.customerId).whereType<String>(),
       ...?idsByEntity[PendingEntity.customer],
+      ...rows
+          .map((r) => payloadCustomer(r.pendingChangeId))
+          .whereType<String>(),
     });
 
     final shown = rows.where(
@@ -199,19 +214,19 @@ class DriftHistoryRepository implements HistoryRepository {
     return shown.map((row) {
       final entity = PendingEntity.fromWire(row.entity);
       final action = PendingAction.fromWire(row.action);
-      final payload = row.payload == null
-          ? null
-          : jsonDecode(row.payload!) as Map<String, dynamic>;
+      final payload = payloads[row.pendingChangeId];
       final refused = payload?[PendingChange.rejectedValuesKey];
       final fields = payload?[PendingChange.changedFieldsKey];
       final detail = entity == PendingEntity.customer
           ? _Detail(customerId: row.entityId)
           : details[_key(entity, row.entityId)] ?? const _Detail();
+      final customerId =
+          detail.customerId ?? payloadCustomer(row.pendingChangeId);
       return HistoryEntry(
         id: row.pendingChangeId,
         type: _typeOf(entity),
-        customerId: detail.customerId,
-        customerName: names[detail.customerId] ?? _unknownCustomer,
+        customerId: customerId,
+        customerName: names[customerId] ?? _unknownCustomer,
         date: row.createdAt,
         amount: detail.amount,
         description: switch (entity) {
