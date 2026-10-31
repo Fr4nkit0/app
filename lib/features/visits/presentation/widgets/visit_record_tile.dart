@@ -22,8 +22,9 @@ class VisitRecordTile extends StatelessWidget {
   /// Formatted amount shown on the right, when the record has one.
   final String? amount;
 
-  /// Shown for a record that no longer counts (a cancelled payment); its
-  /// amount is struck through.
+  /// Shown for a record that no longer counts (a cancelled payment or
+  /// return); its amount, or its detail when it has none, is struck
+  /// through.
   final String? statusLabel;
 
   /// What the driver can do with the record, below it.
@@ -31,6 +32,7 @@ class VisitRecordTile extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final isVoid = statusLabel != null;
     return Container(
       width: double.infinity,
       margin: const EdgeInsets.only(bottom: 12),
@@ -66,6 +68,9 @@ class VisitRecordTile extends StatelessWidget {
                         fontSize: 13,
                         color: context.marilin.inkSecondary,
                         height: 1.3,
+                        decoration: isVoid && amount == null
+                            ? TextDecoration.lineThrough
+                            : null,
                       ),
                     ),
                     if (statusLabel != null) ...[

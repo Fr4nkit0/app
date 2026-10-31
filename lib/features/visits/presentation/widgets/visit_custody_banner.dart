@@ -58,27 +58,30 @@ class VisitCustodyBanner extends ConsumerWidget {
                   width: 1,
                 ),
               ),
-              child: Row(
-                crossAxisAlignment: CrossAxisAlignment.center,
+              // The badges take the full width of the banner, so their
+              // labels are not squeezed by the icon and the chevron.
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  Container(
-                    padding: const EdgeInsets.all(10),
-                    decoration: BoxDecoration(
-                      color: MarilinColors.brandBlue.withValues(alpha: 0.12),
-                      shape: BoxShape.circle,
-                    ),
-                    child: Icon(
-                      Icons.inventory_2_outlined,
-                      color: MarilinColors.brandBlue,
-                      size: 20,
-                    ),
-                  ),
-                  const SizedBox(width: 14),
-                  Expanded(
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        Text(
+                  Row(
+                    children: [
+                      Container(
+                        padding: const EdgeInsets.all(10),
+                        decoration: BoxDecoration(
+                          color: MarilinColors.brandBlue.withValues(
+                            alpha: 0.12,
+                          ),
+                          shape: BoxShape.circle,
+                        ),
+                        child: Icon(
+                          Icons.inventory_2_outlined,
+                          color: MarilinColors.brandBlue,
+                          size: 20,
+                        ),
+                      ),
+                      const SizedBox(width: 14),
+                      Expanded(
+                        child: Text(
                           'Envases bajo custodia',
                           style: TextStyle(
                             fontSize: 14,
@@ -86,20 +89,20 @@ class VisitCustodyBanner extends ConsumerWidget {
                             color: context.marilin.ink,
                           ),
                         ),
-                        const SizedBox(height: 8),
-                        VisitContainerBadges(
-                          containerTypes: containerTypes,
-                          custody: custody,
+                      ),
+                      if (canReturn)
+                        Icon(
+                          Icons.chevron_right_rounded,
+                          color: MarilinColors.brandBlue,
+                          size: 22,
                         ),
-                      ],
-                    ),
+                    ],
                   ),
-                  if (canReturn)
-                    Icon(
-                      Icons.chevron_right_rounded,
-                      color: MarilinColors.brandBlue,
-                      size: 22,
-                    ),
+                  const SizedBox(height: 12),
+                  VisitContainerBadges(
+                    containerTypes: containerTypes,
+                    custody: custody,
+                  ),
                 ],
               ),
             ),
@@ -112,8 +115,8 @@ class VisitCustodyBanner extends ConsumerWidget {
   }
 }
 
-/// Containers the customer holds of each catalog type, side by side; on a
-/// narrow row the labels shorten so the badges stay on one line.
+/// Containers the customer holds of each catalog type, side by side; a
+/// badge that does not fit moves to the next line instead of shortening.
 class VisitContainerBadges extends StatelessWidget {
   const VisitContainerBadges({
     super.key,
@@ -128,18 +131,16 @@ class VisitContainerBadges extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return Row(
+    return Wrap(
+      spacing: 8,
+      runSpacing: 8,
       children: [
-        for (final (index, type) in containerTypes.indexed) ...[
-          if (index > 0) const SizedBox(width: 8),
-          Flexible(
-            child: VisitContainerBadge(
-              icon: containerTypeIcon(index),
-              label: type.label,
-              count: custody[type.code] ?? 0,
-            ),
+        for (final (index, type) in containerTypes.indexed)
+          VisitContainerBadge(
+            icon: containerTypeIcon(index),
+            label: type.label,
+            count: custody[type.code] ?? 0,
           ),
-        ],
       ],
     );
   }
@@ -183,25 +184,23 @@ class VisitContainerBadge extends StatelessWidget {
         children: [
           Icon(icon, size: 14, color: textColor),
           const SizedBox(width: 4),
-          // The label gives way first so the count always stays visible.
+          // Never cut: wider than the row, it breaks into lines.
           Flexible(
-            child: Text(
-              '$label: ',
-              maxLines: 1,
-              overflow: TextOverflow.ellipsis,
+            child: Text.rich(
+              TextSpan(
+                text: '$label · ',
+                children: [
+                  TextSpan(
+                    text: '$count',
+                    style: const TextStyle(fontWeight: FontWeight.w900),
+                  ),
+                ],
+              ),
               style: TextStyle(
                 fontSize: 13,
                 fontWeight: FontWeight.w600,
                 color: textColor,
               ),
-            ),
-          ),
-          Text(
-            '$count',
-            style: TextStyle(
-              fontSize: 12,
-              fontWeight: FontWeight.w900,
-              color: textColor,
             ),
           ),
         ],

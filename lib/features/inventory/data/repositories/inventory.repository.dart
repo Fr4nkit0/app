@@ -21,6 +21,9 @@ abstract class InventoryRepository {
   Stream<List<CustomerContainerBalance>> watchContainerBalances(
     String customerId,
   );
+
+  /// The movements recorded in the visit [visitId], without the reversals
+  /// of its cancelled sales.
   Future<List<ContainerMovement>> getVisitMovements(String visitId);
   Future<void> loadRouteInventory(RouteInventoryLoad load);
   Future<void> recordRouteReturn(
@@ -161,9 +164,11 @@ class DriftInventoryRepository implements InventoryRepository {
 
   @override
   Future<List<ContainerMovement>> getVisitMovements(String visitId) async {
-    final rows = await (_db.select(
-      _db.containerMovementTable,
-    )..where((t) => t.visitId.equals(visitId))).get();
+    final rows =
+        await (_db.select(_db.containerMovementTable)..where(
+              (t) => t.visitId.equals(visitId) & t.reversesMovementId.isNull(),
+            ))
+            .get();
     return rows.map(_rowToMovement).toList();
   }
 

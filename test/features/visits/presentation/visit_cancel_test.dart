@@ -5,6 +5,7 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:app/core/providers/clock_provider.dart';
 import 'package:app/core/theme/marilin_tokens.dart';
 import 'package:app/features/customers/domain/models/customer.dart';
+import 'package:app/features/inventory/domain/models/container_movement.dart';
 import 'package:app/features/inventory/presentation/providers/inventory_repository_provider.dart';
 import 'package:app/features/payments/domain/models/payment.dart';
 import 'package:app/features/payments/domain/usecases/cancel_payment.usecase.dart';
@@ -61,6 +62,18 @@ Sale _sale({DateTime? date, bool cancelled = false}) => Sale(
   visitId: 's-1',
   isCancelled: cancelled,
 );
+
+ContainerMovement _return({String id = 'mov-1', String? saleId}) =>
+    ContainerMovement(
+      id: id,
+      customerId: 'c-1',
+      containerType: 'BIDON_20L',
+      deliveredQuantity: 0,
+      returnedQuantity: 2,
+      createdAt: DateTime(2026, 10, 29, 10),
+      visitId: 's-1',
+      saleId: saleId,
+    );
 
 Payment _payment({
   String id = 'pay-debt',
@@ -120,6 +133,7 @@ void main() {
     WidgetTester tester, {
     required List<Sale> sales,
     List<Payment> payments = const [],
+    List<ContainerMovement> movements = const [],
   }) async {
     tester.view.physicalSize = const Size(400, 1800);
     tester.view.devicePixelRatio = 1;
@@ -151,7 +165,7 @@ void main() {
           visitPaymentsProvider(
             's-1',
           ).overrideWith((ref) => Stream.value(ref.watch(records).$2)),
-          visitMovementsProvider('s-1').overrideWith((_) async => []),
+          visitMovementsProvider('s-1').overrideWith((_) async => movements),
           customerContainerBalancesProvider(
             'c-1',
           ).overrideWith((_) => Stream.value([])),
@@ -177,7 +191,10 @@ void main() {
     await pumpVisit(
       tester,
       sales: [_sale()],
-      payments: [_payment(), _payment(id: 'pay-sale', saleId: 'sale-1')],
+      payments: [
+        _payment(),
+        _payment(id: 'pay-sale', saleId: 'sale-1'),
+      ],
     );
 
     expect(cancelSaleAction, findsOneWidget);
@@ -269,5 +286,67 @@ void main() {
     await tester.pumpAndSettle();
 
     expect(cancelPayment.calls, [('pay-debt', null)]);
+  });
+
+  final returnTitle = find.text('Devolución de envases');
+
+  testWidgets('the container return of a cancelled sale shows as cancelled', (
+    tester,
+  ) async {
+    await pumpVisit(
+      tester,
+      sales: [_sale(cancelled: true)],
+      movements: [_return(saleId: 'sale-1')],
+    );
+
+    expect(returnTitle, findsOneWidget);
+    // The sale's badge and the return's badge.
+    expect(find.text('Anulada'), findsNWidgets(2));
+    expect(
+      tester.widget<Text>(find.text('2 × Bidón 20L')).style?.decoration,
+      TextDecoration.lineThrough,
+    );
+  });
+
+  testWidgets('cancelling the sale marks its container return as cancelled', (
+    tester,
+  ) async {
+    await pumpVisit(
+      tester,
+      sales: [_sale()],
+      movements: [_return(saleId: 'sale-1')],
+    );
+    expect(find.text('Anulada'), findsNothing);
+
+    await tester.tap(cancelSaleAction);
+    await tester.pumpAndSettle();
+    await tester.tap(find.widgetWithText(FilledButton, 'Anular'));
+    await tester.pumpAndSettle();
+
+    expect(find.text('Anulada'), findsNWidgets(2));
+  });
+
+  testWidgets('a return without a sale stays a valid return next to a '
+      'cancelled sale', (tester) async {
+    await pumpVisit(
+      tester,
+      sales: [_sale(cancelled: true)],
+      movements: [
+        _return(saleId: 'sale-1'),
+        _return(id: 'mov-2'),
+      ],
+    );
+
+    expect(returnTitle, findsNWidgets(2));
+    expect(find.text('Anulada'), findsNWidgets(2));
+    expect(
+      tester
+          .widgetList<Text>(find.text('2 × Bidón 20L'))
+          .map((text) => text.style?.decoration),
+      containsAll([
+        TextDecoration.lineThrough,
+        isNot(TextDecoration.lineThrough),
+      ]),
+    );
   });
 }

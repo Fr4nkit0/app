@@ -319,6 +319,32 @@ void main() {
       expect(results.length, 2);
     });
 
+    test('leaves out the reversals of a cancelled sale', () async {
+      await sut.recordContainerMovement(
+        makeMovement(id: 'mov-sale', visitId: 'visit-r').withSale('sale-1'),
+      );
+      await sut.reverseSaleMovements('sale-1', at: DateTime(2026, 10, 30));
+      // A reversal the server sent, linked to another movement of the visit.
+      await db
+          .into(db.containerMovementTable)
+          .insert(
+            ContainerMovementTableCompanion.insert(
+              containerMovementId: const drift.Value('mov-server-rev'),
+              customerId: 'mock-customer-1',
+              containerType: 'BIDON_20L',
+              deliveredQuantity: 0,
+              returnedQuantity: -2,
+              visitId: const drift.Value('visit-r'),
+              saleId: const drift.Value('sale-2'),
+              reversesMovementId: const drift.Value('mov-other'),
+            ),
+          );
+
+      final results = await sut.getVisitMovements('visit-r');
+
+      expect(results.map((m) => m.id), ['mov-sale']);
+    });
+
     test('movement domain model fields are mapped correctly', () async {
       await sut.recordContainerMovement(
         makeMovement(
