@@ -21,7 +21,9 @@ import 'pending_change.repository.dart';
 /// - address: `street`, `apartment`, `floor`, `visual_reference`,
 ///   `neighborhood`, `latitude`, `longitude`, `is_primary`, `enabled`;
 /// - customer: `name`, `phone_number`, `enabled` and, under `address`, the
-///   `uuid` and address fields of the address its push carries.
+///   `uuid` of the address its push carries with that address's fields;
+///   only the `uuid` when the address had a change of its own pending, until
+///   the pull brings its server values.
 ///
 /// Captured from the row before its first queued edit (its values then are
 /// the server's as of the last download) and refreshed when the pull skips
@@ -121,7 +123,14 @@ class ServerShadow {
               ..where((t) => t.customerId.equals(localId)))
             .write(_customerFields(values));
         final address = values['address'];
-        if (address is Map && address['uuid'] is String) {
+        // An address with a newer change of its own keeps it.
+        if (address is Map &&
+            address['uuid'] is String &&
+            address.keys.any(_carriedAddressKeys.contains) &&
+            !await _hasPending(
+              PendingEntity.customerAddress,
+              address['uuid'] as String,
+            )) {
           await (_db.update(_db.customerAddressTable)
                 ..where((t) => t.addressId.equals(address['uuid'] as String)))
               .write(_addressFields(Map<String, dynamic>.from(address)));
@@ -214,11 +223,12 @@ class ServerShadow {
     )..where((t) => t.customerId.equals(customerId))).getSingleOrNull();
     if (customer?.serverId == null) return null;
     final address = await CustomerPusher.pushedAddress(_db, customerId);
-    final carried =
-        address != null &&
-        address.serverId != null &&
-        !await _hasPending(PendingEntity.customerAddress, address.addressId);
-    final addressValues = carried
+    final carried = address != null && address.serverId != null;
+    // An address with a pending change of its own does not hold the
+    // server's values; the pull fills them in.
+    final addressValues =
+        carried &&
+            !await _hasPending(PendingEntity.customerAddress, address.addressId)
         ? _addressJson(address.toCompanion(false))
         : {};
     return {

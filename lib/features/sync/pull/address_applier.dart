@@ -131,7 +131,7 @@ class AddressApplier implements PullApplier {
   /// The unlinked address the customer push sends: same selection and order
   /// as `CustomerPusher`. An address with its own unsent change travels
   /// under its own uuid and is linked by it instead; one whose latest change
-  /// was rejected is never linked (APP-29).
+  /// or create was rejected is never linked (APP-29).
   Future<CustomerAddressTableData?> _unlinkedPushedAddress(
     String customerId,
     PullContext context,

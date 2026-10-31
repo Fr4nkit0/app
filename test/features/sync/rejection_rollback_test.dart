@@ -41,6 +41,7 @@ void main() {
   late List<Json> pushBodies;
   late Map<String, List<Json>> pullRows;
   late Json? Function(String entity, Json record)? answer;
+  late Future<void> Function()? onPush;
 
   final longAgo = DateTime(2020, 1, 1);
   final now = DateTime(2026, 10, 31, 12);
@@ -50,6 +51,7 @@ void main() {
     pushBodies = [];
     pullRows = {};
     answer = null;
+    onPush = null;
     var nextId = 900;
     final dio = Dio(BaseOptions(baseUrl: 'https://api.example.test'))
       ..httpClientAdapter = FakeHttpAdapter((options) async {
@@ -68,6 +70,9 @@ void main() {
         }
         final body = Map<String, dynamic>.from(options.data as Map);
         pushBodies.add(body);
+        final hook = onPush;
+        onPush = null;
+        if (hook != null) await hook();
         return FakeHttpAdapter.json(200, {
           'data': {
             for (final MapEntry(key: entity, value: records) in body.entries)
@@ -214,6 +219,11 @@ void main() {
           visualReference: visualReference,
         ),
       );
+
+  Future<void> editAddress(AddressDetails details) => EditAddressUseCase(
+    addressRepo: DriftCustomerAddressRepository(db),
+    transaction: runner(db),
+  ).execute(addressId: 'a-1', details: details);
 
   group('S6: a preference added offline in a slot the office took', () {
     test('is deleted on rejection, keeps the reason and the rejected day and '
@@ -625,5 +635,104 @@ void main() {
         RejectionRollback.kept,
       );
     });
+  });
+
+  test('an address edit made while a customer push is in flight survives the '
+      'customer rollback', () async {
+    await editCustomer(phone: '111');
+    answer = rejectAll;
+    onPush = () => editAddress(
+      const AddressDetails(
+        street: 'Belgrano 999',
+        neighborhood: 'Centro',
+        visualReference: 'Porton verde',
+      ),
+    );
+
+    await engine.push();
+    answer = null;
+    await engine.push();
+
+    final record = recordsIn(pushBodies.last, 'customer_addresses').single;
+    expect(record['street'], 'Belgrano 999');
+    expect((await address('a-1')).street, 'Belgrano 999');
+  });
+
+  test('an outdated customer edit shows the server value of the address it '
+      'carried, even when the address had its own change', () async {
+    await editAddress(
+      const AddressDetails(
+        street: 'Belgrano 100',
+        neighborhood: 'Centro',
+        visualReference: 'Porton verde',
+        floor: '2',
+      ),
+    );
+    await editCustomer(visualReference: 'Porton AZUL');
+    await engine.push();
+    pullRows = {
+      'customer_addresses': [
+        {
+          'id': 101,
+          'client_uuid': null,
+          'customer_id': 10,
+          'street': 'Belgrano 100',
+          'neighborhood': 'Centro',
+          'visual_reference': 'Porton web',
+          'floor': '2',
+          'is_primary': true,
+          'enabled': true,
+        },
+      ],
+    };
+    await sync.pull();
+    pullRows = {};
+    answer = outdatedAll;
+
+    await engine.push();
+    await sync.pull();
+
+    expect((await address('a-1')).visualReference, 'Porton web');
+  });
+
+  test('a preference edited while its rejected create is in flight never '
+      'takes over server row 58', () async {
+    final id =
+        await AddPreferenceUseCase(
+          preferenceRepo: preferences(),
+          transaction: runner(db),
+        ).execute(
+          customerId: 'c-1',
+          details: const PreferenceDetails(
+            dayOfWeek: 4,
+            start: '14:00',
+            end: '16:00',
+          ),
+        );
+    answer = rejectAll;
+    onPush = () => editPreference(
+      id,
+      const PreferenceDetails(dayOfWeek: 4, start: '14:00', end: '16:30'),
+    );
+
+    await engine.push();
+    pullRows = {
+      'customer_preferences': [serverPreference(58)],
+    };
+    await sync.pull();
+    answer = null;
+    await engine.push();
+
+    final sent = [
+      for (final b in pushBodies)
+        if (b['customer_preferences'] != null)
+          ...recordsIn(b, 'customer_preferences'),
+    ];
+    expect(
+      sent.where(
+        (r) => r['server_id'] == 58 && r['time_window_end'] != '15:00',
+      ),
+      isEmpty,
+    );
   });
 }

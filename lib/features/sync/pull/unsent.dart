@@ -31,12 +31,12 @@ class Unsent {
   /// Addresses with their own unsent change.
   final Set<String> addresses;
 
-  /// Addresses whose latest change was rejected: the pull never adopts them
-  /// as the local copy of a server row (APP-29).
+  /// Addresses whose latest change, or any create, was rejected: the pull
+  /// never adopts them as the local copy of a server row (APP-29).
   final Set<String> rejectedAddresses;
 
-  /// Preferences whose latest change was rejected: the pull never adopts
-  /// them as the local copy of a server row (APP-29).
+  /// Preferences whose latest change, or any create, was rejected: the pull
+  /// never adopts them as the local copy of a server row (APP-29).
   final Set<String> rejectedPreferences;
 
   /// Customers with an unsent address change: a primary switch touches two
@@ -110,19 +110,22 @@ class Unsent {
   }
 
   /// The (entity, local id) of every address and preference whose latest
-  /// queued change was rejected.
+  /// queued change was rejected, or that had a create rejected: a change
+  /// queued while that create was on its way leaves the row standing, and it
+  /// is still not the server's.
   static Future<List<(String, String)>> _latestRejected(AppDatabase db) async {
     final rows = await db
         .customSelect(
-          'SELECT c.entity, c.entity_id FROM pending_changes c '
+          'SELECT DISTINCT c.entity, c.entity_id FROM pending_changes c '
           'WHERE c.status = ?1 AND c.entity IN (?2, ?3) '
-          'AND c.pending_change_id = (SELECT MAX(l.pending_change_id) '
-          'FROM pending_changes l '
-          'WHERE l.entity = c.entity AND l.entity_id = c.entity_id)',
+          'AND (c.action = ?4 OR c.pending_change_id = ('
+          'SELECT MAX(l.pending_change_id) FROM pending_changes l '
+          'WHERE l.entity = c.entity AND l.entity_id = c.entity_id))',
           variables: [
             Variable.withString(PendingStatus.rejected.wireName),
             Variable.withString(PendingEntity.customerAddress.wireName),
             Variable.withString(PendingEntity.customerPreference.wireName),
+            Variable.withString(PendingAction.insert.wireName),
           ],
           readsFrom: {db.pendingChangeTable},
         )

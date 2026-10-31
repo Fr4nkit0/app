@@ -41,7 +41,8 @@ class PreferenceApplier implements PullApplier {
   /// uuid (the local id it was pushed with), then by an unlinked local
   /// preference in the same day and start: the server keeps one per slot,
   /// so that one is the same preference created on both sides. A local
-  /// preference whose latest change was rejected is never that one.
+  /// preference whose latest change or create was rejected is never that
+  /// one.
   ///
   /// A preference with its own unsent change, or of a customer with unsent
   /// changes, keeps its local values; it only gets linked to its server id.
