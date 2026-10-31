@@ -2,7 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:app/core/theme/marilin_tokens.dart';
 import 'package:app/features/customers/presentation/widgets/neighborhood_picker_sheet.dart';
 
-class StepAddressView extends StatelessWidget {
+class StepAddressView extends StatefulWidget {
   final String street;
   final String neighborhood;
   final String apartment;
@@ -27,6 +27,23 @@ class StepAddressView extends StatelessWidget {
     required this.onFloorChanged,
     required this.onVisualReferenceChanged,
   });
+
+  @override
+  State<StepAddressView> createState() => _StepAddressViewState();
+}
+
+class _StepAddressViewState extends State<StepAddressView> {
+  // The keyboard's next action follows these explicitly, so it does not
+  // depend on how the focus traversal orders the floor/apartment row.
+  final _apartmentFocus = FocusNode();
+  final _referenceFocus = FocusNode();
+
+  @override
+  void dispose() {
+    _apartmentFocus.dispose();
+    _referenceFocus.dispose();
+    super.dispose();
+  }
 
   static OutlineInputBorder _border(BuildContext context) => OutlineInputBorder(
     borderRadius: const BorderRadius.all(Radius.circular(12)),
@@ -73,8 +90,8 @@ class StepAddressView extends StatelessWidget {
           ),
           const SizedBox(height: 28),
           TextFormField(
-            initialValue: street,
-            onChanged: onStreetChanged,
+            initialValue: widget.street,
+            onChanged: widget.onStreetChanged,
             textCapitalization: TextCapitalization.words,
             // The neighborhood is picked from a list, so the keyboard skips it.
             textInputAction: TextInputAction.next,
@@ -90,8 +107,10 @@ class StepAddressView extends StatelessWidget {
           ),
           const SizedBox(height: 16),
           FormField<String>(
-            key: ValueKey(neighborhood),
-            initialValue: neighborhood.isEmpty ? null : neighborhood,
+            key: ValueKey(widget.neighborhood),
+            initialValue: widget.neighborhood.isEmpty
+                ? null
+                : widget.neighborhood,
             validator: (v) =>
                 (v == null || v.isEmpty) ? 'El barrio es requerido' : null,
             autovalidateMode: AutovalidateMode.onUserInteraction,
@@ -108,7 +127,7 @@ class StepAddressView extends StatelessWidget {
                     ),
                     builder: (context) => NeighborhoodPickerSheet(
                       onSelected: (val) {
-                        onNeighborhoodChanged(val);
+                        widget.onNeighborhoodChanged(val);
                         fieldState.didChange(val);
                       },
                     ),
@@ -123,12 +142,12 @@ class StepAddressView extends StatelessWidget {
                     errorText: fieldState.errorText,
                   ),
                   child: Text(
-                    neighborhood.isEmpty
+                    widget.neighborhood.isEmpty
                         ? 'Seleccionar barrio...'
-                        : neighborhood,
+                        : widget.neighborhood,
                     style: TextStyle(
                       fontSize: 16,
-                      color: neighborhood.isEmpty
+                      color: widget.neighborhood.isEmpty
                           ? context.marilin.inkHint
                           : Colors.black,
                     ),
@@ -142,9 +161,10 @@ class StepAddressView extends StatelessWidget {
             children: [
               Expanded(
                 child: TextFormField(
-                  initialValue: floor,
-                  onChanged: onFloorChanged,
+                  initialValue: widget.floor,
+                  onChanged: widget.onFloorChanged,
                   textInputAction: TextInputAction.next,
+                  onEditingComplete: _apartmentFocus.requestFocus,
                   decoration: _decoration(
                     context,
                   ).copyWith(labelText: 'Piso', hintText: 'Ej. 3'),
@@ -153,9 +173,11 @@ class StepAddressView extends StatelessWidget {
               const SizedBox(width: 12),
               Expanded(
                 child: TextFormField(
-                  initialValue: apartment,
-                  onChanged: onApartmentChanged,
+                  initialValue: widget.apartment,
+                  focusNode: _apartmentFocus,
+                  onChanged: widget.onApartmentChanged,
                   textInputAction: TextInputAction.next,
+                  onEditingComplete: _referenceFocus.requestFocus,
                   textCapitalization: TextCapitalization.characters,
                   decoration: _decoration(context).copyWith(
                     labelText: 'Depto / Lote',
@@ -167,8 +189,14 @@ class StepAddressView extends StatelessWidget {
           ),
           const SizedBox(height: 16),
           TextFormField(
-            initialValue: visualReference,
-            onChanged: onVisualReferenceChanged,
+            initialValue: widget.visualReference,
+            focusNode: _referenceFocus,
+            onChanged: widget.onVisualReferenceChanged,
+            // A text keyboard with done: Enter closes it instead of adding a
+            // newline; long references still wrap onto a second line.
+            keyboardType: TextInputType.text,
+            textInputAction: TextInputAction.done,
+            minLines: 1,
             maxLines: 2,
             textCapitalization: TextCapitalization.sentences,
             decoration: _decoration(context).copyWith(

@@ -269,4 +269,39 @@ void main() {
     await tester.pump(const Duration(seconds: 5));
     await unmount(tester);
   });
+
+  group(
+    'scrolled to the end, the Nueva Venta button leaves the last options menu reachable',
+    () {
+      for (final (tab, tooltip) in [
+        ('Datos', 'Opciones de dirección'),
+        ('Preferencias', 'Opciones de horario'),
+      ]) {
+        testWidgets('$tooltip in $tab', (tester) async {
+          await pumpProfile(tester);
+          await tester.tap(find.text(tab));
+          await settle(tester);
+
+          // Scrolled to the end, the last menu sits above the button.
+          final position = profileScroll(tester);
+          position.jumpTo(position.maxScrollExtent);
+          await tester.pump();
+
+          final fab = tester.getRect(find.byType(FloatingActionButton));
+          final menus = find.byTooltip(tooltip);
+          expect(menus, findsWidgets);
+          final last = menus.last;
+          expect(tester.getRect(last).overlaps(fab), isFalse);
+          expect(last.hitTestable(), findsOneWidget);
+
+          await tester.tap(last);
+          await settle(tester);
+          expect(find.text('Dar de baja'), findsWidgets);
+
+          await tester.pump(const Duration(seconds: 5));
+          await unmount(tester);
+        });
+      }
+    },
+  );
 }

@@ -7,12 +7,16 @@ class StepIdentityView extends StatelessWidget {
   final ValueChanged<String> onNameChanged;
   final ValueChanged<String> onPhoneChanged;
 
+  /// The keyboard's next action on the phone, the last field of this step.
+  final VoidCallback onPhoneSubmitted;
+
   const StepIdentityView({
     super.key,
     required this.name,
     required this.phone,
     required this.onNameChanged,
     required this.onPhoneChanged,
+    required this.onPhoneSubmitted,
   });
 
   static OutlineInputBorder _border(BuildContext context) => OutlineInputBorder(
@@ -78,7 +82,12 @@ class StepIdentityView extends StatelessWidget {
             initialValue: phone,
             onChanged: onPhoneChanged,
             keyboardType: TextInputType.phone,
-            textInputAction: TextInputAction.done,
+            textInputAction: TextInputAction.next,
+            onEditingComplete: () {
+              // Frees the focus so the next step's first field can take it.
+              FocusScope.of(context).unfocus();
+              onPhoneSubmitted();
+            },
             decoration: InputDecoration(
               labelText: 'Teléfono (opcional)',
               hintText: 'Ej. 387-555-0101',

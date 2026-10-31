@@ -144,7 +144,9 @@ class CustomerForm extends Notifier<CustomerFormState> {
           CustomerAddress(
             id: addressId,
             street: state.street,
-            neighborhood: state.neighborhood.isEmpty ? null : state.neighborhood,
+            neighborhood: state.neighborhood.isEmpty
+                ? null
+                : state.neighborhood,
             apartment: state.apartment.isEmpty ? null : state.apartment,
             floor: state.floor.isEmpty ? null : state.floor,
             visualReference: state.visualReference.isEmpty
@@ -159,12 +161,14 @@ class CustomerForm extends Notifier<CustomerFormState> {
             .toList(),
       );
 
-      await ref.read(createCustomerUseCaseProvider).execute(customer);
+      final stored = await ref
+          .read(createCustomerUseCaseProvider)
+          .execute(customer);
 
       state = state.copyWith(
         isSubmitting: false,
         isSuccess: true,
-        createdCustomer: customer,
+        createdCustomer: stored,
       );
     } catch (e) {
       state = state.copyWith(

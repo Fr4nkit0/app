@@ -1,3 +1,5 @@
+import 'dart:convert';
+
 import 'package:drift/native.dart';
 import 'package:flutter_test/flutter_test.dart';
 
@@ -74,6 +76,87 @@ void main() {
       expect(await db.select(db.customerPreferenceTable).get(), hasLength(1));
       // The customer, then its preference.
       expect(await db.select(db.pendingChangeTable).get(), hasLength(2));
+    },
+  );
+
+  Future<List<dynamic>> pushedAddresses() async {
+    final change = await (db.select(
+      db.pendingChangeTable,
+    )..where((t) => t.entity.equals('customer'))).getSingle();
+    return (jsonDecode(change.payload!) as Map<String, dynamic>)['addresses']
+        as List<dynamic>;
+  }
+
+  test('the only address of a new customer is its primary', () async {
+    final stored = await useCase().execute(customer());
+
+    final row = await db.select(db.customerAddressTable).getSingle();
+    expect(row.isPrimary, isTrue);
+    expect((await pushedAddresses()).single['isPrimary'], isTrue);
+    expect(stored.addresses.single.isPrimary, isTrue);
+  });
+
+  test('without a primary the first address becomes it', () async {
+    await useCase().execute(
+      customer(
+        addresses: [
+          CustomerAddress(id: 'addr-1', street: 'Belgrano 1200'),
+          CustomerAddress(id: 'addr-2', street: 'Mitre 50'),
+        ],
+      ),
+    );
+
+    final rows = {
+      for (final r in await db.select(db.customerAddressTable).get())
+        r.addressId: r.isPrimary,
+    };
+    expect(rows, {'addr-1': true, 'addr-2': false});
+    expect(
+      [for (final a in await pushedAddresses()) a['isPrimary']],
+      [true, false],
+    );
+  });
+
+  test('a marked primary is kept', () async {
+    await useCase().execute(
+      customer(
+        addresses: [
+          CustomerAddress(id: 'addr-1', street: 'Belgrano 1200'),
+          CustomerAddress(id: 'addr-2', street: 'Mitre 50', isPrimary: true),
+        ],
+      ),
+    );
+
+    final rows = {
+      for (final r in await db.select(db.customerAddressTable).get())
+        r.addressId: r.isPrimary,
+    };
+    expect(rows, {'addr-1': false, 'addr-2': true});
+  });
+
+  test(
+    'address fields are stored and pushed trimmed, without the newline Enter leaves',
+    () async {
+      await useCase().execute(
+        customer(
+          addresses: [
+            CustomerAddress(
+              id: 'addr-1',
+              street: ' Belgrano 1200 ',
+              floor: '  ',
+              visualReference: 'Portón negro\n',
+            ),
+          ],
+        ),
+      );
+
+      final row = await db.select(db.customerAddressTable).getSingle();
+      expect(row.street, 'Belgrano 1200');
+      expect(row.floor, isNull);
+      expect(row.visualReference, 'Portón negro');
+      final pushed = (await pushedAddresses()).single;
+      expect(pushed['visualReference'], 'Portón negro');
+      expect(pushed['street'], 'Belgrano 1200');
     },
   );
 
