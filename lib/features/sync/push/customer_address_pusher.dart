@@ -1,6 +1,7 @@
 import 'package:drift/drift.dart';
 
 import '../../../core/services/database.helper.dart';
+import '../data/repositories/server_shadow.dart';
 import '../domain/models/pending_change.dart';
 import 'customer_pusher.dart';
 import 'entity_pusher.dart';
@@ -14,7 +15,10 @@ import 'references.dart';
 /// `CustomerPusher`). Primary addresses travel
 /// first: the server unsets the previous primary when it gets the new one,
 /// and refuses to leave a customer without a primary in between.
-class CustomerAddressPusher implements EntityPusher {
+///
+/// A rejected address goes back to the server's values, or is deleted when
+/// the server never stored it.
+class CustomerAddressPusher implements EntityPusher, RejectionAware {
   CustomerAddressPusher(this._db);
 
   /// An address is never deleted on the device; a change whose row is gone
@@ -79,6 +83,33 @@ class CustomerAddressPusher implements EntityPusher {
     await (_db.update(_db.customerAddressTable)
           ..where((t) => t.addressId.equals(record.uuid)))
         .write(CustomerAddressTableCompanion(serverId: Value(serverId)));
+  }
+
+  @override
+  Future<void> applyRejected(String localId) async {
+    final address = await (_db.select(
+      _db.customerAddressTable,
+    )..where((t) => t.addressId.equals(localId))).getSingleOrNull();
+    if (address == null) return;
+    await ServerShadow(_db).rollBackRejected(
+      entity,
+      localId,
+      refused: {
+        for (final MapEntry(:key, :value) in CustomerPusher.addressValues(
+          address,
+        ).entries)
+          if (key != 'latitude' && key != 'longitude') key: value,
+        'is_primary': address.isPrimary,
+        'enabled': address.enabled,
+      },
+      stored: address.serverId != null,
+      delete: () async {
+        await (_db.delete(
+          _db.customerAddressTable,
+        )..where((t) => t.addressId.equals(localId))).go();
+        return true;
+      },
+    );
   }
 
   /// The whole record, or only the fields in [only] when it is given; null

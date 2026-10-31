@@ -1,13 +1,15 @@
 import 'package:drift/drift.dart';
 
 import '../../../core/services/database.helper.dart';
+import '../data/repositories/server_shadow.dart';
 import 'pull_applier.dart';
 
 /// Customer addresses, several per customer, disabled ones included.
 class AddressApplier implements PullApplier {
-  AddressApplier(this._db);
+  AddressApplier(this._db) : _shadow = ServerShadow(_db);
 
   final AppDatabase _db;
+  final ServerShadow _shadow;
 
   @override
   Future<void> applyChanges(
@@ -40,6 +42,8 @@ class AddressApplier implements PullApplier {
   ///
   /// A customer with unsent changes, of its own or of any of its addresses,
   /// keeps its local addresses; they only get linked to their server id.
+  /// The server values they skipped are kept for a rollback of those
+  /// changes.
   Future<void> _upsert(Json a, String customerId, PullContext context) async {
     final keepLocal =
         context.unsent.customers.contains(customerId) ||
@@ -89,6 +93,14 @@ class AddressApplier implements PullApplier {
       context.ids.recordAddress(serverId, row.addressId);
       return;
     }
+    if (keepLocal) {
+      await _shadow.storePulledAddress(
+        customerId,
+        existing.addressId,
+        fields,
+        ownChange: context.unsent.addresses.contains(existing.addressId),
+      );
+    }
     await (_db.update(
       _db.customerAddressTable,
     )..where((t) => t.addressId.equals(existing.addressId))).write(
@@ -118,7 +130,8 @@ class AddressApplier implements PullApplier {
 
   /// The unlinked address the customer push sends: same selection and order
   /// as `CustomerPusher`. An address with its own unsent change travels
-  /// under its own uuid and is linked by it instead.
+  /// under its own uuid and is linked by it instead; one whose latest change
+  /// was rejected is never linked (APP-29).
   Future<CustomerAddressTableData?> _unlinkedPushedAddress(
     String customerId,
     PullContext context,
@@ -129,7 +142,8 @@ class AddressApplier implements PullApplier {
                       t.customerId.equals(customerId) &
                       t.serverId.isNull() &
                       t.enabled.equals(true) &
-                      t.addressId.isNotIn(context.unsent.addresses),
+                      t.addressId.isNotIn(context.unsent.addresses) &
+                      t.addressId.isNotIn(context.unsent.rejectedAddresses),
                 )
                 ..orderBy([
                   (t) => OrderingTerm.desc(t.isPrimary),

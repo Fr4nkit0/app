@@ -48,7 +48,11 @@ enum PendingAction {
 enum PendingStatus {
   pending('pending'),
   sent('sent'),
-  rejected('rejected');
+  rejected('rejected'),
+
+  /// The server applied nothing: it holds newer values for every field the
+  /// record carried. The device shows the server's values again.
+  outdated('outdated');
 
   const PendingStatus(this.wireName);
 
@@ -56,6 +60,26 @@ enum PendingStatus {
 
   static PendingStatus fromWire(String value) =>
       values.firstWhere((e) => e.wireName == value);
+}
+
+/// What the device did with the local row of a rejected change.
+enum RejectionRollback {
+  /// The row shows the last values the server was known to hold.
+  restored('restored'),
+
+  /// The row was created on the device and the server never stored it.
+  deleted('deleted'),
+
+  /// The row keeps its local values: no server values were known, newer
+  /// changes of it wait to be sent, or other records reference it.
+  kept('kept');
+
+  const RejectionRollback(this.wireName);
+
+  final String wireName;
+
+  static RejectionRollback? fromWire(Object? value) =>
+      values.where((r) => r.wireName == value).firstOrNull;
 }
 
 /// One local mutation waiting to reach (or already handled by) the server.
@@ -98,6 +122,21 @@ class PendingChange {
     final fields = payload?[changedFieldsKey];
     return fields is List ? {for (final f in fields) f as String} : null;
   }
+
+  /// Payload key of a rejected change holding the values the server
+  /// refused, by wire name, so they can be shown after the row was rolled
+  /// back: `{'day_of_week': 4, 'time_window_start': '14:00',
+  /// 'time_window_end': '16:00', 'enabled': true}`. An edit that names its
+  /// [changedFields] keeps only those.
+  static const rejectedValuesKey = 'rejected_values';
+
+  /// Payload key of a rejected change holding its [RejectionRollback].
+  static const rollbackKey = 'rollback';
+
+  /// What happened to the local row of this rejected change, or null when
+  /// the device did not record it.
+  RejectionRollback? get rollback =>
+      RejectionRollback.fromWire(payload?[rollbackKey]);
 
   /// The fields any of [changes] changed, or null when any of them is
   /// unknown.

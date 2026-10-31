@@ -6,6 +6,7 @@ import 'package:drift/drift.dart';
 
 import '../../core/services/database.helper.dart';
 import 'data/repositories/pending_change.repository.dart';
+import 'data/repositories/server_shadow.dart';
 import 'domain/models/pending_change.dart';
 import 'domain/models/sync_status.dart';
 import 'pull/pull_applier.dart' show dateOnly;
@@ -39,6 +40,7 @@ class SyncEngine {
        _db = db,
        _sync = sync,
        _queue = DriftPendingChangeRepository(db),
+       _shadow = ServerShadow(db),
        _pushers = pushers ?? defaultPushers(db, today: now ?? DateTime.now),
        _now = now ?? DateTime.now;
 
@@ -69,6 +71,7 @@ class SyncEngine {
   final AppDatabase _db;
   final SyncService _sync;
   final PendingChangeRepository _queue;
+  final ServerShadow _shadow;
   final List<EntityPusher> _pushers;
   final DateTime Function() _now;
   final _running = StreamController<bool>.broadcast();
@@ -119,7 +122,18 @@ class SyncEngine {
   /// only after the server answered: a cut before the answer leaves them
   /// pending, and the retry carries the same client uuids, which the server
   /// recognises instead of creating the record twice.
+  ///
+  /// A rejected record is rolled back by its pusher ([RejectionAware]); an
+  /// outdated one (the server applied none of it) is marked outdated and its
+  /// row shows the server's values again ([ServerShadow]). Once the queue is
+  /// settled, the server values kept for rows with nothing pending are
+  /// forgotten.
   Future<void> push() async {
+    await _push();
+    await _shadow.clearSettled();
+  }
+
+  Future<void> _push() async {
     final pending = await _queue.getPending();
     if (pending.isEmpty) return;
     final entityIdOf = {for (final c in pending) c.id: c.entityId};
@@ -169,20 +183,25 @@ class SyncEngine {
         final rejectedWith = <int, String>{};
         final unanswered = <int>{};
         final accepted = <int>{};
+        final outdated = <int>{};
+        final outdatedRows = <String, List<int>>{};
         for (final record in plan.records) {
           final result = results[record.uuid];
           final status = result?['status'];
           if (status == 'accepted' || status == 'outdated') {
             // An accepted record that waits for review is still accepted.
-            // An outdated one changed nothing (the server holds newer values
-            // for every field it carried) and the next pull brings those
-            // values; it settles the same way, and telling the driver about
-            // it is part of the rejection notices (T4).
+            // An outdated one changed nothing: the server holds newer values
+            // for every field it carried.
             final serverId = result!['server_id'];
             if (status == 'accepted' || serverId != null) {
               await pusher.applyAccepted(record, serverId as int);
             }
-            accepted.addAll(record.changeIds);
+            if (status == 'accepted') {
+              accepted.addAll(record.changeIds);
+            } else {
+              outdated.addAll(record.changeIds);
+              outdatedRows[record.localId] = record.changeIds;
+            }
           } else if (status == 'rejected') {
             final reason =
                 (result!['error'] as String?) ?? 'Rechazado por el servidor.';
@@ -198,11 +217,24 @@ class SyncEngine {
           await _queue.markRejected(id, reason);
         }
         await _applyRejected(pusher, rejectedWith.keys, entityIdOf);
-        final sent = [
+        bool settles(int id) =>
+            !rejectedWith.containsKey(id) && !unanswered.contains(id);
+        await _queue.markSent([
           for (final id in accepted)
-            if (!rejectedWith.containsKey(id) && !unanswered.contains(id)) id,
-        ];
-        if (sent.isNotEmpty) await _queue.markSent(sent);
+            if (settles(id)) id,
+        ]);
+        // Outdated only when no record built from the change applied
+        // anything.
+        final dropped = {
+          for (final id in outdated)
+            if (settles(id) && !accepted.contains(id)) id,
+        };
+        await _queue.markOutdated(dropped.toList());
+        for (final MapEntry(key: localId, value: ids) in outdatedRows.entries) {
+          if (ids.every(dropped.contains)) {
+            await _shadow.restoreIfSettled(pusher.entity, localId);
+          }
+        }
       }
     });
   }

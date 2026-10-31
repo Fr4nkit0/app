@@ -4,19 +4,23 @@ import 'package:app/features/customers/data/repositories/customer_address.reposi
 import 'package:app/features/customers/domain/models/address_details.dart';
 import 'package:app/features/customers/domain/models/customer.address.dart';
 import 'package:app/features/sync/data/repositories/pending_change.repository.dart';
+import 'package:app/features/sync/data/repositories/server_shadow.dart';
 import 'package:app/features/sync/domain/models/pending_change.dart';
 import 'package:drift/drift.dart';
 
 /// Each write queues one `customer_address` change per address it touched,
 /// naming the wire fields it changed ([PendingChange.changedFieldsKey]); the
-/// push builds the record from the stored row.
+/// push builds the record from the stored row. An edit first keeps the
+/// server's values of the row ([ServerShadow]) for a rollback.
 class DriftCustomerAddressRepository implements CustomerAddressRepository {
   DriftCustomerAddressRepository(this._db, {DateTime Function()? now})
     : _queue = DriftPendingChangeRepository(_db),
+      _shadow = ServerShadow(_db),
       _now = now ?? DateTime.now;
 
   final AppDatabase _db;
   final PendingChangeRepository _queue;
+  final ServerShadow _shadow;
   final DateTime Function() _now;
 
   @override
@@ -161,10 +165,15 @@ class DriftCustomerAddressRepository implements CustomerAddressRepository {
           ))
           .getSingleOrNull();
 
-  Future<void> _write(String addressId, CustomerAddressTableCompanion fields) =>
-      (_db.update(
-        _db.customerAddressTable,
-      )..where((t) => t.addressId.equals(addressId))).write(fields);
+  Future<void> _write(
+    String addressId,
+    CustomerAddressTableCompanion fields,
+  ) async {
+    await _shadow.captureBeforeEdit(PendingEntity.customerAddress, addressId);
+    await (_db.update(
+      _db.customerAddressTable,
+    )..where((t) => t.addressId.equals(addressId))).write(fields);
+  }
 
   Future<void> _enqueue(
     String addressId,

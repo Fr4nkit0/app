@@ -8,6 +8,7 @@ import 'package:app/features/customers/domain/models/customer.preference.dart';
 import 'package:app/core/services/database.helper.dart';
 import 'package:app/features/payments/data/repositories/customer_account.dart';
 import 'package:app/features/sync/data/repositories/pending_change.repository.dart';
+import 'package:app/features/sync/data/repositories/server_shadow.dart';
 import 'package:app/features/sync/domain/models/pending_change.dart';
 import 'package:drift/drift.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
@@ -15,10 +16,12 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 class DriftCustomerRepository implements CustomerRepository {
   final AppDatabase db;
   final PendingChangeRepository _queue;
+  final ServerShadow _shadow;
   final CustomerAccount _account;
 
   DriftCustomerRepository(this.db)
     : _queue = DriftPendingChangeRepository(db),
+      _shadow = ServerShadow(db),
       _account = CustomerAccount(db);
 
   static Map<String, dynamic> _payload(Customer customer) => {
@@ -97,6 +100,9 @@ class DriftCustomerRepository implements CustomerRepository {
   Future<void> saveCustomer(Customer customer) async {
     final before = await _wireValues(customer.id);
     final existed = before != null;
+    if (existed) {
+      await _shadow.captureBeforeEdit(PendingEntity.customer, customer.id);
+    }
     await db
         .into(db.customerTable)
         .insertOnConflictUpdate(
@@ -133,6 +139,12 @@ class DriftCustomerRepository implements CustomerRepository {
         p.customerPreferenceId,
     };
     for (final pref in customer.preferences) {
+      if (storedPreferences.contains(pref.id)) {
+        await _shadow.captureBeforeEdit(
+          PendingEntity.customerPreference,
+          pref.id,
+        );
+      }
       await db
           .into(db.customerPreferenceTable)
           .insertOnConflictUpdate(
@@ -194,6 +206,7 @@ class DriftCustomerRepository implements CustomerRepository {
     });
     if (changed.isEmpty) return;
 
+    await _shadow.captureBeforeEdit(PendingEntity.customer, edit.customerId);
     final now = DateTime.now();
     final updated =
         await (db.update(
@@ -260,6 +273,7 @@ class DriftCustomerRepository implements CustomerRepository {
     if (stored == null) throw const NotFoundFailure('customer');
     if (!stored.enabled) return;
 
+    await _shadow.captureBeforeEdit(PendingEntity.customer, customerId);
     final updated =
         await (db.update(
           db.customerTable,

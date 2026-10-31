@@ -1,6 +1,7 @@
 import 'package:drift/drift.dart';
 
 import '../../../core/services/database.helper.dart';
+import '../data/repositories/server_shadow.dart';
 import '../domain/models/pending_change.dart';
 import 'entity_pusher.dart';
 
@@ -19,7 +20,10 @@ import 'entity_pusher.dart';
 /// a customer the server already knows waits while any of its address
 /// changes is unsent: once those are in, the server's primary is the local
 /// one again.
-class CustomerPusher implements EntityPusher {
+///
+/// A rejected customer goes back to the server's values, or, when the
+/// server never stored it, is deleted unless other records reference it.
+class CustomerPusher implements EntityPusher, RejectionAware {
   CustomerPusher(this._db);
 
   /// The app no longer deletes customers; a delete still queued by an older
@@ -160,11 +164,75 @@ class CustomerPusher implements EntityPusher {
     };
   }
 
+  @override
+  Future<void> applyRejected(String localId) async {
+    final customer = await (_db.select(
+      _db.customerTable,
+    )..where((t) => t.customerId.equals(localId))).getSingleOrNull();
+    if (customer == null) return;
+    final address = await _pushedAddress(localId);
+    await ServerShadow(_db).rollBackRejected(
+      entity,
+      localId,
+      refused: {
+        'name': customer.name,
+        'phone_number': customer.phone,
+        'enabled': customer.enabled,
+        if (address != null)
+          for (final MapEntry(:key, :value) in addressValues(address).entries)
+            if (key != 'latitude' && key != 'longitude')
+              '$_addressPrefix$key': value,
+      },
+      stored: customer.serverId != null,
+      delete: () => _deleteUnreferenced(localId),
+    );
+  }
+
+  /// Deletes a customer the server never stored, with its addresses and
+  /// preferences, unless a record of the day or a balance references it.
+  Future<bool> _deleteUnreferenced(String customerId) async {
+    final referenced = await _db
+        .customSelect(
+          'SELECT 1 FROM sales WHERE customer_id = ?1 '
+          'UNION ALL SELECT 1 FROM payments WHERE customer_id = ?1 '
+          'UNION ALL SELECT 1 FROM visits WHERE customer_id = ?1 '
+          'UNION ALL SELECT 1 FROM container_movements WHERE customer_id = ?1 '
+          'UNION ALL SELECT 1 FROM route_stops WHERE customer_id = ?1 '
+          'UNION ALL SELECT 1 FROM customer_agreements WHERE customer_id = ?1 '
+          'UNION ALL SELECT 1 FROM customer_account_entries '
+          'WHERE customer_id = ?1 '
+          // Balances belong to their ledgers; one that exists keeps the
+          // customer.
+          'UNION ALL SELECT 1 FROM customer_balances WHERE customer_id = ?1 '
+          'UNION ALL SELECT 1 FROM customer_container_balances '
+          'WHERE customer_id = ?1 LIMIT 1',
+          variables: [Variable.withString(customerId)],
+        )
+        .get();
+    if (referenced.isNotEmpty) return false;
+    await (_db.delete(
+      _db.customerAddressTable,
+    )..where((t) => t.customerId.equals(customerId))).go();
+    await (_db.delete(
+      _db.customerPreferenceTable,
+    )..where((t) => t.customerId.equals(customerId))).go();
+    await (_db.delete(
+      _db.customerTable,
+    )..where((t) => t.customerId.equals(customerId))).go();
+    return true;
+  }
+
+  Future<CustomerAddressTableData?> _pushedAddress(String customerId) =>
+      pushedAddress(_db, customerId);
+
   /// The address the record carries: the primary, or the oldest enabled
   /// one when there is no primary.
-  Future<CustomerAddressTableData?> _pushedAddress(String customerId) async {
+  static Future<CustomerAddressTableData?> pushedAddress(
+    AppDatabase db,
+    String customerId,
+  ) async {
     final addresses =
-        await (_db.select(_db.customerAddressTable)
+        await (db.select(db.customerAddressTable)
               ..where(
                 (t) => t.customerId.equals(customerId) & t.enabled.equals(true),
               )

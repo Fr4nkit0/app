@@ -404,7 +404,8 @@ void main() {
   );
 
   test(
-    'a rejected customer keeps the reason and is not sent again by later cycles',
+    'a rejected customer keeps the reason, is rolled back (deleted, as the '
+    'server never stored it) and is not sent again by later cycles',
     () async {
       await createCustomer('c-1');
       server.answer = (record) => {
@@ -425,7 +426,13 @@ void main() {
         rejected.single.rejectionReason,
         'The address.street field is required.',
       );
-      expect((await localCustomer('c-1')).serverId, isNull);
+      expect(rejected.single.rollback, RejectionRollback.deleted);
+      expect(
+        await (db.select(
+          db.customerTable,
+        )..where((t) => t.customerId.equals('c-1'))).get(),
+        isEmpty,
+      );
       expect(server.pushBodies.length, 1);
       expect(status.rejectedCount, 1);
       expect(status.pendingCount, 0);

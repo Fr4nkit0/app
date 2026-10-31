@@ -17,7 +17,8 @@ class SyncBadge extends StatelessWidget {
     final current = change;
     if (current == null) return const SizedBox.shrink();
     return switch (current.status) {
-      PendingStatus.sent => const SizedBox.shrink(),
+      // An outdated edit is surfaced with the rejection notices.
+      PendingStatus.sent || PendingStatus.outdated => const SizedBox.shrink(),
       PendingStatus.pending => const SyncStatusPill(
         status: PendingStatus.pending,
       ),
@@ -46,7 +47,7 @@ class SyncStatusPill extends StatelessWidget {
         Icons.error_outline_rounded,
         tokens.destructive,
       ),
-      PendingStatus.sent => (null, null, null),
+      PendingStatus.sent || PendingStatus.outdated => (null, null, null),
     };
     if (label == null || icon == null || color == null) {
       return const SizedBox.shrink();

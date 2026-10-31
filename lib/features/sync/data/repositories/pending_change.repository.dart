@@ -35,6 +35,21 @@ abstract class PendingChangeRepository {
 
   /// pending → rejected with [reason]. Other states are left untouched.
   Future<void> markRejected(int id, String reason);
+
+  /// pending → outdated: the server applied none of it. Other states are
+  /// left untouched.
+  Future<void> markOutdated(List<int> ids);
+
+  /// Records on the rejected changes of the record that do not have it yet
+  /// what the server refused ([PendingChange.rejectedValuesKey]; an edit
+  /// that names its fields keeps only those) and what the device did with
+  /// the row ([PendingChange.rollbackKey]).
+  Future<void> recordRejection({
+    required PendingEntity entity,
+    required String entityId,
+    required Map<String, dynamic> refused,
+    required RejectionRollback rollback,
+  });
 }
 
 class DriftPendingChangeRepository implements PendingChangeRepository {
@@ -106,6 +121,59 @@ class DriftPendingChangeRepository implements PendingChangeRepository {
               t.status.equals(PendingStatus.pending.wireName),
         ))
         .write(_transition(PendingStatus.rejected, reason: reason));
+  }
+
+  @override
+  Future<void> markOutdated(List<int> ids) async {
+    if (ids.isEmpty) return;
+    await (_db.update(_db.pendingChangeTable)..where(
+          (t) =>
+              t.pendingChangeId.isIn(ids) &
+              t.status.equals(PendingStatus.pending.wireName),
+        ))
+        .write(_transition(PendingStatus.outdated));
+  }
+
+  @override
+  Future<void> recordRejection({
+    required PendingEntity entity,
+    required String entityId,
+    required Map<String, dynamic> refused,
+    required RejectionRollback rollback,
+  }) async {
+    final rows =
+        await (_db.select(_db.pendingChangeTable)..where(
+              (t) =>
+                  t.entity.equals(entity.wireName) &
+                  t.entityId.equals(entityId) &
+                  t.status.equals(PendingStatus.rejected.wireName),
+            ))
+            .get();
+    for (final change in rows.map(_rowToChange)) {
+      if (change.rollback != null) continue;
+      final fields = change.changedFields;
+      final values = fields == null
+          ? refused
+          : {
+              for (final MapEntry(:key, :value) in refused.entries)
+                if (fields.contains(key)) key: value,
+            };
+      await (_db.update(
+        _db.pendingChangeTable,
+      )..where((t) => t.pendingChangeId.equals(change.id))).write(
+        PendingChangeTableCompanion(
+          payload: Value(
+            jsonEncode({
+              ...?change.payload,
+              PendingChange.rejectedValuesKey: values.isEmpty
+                  ? refused
+                  : values,
+              PendingChange.rollbackKey: rollback.wireName,
+            }),
+          ),
+        ),
+      );
+    }
   }
 
   Selectable<int> _pendingCount() {
