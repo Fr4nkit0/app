@@ -32,7 +32,8 @@ class StringUtils {
     for (final word in queryWords) {
       if (word.isEmpty) continue;
       if (word.length == 1) {
-        if (!normalizedTarget.startsWith(word) && !normalizedTarget.contains(' $word')) {
+        if (!normalizedTarget.startsWith(word) &&
+            !normalizedTarget.contains(' $word')) {
           return false;
         }
       } else {
@@ -40,6 +41,28 @@ class StringUtils {
           return false;
         }
       }
+    }
+    return true;
+  }
+
+  /// Like [fuzzyMatch], but every query word must begin where a target
+  /// word begins, so "centro" no longer matches "Servicio Penitenciario".
+  static bool wordStartMatch(String query, String target) {
+    final normalizedQuery = removeDiacritics(query);
+    if (normalizedQuery.isEmpty) return true;
+    final normalizedTarget = removeDiacritics(target);
+    final wordStarts = RegExp(
+      r'\S+',
+    ).allMatches(normalizedTarget).map((m) => m.start).toList();
+
+    for (final word in normalizedQuery.split(RegExp(r'\s+'))) {
+      if (word.isEmpty) continue;
+      final matches = wordStarts.any(
+        (start) =>
+            normalizedTarget[start] == word[0] &&
+            isSubsequence(word, normalizedTarget.substring(start)),
+      );
+      if (!matches) return false;
     }
     return true;
   }

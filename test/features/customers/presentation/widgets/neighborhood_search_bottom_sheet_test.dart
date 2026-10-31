@@ -5,63 +5,68 @@ import 'package:app/features/customers/domain/models/salta_neighborhoods.dart';
 
 void main() {
   group('NeighborhoodSearchBottomSheet Widget Tests', () {
-    testWidgets('renders search box and shows filtered list items case-insensitively', (WidgetTester tester) async {
-      String? selectedNeighborhood;
+    testWidgets(
+      'renders search box and shows filtered list items case-insensitively',
+      (WidgetTester tester) async {
+        String? selectedNeighborhood;
 
-      await tester.pumpWidget(
-        MaterialApp(
-          home: Scaffold(
-            body: Builder(
-              builder: (context) => ElevatedButton(
-                onPressed: () {
-                  showModalBottomSheet(
-                    context: context,
-                    builder: (context) => NeighborhoodSearchBottomSheet(
-                      neighborhoods: saltaNeighborhoods,
-                      onSelected: (val) {
-                        selectedNeighborhood = val;
-                      },
-                    ),
-                  );
-                },
-                child: const Text('Open'),
+        await tester.pumpWidget(
+          MaterialApp(
+            home: Scaffold(
+              body: Builder(
+                builder: (context) => ElevatedButton(
+                  onPressed: () {
+                    showModalBottomSheet(
+                      context: context,
+                      builder: (context) => NeighborhoodSearchBottomSheet(
+                        neighborhoods: saltaNeighborhoods,
+                        onSelected: (val) {
+                          selectedNeighborhood = val;
+                        },
+                      ),
+                    );
+                  },
+                  child: const Text('Open'),
+                ),
               ),
             ),
           ),
-        ),
-      );
+        );
 
-      // Open bottom sheet
-      await tester.tap(find.text('Open'));
-      await tester.pumpAndSettle();
+        // Open bottom sheet
+        await tester.tap(find.text('Open'));
+        await tester.pumpAndSettle();
 
-      // Find search field
-      final searchField = find.byType(TextField);
-      expect(searchField, findsOneWidget);
+        // Find search field
+        final searchField = find.byType(TextField);
+        expect(searchField, findsOneWidget);
 
-      // Verify that '1 de Mayo' is initially visible and '14 de Mayo' is initially visible
-      expect(find.text('1 de Mayo'), findsOneWidget);
-      expect(find.text('14 de Mayo'), findsOneWidget);
+        // Verify that '1 de Mayo' is initially visible and '14 de Mayo' is initially visible
+        expect(find.text('1 de Mayo'), findsOneWidget);
+        expect(find.text('14 de Mayo'), findsOneWidget);
 
-      // Filter by "Cerritos"
-      await tester.enterText(searchField, 'Cerritos');
-      await tester.pumpAndSettle();
+        // Filter by "Cerritos"
+        await tester.enterText(searchField, 'Cerritos');
+        await tester.pumpAndSettle();
 
-      // "Tres Cerritos" should still be visible (case-insensitive substring match)
-      expect(find.text('Tres Cerritos'), findsOneWidget);
-      // "1 de Mayo" should NOT be visible
-      expect(find.text('1 de Mayo'), findsNothing);
+        // "Tres Cerritos" should still be visible (case-insensitive substring match)
+        expect(find.text('Tres Cerritos'), findsOneWidget);
+        // "1 de Mayo" should NOT be visible
+        expect(find.text('1 de Mayo'), findsNothing);
 
-      // Select "Tres Cerritos"
-      await tester.tap(find.text('Tres Cerritos'));
-      await tester.pumpAndSettle();
+        // Select "Tres Cerritos"
+        await tester.tap(find.text('Tres Cerritos'));
+        await tester.pumpAndSettle();
 
-      // Bottom sheet should be closed and callback triggered
-      expect(find.byType(NeighborhoodSearchBottomSheet), findsNothing);
-      expect(selectedNeighborhood, 'Tres Cerritos');
-    });
+        // Bottom sheet should be closed and callback triggered
+        expect(find.byType(NeighborhoodSearchBottomSheet), findsNothing);
+        expect(selectedNeighborhood, 'Tres Cerritos');
+      },
+    );
 
-    testWidgets('implements scroll-based pagination with page size of 15', (WidgetTester tester) async {
+    testWidgets('implements scroll-based pagination with page size of 15', (
+      WidgetTester tester,
+    ) async {
       await tester.pumpWidget(
         MaterialApp(
           home: Scaffold(
@@ -107,5 +112,26 @@ void main() {
       final ListView listViewAfterScroll = tester.widget(listViewFinder);
       expect(listViewAfterScroll.childrenDelegate.estimatedChildCount, 30);
     });
+  });
+
+  testWidgets('searching Centro does not list Servicio Penitenciario', (
+    tester,
+  ) async {
+    await tester.pumpWidget(
+      MaterialApp(
+        home: Scaffold(
+          body: NeighborhoodSearchBottomSheet(
+            neighborhoods: const ['Centro', 'Servicio Penitenciario'],
+            onSelected: (_) {},
+          ),
+        ),
+      ),
+    );
+
+    await tester.enterText(find.byType(TextField), 'Centro');
+    await tester.pumpAndSettle();
+
+    expect(find.text('Servicio Penitenciario'), findsNothing);
+    expect(find.text('Centro'), findsWidgets);
   });
 }

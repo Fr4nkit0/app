@@ -209,6 +209,29 @@ void main() {
       },
     );
 
+    test('sends and remembers the email trimmed and in lowercase', () async {
+      final adapter = _loginOk();
+      final container = _container(adapter);
+      await _settled(container);
+
+      await container
+          .read(authControllerProvider.notifier)
+          .login(
+            ' Juan.Perez@Marilin.com ',
+            'secret',
+            rememberCredentials: true,
+          );
+
+      expect(
+        (adapter.requests.single.data as Map)['email'],
+        'juan.perez@marilin.com',
+      );
+      expect(
+        await _storage.read(key: 'auth_saved_email'),
+        'juan.perez@marilin.com',
+      );
+    });
+
     test('keeps the remembered password across restarts', () async {
       FlutterSecureStorage.setMockInitialValues({
         'auth_remember_credentials': 'true',

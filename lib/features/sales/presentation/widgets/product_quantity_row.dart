@@ -132,6 +132,7 @@ class ProductQuantityRow extends StatelessWidget {
               ),
               // Stepper
               _QuantityStepper(
+                productName: product.name,
                 quantity: quantity,
                 primary: primary,
                 cs: cs,
@@ -149,6 +150,7 @@ class ProductQuantityRow extends StatelessWidget {
 
 class _QuantityStepper extends StatelessWidget {
   const _QuantityStepper({
+    required this.productName,
     required this.quantity,
     required this.primary,
     required this.cs,
@@ -157,6 +159,7 @@ class _QuantityStepper extends StatelessWidget {
     required this.onQuantitySubmitted,
   });
 
+  final String productName;
   final int quantity;
   final Color primary;
   final ColorScheme cs;
@@ -180,6 +183,7 @@ class _QuantityStepper extends StatelessWidget {
       children: [
         _Btn(
           icon: Icons.remove_rounded,
+          semanticLabel: 'Quitar una $productName',
           onTap: onDecrement,
           active: quantity > 0,
           primary: context.marilin.vivid(MarilinColors.destructive),
@@ -206,6 +210,7 @@ class _QuantityStepper extends StatelessWidget {
         ),
         _Btn(
           icon: Icons.add_rounded,
+          semanticLabel: 'Agregar una $productName',
           onTap: onIncrement,
           active: onIncrement != null,
           primary: primary,
@@ -275,6 +280,7 @@ class _QuantityDialogState extends State<_QuantityDialog> {
 class _Btn extends StatefulWidget {
   const _Btn({
     required this.icon,
+    required this.semanticLabel,
     required this.onTap,
     required this.active,
     required this.primary,
@@ -282,6 +288,7 @@ class _Btn extends StatefulWidget {
   });
 
   final IconData icon;
+  final String semanticLabel;
   final VoidCallback? onTap;
   final bool active;
   final Color primary;
@@ -344,29 +351,34 @@ class _BtnState extends State<_Btn> {
   Widget build(BuildContext context) {
     final isEnabled = widget.active && widget.onTap != null;
     final primary = widget.primary;
-    return Listener(
-      onPointerDown: (_) {
-        if (isEnabled) _startHold();
-      },
-      onPointerUp: (_) => _stopHold(),
-      onPointerCancel: (_) => _stopHold(),
-      child: Material(
-        color: Colors.transparent,
-        child: InkWell(
-          onTap: widget.onTap == null ? null : _handleTap,
-          borderRadius: BorderRadius.circular(12),
-          child: Ink(
-            width: 56,
-            height: 48,
-            decoration: BoxDecoration(
-              color: primary.withValues(alpha: isEnabled ? 0.1 : 0.08),
-              borderRadius: BorderRadius.circular(12),
-            ),
-            child: Center(
-              child: Icon(
-                widget.icon,
-                size: 24,
-                color: isEnabled ? primary : primary.withValues(alpha: 0.35),
+    // No Tooltip: its long press would fight the hold-to-repeat.
+    return Semantics(
+      button: true,
+      label: widget.semanticLabel,
+      child: Listener(
+        onPointerDown: (_) {
+          if (isEnabled) _startHold();
+        },
+        onPointerUp: (_) => _stopHold(),
+        onPointerCancel: (_) => _stopHold(),
+        child: Material(
+          color: Colors.transparent,
+          child: InkWell(
+            onTap: widget.onTap == null ? null : _handleTap,
+            borderRadius: BorderRadius.circular(12),
+            child: Ink(
+              width: 56,
+              height: 48,
+              decoration: BoxDecoration(
+                color: primary.withValues(alpha: isEnabled ? 0.1 : 0.08),
+                borderRadius: BorderRadius.circular(12),
+              ),
+              child: Center(
+                child: Icon(
+                  widget.icon,
+                  size: 24,
+                  color: isEnabled ? primary : primary.withValues(alpha: 0.35),
+                ),
               ),
             ),
           ),

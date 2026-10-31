@@ -550,6 +550,8 @@ class _VisitScreenState extends ConsumerState<VisitScreen> {
       context: context,
       initialTime: _session.initialRescheduleTime(),
       helpText: 'Hora de la nueva parada (hoy)',
+      cancelText: 'Cancelar',
+      confirmText: 'Aceptar',
     );
     if (picked == null || !mounted) return;
     _session.setRescheduleTime(picked);
