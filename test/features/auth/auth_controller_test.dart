@@ -161,6 +161,56 @@ void main() {
         'These credentials do not match our records.',
       );
     });
+
+    const locked =
+        'Demasiados intentos de inicio de sesión. Intente de nuevo en 42 '
+        'segundos.';
+
+    test(
+      'shows the server message when too many attempts lock the login',
+      () async {
+        final container = _container(
+          FakeHttpAdapter(
+            (_) => FakeHttpAdapter.json(429, {
+              'message': locked,
+              'errors': {
+                'email': [locked],
+              },
+              'retry_after': 42,
+            }),
+          ),
+        );
+        await _settled(container);
+
+        final ok = await container
+            .read(authControllerProvider.notifier)
+            .login('marcos@marilin.test', 'wrong');
+
+        expect(ok, isFalse);
+        expect(container.read(authControllerProvider).error, locked);
+      },
+    );
+
+    test('shows the lock message from errors.email when there is no '
+        'message', () async {
+      final container = _container(
+        FakeHttpAdapter(
+          (_) => FakeHttpAdapter.json(429, {
+            'errors': {
+              'email': [locked],
+            },
+            'retry_after': 42,
+          }),
+        ),
+      );
+      await _settled(container);
+
+      await container
+          .read(authControllerProvider.notifier)
+          .login('marcos@marilin.test', 'wrong');
+
+      expect(container.read(authControllerProvider).error, locked);
+    });
   });
 
   group('remember me', () {

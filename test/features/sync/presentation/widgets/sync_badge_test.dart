@@ -39,6 +39,15 @@ void main() {
     expect(find.byType(Icon), findsNothing);
   });
 
+  testWidgets('an edit waiting for the admin shows a neutral "Pendiente de '
+      'aprobación" badge', (tester) async {
+    await pump(tester, _change(PendingStatus.awaitingApproval));
+
+    expect(find.text('Pendiente de aprobación'), findsOneWidget);
+    final text = tester.widget<Text>(find.text('Pendiente de aprobación'));
+    expect(text.style?.color, isNot(MarilinColors.destructive));
+  });
+
   testWidgets('an outdated edit shows a neutral "Descartada" badge', (
     tester,
   ) async {

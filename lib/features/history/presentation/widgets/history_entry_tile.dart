@@ -125,6 +125,18 @@ class HistoryEntryTile extends StatelessWidget {
                         ),
                       ),
                     ],
+                    if (entry.status == PendingStatus.awaitingApproval) ...[
+                      const SizedBox(height: 6),
+                      Text(
+                        'El cliente es de otro repartidor; el administrador '
+                        'tiene que aprobar el cambio.',
+                        style: TextStyle(
+                          fontSize: 12,
+                          fontWeight: FontWeight.w600,
+                          color: tokens.inkSecondary,
+                        ),
+                      ),
+                    ],
                     if (entry.isIssue) HistoryIssueLines(entry: entry),
                   ],
                 ),

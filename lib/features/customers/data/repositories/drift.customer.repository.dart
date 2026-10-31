@@ -8,6 +8,7 @@ import 'package:app/features/customers/domain/models/customer.preference.dart';
 import 'package:app/core/services/database.helper.dart';
 import 'package:app/features/payments/data/repositories/customer_account.dart';
 import 'package:app/features/sync/data/repositories/pending_change.repository.dart';
+import 'package:app/features/sync/data/repositories/removed_customers.dart';
 import 'package:app/features/sync/data/repositories/server_shadow.dart';
 import 'package:app/features/sync/domain/models/pending_change.dart';
 import 'package:drift/drift.dart';
@@ -313,6 +314,11 @@ class DriftCustomerRepository implements CustomerRepository {
               .get())
           .firstOrNull;
 
+  /// Customers Clientes and the sales picker list: enabled and not
+  /// reassigned to another driver ([RemovedCustomers]).
+  Expression<bool> _listed($CustomerTableTable t) =>
+      t.enabled.equals(true) & RemovedCustomers.isShown(db, t.customerId);
+
   @override
   Future<Customer?> getCustomerById(String id) async {
     final customerData = await (db.select(
@@ -374,7 +380,7 @@ class DriftCustomerRepository implements CustomerRepository {
     final offset = page * pageSize;
     final customerRows =
         await (db.select(db.customerTable)
-              ..where((t) => t.enabled.equals(true))
+              ..where(_listed)
               ..limit(pageSize, offset: offset))
             .get();
 
@@ -445,7 +451,7 @@ class DriftCustomerRepository implements CustomerRepository {
   Future<List<Customer>> _getAllCustomers() async {
     final customerRows = await (db.select(
       db.customerTable,
-    )..where((t) => t.enabled.equals(true))).get();
+    )..where(_listed)).get();
 
     if (customerRows.isEmpty) return [];
 
@@ -548,7 +554,7 @@ class DriftCustomerRepository implements CustomerRepository {
     final countExpr = db.customerTable.customerId.count();
     return (db.selectOnly(db.customerTable)
           ..addColumns([countExpr])
-          ..where(db.customerTable.enabled.equals(true)))
+          ..where(_listed(db.customerTable)))
         .map((row) => row.read(countExpr) ?? 0)
         .watchSingle();
   }
@@ -571,7 +577,7 @@ class DriftCustomerRepository implements CustomerRepository {
             db.customerPreferenceTable.enabled.equals(true),
       ),
       _account.balanceJoin(db.customerTable.customerId),
-    ])..where(db.customerTable.enabled.equals(true));
+    ])..where(_listed(db.customerTable));
 
     return query.watch().map((rows) {
       final Map<String, Customer> customers = {};

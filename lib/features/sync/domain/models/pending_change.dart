@@ -54,6 +54,11 @@ enum PendingStatus {
   /// record carried. The device shows the server's values again.
   outdated('outdated'),
 
+  /// An edit of a customer assigned to another driver: the server applied
+  /// nothing and holds it for the admin's approval, whose decision never
+  /// reaches this device. The row keeps the values the driver sent.
+  awaitingApproval('awaiting_approval'),
+
   /// A rejected or outdated change the driver already read and put away.
   /// Its row stays in the queue: the pull still treats it as rejected.
   dismissed('dismissed');

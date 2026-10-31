@@ -48,6 +48,20 @@ class SyncEngine {
   static const lastCycleResultKey = 'last_cycle_result';
   static const lastCycleErrorKey = 'last_cycle_error';
 
+  /// Review reason of an edit of a customer assigned to another driver: the
+  /// server applied nothing and holds it for the admin's approval.
+  static const foreignCustomerReason =
+      'Customer is assigned to another driver.';
+
+  /// Entities whose edits of another driver's customer wait for approval;
+  /// sales and payments of that customer are still applied and only
+  /// flagged.
+  static const _approvalEntities = {
+    PendingEntity.customer,
+    PendingEntity.customerAddress,
+    PendingEntity.customerPreference,
+  };
+
   /// Entity pushers in the server's dependency order.
   static List<EntityPusher> defaultPushers(
     AppDatabase db, {
@@ -127,9 +141,10 @@ class SyncEngine {
   /// outdated one (the server applied none of it) is marked outdated and its
   /// row shows the server's values again ([ServerShadow]). Both take the
   /// server row the answer carries (`current`) when there is one, over the
-  /// values last known; an accepted answer carries none. Once the queue is
-  /// settled, the server values kept for rows with nothing pending are
-  /// forgotten.
+  /// values last known; an accepted answer carries none. An edit of another
+  /// driver's customer ([foreignCustomerReason]) is marked awaiting approval
+  /// and its row keeps the values sent. Once the queue is settled, the
+  /// server values kept for rows with nothing pending are forgotten.
   Future<void> push() async {
     await _push();
     await _shadow.clearSettled();
@@ -186,20 +201,24 @@ class SyncEngine {
         final currentOf = <String, Json>{};
         final unanswered = <int>{};
         final accepted = <int>{};
+        final awaiting = <int>{};
         final outdated = <int>{};
         final outdatedRows = <String, List<int>>{};
         for (final record in plan.records) {
           final result = results[record.uuid];
           final status = result?['status'];
           if (status == 'accepted' || status == 'outdated') {
-            // An accepted record that waits for review is still accepted.
+            // An accepted record that waits for review is still accepted;
+            // one that adds to another driver's customer has no server id.
             // An outdated one changed nothing: the server holds newer values
             // for every field it carried.
             final serverId = result!['server_id'];
-            if (status == 'accepted' || serverId != null) {
-              await pusher.applyAccepted(record, serverId as int);
-            }
-            if (status == 'accepted') {
+            if (serverId is int) await pusher.applyAccepted(record, serverId);
+            if (status == 'accepted' &&
+                _approvalEntities.contains(pusher.entity) &&
+                _reviewReasonsOf(result).contains(foreignCustomerReason)) {
+              awaiting.addAll(record.changeIds);
+            } else if (status == 'accepted') {
               accepted.addAll(record.changeIds);
             } else {
               outdated.addAll(record.changeIds);
@@ -239,13 +258,18 @@ class SyncEngine {
             !rejectedWith.containsKey(id) && !unanswered.contains(id);
         await _queue.markSent([
           for (final id in accepted)
+            if (settles(id) && !awaiting.contains(id)) id,
+        ]);
+        await _queue.markAwaitingApproval([
+          for (final id in awaiting)
             if (settles(id)) id,
         ]);
         // Outdated only when no record built from the change applied
         // anything.
         final dropped = {
           for (final id in outdated)
-            if (settles(id) && !accepted.contains(id)) id,
+            if (settles(id) && !accepted.contains(id) && !awaiting.contains(id))
+              id,
         };
         await _queue.markOutdated(dropped.toList());
         for (final MapEntry(key: localId, value: ids) in outdatedRows.entries) {
@@ -275,6 +299,13 @@ class SyncEngine {
       );
     }
   }
+
+  /// The review reasons of an accepted answer; none when it omits them.
+  static List<String> _reviewReasonsOf(Json result) =>
+      switch (result['review_reasons']) {
+        final List reasons => [for (final r in reasons) '$r'],
+        _ => const [],
+      };
 
   /// The server row an answer carries, in pull shape.
   static Json? _currentOf(Json result) => switch (result['current']) {
