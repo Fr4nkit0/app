@@ -166,4 +166,22 @@ void main() {
 
     expect(find.textContaining('Motivo:'), findsNothing);
   });
+
+  testWidgets('an edit of another driver\'s customer shows it waits for the '
+      'admin and why', (tester) async {
+    await pump(
+      tester,
+      _issue(PendingStatus.awaitingApproval, fields: ['phone_number']),
+    );
+
+    expect(find.text('Pendiente de aprobación'), findsOneWidget);
+    expect(
+      find.text(
+        'El cliente es de otro repartidor; el administrador tiene que '
+        'aprobar el cambio.',
+      ),
+      findsOneWidget,
+    );
+    expect(find.textContaining('Motivo'), findsNothing);
+  });
 }

@@ -82,7 +82,7 @@ class _FakeServer {
       'uuid': record['uuid'],
       'status': 'accepted',
       'server_id': id,
-      'review_reason': reviewReason,
+      'review_reasons': [?reviewReason],
     };
   }
 
@@ -445,7 +445,7 @@ void main() {
       await createCustomer('c-1');
       server.answer = (record) => server.accept(
         record,
-        reviewReason: 'Customer is assigned to another driver.',
+        reviewReason: 'Customer phone number is shared with another customer.',
       );
 
       await engine.runCycle();

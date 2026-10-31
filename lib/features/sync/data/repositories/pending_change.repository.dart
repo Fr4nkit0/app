@@ -40,6 +40,10 @@ abstract class PendingChangeRepository {
   /// left untouched.
   Future<void> markOutdated(List<int> ids);
 
+  /// pending → awaiting approval: the server holds it until the admin
+  /// decides. Other states are left untouched.
+  Future<void> markAwaitingApproval(List<int> ids);
+
   /// rejected or outdated → dismissed, keeping the row and its reason. Other
   /// states are left untouched.
   Future<void> dismiss(int id);
@@ -136,6 +140,17 @@ class DriftPendingChangeRepository implements PendingChangeRepository {
               t.status.equals(PendingStatus.pending.wireName),
         ))
         .write(_transition(PendingStatus.outdated));
+  }
+
+  @override
+  Future<void> markAwaitingApproval(List<int> ids) async {
+    if (ids.isEmpty) return;
+    await (_db.update(_db.pendingChangeTable)..where(
+          (t) =>
+              t.pendingChangeId.isIn(ids) &
+              t.status.equals(PendingStatus.pending.wireName),
+        ))
+        .write(_transition(PendingStatus.awaitingApproval));
   }
 
   @override

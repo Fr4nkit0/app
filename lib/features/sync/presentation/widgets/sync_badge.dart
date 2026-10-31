@@ -7,7 +7,9 @@ import 'package:app/features/sync/domain/models/pending_change.dart';
 ///
 /// Nothing for a record with no queue row or one already sent; "Sin enviar"
 /// while pending; "Rechazado" (tappable, shows the server reason) when refused;
-/// a neutral "Descartada" when the server kept newer values (APP-26).
+/// a neutral "Descartada" when the server kept newer values (APP-26); a
+/// neutral "Pendiente de aprobación" when the customer is another driver's
+/// and the admin has to approve the edit.
 class SyncBadge extends StatelessWidget {
   const SyncBadge({super.key, required this.change});
 
@@ -20,7 +22,8 @@ class SyncBadge extends StatelessWidget {
     return switch (current.status) {
       PendingStatus.sent || PendingStatus.dismissed => const SizedBox.shrink(),
       PendingStatus.pending ||
-      PendingStatus.outdated => SyncStatusPill(status: current.status),
+      PendingStatus.outdated ||
+      PendingStatus.awaitingApproval => SyncStatusPill(status: current.status),
       PendingStatus.rejected => _RejectedBadge(reason: current.rejectionReason),
     };
   }
@@ -50,6 +53,11 @@ class SyncStatusPill extends StatelessWidget {
       PendingStatus.outdated => (
         'Descartada',
         Icons.info_outline_rounded,
+        tokens.inkSecondary,
+      ),
+      PendingStatus.awaitingApproval => (
+        'Pendiente de aprobación',
+        Icons.hourglass_empty_rounded,
         tokens.inkSecondary,
       ),
       PendingStatus.sent || PendingStatus.dismissed => (null, null, null),
