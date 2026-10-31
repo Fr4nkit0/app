@@ -38,6 +38,7 @@ class LeasedSyncEngine extends SyncEngine {
 
   /// Set while another isolate holds the lease and a retry is scheduled.
   Timer? _retry;
+  bool _disposed = false;
 
   String get leaseOwner => _lease.owner;
 
@@ -92,9 +93,9 @@ class LeasedSyncEngine extends SyncEngine {
   }
 
   Future<void> _scheduleRetry() async {
-    if (_waiting) return;
+    if (_waiting || _disposed) return;
     final left = await _lease.remaining() ?? Duration.zero;
-    if (_waiting) return;
+    if (_waiting || _disposed) return;
     _retry = _delayed(left < _minRetry ? _minRetry : left, () {
       _retry = null;
       unawaited(runCycle());
@@ -117,6 +118,7 @@ class LeasedSyncEngine extends SyncEngine {
 
   @override
   Future<void> dispose() async {
+    _disposed = true;
     _retry?.cancel();
     _retry = null;
     _heartbeat?.cancel();

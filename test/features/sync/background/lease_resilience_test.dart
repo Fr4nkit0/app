@@ -166,5 +166,32 @@ void main() {
         expect(running.last, isFalse);
       },
     );
+
+    test('a disposed engine never arms or fires a retry', () async {
+      await CycleLease(db, owner: 'background#killed', now: now).acquire();
+      final retries = <ManualTimer>[];
+      final foreground = buildEngine(
+        db,
+        server,
+        owner: 'foreground#1',
+        now: now,
+        delayed: (d, cb) {
+          final t = ManualTimer(d, (_) => cb());
+          retries.add(t);
+          return t;
+        },
+      );
+
+      final waiting = foreground.runCycle();
+      await foreground.dispose();
+      await waiting;
+      for (final t in retries) {
+        t.fire();
+      }
+      await pumpEventQueue();
+
+      expect(retries.where((t) => t.isActive), isEmpty);
+      expect(server.calls, isEmpty);
+    });
   });
 }
