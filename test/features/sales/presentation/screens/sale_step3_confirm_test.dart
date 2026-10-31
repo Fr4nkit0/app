@@ -41,9 +41,10 @@ class _FakeRegisterSale implements RegisterSaleUseCase {
 }
 
 class _PreparedDraft extends SaleDraft {
-  _PreparedDraft([this.containerType]);
+  _PreparedDraft([this.containerType, this.available]);
 
   final String? containerType;
+  final int? available;
 
   @override
   SaleDraftState build() => SaleDraftState(
@@ -61,6 +62,7 @@ class _PreparedDraft extends SaleDraft {
           unitLabel: 'bidón',
           price: 1500,
           containerType: containerType,
+          available: available,
         ),
         quantity: 2,
       ),
@@ -84,6 +86,7 @@ void main() {
   Future<void> pumpScreen(
     WidgetTester tester, {
     String? containerType,
+    int? available,
     List<CustomerContainerBalance> custody = const [],
   }) async {
     fake = _FakeRegisterSale();
@@ -92,7 +95,9 @@ void main() {
     await tester.pumpWidget(
       ProviderScope(
         overrides: [
-          saleDraftProvider.overrideWith(() => _PreparedDraft(containerType)),
+          saleDraftProvider.overrideWith(
+            () => _PreparedDraft(containerType, available),
+          ),
           registerSaleUseCaseProvider.overrideWithValue(fake),
           customerContainerBalancesProvider.overrideWith(
             (ref, id) => Stream.value(custody),
@@ -204,6 +209,20 @@ void main() {
     expect(find.byType(SaleStep3Screen), findsNothing);
     expect(find.text('Venta registrada con éxito'), findsOneWidget);
 
+    await tester.pumpAndSettle(const Duration(seconds: 4));
+  });
+
+  testWidgets('a sale over a negative truck stock can still be confirmed', (
+    tester,
+  ) async {
+    await pumpScreen(tester, available: -1);
+
+    expect(tester.widget<FilledButton>(confirmButton).onPressed, isNotNull);
+    await tester.tap(confirmButton);
+    await tester.pump();
+    expect(fake.calls, 1);
+
+    fake.completer.complete();
     await tester.pumpAndSettle(const Duration(seconds: 4));
   });
 
