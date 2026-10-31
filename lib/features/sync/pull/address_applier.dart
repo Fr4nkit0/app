@@ -1,13 +1,15 @@
 import 'package:drift/drift.dart';
 
 import '../../../core/services/database.helper.dart';
+import '../data/repositories/server_shadow.dart';
 import 'pull_applier.dart';
 
 /// Customer addresses, several per customer, disabled ones included.
 class AddressApplier implements PullApplier {
-  AddressApplier(this._db);
+  AddressApplier(this._db) : _shadow = ServerShadow(_db);
 
   final AppDatabase _db;
+  final ServerShadow _shadow;
 
   @override
   Future<void> applyChanges(
@@ -40,6 +42,8 @@ class AddressApplier implements PullApplier {
   ///
   /// A customer with unsent changes, of its own or of any of its addresses,
   /// keeps its local addresses; they only get linked to their server id.
+  /// The server values they skipped are kept for a rollback of those
+  /// changes.
   Future<void> _upsert(Json a, String customerId, PullContext context) async {
     final keepLocal =
         context.unsent.customers.contains(customerId) ||
@@ -55,23 +59,10 @@ class AddressApplier implements PullApplier {
             : (_db.select(_db.customerAddressTable)
                     ..where((t) => t.addressId.equals(clientUuid)))
                   .getSingleOrNull());
-    final fields = CustomerAddressTableCompanion(
-      customerId: Value(customerId),
-      street: Value(a['street'] as String?),
-      apartment: Value(a['apartment'] as String?),
-      // Older server rows stored the floor as an integer, so a free-text floor
-      // ("PB") could come back as null; keep the device's value then.
-      floor: a['floor'] == null && _isFreeTextFloor(existing?.floor)
-          ? const Value.absent()
-          : Value(a['floor']?.toString()),
-      visualReference: Value(a['visual_reference'] as String?),
-      isPrimary: Value(a['is_primary'] == true),
-      latitude: Value(toNullableDouble(a['latitude'])),
-      longitude: Value(toNullableDouble(a['longitude'])),
-      neighborhood: Value(a['neighborhood'] as String?),
-      enabled: enabledOf(a),
-      serverId: Value(serverId),
-    );
+    final fields = fieldsOf(
+      a,
+      localFloor: existing?.floor,
+    ).copyWith(customerId: Value(customerId));
     if (existing == null) {
       final row = await _db
           .into(_db.customerAddressTable)
@@ -88,6 +79,14 @@ class AddressApplier implements PullApplier {
           );
       context.ids.recordAddress(serverId, row.addressId);
       return;
+    }
+    if (keepLocal) {
+      await _shadow.storePulledAddress(
+        customerId,
+        existing.addressId,
+        fields,
+        ownChange: context.unsent.addresses.contains(existing.addressId),
+      );
     }
     await (_db.update(
       _db.customerAddressTable,
@@ -111,6 +110,26 @@ class AddressApplier implements PullApplier {
               .get())
           .isNotEmpty;
 
+  /// The local columns of the server address row [a], server id included
+  /// and customer left out. [localFloor] is the device's floor of the row.
+  static CustomerAddressTableCompanion fieldsOf(Json a, {String? localFloor}) =>
+      CustomerAddressTableCompanion(
+        street: Value(a['street'] as String?),
+        apartment: Value(a['apartment'] as String?),
+        // Older server rows stored the floor as an integer, so a free-text
+        // floor ("PB") could come back as null; keep the device's value then.
+        floor: a['floor'] == null && _isFreeTextFloor(localFloor)
+            ? const Value.absent()
+            : Value(a['floor']?.toString()),
+        visualReference: Value(a['visual_reference'] as String?),
+        isPrimary: Value(a['is_primary'] == true),
+        latitude: Value(toNullableDouble(a['latitude'])),
+        longitude: Value(toNullableDouble(a['longitude'])),
+        neighborhood: Value(a['neighborhood'] as String?),
+        enabled: enabledOf(a),
+        serverId: Value(a['id'] as int),
+      );
+
   static bool _isFreeTextFloor(String? floor) =>
       floor != null &&
       floor.trim().isNotEmpty &&
@@ -118,7 +137,8 @@ class AddressApplier implements PullApplier {
 
   /// The unlinked address the customer push sends: same selection and order
   /// as `CustomerPusher`. An address with its own unsent change travels
-  /// under its own uuid and is linked by it instead.
+  /// under its own uuid and is linked by it instead; one whose latest change
+  /// or create was rejected is never linked (APP-29).
   Future<CustomerAddressTableData?> _unlinkedPushedAddress(
     String customerId,
     PullContext context,
@@ -129,7 +149,8 @@ class AddressApplier implements PullApplier {
                       t.customerId.equals(customerId) &
                       t.serverId.isNull() &
                       t.enabled.equals(true) &
-                      t.addressId.isNotIn(context.unsent.addresses),
+                      t.addressId.isNotIn(context.unsent.addresses) &
+                      t.addressId.isNotIn(context.unsent.rejectedAddresses),
                 )
                 ..orderBy([
                   (t) => OrderingTerm.desc(t.isPrimary),

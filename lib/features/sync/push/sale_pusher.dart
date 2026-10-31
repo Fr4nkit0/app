@@ -128,7 +128,7 @@ class SalePusher implements EntityPusher, RejectionAware {
   }
 
   @override
-  Future<void> applyRejected(String localId) async {
+  Future<void> applyRejected(String localId, {Json? current}) async {
     final sale = await (_db.select(
       _db.saleTable,
     )..where((t) => t.saleId.equals(localId))).getSingleOrNull();

@@ -10,10 +10,12 @@ import 'package:app/features/history/domain/models/history_entry.dart';
 import 'package:app/features/history/presentation/providers/paginated_history_provider.dart';
 import 'package:app/features/history/presentation/widgets/history_date_utils.dart';
 import 'package:app/features/history/presentation/widgets/history_entry_tile.dart';
+import 'package:app/features/history/presentation/widgets/history_issue.dart';
 import 'package:app/features/history/presentation/widgets/history_sync_status_card.dart';
 import 'package:app/features/history/presentation/widgets/history_today_summary_row.dart';
 import 'package:app/features/history/presentation/widgets/history_type_filter_bar.dart';
 import 'package:app/features/sync/domain/models/sync_status.dart';
+import 'package:app/features/sync/presentation/providers/pending_change_repository_provider.dart';
 import 'package:app/features/sync/presentation/providers/sync_providers.dart';
 
 sealed class _HistoryListItem {}
@@ -64,6 +66,18 @@ class _HistoryScreenState extends ConsumerState<HistoryScreen> {
     }
   }
 
+  Future<void> _showIssue(HistoryEntry entry) => showModalBottomSheet<void>(
+    context: context,
+    showDragHandle: true,
+    builder: (sheetContext) => HistoryIssueSheet(
+      entry: entry,
+      onDismiss: () async {
+        await ref.read(pendingChangeRepositoryProvider).dismiss(entry.id);
+        if (sheetContext.mounted) Navigator.of(sheetContext).pop();
+      },
+    ),
+  );
+
   List<_HistoryListItem> _buildListItems(List<HistoryEntry> entries) {
     if (entries.isEmpty) return [];
 
@@ -93,7 +107,8 @@ class _HistoryScreenState extends ConsumerState<HistoryScreen> {
     final listItems = _buildListItems(paginatedState.entries);
     final hasActiveFilters =
         paginatedState.searchQuery.trim().isNotEmpty ||
-        paginatedState.typeFilter != null;
+        paginatedState.typeFilter != null ||
+        paginatedState.issuesOnly;
 
     return Scaffold(
       backgroundColor: tokens.scaffoldMuted,
@@ -111,6 +126,10 @@ class _HistoryScreenState extends ConsumerState<HistoryScreen> {
                 status: syncStatus,
                 isRunning: isSyncRunning,
                 onSync: () => ref.read(syncEngineProvider).runCycle(),
+                showingRejected: paginatedState.issuesOnly,
+                onToggleRejected: () => ref
+                    .read(paginatedHistoryProvider.notifier)
+                    .toggleIssuesOnly(),
               ),
             ),
             Padding(
@@ -218,7 +237,12 @@ class _HistoryScreenState extends ConsumerState<HistoryScreen> {
                                     ),
                                   _HistoryEntryItem(:final entry) => Padding(
                                     padding: const EdgeInsets.only(bottom: 10),
-                                    child: HistoryEntryTile(entry: entry),
+                                    child: HistoryEntryTile(
+                                      entry: entry,
+                                      onTap: entry.isIssue
+                                          ? () => _showIssue(entry)
+                                          : null,
+                                    ),
                                   ),
                                 };
                               },

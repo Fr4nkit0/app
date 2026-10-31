@@ -110,7 +110,7 @@ class PaymentPusher implements EntityPusher, RejectionAware {
   }
 
   @override
-  Future<void> applyRejected(String localId) async {
+  Future<void> applyRejected(String localId, {Json? current}) async {
     final payment = await (_db.select(
       _db.paymentTable,
     )..where((t) => t.paymentId.equals(localId))).getSingleOrNull();

@@ -383,15 +383,14 @@ void main() {
       expect(record['name'], 'Kiosco Sur');
       expect(record['phone_number'], '3874009988');
       expect(record['address'], {
-        // The address edited in place keeps its uuid.
+        // The address edited in place keeps its uuid; the coordinates are
+        // not part of the edit, so they do not travel.
         'uuid': 'addr-c-1',
         'street': 'Mitre 50',
         'apartment': 'B',
         'floor': 'PB',
         'visual_reference': 'Portón verde',
         'neighborhood': 'Tres Cerritos',
-        'latitude': -24.785,
-        'longitude': -65.411,
       });
       expect(
         DateTime.parse(record['modified_at'] as String).isAfter(
@@ -405,7 +404,8 @@ void main() {
   );
 
   test(
-    'a rejected customer keeps the reason and is not sent again by later cycles',
+    'a rejected customer keeps the reason, is rolled back (deleted, as the '
+    'server never stored it) and is not sent again by later cycles',
     () async {
       await createCustomer('c-1');
       server.answer = (record) => {
@@ -426,7 +426,13 @@ void main() {
         rejected.single.rejectionReason,
         'The address.street field is required.',
       );
-      expect((await localCustomer('c-1')).serverId, isNull);
+      expect(rejected.single.rollback, RejectionRollback.deleted);
+      expect(
+        await (db.select(
+          db.customerTable,
+        )..where((t) => t.customerId.equals('c-1'))).get(),
+        isEmpty,
+      );
       expect(server.pushBodies.length, 1);
       expect(status.rejectedCount, 1);
       expect(status.pendingCount, 0);

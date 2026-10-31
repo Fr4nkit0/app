@@ -1,17 +1,20 @@
-import 'package:app/core/presentation/rejection_message.dart';
 import 'package:app/core/utils/money_formatter.dart';
 import 'package:flutter/material.dart';
 import 'package:app/core/theme/marilin_tokens.dart';
 import 'package:app/core/utils/avatar_utils.dart';
 import 'package:app/features/history/domain/models/history_entry.dart';
 import 'package:app/features/history/domain/models/history_entry_type.dart';
+import 'package:app/features/history/presentation/widgets/history_issue.dart';
 import 'package:app/features/sync/domain/models/pending_change.dart';
 import 'package:app/features/sync/presentation/widgets/sync_badge.dart';
 
 class HistoryEntryTile extends StatelessWidget {
-  const HistoryEntryTile({super.key, required this.entry});
+  const HistoryEntryTile({super.key, required this.entry, this.onTap});
 
   final HistoryEntry entry;
+
+  /// Opens the detail of a rejected or dropped record; null for the rest.
+  final VoidCallback? onTap;
 
   @override
   Widget build(BuildContext context) {
@@ -24,139 +27,142 @@ class HistoryEntryTile extends StatelessWidget {
       baseColor: AvatarUtils.getPastelColor(entry.customerName),
     );
     final initials = AvatarUtils.getInitials(entry.customerName);
-    final rejectionReason = entry.rejectionReason;
     final showAmount =
         entry.amount != null &&
         (entry.type == HistoryEntryType.sale ||
             entry.type == HistoryEntryType.payment);
 
-    return Container(
-      decoration: BoxDecoration(
-        color: tokens.surface,
+    return Material(
+      color: tokens.surface,
+      shape: RoundedRectangleBorder(
         borderRadius: BorderRadius.circular(14),
-        border: Border.all(
+        side: BorderSide(
           color: tokens.border.withValues(alpha: tokens.border.a * 0.85),
         ),
       ),
-      child: Padding(
-        padding: const EdgeInsets.fromLTRB(14, 12, 14, 12),
-        child: Row(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Container(
-              width: 40,
-              height: 40,
-              decoration: BoxDecoration(
-                color: style.iconBackground,
-                borderRadius: BorderRadius.circular(12),
+      clipBehavior: Clip.antiAlias,
+      child: InkWell(
+        onTap: onTap,
+        child: Padding(
+          padding: const EdgeInsets.fromLTRB(14, 12, 14, 12),
+          child: Row(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Container(
+                width: 40,
+                height: 40,
+                decoration: BoxDecoration(
+                  color: style.iconBackground,
+                  borderRadius: BorderRadius.circular(12),
+                ),
+                alignment: Alignment.center,
+                child: Icon(style.icon, color: style.iconColor, size: 20),
               ),
-              alignment: Alignment.center,
-              child: Icon(style.icon, color: style.iconColor, size: 20),
-            ),
-            const SizedBox(width: 12),
-            Expanded(
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Row(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Expanded(
-                        child: Text(
-                          entry.customerName,
-                          maxLines: 2,
-                          overflow: TextOverflow.ellipsis,
-                          style: TextStyle(
-                            fontSize: 15,
-                            fontWeight: FontWeight.w800,
-                            color: tokens.brandNavy,
-                            height: 1.2,
+              const SizedBox(width: 12),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Row(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Expanded(
+                          child: Text(
+                            entry.customerName,
+                            maxLines: 2,
+                            overflow: TextOverflow.ellipsis,
+                            style: TextStyle(
+                              fontSize: 15,
+                              fontWeight: FontWeight.w800,
+                              color: tokens.brandNavy,
+                              height: 1.2,
+                            ),
                           ),
                         ),
+                        const SizedBox(width: 8),
+                        Text(
+                          timeStr,
+                          style: TextStyle(
+                            fontSize: 12,
+                            fontWeight: FontWeight.w700,
+                            color: tokens.textMuted,
+                          ),
+                        ),
+                      ],
+                    ),
+                    const SizedBox(height: 4),
+                    Text(
+                      style.typeLabel,
+                      style: TextStyle(
+                        fontSize: 13,
+                        fontWeight: FontWeight.w600,
+                        color: tokens.textMuted,
                       ),
-                      const SizedBox(width: 8),
+                    ),
+                    if (entry.description.trim().isNotEmpty &&
+                        entry.description.trim().toLowerCase() !=
+                            entry.customerName.toLowerCase()) ...[
+                      const SizedBox(height: 2),
                       Text(
-                        timeStr,
+                        entry.description,
+                        maxLines: 2,
+                        overflow: TextOverflow.ellipsis,
                         style: TextStyle(
                           fontSize: 12,
-                          fontWeight: FontWeight.w700,
-                          color: tokens.textMuted,
+                          fontWeight: FontWeight.w500,
+                          color: tokens.textMuted.withValues(alpha: 0.9),
                         ),
                       ),
                     ],
-                  ),
-                  const SizedBox(height: 4),
-                  Text(
-                    style.typeLabel,
-                    style: TextStyle(
-                      fontSize: 13,
-                      fontWeight: FontWeight.w600,
-                      color: tokens.textMuted,
-                    ),
-                  ),
-                  if (entry.description.trim().isNotEmpty &&
-                      entry.description.trim().toLowerCase() !=
-                          entry.customerName.toLowerCase()) ...[
-                    const SizedBox(height: 2),
+                    if (entry.status == PendingStatus.outdated) ...[
+                      const SizedBox(height: 6),
+                      Text(
+                        'Edición descartada',
+                        style: TextStyle(
+                          fontSize: 12,
+                          fontWeight: FontWeight.w800,
+                          color: tokens.inkSecondary,
+                        ),
+                      ),
+                    ],
+                    if (entry.isIssue) HistoryIssueLines(entry: entry),
+                  ],
+                ),
+              ),
+              const SizedBox(width: 10),
+              Column(
+                crossAxisAlignment: CrossAxisAlignment.end,
+                children: [
+                  if (showAmount)
                     Text(
-                      entry.description,
-                      maxLines: 2,
-                      overflow: TextOverflow.ellipsis,
+                      formatMoney(entry.amount!),
                       style: TextStyle(
-                        fontSize: 12,
-                        fontWeight: FontWeight.w500,
-                        color: tokens.textMuted.withValues(alpha: 0.9),
+                        fontSize: 14,
+                        fontWeight: FontWeight.w900,
+                        color: entry.type == HistoryEntryType.payment
+                            ? tokens.destructive
+                            : tokens.brandNavy,
+                      ),
+                    )
+                  else
+                    CircleAvatar(
+                      radius: 16,
+                      backgroundColor: avatarColors.background,
+                      child: Text(
+                        initials,
+                        style: TextStyle(
+                          fontSize: 12,
+                          fontWeight: FontWeight.w800,
+                          color: avatarColors.foreground,
+                        ),
                       ),
                     ),
-                  ],
-                  if (entry.status == PendingStatus.rejected &&
-                      rejectionReason != null) ...[
-                    const SizedBox(height: 6),
-                    Text(
-                      'Motivo: ${rejectionMessage(rejectionReason)}',
-                      style: TextStyle(
-                        fontSize: 12,
-                        fontWeight: FontWeight.w700,
-                        color: tokens.destructive,
-                      ),
-                    ),
-                  ],
+                  const SizedBox(height: 8),
+                  SyncStatusPill(status: entry.status),
                 ],
               ),
-            ),
-            const SizedBox(width: 10),
-            Column(
-              crossAxisAlignment: CrossAxisAlignment.end,
-              children: [
-                if (showAmount)
-                  Text(
-                    formatMoney(entry.amount!),
-                    style: TextStyle(
-                      fontSize: 14,
-                      fontWeight: FontWeight.w900,
-                      color: entry.type == HistoryEntryType.payment
-                          ? tokens.destructive
-                          : tokens.brandNavy,
-                    ),
-                  )
-                else
-                  CircleAvatar(
-                    radius: 16,
-                    backgroundColor: avatarColors.background,
-                    child: Text(
-                      initials,
-                      style: TextStyle(
-                        fontSize: 12,
-                        fontWeight: FontWeight.w800,
-                        color: avatarColors.foreground,
-                      ),
-                    ),
-                  ),
-                const SizedBox(height: 8),
-                SyncStatusPill(status: entry.status),
-              ],
-            ),
-          ],
+            ],
+          ),
         ),
       ),
     );

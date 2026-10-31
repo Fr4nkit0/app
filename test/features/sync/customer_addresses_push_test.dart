@@ -108,8 +108,8 @@ void main() {
     db.customerAddressTable,
   )..where((t) => t.addressId.equals(id))).getSingle();
 
-  test('an edited address travels under customer_addresses with exactly the '
-      'contract fields, strict booleans and a UTC modified_at', () async {
+  test('an edited address travels under customer_addresses with the '
+      'changed fields and a UTC modified_at', () async {
     await EditAddressUseCase(
       addressRepo: repo(),
       transaction: runner(db),
@@ -137,15 +137,8 @@ void main() {
       'apartment': 'B',
       'floor': 'PB',
       'visual_reference': 'Portón negro',
-      'neighborhood': 'Centro',
-      'latitude': -24.78,
-      'longitude': -65.41,
-      'is_primary': false,
-      'enabled': true,
       'modified_at': now.toUtc().toIso8601String(),
     });
-    expect(record['is_primary'], isA<bool>());
-    expect(record['enabled'], isA<bool>());
     expect(record['modified_at'], endsWith('Z'));
     expect(await queue.countPending(), 0);
   });
@@ -184,7 +177,7 @@ void main() {
     final record = recordsIn(pushBodies.single, 'customer_addresses').single;
     expect(record['uuid'], 'a-2');
     expect(record['enabled'], false);
-    expect(record['is_primary'], false);
+    expect(record.containsKey('is_primary'), isFalse);
   });
 
   test('a new primary travels before the previous one, which is newer so '
@@ -311,7 +304,7 @@ void main() {
       const CustomerEdit(
         customerId: 'c-1',
         name: 'Kiosco Sur',
-        street: 'Street a-2',
+        street: 'Street a-2 bis',
         neighborhood: 'Centro',
       ),
     );
@@ -325,7 +318,7 @@ void main() {
 
     final customer = recordsIn(pushBodies.last, 'customers').single;
     expect(customer['name'], 'Kiosco Sur');
-    expect((customer['address'] as Map)['uuid'], 'a-2');
+    expect(customer['address'], {'uuid': 'a-2', 'street': 'Street a-2 bis'});
     expect(await queue.countPending(), 0);
   });
 

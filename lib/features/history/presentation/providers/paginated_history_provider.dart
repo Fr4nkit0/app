@@ -3,6 +3,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:app/features/history/domain/models/history_entry.dart';
 import 'package:app/features/history/domain/models/history_entry_type.dart';
 import 'package:app/features/history/presentation/providers/history_list_provider.dart';
+import 'package:app/features/sync/domain/models/pending_change.dart';
 
 class HistoryTodaySummary {
   const HistoryTodaySummary({
@@ -28,6 +29,9 @@ class PaginatedHistoryState {
   final int currentPage;
   final String searchQuery;
   final HistoryEntryType? typeFilter;
+
+  /// Only the rejected and dropped records ([HistoryEntry.isIssue]).
+  final bool issuesOnly;
   final HistoryTodaySummary todaySummary;
 
   const PaginatedHistoryState({
@@ -38,6 +42,7 @@ class PaginatedHistoryState {
     this.currentPage = 1,
     this.searchQuery = '',
     this.typeFilter,
+    this.issuesOnly = false,
     this.todaySummary = const HistoryTodaySummary(),
   });
 
@@ -50,6 +55,7 @@ class PaginatedHistoryState {
     String? searchQuery,
     HistoryEntryType? typeFilter,
     bool clearTypeFilter = false,
+    bool? issuesOnly,
     HistoryTodaySummary? todaySummary,
   }) {
     return PaginatedHistoryState(
@@ -60,6 +66,7 @@ class PaginatedHistoryState {
       currentPage: currentPage ?? this.currentPage,
       searchQuery: searchQuery ?? this.searchQuery,
       typeFilter: clearTypeFilter ? null : (typeFilter ?? this.typeFilter),
+      issuesOnly: issuesOnly ?? this.issuesOnly,
       todaySummary: todaySummary ?? this.todaySummary,
     );
   }
@@ -70,7 +77,11 @@ class PaginatedHistoryNotifier extends Notifier<PaginatedHistoryState> {
   static const int pageSize = 6;
 
   List<HistoryEntry> _visibleSource(PaginatedHistoryState from) {
-    Iterable<HistoryEntry> list = _allEntries;
+    // A dismissed notice stays in the queue but leaves the list.
+    Iterable<HistoryEntry> list = _allEntries.where(
+      (e) => e.status != PendingStatus.dismissed,
+    );
+    if (from.issuesOnly) list = list.where((e) => e.isIssue);
     final filter = from.typeFilter;
     if (filter != null) {
       list = list.where((e) => e.type == filter);
@@ -181,6 +192,17 @@ class PaginatedHistoryNotifier extends Notifier<PaginatedHistoryState> {
     state = state.copyWith(
       typeFilter: type,
       clearTypeFilter: type == null,
+      currentPage: 1,
+      entries: [],
+      hasReachedMax: false,
+      isLoading: false,
+    );
+    _applySlice();
+  }
+
+  void toggleIssuesOnly() {
+    state = state.copyWith(
+      issuesOnly: !state.issuesOnly,
       currentPage: 1,
       entries: [],
       hasReachedMax: false,

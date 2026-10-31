@@ -71,7 +71,7 @@ class SaleCancellationPusher implements EntityPusher, RejectionAware {
 
   /// The sale counts again: in the balance, the truck stock and custody.
   @override
-  Future<void> applyRejected(String localId) async {
+  Future<void> applyRejected(String localId, {Json? current}) async {
     await _sales.undoCancellation(localId);
     await _inventory.undoSaleReversal(localId);
   }

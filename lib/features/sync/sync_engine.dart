@@ -6,6 +6,7 @@ import 'package:drift/drift.dart';
 
 import '../../core/services/database.helper.dart';
 import 'data/repositories/pending_change.repository.dart';
+import 'data/repositories/server_shadow.dart';
 import 'domain/models/pending_change.dart';
 import 'domain/models/sync_status.dart';
 import 'pull/pull_applier.dart' show dateOnly;
@@ -39,6 +40,7 @@ class SyncEngine {
        _db = db,
        _sync = sync,
        _queue = DriftPendingChangeRepository(db),
+       _shadow = ServerShadow(db),
        _pushers = pushers ?? defaultPushers(db, today: now ?? DateTime.now),
        _now = now ?? DateTime.now;
 
@@ -69,6 +71,7 @@ class SyncEngine {
   final AppDatabase _db;
   final SyncService _sync;
   final PendingChangeRepository _queue;
+  final ServerShadow _shadow;
   final List<EntityPusher> _pushers;
   final DateTime Function() _now;
   final _running = StreamController<bool>.broadcast();
@@ -119,7 +122,20 @@ class SyncEngine {
   /// only after the server answered: a cut before the answer leaves them
   /// pending, and the retry carries the same client uuids, which the server
   /// recognises instead of creating the record twice.
+  ///
+  /// A rejected record is rolled back by its pusher ([RejectionAware]); an
+  /// outdated one (the server applied none of it) is marked outdated and its
+  /// row shows the server's values again ([ServerShadow]). Both take the
+  /// server row the answer carries (`current`) when there is one, over the
+  /// values last known; an accepted answer carries none. Once the queue is
+  /// settled, the server values kept for rows with nothing pending are
+  /// forgotten.
   Future<void> push() async {
+    await _push();
+    await _shadow.clearSettled();
+  }
+
+  Future<void> _push() async {
     final pending = await _queue.getPending();
     if (pending.isEmpty) return;
     final entityIdOf = {for (final c in pending) c.id: c.entityId};
@@ -167,20 +183,44 @@ class SyncEngine {
         };
         // A change settles only after every record built from it did.
         final rejectedWith = <int, String>{};
+        final currentOf = <String, Json>{};
         final unanswered = <int>{};
         final accepted = <int>{};
+        final outdated = <int>{};
+        final outdatedRows = <String, List<int>>{};
         for (final record in plan.records) {
           final result = results[record.uuid];
-          if (result?['status'] == 'accepted') {
+          final status = result?['status'];
+          if (status == 'accepted' || status == 'outdated') {
             // An accepted record that waits for review is still accepted.
-            await pusher.applyAccepted(record, result!['server_id'] as int);
-            accepted.addAll(record.changeIds);
-          } else if (result?['status'] == 'rejected') {
+            // An outdated one changed nothing: the server holds newer values
+            // for every field it carried.
+            final serverId = result!['server_id'];
+            if (status == 'accepted' || serverId != null) {
+              await pusher.applyAccepted(record, serverId as int);
+            }
+            if (status == 'accepted') {
+              accepted.addAll(record.changeIds);
+            } else {
+              outdated.addAll(record.changeIds);
+              outdatedRows[record.localId] = record.changeIds;
+              final current = _currentOf(result);
+              if (current != null) {
+                await _shadow.keepCurrent(
+                  pusher.entity,
+                  record.localId,
+                  current,
+                );
+              }
+            }
+          } else if (status == 'rejected') {
             final reason =
                 (result!['error'] as String?) ?? 'Rechazado por el servidor.';
             for (final id in record.changeIds) {
               rejectedWith.putIfAbsent(id, () => reason);
             }
+            final current = _currentOf(result);
+            if (current != null) currentOf[record.localId] = current;
           } else {
             // No answer for this record: it stays pending for the next cycle.
             unanswered.addAll(record.changeIds);
@@ -189,29 +229,58 @@ class SyncEngine {
         for (final MapEntry(key: id, value: reason) in rejectedWith.entries) {
           await _queue.markRejected(id, reason);
         }
-        await _applyRejected(pusher, rejectedWith.keys, entityIdOf);
-        final sent = [
+        await _applyRejected(
+          pusher,
+          rejectedWith.keys,
+          entityIdOf,
+          currentOf: currentOf,
+        );
+        bool settles(int id) =>
+            !rejectedWith.containsKey(id) && !unanswered.contains(id);
+        await _queue.markSent([
           for (final id in accepted)
-            if (!rejectedWith.containsKey(id) && !unanswered.contains(id)) id,
-        ];
-        if (sent.isNotEmpty) await _queue.markSent(sent);
+            if (settles(id)) id,
+        ]);
+        // Outdated only when no record built from the change applied
+        // anything.
+        final dropped = {
+          for (final id in outdated)
+            if (settles(id) && !accepted.contains(id)) id,
+        };
+        await _queue.markOutdated(dropped.toList());
+        for (final MapEntry(key: localId, value: ids) in outdatedRows.entries) {
+          if (ids.every(dropped.contains)) {
+            await _shadow.restoreIfSettled(pusher.entity, localId);
+          }
+        }
       }
     });
   }
 
   /// Lets [pusher] take back what its rejected local records moved, once
-  /// per local record.
+  /// per local record, with the server row the answer carried for it
+  /// ([currentOf], by local id).
   Future<void> _applyRejected(
     EntityPusher pusher,
     Iterable<int> changeIds,
-    Map<int, String> entityIdOf,
-  ) async {
+    Map<int, String> entityIdOf, {
+    Map<String, Json> currentOf = const {},
+  }) async {
     if (pusher is! RejectionAware) return;
     final localIds = {for (final id in changeIds) ?entityIdOf[id]};
     for (final localId in localIds) {
-      await (pusher as RejectionAware).applyRejected(localId);
+      await (pusher as RejectionAware).applyRejected(
+        localId,
+        current: currentOf[localId],
+      );
     }
   }
+
+  /// The server row an answer carries, in pull shape.
+  static Json? _currentOf(Json result) => switch (result['current']) {
+    final Map current => Map<String, dynamic>.from(current),
+    _ => null,
+  };
 
   Future<SyncStatus> status() => _statusQuery().getSingle();
 

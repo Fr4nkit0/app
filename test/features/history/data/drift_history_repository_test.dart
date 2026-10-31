@@ -167,11 +167,10 @@ void main() {
 
     final entries = await sut.watchHistory().first;
 
-    expect([for (final e in entries) e.description], [
-      'Dirección desactivada',
-      'Dirección actualizada',
-      'Dirección agregada',
-    ]);
+    expect(
+      [for (final e in entries) e.description],
+      ['Dirección desactivada', 'Dirección actualizada', 'Dirección agregada'],
+    );
     for (final entry in entries) {
       expect(entry.type, HistoryEntryType.customer);
       expect(entry.customerId, 'cus-1');
@@ -206,17 +205,37 @@ void main() {
 
     final entries = await sut.watchHistory().first;
 
-    expect([for (final e in entries) e.description], [
-      'Preferencia desactivada',
-      'Preferencia actualizada',
-      'Preferencia actualizada',
-      'Preferencia agregada',
-    ]);
+    expect(
+      [for (final e in entries) e.description],
+      [
+        'Preferencia desactivada',
+        'Preferencia actualizada',
+        'Preferencia actualizada',
+        'Preferencia agregada',
+      ],
+    );
     for (final entry in entries) {
       expect(entry.type, HistoryEntryType.customer);
       expect(entry.customerId, 'cus-1');
       expect(entry.customerName, 'Ana Gómez');
     }
+  });
+
+  test('a rejected record whose local row was deleted still names its '
+      'customer', () async {
+    // The rollback of a rejected preference create deletes the local row;
+    // the queue entry keeps the customer id in its payload.
+    await queue.enqueue(
+      entity: PendingEntity.customerPreference,
+      entityId: 'pref-gone',
+      action: PendingAction.insert,
+      payload: {'preferenceId': 'pref-gone', 'customerId': 'cus-1'},
+    );
+
+    final entry = (await sut.watchHistory().first).single;
+
+    expect(entry.customerId, 'cus-1');
+    expect(entry.customerName, 'Ana Gómez');
   });
 
   test('emits again when the server answers a record', () async {
@@ -413,6 +432,39 @@ void main() {
 
     expect(entry.description, 'Venta registrada');
   });
+
+  test(
+    'a rejected or outdated edit carries what was refused or dropped',
+    () async {
+      for (final fields in [
+        ['phone_number'],
+        ['name'],
+      ]) {
+        await queue.enqueue(
+          entity: PendingEntity.customer,
+          entityId: 'cus-1',
+          action: PendingAction.update,
+          payload: {PendingChange.changedFieldsKey: fields},
+        );
+      }
+      final [rejected, outdated] = await queue.getPending();
+      await queue.markRejected(rejected.id, 'invalid');
+      await queue.recordRejection(
+        entity: PendingEntity.customer,
+        entityId: 'cus-1',
+        refused: {'phone_number': '111'},
+        rollback: RejectionRollback.restored,
+      );
+      await queue.markOutdated([outdated.id]);
+
+      final [dropped, refused] = await sut.watchHistory().first;
+
+      expect(refused.rejectedValues, {'phone_number': '111'});
+      expect(refused.rollback, RejectionRollback.restored);
+      expect(dropped.status, PendingStatus.outdated);
+      expect(dropped.changedFields, ['name']);
+    },
+  );
 
   test('is empty when the driver has recorded nothing', () async {
     expect(await sut.watchHistory().first, isEmpty);
