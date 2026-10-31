@@ -52,6 +52,30 @@ class PreferenceDetails {
   bool sameSlot(int day, String otherStart) =>
       day == dayOfWeek && hhmm(otherStart) == hhmm(start);
 
+  /// Whether this window and [other] share a moment of the same day.
+  /// Windows are half-open, so touching edges do not overlap, and a window
+  /// without an end lasts until the end of the day.
+  bool overlaps(PreferenceDetails other) {
+    if (other.dayOfWeek != dayOfWeek) return false;
+    return _from(start).compareTo(_until(other.end)) < 0 &&
+        _from(other.start).compareTo(_until(end)) < 0;
+  }
+
+  /// The window as the driver reads it: `HH:mm–HH:mm`, `desde HH:mm`,
+  /// `hasta HH:mm` or `todo el día`.
+  String get label {
+    final from = hhmm(start) ?? start;
+    final until = end == null ? null : hhmm(end) ?? end;
+    final hasStart = from != noStart;
+    if (until == null) return hasStart ? 'desde $from' : 'todo el día';
+    return hasStart ? '$from–$until' : 'hasta $until';
+  }
+
+  static String _from(String start) => hhmm(start) ?? start;
+
+  /// `24:00` sorts after every `HH:mm`, standing for the end of the day.
+  static String _until(String? end) => end == null ? '24:00' : hhmm(end) ?? end;
+
   /// [time] (`H:mm`, `HH:mm` or `HH:mm:ss`) as `HH:mm`, or null when it is
   /// not a time of day.
   static String? hhmm(String? time) {
