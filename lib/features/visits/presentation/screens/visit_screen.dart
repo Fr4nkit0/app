@@ -118,10 +118,30 @@ class _VisitScreenState extends ConsumerState<VisitScreen> {
 
     return salesAsync.when(
       data: (sales) {
+        // A cancelled sale takes back the containers returned with it.
+        final cancelledSaleIds = {
+          for (final sale in sales)
+            if (sale.isCancelled) sale.id,
+        };
+        final validReturns = [
+          for (final movement in returns)
+            if (!cancelledSaleIds.contains(movement.saleId)) movement,
+        ];
+        final cancelledReturns = [
+          for (final movement in returns)
+            if (cancelledSaleIds.contains(movement.saleId)) movement,
+        ];
         final records = [
           for (final sale in sales) _buildRegisteredSaleCard(sale, now),
           for (final payment in payments) _buildPaymentRecord(payment, now),
-          if (returns.isNotEmpty) _buildReturnRecord(returns, containerLabels),
+          if (validReturns.isNotEmpty)
+            _buildReturnRecord(validReturns, containerLabels),
+          if (cancelledReturns.isNotEmpty)
+            _buildReturnRecord(
+              cancelledReturns,
+              containerLabels,
+              isCancelled: true,
+            ),
         ];
         const recordsHeader = VisitSectionHeader(
           title: 'Registro',
@@ -708,8 +728,9 @@ class _VisitScreenState extends ConsumerState<VisitScreen> {
 
   Widget _buildReturnRecord(
     List<ContainerMovement> returns,
-    Map<String, String> containerLabels,
-  ) {
+    Map<String, String> containerLabels, {
+    bool isCancelled = false,
+  }) {
     final returnedByType = <String, int>{};
     for (final movement in returns) {
       returnedByType.update(
@@ -719,6 +740,7 @@ class _VisitScreenState extends ConsumerState<VisitScreen> {
       );
     }
     return VisitRecordTile(
+      statusLabel: isCancelled ? 'Anulada' : null,
       icon: Icons.inventory_2_outlined,
       title: 'Devolución de envases',
       detail: [

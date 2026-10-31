@@ -3,14 +3,21 @@ import 'dart:convert';
 import 'package:drift/drift.dart';
 
 import 'package:app/core/services/database.helper.dart';
+import 'package:app/features/history/domain/models/customer_record.dart';
 import 'package:app/features/history/domain/models/history_entry.dart';
 import 'package:app/features/history/domain/models/history_entry_type.dart';
+import 'package:app/features/payments/domain/models/payment.dart';
+import 'package:app/features/sales/data/database/record_status.dart';
 import 'package:app/features/sales/domain/models/payment_method.dart';
 import 'package:app/features/sync/domain/models/pending_change.dart';
 
 abstract class HistoryRepository {
   /// Every record in the local sync queue, newest first.
   Stream<List<HistoryEntry>> watchHistory();
+
+  /// Every visit, sale, payment and container movement of [customerId]
+  /// stored on the device, newest first.
+  Stream<List<CustomerRecord>> watchCustomerRecords(String customerId);
 }
 
 /// Builds the history from the sync queue: each queued change is one record
@@ -27,6 +34,139 @@ class DriftHistoryRepository implements HistoryRepository {
     final query = _db.select(_db.pendingChangeTable)
       ..orderBy([(t) => OrderingTerm.desc(t.pendingChangeId)]);
     return query.watch().asyncMap(_toEntries);
+  }
+
+  /// Reads the record tables themselves, not the sync queue, so records the
+  /// bootstrap or a pull stored (with no pending change) are listed too.
+  @override
+  Stream<List<CustomerRecord>> watchCustomerRecords(String customerId) async* {
+    yield await _customerRecords(customerId);
+    await for (final _ in _db.tableUpdates(
+      TableUpdateQuery.onAllTables([
+        _db.visitTable,
+        _db.saleTable,
+        _db.saleItemTable,
+        _db.paymentTable,
+        _db.containerMovementTable,
+      ]),
+    )) {
+      yield await _customerRecords(customerId);
+    }
+  }
+
+  Future<List<CustomerRecord>> _customerRecords(String customerId) async {
+    final records = [
+      ...await _customerVisits(customerId),
+      ...await _customerSales(customerId),
+      ...await _customerPayments(customerId),
+      ...await _customerMovements(customerId),
+    ];
+    return records..sort((a, b) => b.date.compareTo(a.date));
+  }
+
+  Future<List<CustomerRecord>> _customerVisits(String customerId) async {
+    final query = _db.select(_db.visitTable).join([
+      leftOuterJoin(
+        _db.visitOutcomeTable,
+        _db.visitOutcomeTable.id.equalsExp(_db.visitTable.outcomeId),
+      ),
+    ])..where(_db.visitTable.customerId.equals(customerId));
+    return query.map((row) {
+      final visit = row.readTable(_db.visitTable);
+      return CustomerRecord(
+        id: visit.visitId,
+        type: CustomerRecordType.visit,
+        date: visit.arrived_at,
+        outcomeName: row.readTableOrNull(_db.visitOutcomeTable)?.name,
+        observations: _nonBlank(visit.observations),
+      );
+    }).get();
+  }
+
+  Future<List<CustomerRecord>> _customerSales(String customerId) async {
+    final sales = await (_db.select(
+      _db.saleTable,
+    )..where((t) => t.customerId.equals(customerId))).get();
+    final itemsQuery = _db.select(_db.saleItemTable).join([
+      innerJoin(
+        _db.productTable,
+        _db.productTable.productId.equalsExp(_db.saleItemTable.productId),
+      ),
+    ])..where(_db.saleItemTable.saleId.isIn(sales.map((s) => s.saleId)));
+    final itemsBySale = <String, List<CustomerRecordItem>>{};
+    for (final row in await itemsQuery.get()) {
+      final item = row.readTable(_db.saleItemTable);
+      itemsBySale
+          .putIfAbsent(item.saleId, () => [])
+          .add(
+            CustomerRecordItem(
+              productName: row.readTable(_db.productTable).name,
+              quantity: item.quantity,
+            ),
+          );
+    }
+    return [
+      for (final sale in sales)
+        CustomerRecord(
+          id: sale.saleId,
+          type: CustomerRecordType.sale,
+          date: sale.saleDate,
+          amount: sale.totalAmount,
+          isCancelled: sale.status == RecordStatus.cancelled,
+          saleMethod: PaymentMethod.values.firstWhere(
+            (m) => m.name == sale.paymentMethod,
+            orElse: () => PaymentMethod.cash,
+          ),
+          saleItems: itemsBySale[sale.saleId] ?? const [],
+        ),
+    ];
+  }
+
+  Future<List<CustomerRecord>> _customerPayments(String customerId) async {
+    final payments = await (_db.select(
+      _db.paymentTable,
+    )..where((t) => t.customerId.equals(customerId))).get();
+    return [
+      for (final payment in payments)
+        CustomerRecord(
+          id: payment.paymentId,
+          type: CustomerRecordType.payment,
+          date: payment.createdAt,
+          amount: payment.amount,
+          isCancelled: payment.status == RecordStatus.cancelled,
+          paymentType: PaymentType.fromDb(payment.paymentMethod),
+          observations: _nonBlank(payment.notes),
+        ),
+    ];
+  }
+
+  /// A reversal only undoes another movement, so it is not listed; the
+  /// movement of a cancelled sale is listed as cancelled instead.
+  Future<List<CustomerRecord>> _customerMovements(String customerId) async {
+    final query =
+        _db.select(_db.containerMovementTable).join([
+          leftOuterJoin(
+            _db.saleTable,
+            _db.saleTable.saleId.equalsExp(_db.containerMovementTable.saleId),
+          ),
+        ])..where(
+          _db.containerMovementTable.customerId.equals(customerId) &
+              _db.containerMovementTable.reversesMovementId.isNull(),
+        );
+    return query.map((row) {
+      final movement = row.readTable(_db.containerMovementTable);
+      return CustomerRecord(
+        id: movement.containerMovementId,
+        type: CustomerRecordType.containerMovement,
+        date: movement.createdAt,
+        isCancelled:
+            row.readTableOrNull(_db.saleTable)?.status ==
+            RecordStatus.cancelled,
+        containerType: movement.containerType,
+        deliveredQuantity: movement.deliveredQuantity,
+        returnedQuantity: movement.returnedQuantity,
+      );
+    }).get();
   }
 
   Future<List<HistoryEntry>> _toEntries(

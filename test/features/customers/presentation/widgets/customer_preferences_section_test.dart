@@ -145,7 +145,7 @@ void main() {
     await unmount(tester);
   });
 
-  testWidgets('shows why a taken day and start is refused', (tester) async {
+  testWidgets('keeps the dialog open on a taken day and start', (tester) async {
     await pumpSection(tester);
 
     await tester.tap(find.text('Agregar preferencia'));
@@ -157,7 +157,19 @@ void main() {
       find.text('El cliente ya tiene una preferencia para ese día y horario.'),
       findsOneWidget,
     );
+    expect(find.text('Agregar Preferencia Horaria'), findsOneWidget);
     expect(await queued(tester), isEmpty);
+
+    await pickDay(tester, 'Lunes', 'Sábado');
+    await tester.tap(find.text('Agregar horario'));
+    await settle(tester);
+
+    expect(find.text('Agregar Preferencia Horaria'), findsNothing);
+    expect(find.text('Sábado'), findsOneWidget);
+    expect(
+      (await queued(tester)).single.entity,
+      PendingEntity.customerPreference.wireName,
+    );
     await tester.pump(const Duration(seconds: 5));
     await unmount(tester);
   });

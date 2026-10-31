@@ -4,6 +4,7 @@ import 'package:connectivity_plus/connectivity_plus.dart';
 import 'package:flutter/widgets.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
+import 'package:app/features/sync/presentation/providers/pending_change_repository_provider.dart';
 import 'package:app/features/sync/presentation/providers/sync_providers.dart';
 import 'package:app/features/sync/sync_scheduler.dart';
 
@@ -37,6 +38,9 @@ class _SyncTriggersHostState extends ConsumerState<SyncTriggersHost> {
       online: Connectivity().onConnectivityChanged.map(
         (results) => results.any((r) => r != ConnectivityResult.none),
       ),
+      pendingCount: ref
+          .read(pendingChangeRepositoryProvider)
+          .watchPendingCount(),
     )..start();
   }
 

@@ -22,7 +22,7 @@ void main() {
       const MaterialApp(
         home: Scaffold(
           body: Center(
-            // Width left for the badges on a 360dp phone inside the visit banner.
+            // A row narrower than both badges side by side.
             child: SizedBox(width: 210, child: _badges),
           ),
         ),
@@ -30,11 +30,13 @@ void main() {
     );
 
     expect(tester.takeException(), isNull);
-    expect(find.text('Bidón 20L: '), findsOneWidget);
-    expect(find.text('Sifón 1.5L: '), findsOneWidget);
+    expect(find.text('Bidón 20L · 15'), findsOneWidget);
+    expect(find.text('Sifón 1.5L · 120'), findsOneWidget);
   });
 
-  testWidgets('both container badges stay on a single row', (tester) async {
+  testWidgets('badges that do not fit side by side wrap onto the next line', (
+    tester,
+  ) async {
     await tester.pumpWidget(
       const MaterialApp(
         home: Scaffold(
@@ -45,11 +47,9 @@ void main() {
 
     expect(tester.takeException(), isNull);
     expect(
-      tester.getCenter(find.text('Bidón 20L: ')).dy,
-      tester.getCenter(find.text('Sifón 1.5L: ')).dy,
+      tester.getCenter(find.text('Sifón 1.5L · 120')).dy,
+      greaterThan(tester.getCenter(find.text('Bidón 20L · 15')).dy),
     );
-    expect(find.text('15'), findsOneWidget);
-    expect(find.text('120'), findsOneWidget);
   });
 
   testWidgets('a catalog type the customer does not hold shows zero', (
@@ -66,7 +66,7 @@ void main() {
       ),
     );
 
-    expect(find.text('4'), findsOneWidget);
-    expect(find.text('0'), findsOneWidget);
+    expect(find.text('Bidón 20L · 4'), findsOneWidget);
+    expect(find.text('Sifón 1.5L · 0'), findsOneWidget);
   });
 }

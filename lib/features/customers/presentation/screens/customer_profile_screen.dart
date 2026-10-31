@@ -14,9 +14,8 @@ import 'package:app/features/customers/presentation/screens/edit_customer_screen
 import 'package:app/features/customers/presentation/widgets/customer_addresses_section.dart';
 import 'package:app/features/customers/presentation/widgets/customer_agreements_tab.dart';
 import 'package:app/features/customers/presentation/widgets/customer_preferences_section.dart';
-import 'package:app/features/history/domain/models/history_entry.dart';
-import 'package:app/features/history/presentation/providers/history_list_provider.dart';
-import 'package:app/features/history/presentation/widgets/history_entry_tile.dart';
+import 'package:app/features/customers/presentation/widgets/customer_history_list.dart';
+import 'package:app/features/history/presentation/providers/customer_history_provider.dart';
 import 'package:app/features/sales/presentation/providers/sale_draft_provider.dart';
 import 'package:app/features/sales/presentation/screens/sale_step1_screen.dart';
 import 'package:app/features/inventory/presentation/providers/inventory_repository_provider.dart';
@@ -74,7 +73,6 @@ class _CustomerProfileScreenState extends ConsumerState<CustomerProfileScreen> {
   @override
   Widget build(BuildContext context) {
     final customerAsync = ref.watch(customerByIdProvider(widget.customerId));
-    final historyAsync = ref.watch(historyListProvider);
     // Kept live so the disable dialog knows about today's stop.
     ref.watch(routeAllStopsProvider);
 
@@ -91,13 +89,7 @@ class _CustomerProfileScreenState extends ConsumerState<CustomerProfileScreen> {
           );
         }
 
-        final customerHistory = historyAsync.maybeWhen(
-          data: (entries) =>
-              entries.where((e) => e.customerId == customer.id).toList(),
-          orElse: () => <HistoryEntry>[],
-        );
-
-        return _buildScaffold(context, customer, customerHistory);
+        return _buildScaffold(context, customer);
       },
       loading: () =>
           const Scaffold(body: Center(child: CircularProgressIndicator())),
@@ -115,11 +107,7 @@ class _CustomerProfileScreenState extends ConsumerState<CustomerProfileScreen> {
     );
   }
 
-  Widget _buildScaffold(
-    BuildContext context,
-    dynamic customer,
-    List<HistoryEntry> customerHistory,
-  ) {
+  Widget _buildScaffold(BuildContext context, dynamic customer) {
     return Scaffold(
       backgroundColor: context.marilin.fill,
       appBar: AppBar(
@@ -160,7 +148,7 @@ class _CustomerProfileScreenState extends ConsumerState<CustomerProfileScreen> {
               _buildProfileHeader(customer),
               const SizedBox(height: 16),
               _buildTabBar(),
-              _buildTabContent(customer, customerHistory),
+              _buildTabContent(customer),
               const SizedBox(height: 80),
             ],
           ),
@@ -577,10 +565,10 @@ class _CustomerProfileScreenState extends ConsumerState<CustomerProfileScreen> {
     );
   }
 
-  Widget _buildTabContent(Customer customer, List<HistoryEntry> history) {
+  Widget _buildTabContent(Customer customer) {
     switch (_selectedTab) {
       case 0:
-        return _buildHistoryTab(history);
+        return _buildHistoryTab(customer);
       case 1:
         return _buildPreferencesTab(customer);
       case 2:
@@ -592,26 +580,39 @@ class _CustomerProfileScreenState extends ConsumerState<CustomerProfileScreen> {
     }
   }
 
-  Widget _buildHistoryTab(List<HistoryEntry> history) {
-    if (history.isEmpty) {
-      return _buildEmptyState(
-        icon: Icons.history_outlined,
-        title: 'Sin actividad reciente',
-        subtitle: 'Este cliente no tiene historial de visitas ni ventas.',
-      );
-    }
-    return Padding(
-      padding: const EdgeInsets.all(16),
-      child: ListView.builder(
-        shrinkWrap: true,
-        physics: const NeverScrollableScrollPhysics(),
-        itemCount: history.length,
-        itemBuilder: (context, index) => Padding(
-          padding: const EdgeInsets.only(bottom: 12),
-          child: HistoryEntryTile(entry: history[index]),
-        ),
-      ),
-    );
+  /// Every record of the customer stored on the device, including the ones
+  /// the bootstrap brought from the server.
+  Widget _buildHistoryTab(Customer customer) {
+    final containerLabels = <String, String>{
+      for (final type
+          in ref.watch(containerTypesProvider).value ?? const <ContainerType>[])
+        type.code: type.label,
+    };
+    return ref
+        .watch(customerRecordsProvider(customer.id))
+        .when(
+          skipLoadingOnReload: true,
+          data: (records) => records.isEmpty
+              ? _buildEmptyState(
+                  icon: Icons.history_outlined,
+                  title: 'Sin actividad reciente',
+                  subtitle:
+                      'Este cliente no tiene historial de visitas ni ventas.',
+                )
+              : CustomerHistoryList(
+                  records: records,
+                  containerLabels: containerLabels,
+                ),
+          loading: () => const Padding(
+            padding: EdgeInsets.all(32),
+            child: Center(child: CircularProgressIndicator()),
+          ),
+          error: (_, _) => _buildEmptyState(
+            icon: Icons.error_outline,
+            title: 'No pudimos cargar el historial',
+            subtitle: 'Volvé a abrir el perfil para reintentar.',
+          ),
+        );
   }
 
   Widget _buildPreferencesTab(Customer customer) {
