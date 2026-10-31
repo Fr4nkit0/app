@@ -9,7 +9,9 @@ class ProductApplier implements PullApplier {
 
   final AppDatabase _db;
 
-  /// The pull carries no price or truck stock: those keep their local values.
+  /// The pull carries the list price but no truck stock: the stock keeps its
+  /// local value, and a row without a price keeps the stored one. Recorded
+  /// sales keep the unit price they were made at.
   @override
   Future<void> applyChanges(
     Map<String, List<Json>> rows,
@@ -21,6 +23,9 @@ class ProductApplier implements PullApplier {
       final fields = ProductTableCompanion(
         name: Value(p['name'] as String),
         description: Value(p['description'] as String?),
+        price: p['price'] == null
+            ? const Value.absent()
+            : Value(toDouble(p['price'])),
         containerTypeId: Value(p['container_type_id'] as int?),
         enabled: enabledOf(p),
         serverId: Value(serverId),
@@ -28,7 +33,11 @@ class ProductApplier implements PullApplier {
       if (existing == null) {
         await _db
             .into(_db.productTable)
-            .insert(fields.copyWith(price: const Value(0)));
+            .insert(
+              fields.price.present
+                  ? fields
+                  : fields.copyWith(price: const Value(0)),
+            );
       } else {
         await (_db.update(
           _db.productTable,
