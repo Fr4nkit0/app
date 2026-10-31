@@ -2,6 +2,7 @@ import 'package:connectivity_plus/connectivity_plus.dart';
 import 'package:flutter/foundation.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_riverpod/misc.dart' show Override;
+import 'package:uuid/uuid.dart';
 import 'package:workmanager/workmanager.dart';
 
 import '../../../core/network/dio_client.dart';
@@ -17,8 +18,9 @@ import 'leased_sync_engine.dart';
 /// in `ios/Runner/Info.plist`.
 const backgroundSyncTaskName = 'com.marilin.app.backgroundSync';
 
-/// Lease owners. Fixed names: a restarted process takes back its own lease
-/// instead of waiting for it to expire.
+/// Lease owner roles. Each engine instance appends its own id: an app
+/// reopened while an older instance is still mid-cycle must wait for it
+/// instead of taking its lease over and pushing the same records twice.
 const foregroundLeaseOwner = 'foreground';
 const backgroundLeaseOwner = 'background';
 
@@ -32,7 +34,7 @@ Override leasedSyncEngineOverride({required String owner}) =>
         dio: ref.watch(dioProvider),
         db: db,
         sync: ref.watch(syncServiceProvider),
-        lease: CycleLease(db, owner: owner),
+        lease: CycleLease(db, owner: '$owner#${const Uuid().v4()}'),
       );
       ref.onDispose(engine.dispose);
       return engine;
