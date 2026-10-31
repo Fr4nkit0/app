@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_localizations/flutter_localizations.dart';
 import 'package:flutter_test/flutter_test.dart';
 
 import 'package:app/core/theme/app.theme.dart';
@@ -88,7 +89,7 @@ void main() {
     await tester.enterText(fields.at(0), hour);
     await tester.enterText(fields.at(1), minute);
     await tester.pumpAndSettle();
-    await tester.tap(find.text('OK'));
+    await tester.tap(find.text('Aceptar'));
     await tester.pumpAndSettle();
   }
 
@@ -154,6 +155,43 @@ void main() {
       await tester.pumpAndSettle();
       expect(saved, [(1, '09:00', '14:00')]);
     });
+  });
+
+  testWidgets('the picker speaks one consistent Spanish in es_AR', (
+    tester,
+  ) async {
+    await tester.pumpWidget(
+      MaterialApp(
+        theme: AppTheme.lightTheme,
+        locale: const Locale('es', 'AR'),
+        supportedLocales: const [Locale('es', 'AR')],
+        localizationsDelegates: GlobalMaterialLocalizations.delegates,
+        home: Builder(
+          builder: (context) => Scaffold(
+            body: TextButton(
+              onPressed: () => showPreferenceDialog(
+                context,
+                onSave: (_, _, _) async => null,
+              ),
+              child: const Text('open'),
+            ),
+          ),
+        ),
+      ),
+    );
+    await tester.tap(find.text('open'));
+    await tester.pumpAndSettle();
+
+    await tester.tap(find.widgetWithText(InputDecorator, 'Desde'));
+    await tester.pumpAndSettle();
+
+    final picker = find.byType(TimePickerDialog);
+    Finder inPicker(String text) =>
+        find.descendant(of: picker, matching: find.text(text));
+    expect(inPicker('Elegí la hora'), findsOneWidget);
+    expect(inPicker('Cancelar'), findsOneWidget);
+    expect(inPicker('Aceptar'), findsOneWidget);
+    expect(inPicker('ACEPTAR'), findsNothing);
   });
 
   group('S3 a taken slot keeps the dialog open', () {

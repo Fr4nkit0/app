@@ -8,11 +8,11 @@ import 'package:flutter_test/flutter_test.dart';
 
 import '../../support/fake_http_adapter.dart';
 
-Widget _app() {
+Widget _app({FakeHttpAdapter? adapter}) {
   final dio = Dio(BaseOptions(baseUrl: 'https://api.example.test/api/v1'))
-    ..httpClientAdapter = FakeHttpAdapter(
-      (_) => throw StateError('no network expected'),
-    );
+    ..httpClientAdapter =
+        adapter ??
+        FakeHttpAdapter((_) => throw StateError('no network expected'));
   return ProviderScope(
     overrides: [
       dioProvider.overrideWithValue(dio),
@@ -72,5 +72,49 @@ void main() {
         .toList();
     expect(fields[0].controller!.text, isEmpty);
     expect(fields[1].controller!.text, isEmpty);
+  });
+
+  testWidgets('the email field does not capitalize or autocorrect', (
+    tester,
+  ) async {
+    FlutterSecureStorage.setMockInitialValues({});
+
+    await tester.pumpWidget(_app());
+    await tester.pumpAndSettle();
+
+    final email = tester.widgetList<TextField>(find.byType(TextField)).first;
+    expect(email.keyboardType, TextInputType.emailAddress);
+    expect(email.textCapitalization, TextCapitalization.none);
+    expect(email.autocorrect, isFalse);
+    expect(email.enableSuggestions, isFalse);
+  });
+
+  testWidgets('the error banner is read only once', (tester) async {
+    FlutterSecureStorage.setMockInitialValues({});
+    final semantics = tester.ensureSemantics();
+    final adapter = FakeHttpAdapter(
+      (_) => FakeHttpAdapter.json(422, {
+        'message': 'These credentials do not match our records.',
+      }),
+    );
+
+    await tester.pumpWidget(_app(adapter: adapter));
+    await tester.pumpAndSettle();
+    final fields = find.byType(TextField);
+    await tester.enterText(fields.at(0), 'marcos@marilin.test');
+    await tester.enterText(fields.at(1), 'wrong');
+    await tester.tap(find.text('Ingresar'));
+    await tester.pumpAndSettle();
+
+    expect(
+      find.bySemanticsLabel(RegExp('No pudimos iniciar sesión')),
+      findsOneWidget,
+    );
+    expect(
+      find.bySemanticsLabel(RegExp('credenciales|credentials')),
+      findsOneWidget,
+    );
+    expect(find.bySemanticsLabel(RegExp('Error al iniciar')), findsNothing);
+    semantics.dispose();
   });
 }

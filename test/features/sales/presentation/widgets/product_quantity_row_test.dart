@@ -132,7 +132,7 @@ void main() {
       await tester.pump();
       expect(decrementCalled, 0);
     });
-  
+
     testWidgets('a product without price shows it and cannot be incremented', (
       tester,
     ) async {
@@ -196,5 +196,23 @@ void main() {
 
       expect(find.textContaining('Solo quedan'), findsNothing);
     });
+  });
+
+  testWidgets('the stepper buttons are labelled for TalkBack', (tester) async {
+    final semantics = tester.ensureSemantics();
+    await tester.pumpWidget(
+      _wrap(
+        ProductQuantityRow(
+          product: _makeProduct(name: 'Soda 1.5L'),
+          quantity: 1,
+          onIncrement: () {},
+          onDecrement: () {},
+        ),
+      ),
+    );
+
+    expect(find.bySemanticsLabel('Quitar una Soda 1.5L'), findsOneWidget);
+    expect(find.bySemanticsLabel('Agregar una Soda 1.5L'), findsOneWidget);
+    semantics.dispose();
   });
 }

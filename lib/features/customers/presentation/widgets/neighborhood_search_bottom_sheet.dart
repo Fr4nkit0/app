@@ -57,7 +57,7 @@ class _NeighborhoodSearchBottomSheetState
       return widget.neighborhoods;
     }
     return widget.neighborhoods
-        .where((n) => StringUtils.fuzzyMatch(_searchQuery, n))
+        .where((n) => StringUtils.wordStartMatch(_searchQuery, n))
         .toList();
   }
 

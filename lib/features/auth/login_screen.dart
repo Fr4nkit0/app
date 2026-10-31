@@ -122,6 +122,9 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
                     TextFormField(
                       controller: _emailController,
                       keyboardType: TextInputType.emailAddress,
+                      textCapitalization: TextCapitalization.none,
+                      autocorrect: false,
+                      enableSuggestions: false,
                       autofillHints: const [
                         AutofillHints.username,
                         AutofillHints.email,
@@ -244,50 +247,55 @@ class _LoginErrorBanner extends StatelessWidget {
     return Semantics(
       liveRegion: true,
       container: true,
-      label: 'Error al iniciar sesión: $message',
-      child: Container(
-        width: double.infinity,
-        padding: const EdgeInsets.all(14),
-        decoration: BoxDecoration(
-          color: tokens.destructive.withValues(alpha: 0.07),
-          borderRadius: BorderRadius.circular(12),
-          border: Border.all(color: tokens.destructive.withValues(alpha: 0.35)),
-        ),
-        child: Row(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Icon(
-              Icons.error_outline_rounded,
-              size: 22,
-              color: tokens.destructive,
+      label: 'No pudimos iniciar sesión. $message',
+      // The label already says it all; the texts would be read twice.
+      child: ExcludeSemantics(
+        child: Container(
+          width: double.infinity,
+          padding: const EdgeInsets.all(14),
+          decoration: BoxDecoration(
+            color: tokens.destructive.withValues(alpha: 0.07),
+            borderRadius: BorderRadius.circular(12),
+            border: Border.all(
+              color: tokens.destructive.withValues(alpha: 0.35),
             ),
-            const SizedBox(width: 12),
-            Expanded(
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Text(
-                    'No pudimos iniciar sesión',
-                    style: TextStyle(
-                      color: tokens.destructive,
-                      fontWeight: FontWeight.w800,
-                      fontSize: 14,
-                    ),
-                  ),
-                  const SizedBox(height: 4),
-                  Text(
-                    message,
-                    style: TextStyle(
-                      color: tokens.brandNavy.withValues(alpha: 0.85),
-                      fontWeight: FontWeight.w500,
-                      fontSize: 14,
-                      height: 1.35,
-                    ),
-                  ),
-                ],
+          ),
+          child: Row(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Icon(
+                Icons.error_outline_rounded,
+                size: 22,
+                color: tokens.destructive,
               ),
-            ),
-          ],
+              const SizedBox(width: 12),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      'No pudimos iniciar sesión',
+                      style: TextStyle(
+                        color: tokens.destructive,
+                        fontWeight: FontWeight.w800,
+                        fontSize: 14,
+                      ),
+                    ),
+                    const SizedBox(height: 4),
+                    Text(
+                      message,
+                      style: TextStyle(
+                        color: tokens.brandNavy.withValues(alpha: 0.85),
+                        fontWeight: FontWeight.w500,
+                        fontSize: 14,
+                        height: 1.35,
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            ],
+          ),
         ),
       ),
     );
