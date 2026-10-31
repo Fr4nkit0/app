@@ -106,4 +106,25 @@ void main() {
       expect(find.text('Ingresá un monto válido'), findsOneWidget);
     });
   });
+
+  testWidgets('exposes its label to TalkBack', (tester) async {
+    final semantics = tester.ensureSemantics();
+    final controller = TextEditingController(text: '1500');
+    addTearDown(controller.dispose);
+
+    await tester.pumpWidget(
+      MaterialApp(
+        theme: ThemeData(extensions: const [MarilinTokens.light]),
+        home: Scaffold(
+          body: AmountField(label: 'Efectivo', controller: controller),
+        ),
+      ),
+    );
+
+    final node = tester.getSemantics(find.bySemanticsLabel(RegExp('Efectivo')));
+    expect(node.label, 'Efectivo');
+    expect(node.value, '1500');
+    expect(node.getSemanticsData().flagsCollection.isTextField, isTrue);
+    semantics.dispose();
+  });
 }

@@ -18,13 +18,14 @@ Widget _wrap(Widget child) => MaterialApp(
 );
 
 Widget _row({
+  Product product = _product,
   int quantity = 3,
   VoidCallback? onIncrement,
   VoidCallback? onDecrement,
   ValueChanged<int>? onQuantitySubmitted,
 }) => _wrap(
   ProductQuantityRow(
-    product: _product,
+    product: product,
     quantity: quantity,
     onIncrement: onIncrement ?? () {},
     onDecrement: onDecrement ?? () {},
@@ -125,6 +126,73 @@ void main() {
 
       expect(submitted, isEmpty);
       expect(find.text('Cantidad'), findsNothing);
+    });
+
+    Product stocked(int available) => Product(
+      id: 'p1',
+      name: 'Agua 20L',
+      unitLabel: 'bidón',
+      price: 1500,
+      available: available,
+    );
+
+    testWidgets('shows the truck stock and still accepts more than it', (
+      tester,
+    ) async {
+      final submitted = <int>[];
+      await tester.pumpWidget(
+        _row(product: stocked(34), onQuantitySubmitted: submitted.add),
+      );
+
+      await openDialog(tester);
+      expect(find.text('En el camión: 34'), findsOneWidget);
+
+      await tester.enterText(find.byType(TextField), '50');
+      await tester.tap(find.text('Aceptar'));
+      await tester.pumpAndSettle();
+
+      expect(submitted, [50]);
+    });
+
+    testWidgets('shows a negative truck stock as is', (tester) async {
+      final submitted = <int>[];
+      await tester.pumpWidget(
+        _row(product: stocked(-3), onQuantitySubmitted: submitted.add),
+      );
+
+      await openDialog(tester);
+      expect(find.text('En el camión: -3'), findsOneWidget);
+
+      await tester.enterText(find.byType(TextField), '2');
+      await tester.tap(find.text('Aceptar'));
+      await tester.pumpAndSettle();
+
+      expect(submitted, [2]);
+    });
+
+    testWidgets('shows no truck stock when it is unknown', (tester) async {
+      await tester.pumpWidget(_row(onQuantitySubmitted: (_) {}));
+
+      await openDialog(tester);
+
+      expect(find.textContaining('En el camión'), findsNothing);
+    });
+
+    testWidgets('over 999 still asks for 0 to 999 with the stock shown', (
+      tester,
+    ) async {
+      final submitted = <int>[];
+      await tester.pumpWidget(
+        _row(product: stocked(34), onQuantitySubmitted: submitted.add),
+      );
+
+      await openDialog(tester);
+      await tester.enterText(find.byType(TextField), '1000');
+      await tester.tap(find.text('Aceptar'));
+      await tester.pumpAndSettle();
+
+      expect(submitted, isEmpty);
+      expect(find.text('Ingresá un número entre 0 y 999'), findsOneWidget);
     });
 
     testWidgets('does nothing when onQuantitySubmitted is null', (

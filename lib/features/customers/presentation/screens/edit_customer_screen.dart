@@ -79,6 +79,11 @@ class _EditCustomerScreenState extends ConsumerState<EditCustomerScreen> {
                     phone: formState.phone,
                     onNameChanged: formNotifier.updateName,
                     onPhoneChanged: formNotifier.updatePhone,
+                    onPhoneSubmitted: () {
+                      if (ref.read(provider).isCurrentStepValid) {
+                        formNotifier.nextStep();
+                      }
+                    },
                   ),
                   StepAddressView(
                     street: formState.street,

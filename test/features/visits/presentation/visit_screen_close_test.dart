@@ -242,7 +242,7 @@ void main() {
     await tester.pumpAndSettle();
     await tester.tap(find.text('Elegir hora'));
     await tester.pumpAndSettle();
-    await tester.tap(find.text('OK'));
+    await tester.tap(find.text('Aceptar'));
     await tester.pumpAndSettle();
 
     expect(find.text('Hoy, 23:10'), findsOneWidget);

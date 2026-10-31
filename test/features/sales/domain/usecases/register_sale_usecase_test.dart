@@ -80,6 +80,30 @@ void main() {
       await expectLater(sut.execute(makeSale()), completes);
     });
 
+    test('a sale over a zero or negative truck stock is not blocked', () async {
+      for (final (id, available) in [('sale-zero', 0), ('sale-neg', -1)]) {
+        await sut.execute(
+          makeSale(
+            id: id,
+            items: [
+              SaleItem(
+                product: Product(
+                  id: 'prod-$id',
+                  name: 'Bidón 20L',
+                  unitLabel: 'Bidón',
+                  price: 6500.0,
+                  available: available,
+                ),
+                quantity: 2,
+              ),
+            ],
+          ),
+        );
+      }
+
+      expect(await db.select(db.saleTable).get(), hasLength(2));
+    });
+
     test('F1a: SaleTable has 1 row after execute', () async {
       await sut.execute(makeSale(id: 'sale-f1a'));
 
@@ -122,67 +146,88 @@ void main() {
   });
 
   group('execute — balance and settling payments', () {
-    test('a cash sale is settled by one payment of its total and leaves the balance unchanged', () async {
-      await sut.execute(makeSale());
+    test(
+      'a cash sale is settled by one payment of its total and leaves the balance unchanged',
+      () async {
+        await sut.execute(makeSale());
 
-      final payment = await db.select(db.paymentTable).getSingle();
-      expect(payment.saleId, 'sale-test-1');
-      expect(payment.amount, 13000.0);
-      expect(await paymentRepo.watchCustomerBalance(testCustomer.id).first, 0);
-    });
+        final payment = await db.select(db.paymentTable).getSingle();
+        expect(payment.saleId, 'sale-test-1');
+        expect(payment.amount, 13000.0);
+        expect(
+          await paymentRepo.watchCustomerBalance(testCustomer.id).first,
+          0,
+        );
+      },
+    );
 
-    test('a credit sale queues no payment and raises the balance by its total', () async {
-      await sut.execute(
-        Sale(
-          id: 'sale-credit',
-          customer: testCustomer,
-          items: const [SaleItem(product: testProduct, quantity: 2)],
-          total: 13000.0,
-          paymentMethod: PaymentMethod.credit,
-          date: DateTime.now(),
-        ),
-      );
+    test(
+      'a credit sale queues no payment and raises the balance by its total',
+      () async {
+        await sut.execute(
+          Sale(
+            id: 'sale-credit',
+            customer: testCustomer,
+            items: const [SaleItem(product: testProduct, quantity: 2)],
+            total: 13000.0,
+            paymentMethod: PaymentMethod.credit,
+            date: DateTime.now(),
+          ),
+        );
 
-      expect(await db.select(db.paymentTable).get(), isEmpty);
-      expect(await paymentRepo.watchCustomerBalance(testCustomer.id).first, 13000.0);
-    });
+        expect(await db.select(db.paymentTable).get(), isEmpty);
+        expect(
+          await paymentRepo.watchCustomerBalance(testCustomer.id).first,
+          13000.0,
+        );
+      },
+    );
 
-    test('a mixed sale is settled by cash first and the transfer right after it', () async {
-      final date = DateTime(2026, 10, 28, 9, 30);
-      final payments = RegisterSaleUseCase.settlingPayments(
-        Sale(
-          id: 'sale-mixed',
-          customer: testCustomer,
-          items: const [SaleItem(product: testProduct, quantity: 2)],
-          total: 13000.0,
-          paymentMethod: PaymentMethod.mixed,
-          date: date,
-          cashAmount: 8000,
-          transferAmount: 5000,
-          visitId: 'v1',
-        ),
-      );
-
-      expect(payments.map((p) => p.type), [PaymentType.cash, PaymentType.transfer]);
-      expect(payments.map((p) => p.amount), [8000, 5000]);
-      expect(payments[0].createdAt, date);
-      expect(payments[1].createdAt, date.add(const Duration(milliseconds: 10)));
-      expect(payments.map((p) => p.saleId), ['sale-mixed', 'sale-mixed']);
-      expect(payments.map((p) => p.visitId), ['v1', 'v1']);
-      expect(payments[0].id, isNot(payments[1].id));
-    });
-
-    test('settling payments are deterministic for the same sale', () {
-      Sale sale() => Sale(
-            id: 'sale-same',
+    test(
+      'a mixed sale is settled by cash first and the transfer right after it',
+      () async {
+        final date = DateTime(2026, 10, 28, 9, 30);
+        final payments = RegisterSaleUseCase.settlingPayments(
+          Sale(
+            id: 'sale-mixed',
             customer: testCustomer,
             items: const [SaleItem(product: testProduct, quantity: 2)],
             total: 13000.0,
             paymentMethod: PaymentMethod.mixed,
-            date: DateTime(2026),
+            date: date,
             cashAmount: 8000,
             transferAmount: 5000,
-          );
+            visitId: 'v1',
+          ),
+        );
+
+        expect(payments.map((p) => p.type), [
+          PaymentType.cash,
+          PaymentType.transfer,
+        ]);
+        expect(payments.map((p) => p.amount), [8000, 5000]);
+        expect(payments[0].createdAt, date);
+        expect(
+          payments[1].createdAt,
+          date.add(const Duration(milliseconds: 10)),
+        );
+        expect(payments.map((p) => p.saleId), ['sale-mixed', 'sale-mixed']);
+        expect(payments.map((p) => p.visitId), ['v1', 'v1']);
+        expect(payments[0].id, isNot(payments[1].id));
+      },
+    );
+
+    test('settling payments are deterministic for the same sale', () {
+      Sale sale() => Sale(
+        id: 'sale-same',
+        customer: testCustomer,
+        items: const [SaleItem(product: testProduct, quantity: 2)],
+        total: 13000.0,
+        paymentMethod: PaymentMethod.mixed,
+        date: DateTime(2026),
+        cashAmount: 8000,
+        transferAmount: 5000,
+      );
 
       expect(
         RegisterSaleUseCase.settlingPayments(sale()).map((p) => p.id),
@@ -190,23 +235,36 @@ void main() {
       );
     });
 
-    test('a transfer sale is one transfer of its total; credit and route are none', () {
-      Sale withMethod(PaymentMethod method) => Sale(
-            id: 'sale-$method',
-            customer: testCustomer,
-            items: const [SaleItem(product: testProduct, quantity: 2)],
-            total: 13000.0,
-            paymentMethod: method,
-            date: DateTime(2026),
-          );
+    test(
+      'a transfer sale is one transfer of its total; credit and route are none',
+      () {
+        Sale withMethod(PaymentMethod method) => Sale(
+          id: 'sale-$method',
+          customer: testCustomer,
+          items: const [SaleItem(product: testProduct, quantity: 2)],
+          total: 13000.0,
+          paymentMethod: method,
+          date: DateTime(2026),
+        );
 
-      final transfer = RegisterSaleUseCase.settlingPayments(withMethod(PaymentMethod.transfer));
-      expect(transfer.single.type, PaymentType.transfer);
-      expect(transfer.single.amount, 13000.0);
-      expect(transfer.single.createdAt, DateTime(2026));
-      expect(RegisterSaleUseCase.settlingPayments(withMethod(PaymentMethod.credit)), isEmpty);
-      expect(RegisterSaleUseCase.settlingPayments(withMethod(PaymentMethod.route)), isEmpty);
-    });
+        final transfer = RegisterSaleUseCase.settlingPayments(
+          withMethod(PaymentMethod.transfer),
+        );
+        expect(transfer.single.type, PaymentType.transfer);
+        expect(transfer.single.amount, 13000.0);
+        expect(transfer.single.createdAt, DateTime(2026));
+        expect(
+          RegisterSaleUseCase.settlingPayments(
+            withMethod(PaymentMethod.credit),
+          ),
+          isEmpty,
+        );
+        expect(
+          RegisterSaleUseCase.settlingPayments(withMethod(PaymentMethod.route)),
+          isEmpty,
+        );
+      },
+    );
   });
 
   // ───────────────────────────────────────────────────────────────
@@ -227,8 +285,7 @@ void main() {
       expect(await db.select(db.paymentTable).get(), isEmpty);
     });
 
-    test('accepts a difference within the server tolerance of 0.005',
-        () async {
+    test('accepts a difference within the server tolerance of 0.005', () async {
       await expectLater(sut.execute(makeSale(total: 13000.004)), completes);
     });
   });
@@ -252,13 +309,13 @@ void main() {
   group('execute — container movements', () {
     test('movements recorded with the sale carry its id', () async {
       ContainerMovement movement(String id, String type) => ContainerMovement(
-            id: id,
-            customerId: testCustomer.id,
-            containerType: type,
-            deliveredQuantity: 2,
-            returnedQuantity: 1,
-            createdAt: DateTime(2026),
-          );
+        id: id,
+        customerId: testCustomer.id,
+        containerType: type,
+        deliveredQuantity: 2,
+        returnedQuantity: 1,
+        createdAt: DateTime(2026),
+      );
 
       await sut.execute(
         makeSale(),
@@ -282,31 +339,37 @@ void main() {
   });
 
   group('execute — atomic', () {
-    test('a failing second write leaves no rows and no pending changes', () async {
-      ContainerMovement movement() => ContainerMovement(
-            id: 'same-movement-id',
-            customerId: testCustomer.id,
-            containerType: 'JUG',
-            deliveredQuantity: 2,
-            returnedQuantity: 0,
-            createdAt: DateTime(2026),
-          );
+    test(
+      'a failing second write leaves no rows and no pending changes',
+      () async {
+        ContainerMovement movement() => ContainerMovement(
+          id: 'same-movement-id',
+          customerId: testCustomer.id,
+          containerType: 'JUG',
+          deliveredQuantity: 2,
+          returnedQuantity: 0,
+          createdAt: DateTime(2026),
+        );
 
-      // The second movement reuses the id, so it fails after the sale, its
-      // payment and the first movement were written.
-      await expectLater(
-        sut.execute(makeSale(), containerMovements: [movement(), movement()]),
-        throwsA(isA<StorageFailure>()),
-      );
+        // The second movement reuses the id, so it fails after the sale, its
+        // payment and the first movement were written.
+        await expectLater(
+          sut.execute(makeSale(), containerMovements: [movement(), movement()]),
+          throwsA(isA<StorageFailure>()),
+        );
 
-      expect(await db.select(db.saleTable).get(), isEmpty);
-      expect(await db.select(db.saleItemTable).get(), isEmpty);
-      expect(await db.select(db.paymentTable).get(), isEmpty);
-      expect(await db.select(db.customerAccountEntryTable).get(), isEmpty);
-      expect(await db.select(db.customerBalanceTable).get(), isEmpty);
-      expect(await db.select(db.containerMovementTable).get(), isEmpty);
-      expect(await db.select(db.customerContainerBalanceTable).get(), isEmpty);
-      expect(await db.select(db.pendingChangeTable).get(), isEmpty);
-    });
+        expect(await db.select(db.saleTable).get(), isEmpty);
+        expect(await db.select(db.saleItemTable).get(), isEmpty);
+        expect(await db.select(db.paymentTable).get(), isEmpty);
+        expect(await db.select(db.customerAccountEntryTable).get(), isEmpty);
+        expect(await db.select(db.customerBalanceTable).get(), isEmpty);
+        expect(await db.select(db.containerMovementTable).get(), isEmpty);
+        expect(
+          await db.select(db.customerContainerBalanceTable).get(),
+          isEmpty,
+        );
+        expect(await db.select(db.pendingChangeTable).get(), isEmpty);
+      },
+    );
   });
 }

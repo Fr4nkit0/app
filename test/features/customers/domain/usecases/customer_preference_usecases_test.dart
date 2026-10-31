@@ -461,10 +461,206 @@ void main() {
     });
   });
 
+  group('S2 overlapping windows', () {
+    Future<void> expectRefused(
+      Future<void> Function() write,
+      String message,
+    ) async {
+      final before = await snapshot();
+      final queueBefore = await queued();
+
+      await expectLater(write(), refusedWith(message));
+      expect(await snapshot(), before);
+      expect(await queued(), queueBefore);
+    }
+
+    Future<String> addTo(String customerId, PreferenceDetails details) =>
+        add().execute(customerId: customerId, details: details);
+
+    test('the audit windows: 08:30-13:00 is stored, 12:00-13:00 and '
+        '12:30-13:30 are refused naming it', () async {
+      final id = await addTo(
+        'cust-2',
+        const PreferenceDetails(dayOfWeek: 1, start: '08:30', end: '13:00'),
+      );
+      expect((await row(id)).timeWindowEnd, '13:00');
+
+      for (final (start, end) in [('12:00', '13:00'), ('12:30', '13:30')]) {
+        await expectRefused(
+          () => addTo(
+            'cust-2',
+            PreferenceDetails(dayOfWeek: 1, start: start, end: end),
+          ),
+          'Se superpone con 08:30–13:00.',
+        );
+      }
+    });
+
+    test('names a pulled HH:mm:ss window as HH:mm', () async {
+      await preference(
+        'q-2',
+        customerId: 'cust-2',
+        day: 1,
+        start: '08:30:00',
+        end: '13:00:00',
+      );
+
+      await expectRefused(
+        () => addTo(
+          'cust-2',
+          const PreferenceDetails(dayOfWeek: 1, start: '12:00', end: '14:00'),
+        ),
+        'Se superpone con 08:30–13:00.',
+      );
+    });
+
+    test('touching edges do not overlap', () async {
+      for (final (start, end) in [
+        ('12:00', '13:00'),
+        ('13:00', '14:00'),
+        ('11:00', '12:00'),
+      ]) {
+        await addTo(
+          'cust-1',
+          PreferenceDetails(dayOfWeek: 5, start: start, end: end),
+        );
+      }
+
+      expect(
+        [
+          for (final p in await repo().watchForCustomer('cust-1').first)
+            if (p.dayOfWeek == 5) (p.timeWindowStart, p.timeWindowEnd),
+        ],
+        [('11:00', '12:00'), ('12:00', '13:00'), ('13:00', '14:00')],
+      );
+    });
+
+    test('an existing start-only window takes the rest of the day', () async {
+      await preference('s-1', day: 6, start: '12:30');
+
+      await expectRefused(
+        () => addTo(
+          'cust-1',
+          const PreferenceDetails(dayOfWeek: 6, start: '14:00', end: '15:00'),
+        ),
+        'Se superpone con desde 12:30.',
+      );
+      final id = await addTo(
+        'cust-1',
+        const PreferenceDetails(dayOfWeek: 6, start: '10:00', end: '12:30'),
+      );
+      expect((await row(id)).timeWindowStart, '10:00');
+    });
+
+    test('a new start-only window is refused by a later window', () async {
+      await expectRefused(
+        () => addTo(
+          'cust-1',
+          const PreferenceDetails(dayOfWeek: 1, start: '08:00'),
+        ),
+        'Se superpone con 09:00–12:00.',
+      );
+    });
+
+    test('the same range on another day or customer is free', () async {
+      final other = await addTo(
+        'cust-1',
+        const PreferenceDetails(dayOfWeek: 0, start: '09:00', end: '12:00'),
+      );
+      final otherCustomer = await addTo(
+        'cust-2',
+        const PreferenceDetails(dayOfWeek: 1, start: '10:00', end: '11:00'),
+      );
+
+      expect((await row(other)).dayOfWeek, 0);
+      expect((await row(otherCustomer)).customerId, 'cust-2');
+    });
+
+    test('a disabled preference never blocks by overlap', () async {
+      final id = await addTo(
+        'cust-1',
+        const PreferenceDetails(dayOfWeek: 2, start: '10:30', end: '11:30'),
+      );
+
+      expect((await row(id)).enabled, isTrue);
+      expect((await row('p-off')).enabled, isFalse);
+    });
+
+    test('re-enabling a disabled slot is refused when it overlaps an enabled '
+        'window', () async {
+      await preference('p-3', day: 2, start: '10:30', end: '12:00');
+
+      await expectRefused(
+        () => addTo(
+          'cust-1',
+          const PreferenceDetails(dayOfWeek: 2, start: '10:00', end: '11:00'),
+        ),
+        'Se superpone con 10:30–12:00.',
+      );
+    });
+
+    test('a taken slot is refused as taken before any overlap', () async {
+      await expectRefused(
+        () => addTo(
+          'cust-1',
+          const PreferenceDetails(dayOfWeek: 1, start: '09:00', end: '10:00'),
+        ),
+        taken,
+      );
+    });
+
+    test('an edit overlapping another preference is refused', () async {
+      await expectRefused(
+        () => edit().execute(
+          preferenceId: 'p-1',
+          details: const PreferenceDetails(
+            dayOfWeek: 4,
+            start: '13:00',
+            end: '15:00',
+          ),
+        ),
+        'Se superpone con 14:00–17:00.',
+      );
+    });
+
+    for (final (name, start, end) in [
+      ('its own range', '09:00', '12:00'),
+      ('a narrower range', '10:00', '11:00'),
+      ('a wider range', '08:00', '13:00'),
+    ]) {
+      test('an edit onto $name only overlaps itself', () async {
+        await edit().execute(
+          preferenceId: 'p-1',
+          details: PreferenceDetails(dayOfWeek: 1, start: start, end: end),
+        );
+
+        final edited = await row('p-1');
+        expect((edited.timeWindowStart, edited.timeWindowEnd), (start, end));
+      });
+    }
+
+    test('an edit overlapping a disabled preference is saved', () async {
+      await edit().execute(
+        preferenceId: 'p-1',
+        details: const PreferenceDetails(
+          dayOfWeek: 2,
+          start: '10:30',
+          end: '12:00',
+        ),
+      );
+
+      expect((await row('p-1')).dayOfWeek, 2);
+    });
+  });
+
   test('the enabled list is ordered by day, then start', () async {
     await add().execute(
       customerId: 'cust-1',
-      details: const PreferenceDetails(dayOfWeek: 1, start: '08:00'),
+      details: const PreferenceDetails(
+        dayOfWeek: 1,
+        start: '08:00',
+        end: '09:00',
+      ),
     );
 
     expect(

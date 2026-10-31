@@ -94,6 +94,10 @@ class _PreferenceDialogState extends State<PreferenceDialog> {
     final picked = await showTimePicker(
       context: context,
       initialTime: initialTime,
+      // Flutter's es_AR bundle says "Selecciona" and "ACEPTAR".
+      helpText: 'Elegí la hora',
+      cancelText: 'Cancelar',
+      confirmText: 'Aceptar',
       builder: (ctx, child) {
         return Theme(
           data: Theme.of(ctx).copyWith(

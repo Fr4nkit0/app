@@ -77,6 +77,33 @@ class DriftCustomerPreferenceRepository
   }
 
   @override
+  Future<PreferenceDetails?> findOverlapping(
+    String customerId,
+    PreferenceDetails details, {
+    String? exceptId,
+  }) async {
+    final rows =
+        await (_db.select(_db.customerPreferenceTable)..where(
+              (t) =>
+                  t.customerId.equals(customerId) &
+                  t.dayOfWeek.equals(details.dayOfWeek) &
+                  t.enabled.equals(true),
+            ))
+            .get();
+    for (final r in rows) {
+      final window = PreferenceDetails(
+        dayOfWeek: r.dayOfWeek,
+        start: r.timeWindowStart,
+        end: r.timeWindowEnd,
+      );
+      if (r.customerPreferenceId != exceptId && details.overlaps(window)) {
+        return window.normalized();
+      }
+    }
+    return null;
+  }
+
+  @override
   Future<String> add(String customerId, PreferenceDetails details) async {
     final customer = await (_db.select(
       _db.customerTable,

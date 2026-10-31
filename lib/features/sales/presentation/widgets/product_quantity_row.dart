@@ -67,107 +67,128 @@ class ProductQuantityRow extends StatelessWidget {
         borderRadius: BorderRadius.circular(16),
         child: Padding(
           padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
-          child: Row(
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              // Icono del producto
-              AnimatedContainer(
-                duration: const Duration(milliseconds: 200),
-                width: 44,
-                height: 44,
-                decoration: BoxDecoration(
-                  color: hasQuantity
-                      ? primary.withValues(alpha: 0.12)
-                      : cs.surfaceContainerHigh,
-                  borderRadius: BorderRadius.circular(12),
-                ),
-                child: Icon(
-                  Icons.water_drop_rounded,
-                  size: 22,
-                  color: hasQuantity ? primary : cs.outline,
-                ),
-              ),
-              const SizedBox(width: 14),
-              // Info
-              Expanded(
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Text(
-                      product.name,
-                      style: TextStyle(
-                        fontSize: 15,
-                        fontWeight: FontWeight.w800,
-                        color: hasQuantity ? primary : context.marilin.ink,
-                      ),
+              Row(
+                children: [
+                  // Icono del producto
+                  AnimatedContainer(
+                    duration: const Duration(milliseconds: 200),
+                    width: 44,
+                    height: 44,
+                    decoration: BoxDecoration(
+                      color: hasQuantity
+                          ? primary.withValues(alpha: 0.12)
+                          : cs.surfaceContainerHigh,
+                      borderRadius: BorderRadius.circular(12),
                     ),
-                    const SizedBox(height: 3),
-                    Text(
-                      !product.hasPrice
-                          ? 'Sin precio · no se puede vender'
-                          : product.agreementId == null
-                          ? '${formatMoney(product.price)} c/u'
-                          : '${formatMoney(product.price)} c/u · acuerdo',
-                      style: TextStyle(
-                        fontSize: 13,
-                        fontWeight: FontWeight.w600,
-                        color: hasQuantity
-                            ? primary.withValues(alpha: 0.8)
-                            : cs.outline,
-                        fontFeatures: tokens.tabularStyle.fontFeatures,
-                      ),
+                    child: Icon(
+                      Icons.water_drop_rounded,
+                      size: 22,
+                      color: hasQuantity ? primary : cs.outline,
                     ),
-                    if (overStock) ...[
-                      const SizedBox(height: 3),
-                      Text(
-                        'Solo quedan ${available < 0 ? 0 : available} en el camión',
-                        style: TextStyle(
-                          fontSize: 12,
-                          fontWeight: FontWeight.w700,
-                          color: cs.error,
+                  ),
+                  const SizedBox(width: 14),
+                  // Info
+                  Expanded(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text(
+                          product.name,
+                          style: TextStyle(
+                            fontSize: 15,
+                            fontWeight: FontWeight.w800,
+                            color: hasQuantity ? primary : context.marilin.ink,
+                          ),
                         ),
-                      ),
-                    ],
-                  ],
+                        const SizedBox(height: 3),
+                        Text(
+                          !product.hasPrice
+                              ? 'Sin precio · no se puede vender'
+                              : product.agreementId == null
+                              ? '${formatMoney(product.price)} c/u'
+                              : '${formatMoney(product.price)} c/u · acuerdo',
+                          style: TextStyle(
+                            fontSize: 13,
+                            fontWeight: FontWeight.w600,
+                            color: hasQuantity
+                                ? primary.withValues(alpha: 0.8)
+                                : cs.outline,
+                            fontFeatures: tokens.tabularStyle.fontFeatures,
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                  // Stepper
+                  _QuantityStepper(
+                    productName: product.name,
+                    quantity: quantity,
+                    primary: primary,
+                    cs: cs,
+                    onDecrement: quantity > 0 ? onDecrement : null,
+                    onIncrement: product.hasPrice ? onIncrement : null,
+                    available: available,
+                    onQuantitySubmitted: onQuantitySubmitted,
+                  ),
+                ],
+              ),
+              // Below the row, not beside the stepper: in the narrow info
+              // column it wrapped and re-centred the stepper under the
+              // driver's finger.
+              if (overStock)
+                Padding(
+                  padding: const EdgeInsets.only(left: 58, top: 8),
+                  child: Text(
+                    _stockWarning(available),
+                    style: TextStyle(
+                      fontSize: 12,
+                      fontWeight: FontWeight.w700,
+                      color: cs.error,
+                    ),
+                  ),
                 ),
-              ),
-              // Stepper
-              _QuantityStepper(
-                quantity: quantity,
-                primary: primary,
-                cs: cs,
-                onDecrement: quantity > 0 ? onDecrement : null,
-                onIncrement: product.hasPrice ? onIncrement : null,
-                onQuantitySubmitted: onQuantitySubmitted,
-              ),
             ],
           ),
         ),
       ),
     );
   }
+
+  /// The truck stock may already be negative (an oversold load the admin
+  /// corrects later), so it is shown as is, never as 0.
+  static String _stockWarning(int available) => available > 0
+      ? 'Solo quedan $available en el camión'
+      : 'Sin stock en el camión ($available)';
 }
 
 class _QuantityStepper extends StatelessWidget {
   const _QuantityStepper({
+    required this.productName,
     required this.quantity,
     required this.primary,
     required this.cs,
     required this.onDecrement,
     required this.onIncrement,
+    required this.available,
     required this.onQuantitySubmitted,
   });
 
+  final String productName;
   final int quantity;
   final Color primary;
   final ColorScheme cs;
   final VoidCallback? onDecrement;
   final VoidCallback? onIncrement;
+  final int? available;
   final ValueChanged<int>? onQuantitySubmitted;
 
   Future<void> _askQuantity(BuildContext context) async {
     final value = await showDialog<int>(
       context: context,
-      builder: (_) => _QuantityDialog(initial: quantity),
+      builder: (_) => _QuantityDialog(initial: quantity, available: available),
     );
     if (value != null) onQuantitySubmitted?.call(value);
   }
@@ -180,6 +201,7 @@ class _QuantityStepper extends StatelessWidget {
       children: [
         _Btn(
           icon: Icons.remove_rounded,
+          semanticLabel: 'Quitar una $productName',
           onTap: onDecrement,
           active: quantity > 0,
           primary: context.marilin.vivid(MarilinColors.destructive),
@@ -206,6 +228,7 @@ class _QuantityStepper extends StatelessWidget {
         ),
         _Btn(
           icon: Icons.add_rounded,
+          semanticLabel: 'Agregar una $productName',
           onTap: onIncrement,
           active: onIncrement != null,
           primary: primary,
@@ -217,9 +240,12 @@ class _QuantityStepper extends StatelessWidget {
 }
 
 class _QuantityDialog extends StatefulWidget {
-  const _QuantityDialog({required this.initial});
+  const _QuantityDialog({required this.initial, required this.available});
 
   final int initial;
+
+  /// Truck stock, shown for reference only: selling over it is allowed.
+  final int? available;
 
   @override
   State<_QuantityDialog> createState() => _QuantityDialogState();
@@ -257,7 +283,12 @@ class _QuantityDialogState extends State<_QuantityDialog> {
         autofocus: true,
         keyboardType: TextInputType.number,
         inputFormatters: [FilteringTextInputFormatter.digitsOnly],
-        decoration: InputDecoration(errorText: _error),
+        decoration: InputDecoration(
+          helperText: widget.available == null
+              ? null
+              : 'En el camión: ${widget.available}',
+          errorText: _error,
+        ),
         onSubmitted: (_) => _accept(),
       ),
       actions: [
@@ -275,6 +306,7 @@ class _QuantityDialogState extends State<_QuantityDialog> {
 class _Btn extends StatefulWidget {
   const _Btn({
     required this.icon,
+    required this.semanticLabel,
     required this.onTap,
     required this.active,
     required this.primary,
@@ -282,6 +314,7 @@ class _Btn extends StatefulWidget {
   });
 
   final IconData icon;
+  final String semanticLabel;
   final VoidCallback? onTap;
   final bool active;
   final Color primary;
@@ -344,29 +377,34 @@ class _BtnState extends State<_Btn> {
   Widget build(BuildContext context) {
     final isEnabled = widget.active && widget.onTap != null;
     final primary = widget.primary;
-    return Listener(
-      onPointerDown: (_) {
-        if (isEnabled) _startHold();
-      },
-      onPointerUp: (_) => _stopHold(),
-      onPointerCancel: (_) => _stopHold(),
-      child: Material(
-        color: Colors.transparent,
-        child: InkWell(
-          onTap: widget.onTap == null ? null : _handleTap,
-          borderRadius: BorderRadius.circular(12),
-          child: Ink(
-            width: 56,
-            height: 48,
-            decoration: BoxDecoration(
-              color: primary.withValues(alpha: isEnabled ? 0.1 : 0.08),
-              borderRadius: BorderRadius.circular(12),
-            ),
-            child: Center(
-              child: Icon(
-                widget.icon,
-                size: 24,
-                color: isEnabled ? primary : primary.withValues(alpha: 0.35),
+    // No Tooltip: its long press would fight the hold-to-repeat.
+    return Semantics(
+      button: true,
+      label: widget.semanticLabel,
+      child: Listener(
+        onPointerDown: (_) {
+          if (isEnabled) _startHold();
+        },
+        onPointerUp: (_) => _stopHold(),
+        onPointerCancel: (_) => _stopHold(),
+        child: Material(
+          color: Colors.transparent,
+          child: InkWell(
+            onTap: widget.onTap == null ? null : _handleTap,
+            borderRadius: BorderRadius.circular(12),
+            child: Ink(
+              width: 56,
+              height: 48,
+              decoration: BoxDecoration(
+                color: primary.withValues(alpha: isEnabled ? 0.1 : 0.08),
+                borderRadius: BorderRadius.circular(12),
+              ),
+              child: Center(
+                child: Icon(
+                  widget.icon,
+                  size: 24,
+                  color: isEnabled ? primary : primary.withValues(alpha: 0.35),
+                ),
               ),
             ),
           ),

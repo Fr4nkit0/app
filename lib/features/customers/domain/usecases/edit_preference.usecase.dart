@@ -17,9 +17,9 @@ class EditPreferenceUseCase {
 
   /// Writes the day and window and queues the preference in one unit of
   /// work. Moving it onto the slot of another preference, even a disabled
-  /// one, is refused like the server does. Throws [ValidationFailure] for a
-  /// refused window or slot and [NotFoundFailure] for a missing or disabled
-  /// preference.
+  /// one, is refused like the server does, and so is overlapping another
+  /// enabled window. Throws [ValidationFailure] for a refused window or slot
+  /// and [NotFoundFailure] for a missing or disabled preference.
   Future<void> execute({
     required String preferenceId,
     required PreferenceDetails details,
@@ -35,6 +35,14 @@ class EditPreferenceUseCase {
       );
       if (taken != null) {
         throw const ValidationFailure(AddPreferenceUseCase.slotTaken);
+      }
+      final overlapped = await _preferenceRepo.findOverlapping(
+        current.customerId,
+        clean,
+        exceptId: preferenceId,
+      );
+      if (overlapped != null) {
+        throw ValidationFailure(AddPreferenceUseCase.overlapping(overlapped));
       }
       await _preferenceRepo.edit(preferenceId, clean);
     });

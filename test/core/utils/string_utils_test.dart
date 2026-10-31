@@ -10,7 +10,10 @@ void main() {
     });
 
     test('removes non-alphanumeric except space', () {
-      expect(StringUtils.removeDiacritics('Hello, World! 123'), 'hello world 123');
+      expect(
+        StringUtils.removeDiacritics('Hello, World! 123'),
+        'hello world 123',
+      );
     });
   });
 
@@ -42,6 +45,22 @@ void main() {
     test('negative matches', () {
       expect(StringUtils.fuzzyMatch('17 oct', '17 de Mayo'), isFalse);
       expect(StringUtils.fuzzyMatch('xyz', 'San Ramón'), isFalse);
+    });
+  });
+
+  group('StringUtils.wordStartMatch', () {
+    test('each query word must start where a target word starts', () {
+      expect(StringUtils.wordStartMatch('centro', 'Centro'), isTrue);
+      expect(
+        StringUtils.wordStartMatch('centro', 'Servicio Penitenciario'),
+        isFalse,
+      );
+      expect(StringUtils.wordStartMatch('cerritos', 'Tres Cerritos'), isTrue);
+      expect(StringUtils.wordStartMatch('ramon', 'San Ramón'), isTrue);
+      expect(StringUtils.wordStartMatch('1 mao', '17 de Mayo'), isTrue);
+      expect(StringUtils.wordStartMatch('may 17', '17 de Mayo'), isTrue);
+      expect(StringUtils.wordStartMatch('amon', 'San Ramón'), isFalse);
+      expect(StringUtils.wordStartMatch('', 'any target'), isTrue);
     });
   });
 }

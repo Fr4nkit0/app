@@ -28,8 +28,8 @@ class Product {
     this.agreementUuid,
   });
 
-  /// The server has no list price yet, so a product without agreement may
-  /// arrive at 0; such a product cannot be sold.
+  /// The list price comes from the server; a product without agreement
+  /// whose price is still 0 cannot be sold.
   bool get hasPrice => price > 0;
 
   @override

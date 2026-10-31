@@ -45,22 +45,31 @@ class ScreenHeader extends StatelessWidget {
                 if (onBackPressed != null)
                   Positioned(
                     left: 0,
-                    child: Material(
-                      color: Colors.transparent,
-                      child: InkWell(
-                        onTap: onBackPressed,
-                        borderRadius: BorderRadius.circular(12),
-                        child: Container(
-                          padding: const EdgeInsets.all(8),
-                          decoration: BoxDecoration(
-                            color: context.marilin.fill,
+                    child: Tooltip(
+                      message: 'Volver',
+                      child: Semantics(
+                        button: true,
+                        child: Material(
+                          color: Colors.transparent,
+                          child: InkWell(
+                            onTap: onBackPressed,
                             borderRadius: BorderRadius.circular(12),
-                            border: Border.all(color: tokens.border, width: 1),
-                          ),
-                          child: Icon(
-                            Icons.arrow_back_ios_new_rounded,
-                            size: 14,
-                            color: tokens.brandNavy,
+                            child: Container(
+                              padding: const EdgeInsets.all(8),
+                              decoration: BoxDecoration(
+                                color: context.marilin.fill,
+                                borderRadius: BorderRadius.circular(12),
+                                border: Border.all(
+                                  color: tokens.border,
+                                  width: 1,
+                                ),
+                              ),
+                              child: Icon(
+                                Icons.arrow_back_ios_new_rounded,
+                                size: 14,
+                                color: tokens.brandNavy,
+                              ),
+                            ),
                           ),
                         ),
                       ),

@@ -56,7 +56,9 @@ class _CreateCustomerScreenState extends ConsumerState<CreateCustomerScreen> {
       if (next == true) {
         TopToast.showSuccess(context, 'Cliente guardado exitosamente');
         // Returns the new customer so a sale started here can go on with it.
-        Navigator.of(context).pop(ref.read(customerFormProvider).createdCustomer);
+        Navigator.of(
+          context,
+        ).pop(ref.read(customerFormProvider).createdCustomer);
       }
     });
 
@@ -98,6 +100,11 @@ class _CreateCustomerScreenState extends ConsumerState<CreateCustomerScreen> {
                     phone: formState.phone,
                     onNameChanged: formNotifier.updateName,
                     onPhoneChanged: formNotifier.updatePhone,
+                    onPhoneSubmitted: () {
+                      if (ref.read(customerFormProvider).isCurrentStepValid) {
+                        formNotifier.nextStep();
+                      }
+                    },
                   ),
                   StepAddressView(
                     street: formState.street,
@@ -199,10 +206,18 @@ class _CreateCustomerScreenState extends ConsumerState<CreateCustomerScreen> {
     );
 
     return PopScope<Object?>(
-      // Back (system or app bar) only drops typed data once the driver confirms.
-      canPop: !formState.hasEnteredData || formState.isSuccess,
+      // Past the first step, back (system or app bar) goes back one step like
+      // Atrás; on the first one it only drops typed data once confirmed.
+      canPop:
+          formState.isSuccess ||
+          (formState.currentStep == 0 && !formState.hasEnteredData),
       onPopInvokedWithResult: (didPop, _) async {
         if (didPop) return;
+        final current = ref.read(customerFormProvider);
+        if (current.currentStep > 0) {
+          if (!current.isSubmitting) formNotifier.previousStep();
+          return;
+        }
         final navigator = Navigator.of(context);
         if (await confirmDiscardCustomer(context)) navigator.pop();
       },

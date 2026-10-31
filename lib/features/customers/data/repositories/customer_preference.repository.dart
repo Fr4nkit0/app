@@ -23,6 +23,14 @@ abstract class CustomerPreferenceRepository {
     String? exceptId,
   });
 
+  /// An enabled preference of [customerId], other than [exceptId], whose
+  /// window overlaps [details].
+  Future<PreferenceDetails?> findOverlapping(
+    String customerId,
+    PreferenceDetails details, {
+    String? exceptId,
+  });
+
   /// Adds an enabled preference to [customerId] and returns its id. Throws
   /// [NotFoundFailure] when the customer does not exist.
   Future<String> add(String customerId, PreferenceDetails details);

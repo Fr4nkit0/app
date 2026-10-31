@@ -230,10 +230,12 @@ class AuthController extends Notifier<AuthState> {
   }
 
   Future<bool> login(
-    String email,
+    String rawEmail,
     String password, {
     bool rememberCredentials = false,
   }) async {
+    // Keyboards capitalize the first letter; emails are case-insensitive.
+    final email = rawEmail.trim().toLowerCase();
     state = state.copyWith(isLoading: true, clearError: true);
 
     try {

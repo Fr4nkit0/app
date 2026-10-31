@@ -28,12 +28,14 @@ abstract class PaymentRepository {
   Future<List<Payment>> getSalePayments(String saleId);
 
   /// Marks [payment] cancelled at [at], books its adjustment, puts it back
-  /// on the customer balance and queues the cancellation; run it inside the
-  /// use case's unit of work.
+  /// on the customer balance and, unless [queue] is false (the server
+  /// already holds the cancellation), queues the cancellation; run it inside
+  /// the use case's unit of work.
   Future<void> cancelPayment(
     Payment payment, {
     required DateTime at,
     String? reason,
+    bool queue = true,
   });
 }
 
@@ -179,6 +181,7 @@ class DriftPaymentRepository implements PaymentRepository {
     Payment payment, {
     required DateTime at,
     String? reason,
+    bool queue = true,
   }) async {
     await (_db.update(
       _db.paymentTable,
@@ -213,6 +216,7 @@ class DriftPaymentRepository implements PaymentRepository {
       lastEntryId: entryId,
     );
 
+    if (!queue) return;
     await _queue.enqueue(
       entity: PendingEntity.paymentCancellation,
       entityId: payment.id,

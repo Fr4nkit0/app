@@ -12,6 +12,7 @@ class VisitRecordTile extends StatelessWidget {
     required this.detail,
     this.amount,
     this.statusLabel,
+    this.syncStatus,
     this.action,
   });
 
@@ -27,7 +28,11 @@ class VisitRecordTile extends StatelessWidget {
   /// through.
   final String? statusLabel;
 
-  /// What the driver can do with the record, below it.
+  /// Whether the record still has to reach the server, below it on the
+  /// left like on a sale.
+  final Widget? syncStatus;
+
+  /// What the driver can do with the record, below it on the right.
   final Widget? action;
 
   @override
@@ -98,7 +103,18 @@ class VisitRecordTile extends StatelessWidget {
               ],
             ],
           ),
-          ?action,
+          if (syncStatus != null || action != null)
+            Row(
+              children: [
+                Expanded(
+                  child: Align(
+                    alignment: Alignment.centerLeft,
+                    child: syncStatus,
+                  ),
+                ),
+                ?action,
+              ],
+            ),
         ],
       ),
     );
