@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:dio/dio.dart';
 
 import 'package:app/core/services/database.helper.dart';
@@ -7,6 +9,7 @@ import 'package:app/features/customers/domain/models/customer.address.dart';
 import 'package:app/features/sync/background/cycle_lease.dart';
 import 'package:app/features/sync/background/leased_sync_engine.dart';
 import 'package:app/features/sync/domain/models/sync_status.dart';
+import 'package:app/features/sync/sync_scheduler.dart';
 import 'package:app/features/sync/sync_service.dart';
 
 import '../../../support/fake_http_adapter.dart';
@@ -28,6 +31,9 @@ class FakeSyncServer {
 
   /// When true every request fails as if there was no network.
   bool offline = false;
+
+  /// When set, a push waits for it before answering (a slow server).
+  Completer<void>? holdPush;
 
   int _nextId = 500;
 
@@ -72,6 +78,7 @@ class FakeSyncServer {
           'message': null,
         });
       case '/sync/push':
+        await holdPush?.future;
         final body = Map<String, dynamic>.from(options.data as Map);
         return FakeHttpAdapter.json(200, {
           'data': {
@@ -96,6 +103,9 @@ LeasedSyncEngine buildEngine(
   AppDatabase db,
   FakeSyncServer server, {
   String owner = 'background',
+  DateTime Function()? now,
+  DelayedTimerFactory? delayed,
+  PeriodicTimerFactory? periodic,
 }) {
   final dio = Dio(BaseOptions(baseUrl: 'https://api.example.test'))
     ..httpClientAdapter = FakeHttpAdapter(server.handle);
@@ -103,8 +113,32 @@ LeasedSyncEngine buildEngine(
     dio: dio,
     db: db,
     sync: SyncService(dio, db),
-    lease: CycleLease(db, owner: owner),
+    lease: CycleLease(db, owner: owner, now: now),
+    delayed: delayed,
+    periodic: periodic,
   );
+}
+
+/// Timer the test fires by hand.
+class ManualTimer implements Timer {
+  ManualTimer(this.duration, this._callback);
+
+  final Duration duration;
+  final void Function(Timer) _callback;
+  bool _active = true;
+
+  void fire() {
+    if (_active) _callback(this);
+  }
+
+  @override
+  bool get isActive => _active;
+
+  @override
+  int get tick => 0;
+
+  @override
+  void cancel() => _active = false;
 }
 
 /// Queue counts and last cycle as the app shows them.
