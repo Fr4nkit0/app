@@ -20,11 +20,15 @@ import 'package:app/features/sales/domain/models/sale_item.dart';
 import 'package:app/features/sales/domain/usecases/cancel_sale.usecase.dart';
 import 'package:app/features/sales/presentation/providers/cancel_sale_usecase_provider.dart';
 import 'package:app/features/sales/presentation/providers/sale_repository_provider.dart';
+import 'package:app/features/sync/domain/models/pending_change.dart';
+import 'package:app/features/sync/presentation/providers/pending_change_repository_provider.dart';
 import 'package:app/features/visits/domain/models/visit_summary.dart';
 import 'package:app/features/visits/presentation/providers/visit_repository_provider.dart';
 import 'package:app/features/visits/presentation/screens/visit_screen.dart';
+import 'package:app/features/visits/presentation/widgets/visit_record_tile.dart';
 
 import '../../../support/container_types.dart';
+import '../../../support/real_fonts.dart';
 
 final _now = DateTime(2026, 10, 29, 12);
 final _customer = Customer(
@@ -134,8 +138,10 @@ void main() {
     required List<Sale> sales,
     List<Payment> payments = const [],
     List<ContainerMovement> movements = const [],
+    List<PendingChange> pending = const [],
+    double width = 400,
   }) async {
-    tester.view.physicalSize = const Size(400, 1800);
+    tester.view.physicalSize = Size(width, 1800);
     tester.view.devicePixelRatio = 1;
     addTearDown(tester.view.reset);
     final records = NotifierProvider<_Records, (List<Sale>, List<Payment>)>(
@@ -173,6 +179,13 @@ void main() {
             (_) => Stream.value(catalogContainerTypes),
           ),
           visitOutcomesProvider.overrideWith((_) => Stream.value(const [])),
+          recordSyncStatusProvider.overrideWith(
+            (ref, key) => Stream.value(
+              pending
+                  .where((c) => c.entity == key.entity && c.entityId == key.id)
+                  .firstOrNull,
+            ),
+          ),
         ],
         child: MaterialApp(
           theme: ThemeData(extensions: [MarilinTokens.light]),
@@ -200,6 +213,67 @@ void main() {
     expect(cancelSaleAction, findsOneWidget);
     // The payment that settled the sale is part of the sale's card.
     expect(cancelPaymentAction, findsOneWidget);
+  });
+
+  testWidgets('an unsent payment shows the same "Sin enviar" badge as the '
+      'unsent sale next to it', (tester) async {
+    PendingChange unsent(PendingEntity entity, String id) => PendingChange(
+      id: id.hashCode,
+      entity: entity,
+      entityId: id,
+      action: PendingAction.insert,
+      status: PendingStatus.pending,
+      createdAt: _now,
+    );
+    expect(
+      await loadRealFonts(),
+      isTrue,
+      reason: 'Roboto was not found in the Flutter SDK cache',
+    );
+    // A narrow phone: the badge and the cancel action share one line.
+    await pumpVisit(
+      tester,
+      width: 360,
+      sales: [_sale()],
+      payments: [_payment()],
+      pending: [
+        unsent(PendingEntity.sale, 'sale-1'),
+        unsent(PendingEntity.payment, 'pay-debt'),
+      ],
+    );
+
+    expect(find.text('Sin enviar'), findsNWidgets(2));
+    expect(
+      find.descendant(
+        of: find.ancestor(
+          of: find.text('Cobro registrado'),
+          matching: find.byType(VisitRecordTile),
+        ),
+        matching: find.text('Sin enviar'),
+      ),
+      findsOneWidget,
+    );
+  });
+
+  testWidgets('a sent payment shows no sync badge', (tester) async {
+    await pumpVisit(
+      tester,
+      sales: [_sale()],
+      payments: [_payment()],
+      pending: [
+        PendingChange(
+          id: 1,
+          entity: PendingEntity.payment,
+          entityId: 'pay-debt',
+          action: PendingAction.insert,
+          status: PendingStatus.sent,
+          createdAt: _now,
+        ),
+      ],
+    );
+
+    expect(find.text('Cobro registrado'), findsOneWidget);
+    expect(find.text('Sin enviar'), findsNothing);
   });
 
   testWidgets('records of another day offer no cancellation', (tester) async {

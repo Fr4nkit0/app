@@ -253,14 +253,15 @@ void main() {
       Future<double> rowHeight(int available) async {
         await tester.pumpWidget(
           _wrap(
-            Align(
-              alignment: Alignment.topCenter,
-              child: ProductQuantityRow(
-                product: stocked(available),
-                quantity: 5,
-                onIncrement: () {},
-                onDecrement: () {},
-              ),
+            ListView(
+              children: [
+                ProductQuantityRow(
+                  product: stocked(available),
+                  quantity: 5,
+                  onIncrement: () {},
+                  onDecrement: () {},
+                ),
+              ],
             ),
           ),
         );
@@ -269,6 +270,57 @@ void main() {
 
       final lowStock = await rowHeight(3);
       expect(await rowHeight(-12), lessThanOrEqualTo(lowStock));
+    });
+
+    testWidgets('the stepper does not move when the warning appears or goes '
+        'away on a narrow phone', (tester) async {
+      expect(
+        await loadRealFonts(),
+        isTrue,
+        reason: 'Roboto was not found in the Flutter SDK cache',
+      );
+      await tester.binding.setSurfaceSize(const Size(360, 800));
+      addTearDown(() => tester.binding.setSurfaceSize(null));
+
+      Future<List<Offset>> stepperAt(int available, int quantity) async {
+        await tester.pumpWidget(
+          // The sale screen lists the rows in a scroll view, so a row is
+          // as tall as its content.
+          _wrap(
+            ListView(
+              children: [
+                ProductQuantityRow(
+                  product: stocked(available),
+                  quantity: quantity,
+                  onIncrement: () {},
+                  onDecrement: () {},
+                ),
+              ],
+            ),
+          ),
+        );
+        await tester.pumpAndSettle();
+        return [
+          tester.getCenter(find.byIcon(Icons.remove_rounded)),
+          tester.getCenter(find.text('$quantity')),
+          tester.getCenter(find.byIcon(Icons.add_rounded)),
+        ];
+      }
+
+      // The QA repro: 35 over a stock of 34 warns, 34 does not.
+      final warned = await stepperAt(34, 35);
+      expect(find.text('Solo quedan 34 en el camión'), findsOneWidget);
+      final clear = await stepperAt(34, 34);
+      expect(find.textContaining('en el camión'), findsNothing);
+      for (var i = 0; i < 3; i++) {
+        expect(clear[i].dy, closeTo(warned[i].dy, 0.01));
+      }
+
+      final negative = await stepperAt(-12, 35);
+      expect(find.text('Sin stock en el camión (-12)'), findsOneWidget);
+      for (var i = 0; i < 3; i++) {
+        expect(negative[i].dy, closeTo(clear[i].dy, 0.01));
+      }
     });
   });
 
