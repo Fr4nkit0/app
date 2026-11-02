@@ -98,7 +98,7 @@ void main() {
       () => db.select(db.customerTable).getSingle(),
     );
     expect(customer!.name, 'Kiosco Sur');
-    expect(customer.phone, '3874009988');
+    expect(customer.phone, '387 400-9988');
     final address = await tester.runAsync(
       () => db.select(db.customerAddressTable).getSingle(),
     );
