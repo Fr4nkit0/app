@@ -2,6 +2,7 @@ import 'package:dio/dio.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../core/network/dio_client.dart';
+import '../../core/providers/clock_provider.dart';
 import '../../core/services/database.helper.dart';
 import 'pull/address_applier.dart';
 import 'pull/agreement_applier.dart';
@@ -225,5 +226,9 @@ class SyncService {
 }
 
 final syncServiceProvider = Provider<SyncService>((ref) {
-  return SyncService(ref.watch(dioProvider), ref.watch(databaseProvider));
+  return SyncService(
+    ref.watch(dioProvider),
+    ref.watch(databaseProvider),
+    today: ref.watch(clockProvider),
+  );
 });

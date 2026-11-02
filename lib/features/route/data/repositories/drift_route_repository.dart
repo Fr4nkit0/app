@@ -15,18 +15,22 @@ import 'package:app/features/visits/domain/models/visit_outcome.dart';
 import 'package:app/features/visits/domain/models/visit_summary.dart';
 
 class DriftRouteRepository implements RouteRepository {
-  DriftRouteRepository(AppDatabase db)
+  DriftRouteRepository(AppDatabase db, {DateTime Function()? now})
     : _db = db,
+      _now = now ?? DateTime.now,
       _queue = DriftPendingChangeRepository(db),
       _account = CustomerAccount(db);
 
   final AppDatabase _db;
+
+  /// Decides which route is today's.
+  final DateTime Function() _now;
   final PendingChangeRepository _queue;
   final CustomerAccount _account;
 
   @override
   Stream<List<RouteStop>> watchDayStops() {
-    final todayStr = _dateOnly(DateTime.now());
+    final todayStr = _dateOnly(_now());
 
     final q =
         _db.select(_db.routeStopTable).join([
@@ -172,9 +176,7 @@ class DriftRouteRepository implements RouteRepository {
   /// today stays on the route and in its counters.
   Expression<bool> _closedStop() {
     final visits = _db.select(_db.visitTable)
-      ..where(
-        (v) => v.routeStopId.equalsExp(_db.routeStopTable.routeStopId),
-      );
+      ..where((v) => v.routeStopId.equalsExp(_db.routeStopTable.routeStopId));
     return _db.routeStopTable.status.equals(StopStatus.pending.name).not() |
         existsQuery(visits);
   }
