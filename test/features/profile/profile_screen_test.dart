@@ -3,6 +3,7 @@ import 'package:flutter/rendering.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 import 'package:flutter_test/flutter_test.dart';
+import 'package:app/core/providers/app_version_provider.dart';
 import 'package:app/core/theme/app.theme.dart';
 import 'package:app/core/theme/theme_mode_controller.dart';
 import 'package:app/features/auth/auth_controller.dart';
@@ -19,7 +20,8 @@ import '../../support/real_fonts.dart';
 
 class _SignedIn extends AuthController {
   @override
-  AuthState build() => AuthState(isAuthenticated: true, displayName: 'Esteban Benítez');
+  AuthState build() =>
+      AuthState(isAuthenticated: true, displayName: 'Esteban Benítez');
 }
 
 void main() {
@@ -31,8 +33,13 @@ void main() {
         authControllerProvider.overrideWith(_SignedIn.new),
         syncStatusProvider.overrideWith((ref) => Stream.value(status)),
         syncRunningProvider.overrideWith((ref) => Stream.value(false)),
-        routeAllStopsProvider.overrideWith((ref) => Stream.value(const <RouteStop>[])),
-        routeDayProvider.overrideWith((ref) => Stream.value(const <RouteStop>[])),
+        routeAllStopsProvider.overrideWith(
+          (ref) => Stream.value(const <RouteStop>[]),
+        ),
+        routeDayProvider.overrideWith(
+          (ref) => Stream.value(const <RouteStop>[]),
+        ),
+        appVersionProvider.overrideWith((ref) async => '1.0.0 (1)'),
       ],
     );
     addTearDown(container.dispose);
@@ -47,7 +54,10 @@ void main() {
     await tester.pumpWidget(
       UncontrolledProviderScope(
         container: container,
-        child: MaterialApp(theme: AppTheme.lightTheme, home: const ProfileScreen()),
+        child: MaterialApp(
+          theme: AppTheme.lightTheme,
+          home: const ProfileScreen(),
+        ),
       ),
     );
     await tester.pumpAndSettle();
@@ -77,14 +87,17 @@ void main() {
     expect(find.text('2 pendientes · 0 rechazados'), findsOneWidget);
   });
 
-  testWidgets('offers the phone theme, light and dark, starting on the phone theme', (tester) async {
-    final container = await pumpProfile(tester);
+  testWidgets(
+    'offers the phone theme, light and dark, starting on the phone theme',
+    (tester) async {
+      final container = await pumpProfile(tester);
 
-    expect(find.text('Sistema'), findsOneWidget);
-    expect(find.text('Claro'), findsOneWidget);
-    expect(find.text('Oscuro'), findsOneWidget);
-    expect(container.read(themeModeProvider), ThemeMode.system);
-  });
+      expect(find.text('Sistema'), findsOneWidget);
+      expect(find.text('Claro'), findsOneWidget);
+      expect(find.text('Oscuro'), findsOneWidget);
+      expect(container.read(themeModeProvider), ThemeMode.system);
+    },
+  );
 
   testWidgets('choosing Oscuro switches and saves the theme', (tester) async {
     final container = await pumpProfile(tester);
@@ -93,28 +106,42 @@ void main() {
     await tester.pumpAndSettle();
 
     expect(container.read(themeModeProvider), ThemeMode.dark);
-    expect(await const FlutterSecureStorage().read(key: ThemeModeController.storageKey), 'dark');
+    expect(
+      await const FlutterSecureStorage().read(
+        key: ThemeModeController.storageKey,
+      ),
+      'dark',
+    );
   });
 
   for (final (width, scale) in [(360.0, 1.0), (411.0, 1.0), (360.0, 1.3)]) {
-    testWidgets('the theme labels stay on one line at ${width.toInt()} dp, text x$scale', (tester) async {
-      expect(await loadRealFonts(), isTrue, reason: 'Roboto was not found in the Flutter SDK cache');
-      await tester.binding.setSurfaceSize(Size(width, 800));
-      addTearDown(() => tester.binding.setSurfaceSize(null));
-      tester.platformDispatcher.textScaleFactorTestValue = scale;
-      addTearDown(tester.platformDispatcher.clearTextScaleFactorTestValue);
+    testWidgets(
+      'the theme labels stay on one line at ${width.toInt()} dp, text x$scale',
+      (tester) async {
+        expect(
+          await loadRealFonts(),
+          isTrue,
+          reason: 'Roboto was not found in the Flutter SDK cache',
+        );
+        await tester.binding.setSurfaceSize(Size(width, 800));
+        addTearDown(() => tester.binding.setSurfaceSize(null));
+        tester.platformDispatcher.textScaleFactorTestValue = scale;
+        addTearDown(tester.platformDispatcher.clearTextScaleFactorTestValue);
 
-      await pumpProfile(tester);
+        await pumpProfile(tester);
 
-      // "Claro" is short enough to never wrap: the other labels match its height.
-      final oneLine = tester.getSize(find.text('Claro')).height;
-      for (final label in ['Sistema', 'Oscuro']) {
-        final paragraph = tester.renderObject<RenderParagraph>(find.text(label));
-        expect(paragraph.size.height, oneLine, reason: '$label wraps');
-        expect(paragraph.didExceedMaxLines, isFalse, reason: '$label is cut');
-      }
-      expect(tester.takeException(), isNull);
-    });
+        // "Claro" is short enough to never wrap: the other labels match its height.
+        final oneLine = tester.getSize(find.text('Claro')).height;
+        for (final label in ['Sistema', 'Oscuro']) {
+          final paragraph = tester.renderObject<RenderParagraph>(
+            find.text(label),
+          );
+          expect(paragraph.size.height, oneLine, reason: '$label wraps');
+          expect(paragraph.didExceedMaxLines, isFalse, reason: '$label is cut');
+        }
+        expect(tester.takeException(), isNull);
+      },
+    );
   }
 
   Future<void> scrollToSignOut(WidgetTester tester) async {
@@ -130,26 +157,53 @@ void main() {
     await pumpProfile(tester);
     await scrollToSignOut(tester);
 
-    expect(find.widgetWithText(OutlinedButton, 'Cerrar sesión'), findsOneWidget);
+    expect(
+      find.widgetWithText(OutlinedButton, 'Cerrar sesión'),
+      findsOneWidget,
+    );
     expect(find.textContaining('sin sincronizar'), findsNothing);
   });
 
-  testWidgets('warns before signing out with changes still pending', (tester) async {
+  testWidgets('shows the app version under the driver role', (tester) async {
+    await pumpProfile(tester);
+
+    final version = find.text('Versión 1.0.0 (1)');
+    expect(version, findsOneWidget);
+    expect(
+      tester.getTopLeft(version).dy,
+      greaterThan(tester.getTopLeft(find.text('Repartidor')).dy),
+    );
+    expect(
+      tester.getTopLeft(version).dy,
+      lessThan(tester.getTopLeft(find.text('Sincronización')).dy),
+    );
+  });
+
+  testWidgets('warns before signing out with changes still pending', (
+    tester,
+  ) async {
     await pumpProfile(tester, status: const SyncStatus(pendingCount: 1));
     await scrollToSignOut(tester);
 
     expect(
-      find.text('Tenés 1 cambio sin sincronizar. Sincronizá antes de cerrar sesión.'),
+      find.text(
+        'Tenés 1 cambio sin sincronizar. Sincronizá antes de cerrar sesión.',
+      ),
       findsOneWidget,
     );
   });
 
-  testWidgets('the identity row on the route screen opens the profile', (tester) async {
+  testWidgets('the identity row on the route screen opens the profile', (
+    tester,
+  ) async {
     final container = makeContainer();
     await tester.pumpWidget(
       UncontrolledProviderScope(
         container: container,
-        child: MaterialApp(theme: AppTheme.lightTheme, home: const RouteDayScreen()),
+        child: MaterialApp(
+          theme: AppTheme.lightTheme,
+          home: const RouteDayScreen(),
+        ),
       ),
     );
     await tester.pumpAndSettle();
