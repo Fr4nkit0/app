@@ -1,4 +1,5 @@
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:app/core/providers/clock_provider.dart';
 import 'package:app/core/services/database.helper.dart';
 import 'package:app/features/route/data/repositories/drift_route_repository.dart';
 import 'package:app/features/route/data/repositories/route.repository.dart';
@@ -6,7 +7,10 @@ import 'package:app/features/route/domain/models/route_stop.dart';
 import 'package:app/features/route/domain/models/stop_status.dart';
 
 final routeRepositoryProvider = Provider<RouteRepository>(
-  (ref) => DriftRouteRepository(ref.watch(databaseProvider)),
+  (ref) => DriftRouteRepository(
+    ref.watch(databaseProvider),
+    now: ref.watch(clockProvider),
+  ),
 );
 
 /// A modern Notifier to manage the visible items page limit (Riverpod 3.x compatible)
