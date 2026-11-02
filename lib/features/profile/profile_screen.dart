@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:app/core/providers/app_version_provider.dart';
 import 'package:app/core/theme/marilin_tokens.dart';
 import 'package:app/core/theme/theme_mode_controller.dart';
 import 'package:app/core/widgets/screen_header.dart';
@@ -11,7 +12,8 @@ import 'package:app/features/sync/domain/models/sync_status.dart';
 import 'package:app/features/sync/presentation/providers/sync_providers.dart';
 
 /// The driver's own screen: who is signed in, how the sync is doing, the
-/// theme, and signing out. Opened from the avatar on the route screen.
+/// theme, signing out and the app version. Opened from the avatar on the
+/// route screen.
 class ProfileScreen extends ConsumerWidget {
   const ProfileScreen({super.key});
 
@@ -22,6 +24,7 @@ class ProfileScreen extends ConsumerWidget {
     final syncStatus =
         ref.watch(syncStatusProvider).value ?? const SyncStatus();
     final isSyncRunning = ref.watch(syncRunningProvider).value ?? false;
+    final version = ref.watch(appVersionProvider).value;
     final tokens = context.marilin;
 
     return Scaffold(
@@ -38,7 +41,7 @@ class ProfileScreen extends ConsumerWidget {
               child: ListView(
                 padding: const EdgeInsets.fromLTRB(20, 24, 20, 32),
                 children: [
-                  _IdentityBlock(name: name),
+                  _IdentityBlock(name: name, version: version),
                   const SizedBox(height: 32),
                   const _SectionTitle('Sincronización'),
                   const SizedBox(height: 10),
@@ -71,9 +74,12 @@ class ProfileScreen extends ConsumerWidget {
 }
 
 class _IdentityBlock extends StatelessWidget {
-  const _IdentityBlock({required this.name});
+  const _IdentityBlock({required this.name, this.version});
 
   final String name;
+
+  /// Null until the platform answers; the row is left out meanwhile.
+  final String? version;
 
   @override
   Widget build(BuildContext context) {
@@ -112,7 +118,31 @@ class _IdentityBlock extends StatelessWidget {
             ),
           ],
         ),
+        if (version != null) ...[
+          const SizedBox(height: 6),
+          _AppVersion(version: version!),
+        ],
       ],
+    );
+  }
+}
+
+/// Lets the driver tell support which build is installed.
+class _AppVersion extends StatelessWidget {
+  const _AppVersion({required this.version});
+
+  final String version;
+
+  @override
+  Widget build(BuildContext context) {
+    return Text(
+      'Versión $version',
+      textAlign: TextAlign.center,
+      style: TextStyle(
+        fontSize: 12,
+        fontWeight: FontWeight.w600,
+        color: context.marilin.textMuted,
+      ),
     );
   }
 }
