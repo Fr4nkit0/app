@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:app/core/theme/marilin_tokens.dart';
+import 'package:app/core/utils/phone_formatter.dart';
 
 class StepIdentityView extends StatelessWidget {
   final String name;
@@ -82,6 +83,7 @@ class StepIdentityView extends StatelessWidget {
             initialValue: phone,
             onChanged: onPhoneChanged,
             keyboardType: TextInputType.phone,
+            inputFormatters: const [PhoneInputFormatter()],
             textInputAction: TextInputAction.next,
             onEditingComplete: () {
               // Frees the focus so the next step's first field can take it.
@@ -90,7 +92,7 @@ class StepIdentityView extends StatelessWidget {
             },
             decoration: InputDecoration(
               labelText: 'Teléfono (opcional)',
-              hintText: 'Ej. 387-555-0101',
+              hintText: 'Ej. 387 555-0101',
               prefixIcon: Icon(Icons.phone_outlined, size: 20),
               filled: true,
               fillColor: context.marilin.surface,
