@@ -11,7 +11,7 @@ class LoginScreen extends ConsumerStatefulWidget {
 }
 
 class _LoginScreenState extends ConsumerState<LoginScreen> {
-  final _emailController = TextEditingController();
+  final _usernameController = TextEditingController();
   final _passwordController = TextEditingController();
   final _formKey = GlobalKey<FormState>();
   bool _obscurePassword = true;
@@ -22,7 +22,7 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
   void initState() {
     super.initState();
     _loadRememberedCredentials();
-    _emailController.addListener(_onCredentialsEdited);
+    _usernameController.addListener(_onCredentialsEdited);
     _passwordController.addListener(_onCredentialsEdited);
   }
 
@@ -33,8 +33,8 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
     if (!mounted) return;
     setState(() {
       _rememberCredentials = saved.remember;
-      if (saved.email != null) {
-        _emailController.text = saved.email!;
+      if (saved.username != null) {
+        _usernameController.text = saved.username!;
       }
       if (saved.password != null) {
         _passwordController.text = saved.password!;
@@ -49,9 +49,9 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
 
   @override
   void dispose() {
-    _emailController.removeListener(_onCredentialsEdited);
+    _usernameController.removeListener(_onCredentialsEdited);
     _passwordController.removeListener(_onCredentialsEdited);
-    _emailController.dispose();
+    _usernameController.dispose();
     _passwordController.dispose();
     super.dispose();
   }
@@ -62,7 +62,7 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
     await ref
         .read(authControllerProvider.notifier)
         .login(
-          _emailController.text.trim(),
+          _usernameController.text.trim(),
           _passwordController.text,
           rememberCredentials: _rememberCredentials,
         );
@@ -120,27 +120,20 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
                     ),
                     if (authState.error != null) const SizedBox(height: 20),
                     TextFormField(
-                      controller: _emailController,
-                      keyboardType: TextInputType.emailAddress,
+                      controller: _usernameController,
+                      keyboardType: TextInputType.text,
                       textCapitalization: TextCapitalization.none,
                       autocorrect: false,
                       enableSuggestions: false,
-                      autofillHints: const [
-                        AutofillHints.username,
-                        AutofillHints.email,
-                      ],
+                      autofillHints: const [AutofillHints.username],
                       textInputAction: TextInputAction.next,
                       decoration: const InputDecoration(
-                        labelText: 'Correo electrónico',
-                        prefixIcon: Icon(Icons.email_outlined),
+                        labelText: 'Usuario',
+                        prefixIcon: Icon(Icons.person_outline),
                       ),
                       validator: (value) {
-                        final trimmed = value?.trim() ?? '';
-                        if (trimmed.isEmpty) {
-                          return 'Ingresá tu correo';
-                        }
-                        if (!trimmed.contains('@')) {
-                          return 'El correo no parece válido';
+                        if ((value?.trim() ?? '').isEmpty) {
+                          return 'Ingresá tu usuario';
                         }
                         return null;
                       },

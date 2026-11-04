@@ -8,7 +8,9 @@ import 'package:app/features/sync/presentation/providers/pending_change_reposito
 const _authTokenKey = authTokenKey;
 const _authDisplayNameKey = 'auth_display_name';
 const _authRememberKey = 'auth_remember_credentials';
-const _authSavedEmailKey = 'auth_saved_email';
+const _authSavedUsernameKey = 'auth_saved_username';
+// Drivers used to sign in by email; an email would fail as a username.
+const _legacySavedEmailKey = 'auth_saved_email';
 const _authSavedPasswordKey = 'auth_saved_password';
 const _deviceNameMaxLength = 100;
 
@@ -24,12 +26,12 @@ final deviceNameProvider = Provider<String>((ref) {
 /// checks "Recordarme", so the next login is a single tap.
 class RememberedCredentials {
   const RememberedCredentials({
-    this.email,
+    this.username,
     this.password,
     this.remember = false,
   });
 
-  final String? email;
+  final String? username;
   final String? password;
   final bool remember;
 }
@@ -130,7 +132,7 @@ class AuthController extends Notifier<AuthState> {
       return const RememberedCredentials(remember: false);
     }
     return RememberedCredentials(
-      email: await storage.read(key: _authSavedEmailKey),
+      username: await storage.read(key: _authSavedUsernameKey),
       password: await storage.read(key: _authSavedPasswordKey),
       remember: true,
     );
@@ -142,7 +144,7 @@ class AuthController extends Notifier<AuthState> {
     }
   }
 
-  String? _parseDisplayName(Map<String, dynamic> data, String email) {
+  String? _parseDisplayName(Map<String, dynamic> data, String username) {
     final user = data['user'];
     if (user is Map<String, dynamic>) {
       final name = user['name'] ?? user['full_name'] ?? user['display_name'];
@@ -154,9 +156,8 @@ class AuthController extends Notifier<AuthState> {
     if (direct is String && direct.trim().isNotEmpty) {
       return direct.trim();
     }
-    final local = email.split('@').first.trim();
-    if (local.isNotEmpty) {
-      return local[0].toUpperCase() + local.substring(1);
+    if (username.isNotEmpty) {
+      return username[0].toUpperCase() + username.substring(1);
     }
     return null;
   }
@@ -189,7 +190,7 @@ class AuthController extends Notifier<AuthState> {
     }
 
     if (status == 401 || status == 403) {
-      return 'Correo o contraseña incorrectos.';
+      return 'Usuario o contraseña incorrectos.';
     }
     if (status == 422) {
       return 'Revisá los datos ingresados e intentá de nuevo.';
@@ -213,29 +214,30 @@ class AuthController extends Notifier<AuthState> {
   }
 
   Future<void> _persistRememberedCredentials({
-    required String email,
+    required String username,
     required String password,
     required bool remember,
   }) async {
     final storage = ref.read(secureStorageProvider);
+    await storage.delete(key: _legacySavedEmailKey);
     if (remember) {
       await storage.write(key: _authRememberKey, value: 'true');
-      await storage.write(key: _authSavedEmailKey, value: email);
+      await storage.write(key: _authSavedUsernameKey, value: username);
       await storage.write(key: _authSavedPasswordKey, value: password);
     } else {
       await storage.write(key: _authRememberKey, value: 'false');
-      await storage.delete(key: _authSavedEmailKey);
+      await storage.delete(key: _authSavedUsernameKey);
       await storage.delete(key: _authSavedPasswordKey);
     }
   }
 
   Future<bool> login(
-    String rawEmail,
+    String rawUsername,
     String password, {
     bool rememberCredentials = false,
   }) async {
-    // Keyboards capitalize the first letter; emails are case-insensitive.
-    final email = rawEmail.trim().toLowerCase();
+    // The server matches the username case-insensitively.
+    final username = rawUsername.trim();
     state = state.copyWith(isLoading: true, clearError: true);
 
     try {
@@ -243,7 +245,7 @@ class AuthController extends Notifier<AuthState> {
       final response = await dio.post(
         '/auth/login',
         data: {
-          'email': email,
+          'username': username,
           'password': password,
           'device_name': ref.read(deviceNameProvider),
         },
@@ -268,13 +270,13 @@ class AuthController extends Notifier<AuthState> {
           );
         }
 
-        final displayName = _parseDisplayName(data, email);
+        final displayName = _parseDisplayName(data, username);
         if (displayName != null) {
           await storage.write(key: _authDisplayNameKey, value: displayName);
         }
 
         await _persistRememberedCredentials(
-          email: email,
+          username: username,
           password: password,
           remember: rememberCredentials,
         );
