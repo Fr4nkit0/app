@@ -238,7 +238,7 @@ void main() {
 
     expect(find.byType(NextStopCard), findsNothing);
     expect(find.text('Ruta terminada'), findsNothing);
-    expect(find.text('Sin paradas por ahora'), findsOneWidget);
+    expect(find.text('Tu ruta todavía no fue despachada'), findsOneWidget);
   });
 
   testWidgets('progress is one line with counts', (tester) async {

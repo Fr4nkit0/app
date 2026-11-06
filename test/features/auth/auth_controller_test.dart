@@ -52,7 +52,8 @@ FakeHttpAdapter _loginOk() => FakeHttpAdapter(
       'user': {
         'id': 7,
         'name': 'Marcos Reparto',
-        'email': 'marcos@marilin.test',
+        'username': 'mreparto',
+        'email': null,
       },
     },
     'message': 'Login successful',
@@ -66,7 +67,7 @@ void main() {
 
   group('login', () {
     test(
-      'sends email, password and device name, then stores token and name',
+      'sends username, password and device name, then stores token and name',
       () async {
         final adapter = _loginOk();
         final container = _container(adapter);
@@ -74,13 +75,13 @@ void main() {
 
         final ok = await container
             .read(authControllerProvider.notifier)
-            .login('marcos@marilin.test', 'secret');
+            .login('mreparto', 'secret');
 
         expect(ok, isTrue);
         final request = adapter.requests.single;
         expect(request.path, '/auth/login');
         expect(request.data, {
-          'email': 'marcos@marilin.test',
+          'username': 'mreparto',
           'password': 'secret',
           'device_name': 'Test Phone',
         });
@@ -92,13 +93,50 @@ void main() {
       },
     );
 
+    test('falls back to the username when the user has no name', () async {
+      final container = _container(
+        FakeHttpAdapter(
+          (_) => FakeHttpAdapter.json(200, {
+            'data': {
+              'token': 'plain-text-token',
+              'user': {'id': 7, 'username': 'jperez', 'email': null},
+            },
+          }),
+        ),
+      );
+      await _settled(container);
+
+      await container
+          .read(authControllerProvider.notifier)
+          .login('jperez', 'secret');
+
+      expect(container.read(authControllerProvider).displayName, 'Jperez');
+      expect(await _storage.read(key: 'auth_display_name'), 'Jperez');
+    });
+
+    test('a rejected login without a message names the username', () async {
+      final container = _container(
+        FakeHttpAdapter((_) => FakeHttpAdapter.json(401, {})),
+      );
+      await _settled(container);
+
+      await container
+          .read(authControllerProvider.notifier)
+          .login('mreparto', 'wrong');
+
+      expect(
+        container.read(authControllerProvider).error,
+        'Usuario o contraseña incorrectos.',
+      );
+    });
+
     test('shows the server error when the account is disabled', () async {
       final container = _container(
         FakeHttpAdapter(
           (_) => FakeHttpAdapter.json(422, {
-            'message': 'User account is disabled.',
+            'message': 'Tu cuenta está deshabilitada.',
             'errors': {
-              'email': ['User account is disabled.'],
+              'username': ['Tu cuenta está deshabilitada.'],
             },
           }),
         ),
@@ -107,12 +145,12 @@ void main() {
 
       final ok = await container
           .read(authControllerProvider.notifier)
-          .login('marcos@marilin.test', 'secret');
+          .login('mreparto', 'secret');
 
       expect(ok, isFalse);
       final state = container.read(authControllerProvider);
       expect(state.isAuthenticated, isFalse);
-      expect(state.error, 'User account is disabled.');
+      expect(state.error, 'Tu cuenta está deshabilitada.');
       expect(await _storage.read(key: 'auth_token'), isNull);
     });
 
@@ -120,9 +158,9 @@ void main() {
       final container = _container(
         FakeHttpAdapter(
           (_) => FakeHttpAdapter.json(422, {
-            'message': 'User is not an active driver.',
+            'message': 'El usuario no es un repartidor activo.',
             'errors': {
-              'email': ['User is not an active driver.'],
+              'username': ['El usuario no es un repartidor activo.'],
             },
           }),
         ),
@@ -131,11 +169,11 @@ void main() {
 
       await container
           .read(authControllerProvider.notifier)
-          .login('marcos@marilin.test', 'secret');
+          .login('mreparto', 'secret');
 
       expect(
         container.read(authControllerProvider).error,
-        'User is not an active driver.',
+        'El usuario no es un repartidor activo.',
       );
     });
 
@@ -143,9 +181,12 @@ void main() {
       final container = _container(
         FakeHttpAdapter(
           (_) => FakeHttpAdapter.json(422, {
-            'message': 'These credentials do not match our records.',
+            'message':
+                'Estas credenciales no coinciden con nuestros registros.',
             'errors': {
-              'email': ['These credentials do not match our records.'],
+              'username': [
+                'Estas credenciales no coinciden con nuestros registros.',
+              ],
             },
           }),
         ),
@@ -154,11 +195,11 @@ void main() {
 
       await container
           .read(authControllerProvider.notifier)
-          .login('marcos@marilin.test', 'wrong');
+          .login('mreparto', 'wrong');
 
       expect(
         container.read(authControllerProvider).error,
-        'These credentials do not match our records.',
+        'Estas credenciales no coinciden con nuestros registros.',
       );
     });
 
@@ -174,7 +215,7 @@ void main() {
             (_) => FakeHttpAdapter.json(429, {
               'message': locked,
               'errors': {
-                'email': [locked],
+                'username': [locked],
               },
               'retry_after': 42,
             }),
@@ -184,20 +225,20 @@ void main() {
 
         final ok = await container
             .read(authControllerProvider.notifier)
-            .login('marcos@marilin.test', 'wrong');
+            .login('mreparto', 'wrong');
 
         expect(ok, isFalse);
         expect(container.read(authControllerProvider).error, locked);
       },
     );
 
-    test('shows the lock message from errors.email when there is no '
+    test('shows the lock message from errors.username when there is no '
         'message', () async {
       final container = _container(
         FakeHttpAdapter(
           (_) => FakeHttpAdapter.json(429, {
             'errors': {
-              'email': [locked],
+              'username': [locked],
             },
             'retry_after': 42,
           }),
@@ -207,39 +248,39 @@ void main() {
 
       await container
           .read(authControllerProvider.notifier)
-          .login('marcos@marilin.test', 'wrong');
+          .login('mreparto', 'wrong');
 
       expect(container.read(authControllerProvider).error, locked);
     });
   });
 
   group('remember me', () {
-    test('persists the email and the password in secure storage', () async {
+    test('persists the username and the password in secure storage', () async {
       final container = _container(_loginOk());
       await _settled(container);
 
       await container
           .read(authControllerProvider.notifier)
-          .login('marcos@marilin.test', 'secret', rememberCredentials: true);
+          .login('mreparto', 'secret', rememberCredentials: true);
 
       final all = await _storage.readAll();
-      expect(all['auth_saved_email'], 'marcos@marilin.test');
+      expect(all['auth_saved_username'], 'mreparto');
       expect(all['auth_saved_password'], 'secret');
 
       final remembered = await container
           .read(authControllerProvider.notifier)
           .loadRememberedCredentials();
       expect(remembered.remember, isTrue);
-      expect(remembered.email, 'marcos@marilin.test');
+      expect(remembered.username, 'mreparto');
       expect(remembered.password, 'secret');
     });
 
     test(
-      'forgets the email and the password when remember me is off',
+      'forgets the username and the password when remember me is off',
       () async {
         FlutterSecureStorage.setMockInitialValues({
           'auth_remember_credentials': 'true',
-          'auth_saved_email': 'old@marilin.test',
+          'auth_saved_username': 'old',
           'auth_saved_password': 'old-secret',
         });
         final container = _container(_loginOk());
@@ -247,45 +288,57 @@ void main() {
 
         await container
             .read(authControllerProvider.notifier)
-            .login('marcos@marilin.test', 'secret');
+            .login('mreparto', 'secret');
 
         final remembered = await container
             .read(authControllerProvider.notifier)
             .loadRememberedCredentials();
         expect(remembered.remember, isFalse);
-        expect(remembered.email, isNull);
+        expect(remembered.username, isNull);
         expect(remembered.password, isNull);
         expect(await _storage.read(key: 'auth_saved_password'), isNull);
       },
     );
 
-    test('sends and remembers the email trimmed and in lowercase', () async {
+    test('sends and remembers the username trimmed', () async {
       final adapter = _loginOk();
       final container = _container(adapter);
       await _settled(container);
 
       await container
           .read(authControllerProvider.notifier)
-          .login(
-            ' Juan.Perez@Marilin.com ',
-            'secret',
-            rememberCredentials: true,
-          );
+          .login(' JPerez ', 'secret', rememberCredentials: true);
 
-      expect(
-        (adapter.requests.single.data as Map)['email'],
-        'juan.perez@marilin.com',
-      );
-      expect(
-        await _storage.read(key: 'auth_saved_email'),
-        'juan.perez@marilin.com',
-      );
+      expect((adapter.requests.single.data as Map)['username'], 'JPerez');
+      expect(await _storage.read(key: 'auth_saved_username'), 'JPerez');
+    });
+
+    test('drops a legacy remembered email instead of prefilling it', () async {
+      FlutterSecureStorage.setMockInitialValues({
+        'auth_remember_credentials': 'true',
+        'auth_saved_email': 'marcos@marilin.test',
+        'auth_saved_password': 'secret',
+      });
+      final container = _container(_loginOk());
+      await _settled(container);
+
+      final before = await container
+          .read(authControllerProvider.notifier)
+          .loadRememberedCredentials();
+      expect(before.username, isNull);
+
+      await container
+          .read(authControllerProvider.notifier)
+          .login('mreparto', 'secret', rememberCredentials: true);
+
+      expect(await _storage.read(key: 'auth_saved_email'), isNull);
+      expect(await _storage.read(key: 'auth_saved_username'), 'mreparto');
     });
 
     test('keeps the remembered password across restarts', () async {
       FlutterSecureStorage.setMockInitialValues({
         'auth_remember_credentials': 'true',
-        'auth_saved_email': 'marcos@marilin.test',
+        'auth_saved_username': 'mreparto',
         'auth_saved_password': 'secret',
       });
       final container = _container(
@@ -297,7 +350,7 @@ void main() {
       final remembered = await container
           .read(authControllerProvider.notifier)
           .loadRememberedCredentials();
-      expect(remembered.email, 'marcos@marilin.test');
+      expect(remembered.username, 'mreparto');
       expect(remembered.password, 'secret');
     });
   });
@@ -341,7 +394,7 @@ void main() {
 
       await container
           .read(authControllerProvider.notifier)
-          .login('marcos@marilin.test', 'secret');
+          .login('mreparto', 'secret');
 
       expect(
         await _storage.read(key: 'auth_refresh_token'),
@@ -457,10 +510,7 @@ void main() {
       'keeps the remembered credentials so the next login is one tap',
       () async {
         await _storage.write(key: 'auth_remember_credentials', value: 'true');
-        await _storage.write(
-          key: 'auth_saved_email',
-          value: 'marcos@marilin.test',
-        );
+        await _storage.write(key: 'auth_saved_username', value: 'mreparto');
         await _storage.write(key: 'auth_saved_password', value: 'secret');
         final container = await signedIn(
           FakeHttpAdapter((_) => FakeHttpAdapter.json(200, {})),
@@ -471,7 +521,7 @@ void main() {
         final remembered = await container
             .read(authControllerProvider.notifier)
             .loadRememberedCredentials();
-        expect(remembered.email, 'marcos@marilin.test');
+        expect(remembered.username, 'mreparto');
         expect(remembered.password, 'secret');
       },
     );

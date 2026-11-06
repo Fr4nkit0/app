@@ -25,12 +25,12 @@ Widget _app({FakeHttpAdapter? adapter}) {
 void main() {
   TestWidgetsFlutterBinding.ensureInitialized();
 
-  testWidgets('prefills email and password when remember me was on', (
+  testWidgets('prefills username and password when remember me was on', (
     tester,
   ) async {
     FlutterSecureStorage.setMockInitialValues({
       'auth_remember_credentials': 'true',
-      'auth_saved_email': 'marcos@marilin.test',
+      'auth_saved_username': 'mreparto',
       'auth_saved_password': 'secret',
     });
 
@@ -40,7 +40,7 @@ void main() {
     final fields = tester
         .widgetList<TextField>(find.byType(TextField))
         .toList();
-    expect(fields[0].controller!.text, 'marcos@marilin.test');
+    expect(fields[0].controller!.text, 'mreparto');
     expect(fields[1].controller!.text, 'secret');
     final remember = tester.widget<Checkbox>(find.byType(Checkbox));
     expect(remember.value, isTrue);
@@ -74,7 +74,7 @@ void main() {
     expect(fields[1].controller!.text, isEmpty);
   });
 
-  testWidgets('the email field does not capitalize or autocorrect', (
+  testWidgets('the username field is plain text that does not capitalize', (
     tester,
   ) async {
     FlutterSecureStorage.setMockInitialValues({});
@@ -82,11 +82,57 @@ void main() {
     await tester.pumpWidget(_app());
     await tester.pumpAndSettle();
 
-    final email = tester.widgetList<TextField>(find.byType(TextField)).first;
-    expect(email.keyboardType, TextInputType.emailAddress);
-    expect(email.textCapitalization, TextCapitalization.none);
-    expect(email.autocorrect, isFalse);
-    expect(email.enableSuggestions, isFalse);
+    final username = tester.widgetList<TextField>(find.byType(TextField)).first;
+    expect(find.text('Usuario'), findsOneWidget);
+    expect(find.text('Correo electrónico'), findsNothing);
+    expect(username.keyboardType, TextInputType.text);
+    expect(username.textCapitalization, TextCapitalization.none);
+    expect(username.autocorrect, isFalse);
+    expect(username.enableSuggestions, isFalse);
+    expect(username.autofillHints, [AutofillHints.username]);
+  });
+
+  testWidgets('sends a username without an @ to the server', (tester) async {
+    FlutterSecureStorage.setMockInitialValues({});
+    final adapter = FakeHttpAdapter(
+      (_) => FakeHttpAdapter.json(422, {
+        'errors': {
+          'username': [
+            'Estas credenciales no coinciden con nuestros registros.',
+          ],
+        },
+      }),
+    );
+
+    await tester.pumpWidget(_app(adapter: adapter));
+    await tester.pumpAndSettle();
+    final fields = find.byType(TextField);
+    await tester.enterText(fields.at(0), 'jperez');
+    await tester.enterText(fields.at(1), 'password');
+    await tester.tap(find.text('Ingresar'));
+    await tester.pumpAndSettle();
+
+    expect((adapter.requests.single.data as Map)['username'], 'jperez');
+    expect(
+      find.text('Estas credenciales no coinciden con nuestros registros.'),
+      findsOneWidget,
+    );
+  });
+
+  testWidgets('asks for the username when it is empty', (tester) async {
+    FlutterSecureStorage.setMockInitialValues({});
+    final adapter = FakeHttpAdapter(
+      (_) => throw StateError('no network expected'),
+    );
+
+    await tester.pumpWidget(_app(adapter: adapter));
+    await tester.pumpAndSettle();
+    await tester.enterText(find.byType(TextField).at(1), 'password');
+    await tester.tap(find.text('Ingresar'));
+    await tester.pumpAndSettle();
+
+    expect(find.text('Ingresá tu usuario'), findsOneWidget);
+    expect(adapter.requests, isEmpty);
   });
 
   testWidgets('the error banner is read only once', (tester) async {
@@ -101,7 +147,7 @@ void main() {
     await tester.pumpWidget(_app(adapter: adapter));
     await tester.pumpAndSettle();
     final fields = find.byType(TextField);
-    await tester.enterText(fields.at(0), 'marcos@marilin.test');
+    await tester.enterText(fields.at(0), 'mreparto');
     await tester.enterText(fields.at(1), 'wrong');
     await tester.tap(find.text('Ingresar'));
     await tester.pumpAndSettle();

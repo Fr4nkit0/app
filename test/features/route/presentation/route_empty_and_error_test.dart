@@ -11,8 +11,23 @@ import 'package:app/features/route/presentation/providers/route_repository_provi
 import 'package:app/features/route/presentation/screens/route_day_screen.dart';
 import 'package:app/features/sync/domain/models/sync_status.dart';
 import 'package:app/features/sync/presentation/providers/sync_providers.dart';
+import 'package:app/features/sync/sync_engine.dart';
 
 import '../../../support/real_fonts.dart';
+
+class _FakeEngine implements SyncEngine {
+  int cycles = 0;
+
+  @override
+  Future<SyncStatus> runCycle() async {
+    cycles++;
+    await Future<void>.delayed(const Duration(milliseconds: 300));
+    return const SyncStatus(lastResult: SyncCycleResult.success);
+  }
+
+  @override
+  dynamic noSuchMethod(Invocation invocation) => super.noSuchMethod(invocation);
+}
 
 class _SignedIn extends AuthController {
   @override
@@ -32,6 +47,7 @@ void main() {
     bool syncRunning = false,
     Stream<List<RouteStop>> Function()? dayStream,
     SyncCycleResult? lastResult = SyncCycleResult.success,
+    SyncEngine? engine,
   }) async {
     await tester.binding.setSurfaceSize(const Size(360, 800));
     addTearDown(() => tester.binding.setSurfaceSize(null));
@@ -40,6 +56,7 @@ void main() {
       retry: (_, _) => null,
       overrides: [
         authControllerProvider.overrideWith(_SignedIn.new),
+        if (engine != null) syncEngineProvider.overrideWithValue(engine),
         syncStatusProvider.overrideWith(
           (ref) => Stream.value(
             SyncStatus(
@@ -78,17 +95,42 @@ void main() {
     }
   }
 
-  testWidgets('empty route offers a sync', (tester) async {
-    await pumpRoute(tester);
+  testWidgets(
+    'with no route after a successful sync, it says the route was not '
+    'dispatched yet and offers a sync',
+    (tester) async {
+      await pumpRoute(tester);
 
-    expect(find.text('Sin paradas por ahora'), findsOneWidget);
-    expect(
-      find.text('Cuando la ruta del día esté cargada, va a aparecer acá.'),
-      findsOneWidget,
+      expect(find.text('Tu ruta todavía no fue despachada'), findsOneWidget);
+      expect(
+        find.text('Se va a cargar cuando administración la despache.'),
+        findsOneWidget,
+      );
+      expect(find.text('Sin paradas por ahora'), findsNothing);
+      final button = find.widgetWithText(OutlinedButton, 'Sincronizar ahora');
+      expect(button, findsOneWidget);
+      expect(tester.widget<OutlinedButton>(button).onPressed, isNotNull);
+    },
+  );
+
+  testWidgets('pull-to-refresh on an empty route runs one sync cycle', (
+    tester,
+  ) async {
+    final engine = _FakeEngine();
+    await pumpRoute(tester, engine: engine);
+
+    await tester.fling(
+      find.text('Tu ruta todavía no fue despachada'),
+      const Offset(0, 400),
+      1000,
     );
-    final button = find.widgetWithText(OutlinedButton, 'Sincronizar ahora');
-    expect(button, findsOneWidget);
-    expect(tester.widget<OutlinedButton>(button).onPressed, isNotNull);
+    await tester.pump();
+    await tester.pump(const Duration(seconds: 1));
+    expect(engine.cycles, 1);
+    await tester.pump(const Duration(seconds: 1));
+    await tester.pump(const Duration(seconds: 1));
+
+    expect(find.byType(RefreshProgressIndicator), findsNothing);
   });
 
   for (final lastResult in [SyncCycleResult.offline, null]) {
@@ -134,6 +176,7 @@ void main() {
     await pumpRoute(tester, lastResult: SyncCycleResult.failure);
 
     expect(find.text('Sin paradas por ahora'), findsOneWidget);
+    expect(find.text('Tu ruta todavía no fue despachada'), findsNothing);
     expect(find.text('Falta la ruta de hoy'), findsNothing);
   });
 
