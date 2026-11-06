@@ -70,6 +70,9 @@ class _RouteDayScreenState extends ConsumerState<RouteDayScreen> {
         lastSyncResult == null || lastSyncResult == SyncCycleResult.offline;
     // A running sync is downloading it right now (e.g. the first sync).
     final routeDownloading = routeNotDownloaded && isSyncRunning;
+    // The server answered and sent no route: the admin has not dispatched
+    // today's route yet.
+    final routeNotDispatched = lastSyncResult == SyncCycleResult.success;
 
     return Scaffold(
       body: SafeArea(
@@ -79,111 +82,128 @@ class _RouteDayScreenState extends ConsumerState<RouteDayScreen> {
             final totalCount = allStops.length;
             final isFullyLoaded = stops.length >= totalCount;
 
-            return CustomScrollView(
-              controller: _scrollController,
-              slivers: [
-                SliverToBoxAdapter(child: _RouteHeader(stops: allStops)),
-                if (allStops.isNotEmpty)
+            return RefreshIndicator(
+              // Pull-to-refresh asks the server again, e.g. for a route that
+              // was not dispatched yet.
+              onRefresh: () async {
+                if (!isSyncRunning) {
+                  await ref.read(syncEngineProvider).runCycle();
+                }
+              },
+              child: CustomScrollView(
+                controller: _scrollController,
+                // Scrollable even when the content fits, so the pull works.
+                physics: const AlwaysScrollableScrollPhysics(),
+                slivers: [
+                  SliverToBoxAdapter(child: _RouteHeader(stops: allStops)),
+                  if (allStops.isNotEmpty)
+                    SliverToBoxAdapter(
+                      child: Padding(
+                        padding: const EdgeInsets.fromLTRB(20, 16, 20, 0),
+                        child: nextStop != null
+                            ? _NextStopHero(stop: nextStop)
+                            : RouteDoneCard(closedCount: allStops.length),
+                      ),
+                    ),
                   SliverToBoxAdapter(
                     child: Padding(
                       padding: const EdgeInsets.fromLTRB(20, 16, 20, 0),
-                      child: nextStop != null
-                          ? _NextStopHero(stop: nextStop)
-                          : RouteDoneCard(closedCount: allStops.length),
+                      child: RouteProgressLine(
+                        done: allStops
+                            .where((s) => s.status != StopStatus.pending)
+                            .length,
+                        total: allStops.length,
+                      ),
                     ),
                   ),
-                SliverToBoxAdapter(
-                  child: Padding(
-                    padding: const EdgeInsets.fromLTRB(20, 16, 20, 0),
-                    child: RouteProgressLine(
-                      done: allStops
-                          .where((s) => s.status != StopStatus.pending)
-                          .length,
-                      total: allStops.length,
-                    ),
-                  ),
-                ),
-                if (allStops.isEmpty)
-                  SliverFillRemaining(
-                    // Taller than what is left on a small phone: scroll instead of overflowing.
-                    hasScrollBody: false,
-                    child: routeDownloading
-                        ? const RouteDownloadingState()
-                        : EmptyState(
-                            icon: routeNotDownloaded
-                                ? Icons.cloud_off_outlined
-                                : Icons.route_outlined,
-                            title: routeNotDownloaded
-                                ? 'Falta la ruta de hoy'
-                                : 'Sin paradas por ahora',
-                            message: routeNotDownloaded
-                                ? 'Conectate a internet para descargar la ruta de hoy.'
-                                : 'Cuando la ruta del día esté cargada, va a aparecer acá.',
-                            actionLabel: isSyncRunning
-                                ? 'Sincronizando…'
-                                : 'Sincronizar ahora',
-                            onAction: isSyncRunning
-                                ? null
-                                : () => ref.read(syncEngineProvider).runCycle(),
+                  if (allStops.isEmpty)
+                    SliverFillRemaining(
+                      // Taller than what is left on a small phone: scroll instead of overflowing.
+                      hasScrollBody: false,
+                      child: routeDownloading
+                          ? const RouteDownloadingState()
+                          : EmptyState(
+                              icon: routeNotDownloaded
+                                  ? Icons.cloud_off_outlined
+                                  : Icons.route_outlined,
+                              title: routeNotDownloaded
+                                  ? 'Falta la ruta de hoy'
+                                  : routeNotDispatched
+                                  ? 'Tu ruta todavía no fue despachada'
+                                  : 'Sin paradas por ahora',
+                              message: routeNotDownloaded
+                                  ? 'Conectate a internet para descargar la ruta de hoy.'
+                                  : routeNotDispatched
+                                  ? 'Se va a cargar cuando administración la despache.'
+                                  : 'Cuando la ruta del día esté cargada, va a aparecer acá.',
+                              actionLabel: isSyncRunning
+                                  ? 'Sincronizando…'
+                                  : 'Sincronizar ahora',
+                              onAction: isSyncRunning
+                                  ? null
+                                  : () =>
+                                        ref.read(syncEngineProvider).runCycle(),
+                            ),
+                    )
+                  else ...[
+                    SliverPadding(
+                      padding: const EdgeInsets.only(top: 8, bottom: 8),
+                      sliver: SliverList(
+                        delegate: SliverChildBuilderDelegate(
+                          (context, i) => RouteStopCard(
+                            stop: stops[i],
+                            isFirst: i == 0,
+                            isLast: i == stops.length - 1 && isFullyLoaded,
+                            isNext: stops[i].id == nextStop?.id,
+                            holdsRecords: heldStopIds.contains(stops[i].id),
+                            onTap: () => Navigator.of(context).push(
+                              MaterialPageRoute(
+                                builder: (_) =>
+                                    VisitScreen(stopId: stops[i].id),
+                              ),
+                            ),
                           ),
-                  )
-                else ...[
-                  SliverPadding(
-                    padding: const EdgeInsets.only(top: 8, bottom: 8),
-                    sliver: SliverList(
-                      delegate: SliverChildBuilderDelegate(
-                        (context, i) => RouteStopCard(
-                          stop: stops[i],
-                          isFirst: i == 0,
-                          isLast: i == stops.length - 1 && isFullyLoaded,
-                          isNext: stops[i].id == nextStop?.id,
-                          holdsRecords: heldStopIds.contains(stops[i].id),
-                          onTap: () => Navigator.of(context).push(
-                            MaterialPageRoute(
-                              builder: (_) => VisitScreen(stopId: stops[i].id),
+                          childCount: stops.length,
+                        ),
+                      ),
+                    ),
+                    if (!isFullyLoaded)
+                      SliverToBoxAdapter(
+                        child: Padding(
+                          padding: const EdgeInsets.symmetric(vertical: 24),
+                          child: Center(
+                            child: Column(
+                              mainAxisSize: MainAxisSize.min,
+                              children: [
+                                const SizedBox(
+                                  width: 24,
+                                  height: 24,
+                                  child: CircularProgressIndicator(
+                                    strokeWidth: 2.5,
+                                    valueColor: AlwaysStoppedAnimation<Color>(
+                                      MarilinColors.brandBlue,
+                                    ),
+                                  ),
+                                ),
+                                const SizedBox(height: 8),
+                                Text(
+                                  'Cargando más paradas...',
+                                  style: TextStyle(
+                                    color: context.marilin.textMuted,
+                                    fontSize: 13,
+                                    fontWeight: FontWeight.w500,
+                                  ),
+                                ),
+                              ],
                             ),
                           ),
                         ),
-                        childCount: stops.length,
-                      ),
-                    ),
-                  ),
-                  if (!isFullyLoaded)
-                    SliverToBoxAdapter(
-                      child: Padding(
-                        padding: const EdgeInsets.symmetric(vertical: 24),
-                        child: Center(
-                          child: Column(
-                            mainAxisSize: MainAxisSize.min,
-                            children: [
-                              const SizedBox(
-                                width: 24,
-                                height: 24,
-                                child: CircularProgressIndicator(
-                                  strokeWidth: 2.5,
-                                  valueColor: AlwaysStoppedAnimation<Color>(
-                                    MarilinColors.brandBlue,
-                                  ),
-                                ),
-                              ),
-                              const SizedBox(height: 8),
-                              Text(
-                                'Cargando más paradas...',
-                                style: TextStyle(
-                                  color: context.marilin.textMuted,
-                                  fontSize: 13,
-                                  fontWeight: FontWeight.w500,
-                                ),
-                              ),
-                            ],
-                          ),
-                        ),
-                      ),
-                    )
-                  else
-                    const SliverToBoxAdapter(child: SizedBox(height: 32)),
+                      )
+                    else
+                      const SliverToBoxAdapter(child: SizedBox(height: 32)),
+                  ],
                 ],
-              ],
+              ),
             );
           },
           loading: () => const Center(child: CircularProgressIndicator()),
