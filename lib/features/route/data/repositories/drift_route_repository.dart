@@ -126,6 +126,17 @@ class DriftRouteRepository implements RouteRepository {
         }
         final isRequested = requestedRow?.isRequested ?? false;
 
+        // Same for the cover: a stop rescheduled from a covered one is still
+        // a cover of the same owner driver.
+        RouteStopTableData? coverRow = stopRow;
+        final seenCover = <String>{};
+        while (coverRow != null &&
+            !coverRow.isCover &&
+            seenCover.add(coverRow.routeStopId)) {
+          coverRow = rowById[coverRow.rescheduledFromStopId];
+        }
+        final isCover = coverRow?.isCover ?? false;
+
         final currentBalance = _account.balanceIn(row);
         final debtAmount = currentBalance > 0 ? currentBalance : 0.0;
 
@@ -150,10 +161,8 @@ class DriftRouteRepository implements RouteRepository {
             visit: visits[stopRow.routeStopId],
             isRequested: isRequested,
             note: isRequested ? requestedRow!.note : null,
-            isCover: stopRow.isCover,
-            coveredDriverName: stopRow.isCover
-                ? stopRow.coveredDriverName
-                : null,
+            isCover: isCover,
+            coveredDriverName: isCover ? coverRow!.coveredDriverName : null,
           ),
         );
       }
