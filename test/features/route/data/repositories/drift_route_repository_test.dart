@@ -51,6 +51,7 @@ void main() {
     int sequence = 1,
     String status = 'pending',
     required DateTime scheduledAt,
+    String? addressId,
   }) async {
     await db
         .into(db.routeStopTable)
@@ -62,6 +63,7 @@ void main() {
             sequence: sequence,
             status: drift.Value(status),
             scheduledAt: scheduledAt,
+            customerAddressId: drift.Value(addressId),
           ),
         );
   }
@@ -208,6 +210,99 @@ void main() {
         'Av. San Martín 1300',
       );
       expect(stops.first.customer.addresses.first.isPrimary, isTrue);
+    });
+
+    group('stop address', () {
+      Future<void> insertSecondAddress({bool enabled = true}) => db
+          .into(db.customerAddressTable)
+          .insert(
+            CustomerAddressTableCompanion.insert(
+              addressId: const drift.Value('addr-second'),
+              customerId: const drift.Value('mock-customer-1'),
+              street: const drift.Value('Mitre 55'),
+              enabled: drift.Value(enabled),
+            ),
+          );
+
+      Future<RouteStop> stopAt(String? addressId) async {
+        await insertRoute('route-today', todayStr);
+        final now = DateTime.now();
+        await insertStop(
+          stopId: 'stop-t1',
+          routeId: 'route-today',
+          customerId: 'mock-customer-1',
+          scheduledAt: DateTime(now.year, now.month, now.day, 9, 0),
+          addressId: addressId,
+        );
+        return (await sut.watchDayStops().first).single;
+      }
+
+      test('shows the stop address when it is not the primary one', () async {
+        await insertSecondAddress();
+
+        final stop = await stopAt('addr-second');
+
+        expect(stop.customer.addresses, hasLength(1));
+        expect(stop.customer.addresses.single.id, 'addr-second');
+        expect(stop.customer.addresses.single.street, 'Mitre 55');
+        expect(stop.customer.addresses.single.isPrimary, isFalse);
+      });
+
+      test(
+        'falls back to the primary address without a stop address',
+        () async {
+          await insertSecondAddress();
+
+          final stop = await stopAt(null);
+
+          expect(stop.customer.addresses.single.id, 'mock-addr-1');
+          expect(stop.customer.addresses.single.isPrimary, isTrue);
+        },
+      );
+
+      test('falls back to the primary address when the stop address is '
+          'disabled or missing', () async {
+        await insertSecondAddress(enabled: false);
+
+        final stop = await stopAt('addr-second');
+
+        expect(stop.customer.addresses.single.id, 'mock-addr-1');
+        expect(stop.customer.addresses.single.isPrimary, isTrue);
+      });
+    });
+
+    test('exposes the cover mark and the owner driver of the stop', () async {
+      await insertRoute('route-today', todayStr);
+      final now = DateTime.now();
+      await insertStop(
+        stopId: 'stop-cover',
+        routeId: 'route-today',
+        customerId: 'mock-customer-1',
+        scheduledAt: DateTime(now.year, now.month, now.day, 9, 0),
+      );
+      await insertStop(
+        stopId: 'stop-own',
+        routeId: 'route-today',
+        customerId: 'mock-customer-2',
+        sequence: 2,
+        scheduledAt: DateTime(now.year, now.month, now.day, 10, 0),
+      );
+      await (db.update(
+        db.routeStopTable,
+      )..where((t) => t.routeStopId.equals('stop-cover'))).write(
+        const RouteStopTableCompanion(
+          isCover: drift.Value(true),
+          coveredDriverName: drift.Value('Pedro'),
+        ),
+      );
+
+      final stops = await sut.watchDayStops().first;
+      final cover = stops.firstWhere((s) => s.id == 'stop-cover');
+      final own = stops.firstWhere((s) => s.id == 'stop-own');
+      expect(cover.isCover, isTrue);
+      expect(cover.coveredDriverName, 'Pedro');
+      expect(own.isCover, isFalse);
+      expect(own.coveredDriverName, isNull);
     });
   });
 

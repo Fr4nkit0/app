@@ -179,6 +179,30 @@ void main() {
     expect(cursor.value, '2026-10-19T12:00:00+00:00');
   });
 
+  test('stores the cover marks of stops and customers', () async {
+    final data = response['data'] as Map<String, dynamic>;
+    final stops = data['stops'] as List;
+    final customers = data['customers'] as List;
+    stops[1] = {
+      ...stops[1] as Map<String, dynamic>,
+      'is_cover': true,
+      'covered_driver_name': 'Pedro',
+    };
+    customers[1] = {...customers[1] as Map<String, dynamic>, 'is_cover': true};
+
+    await service.bootstrap();
+
+    final rows = await (db.select(
+      db.routeStopTable,
+    )..orderBy([(t) => OrderingTerm.asc(t.sequence)])).get();
+    expect(rows.map((s) => s.isCover), [false, true]);
+    expect(rows.map((s) => s.coveredDriverName), [null, 'Pedro']);
+    final customerRows = await (db.select(
+      db.customerTable,
+    )..orderBy([(t) => OrderingTerm.asc(t.serverId)])).get();
+    expect(customerRows.map((c) => c.isCover), [false, true]);
+  });
+
   test('running twice does not duplicate rows', () async {
     await service.bootstrap();
     await service.bootstrap();

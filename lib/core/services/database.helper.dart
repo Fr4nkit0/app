@@ -57,11 +57,11 @@ part 'database.helper.g.dart';
 class AppDatabase extends _$AppDatabase {
   AppDatabase([QueryExecutor? executor]) : super(executor ?? _openConnection());
 
-  /// 17 is the development baseline: one schema, no upgrade history. Before
+  /// 18 is the development baseline: one schema, no upgrade history. Before
   /// the first production release this version must be frozen, and every
   /// later schema change must ship with its own upgrade step.
   @override
-  int get schemaVersion => 17;
+  int get schemaVersion => 18;
 
   @override
   MigrationStrategy get migration => MigrationStrategy(

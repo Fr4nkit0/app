@@ -91,6 +91,21 @@ class $CustomerTableTable extends CustomerTable
     requiredDuringInsert: false,
     defaultConstraints: GeneratedColumn.constraintIsAlways('UNIQUE'),
   );
+  static const VerificationMeta _isCoverMeta = const VerificationMeta(
+    'isCover',
+  );
+  @override
+  late final GeneratedColumn<bool> isCover = GeneratedColumn<bool>(
+    'is_cover',
+    aliasedName,
+    false,
+    type: DriftSqlType.bool,
+    requiredDuringInsert: false,
+    defaultConstraints: GeneratedColumn.constraintIsAlways(
+      'CHECK ("is_cover" IN (0, 1))',
+    ),
+    defaultValue: const Constant(false),
+  );
   @override
   List<GeneratedColumn> get $columns => [
     createdAt,
@@ -100,6 +115,7 @@ class $CustomerTableTable extends CustomerTable
     customerId,
     name,
     phone,
+    isCover,
   ];
   @override
   String get aliasedName => _alias ?? actualTableName;
@@ -160,6 +176,12 @@ class $CustomerTableTable extends CustomerTable
         phone.isAcceptableOrUnknown(data['phone']!, _phoneMeta),
       );
     }
+    if (data.containsKey('is_cover')) {
+      context.handle(
+        _isCoverMeta,
+        isCover.isAcceptableOrUnknown(data['is_cover']!, _isCoverMeta),
+      );
+    }
     return context;
   }
 
@@ -197,6 +219,10 @@ class $CustomerTableTable extends CustomerTable
         DriftSqlType.string,
         data['${effectivePrefix}phone'],
       ),
+      isCover: attachedDatabase.typeMapping.read(
+        DriftSqlType.bool,
+        data['${effectivePrefix}is_cover'],
+      )!,
     );
   }
 
@@ -215,6 +241,10 @@ class CustomerTableData extends DataClass
   final String customerId;
   final String name;
   final String? phone;
+
+  /// Set by the server when the driver only gets this customer through
+  /// covered stops; false for an own customer.
+  final bool isCover;
   const CustomerTableData({
     required this.createdAt,
     required this.lastModifiedDate,
@@ -223,6 +253,7 @@ class CustomerTableData extends DataClass
     required this.customerId,
     required this.name,
     this.phone,
+    required this.isCover,
   });
   @override
   Map<String, Expression> toColumns(bool nullToAbsent) {
@@ -238,6 +269,7 @@ class CustomerTableData extends DataClass
     if (!nullToAbsent || phone != null) {
       map['phone'] = Variable<String>(phone);
     }
+    map['is_cover'] = Variable<bool>(isCover);
     return map;
   }
 
@@ -254,6 +286,7 @@ class CustomerTableData extends DataClass
       phone: phone == null && nullToAbsent
           ? const Value.absent()
           : Value(phone),
+      isCover: Value(isCover),
     );
   }
 
@@ -270,6 +303,7 @@ class CustomerTableData extends DataClass
       customerId: serializer.fromJson<String>(json['customerId']),
       name: serializer.fromJson<String>(json['name']),
       phone: serializer.fromJson<String?>(json['phone']),
+      isCover: serializer.fromJson<bool>(json['isCover']),
     );
   }
   @override
@@ -283,6 +317,7 @@ class CustomerTableData extends DataClass
       'customerId': serializer.toJson<String>(customerId),
       'name': serializer.toJson<String>(name),
       'phone': serializer.toJson<String?>(phone),
+      'isCover': serializer.toJson<bool>(isCover),
     };
   }
 
@@ -294,6 +329,7 @@ class CustomerTableData extends DataClass
     String? customerId,
     String? name,
     Value<String?> phone = const Value.absent(),
+    bool? isCover,
   }) => CustomerTableData(
     createdAt: createdAt ?? this.createdAt,
     lastModifiedDate: lastModifiedDate ?? this.lastModifiedDate,
@@ -302,6 +338,7 @@ class CustomerTableData extends DataClass
     customerId: customerId ?? this.customerId,
     name: name ?? this.name,
     phone: phone.present ? phone.value : this.phone,
+    isCover: isCover ?? this.isCover,
   );
   CustomerTableData copyWithCompanion(CustomerTableCompanion data) {
     return CustomerTableData(
@@ -316,6 +353,7 @@ class CustomerTableData extends DataClass
           : this.customerId,
       name: data.name.present ? data.name.value : this.name,
       phone: data.phone.present ? data.phone.value : this.phone,
+      isCover: data.isCover.present ? data.isCover.value : this.isCover,
     );
   }
 
@@ -328,7 +366,8 @@ class CustomerTableData extends DataClass
           ..write('serverId: $serverId, ')
           ..write('customerId: $customerId, ')
           ..write('name: $name, ')
-          ..write('phone: $phone')
+          ..write('phone: $phone, ')
+          ..write('isCover: $isCover')
           ..write(')'))
         .toString();
   }
@@ -342,6 +381,7 @@ class CustomerTableData extends DataClass
     customerId,
     name,
     phone,
+    isCover,
   );
   @override
   bool operator ==(Object other) =>
@@ -353,7 +393,8 @@ class CustomerTableData extends DataClass
           other.serverId == this.serverId &&
           other.customerId == this.customerId &&
           other.name == this.name &&
-          other.phone == this.phone);
+          other.phone == this.phone &&
+          other.isCover == this.isCover);
 }
 
 class CustomerTableCompanion extends UpdateCompanion<CustomerTableData> {
@@ -364,6 +405,7 @@ class CustomerTableCompanion extends UpdateCompanion<CustomerTableData> {
   final Value<String> customerId;
   final Value<String> name;
   final Value<String?> phone;
+  final Value<bool> isCover;
   final Value<int> rowid;
   const CustomerTableCompanion({
     this.createdAt = const Value.absent(),
@@ -373,6 +415,7 @@ class CustomerTableCompanion extends UpdateCompanion<CustomerTableData> {
     this.customerId = const Value.absent(),
     this.name = const Value.absent(),
     this.phone = const Value.absent(),
+    this.isCover = const Value.absent(),
     this.rowid = const Value.absent(),
   });
   CustomerTableCompanion.insert({
@@ -383,6 +426,7 @@ class CustomerTableCompanion extends UpdateCompanion<CustomerTableData> {
     this.customerId = const Value.absent(),
     required String name,
     this.phone = const Value.absent(),
+    this.isCover = const Value.absent(),
     this.rowid = const Value.absent(),
   }) : name = Value(name);
   static Insertable<CustomerTableData> custom({
@@ -393,6 +437,7 @@ class CustomerTableCompanion extends UpdateCompanion<CustomerTableData> {
     Expression<String>? customerId,
     Expression<String>? name,
     Expression<String>? phone,
+    Expression<bool>? isCover,
     Expression<int>? rowid,
   }) {
     return RawValuesInsertable({
@@ -403,6 +448,7 @@ class CustomerTableCompanion extends UpdateCompanion<CustomerTableData> {
       if (customerId != null) 'customer_id': customerId,
       if (name != null) 'name': name,
       if (phone != null) 'phone': phone,
+      if (isCover != null) 'is_cover': isCover,
       if (rowid != null) 'rowid': rowid,
     });
   }
@@ -415,6 +461,7 @@ class CustomerTableCompanion extends UpdateCompanion<CustomerTableData> {
     Value<String>? customerId,
     Value<String>? name,
     Value<String?>? phone,
+    Value<bool>? isCover,
     Value<int>? rowid,
   }) {
     return CustomerTableCompanion(
@@ -425,6 +472,7 @@ class CustomerTableCompanion extends UpdateCompanion<CustomerTableData> {
       customerId: customerId ?? this.customerId,
       name: name ?? this.name,
       phone: phone ?? this.phone,
+      isCover: isCover ?? this.isCover,
       rowid: rowid ?? this.rowid,
     );
   }
@@ -453,6 +501,9 @@ class CustomerTableCompanion extends UpdateCompanion<CustomerTableData> {
     if (phone.present) {
       map['phone'] = Variable<String>(phone.value);
     }
+    if (isCover.present) {
+      map['is_cover'] = Variable<bool>(isCover.value);
+    }
     if (rowid.present) {
       map['rowid'] = Variable<int>(rowid.value);
     }
@@ -469,6 +520,7 @@ class CustomerTableCompanion extends UpdateCompanion<CustomerTableData> {
           ..write('customerId: $customerId, ')
           ..write('name: $name, ')
           ..write('phone: $phone, ')
+          ..write('isCover: $isCover, ')
           ..write('rowid: $rowid')
           ..write(')'))
         .toString();
@@ -2843,6 +2895,33 @@ class $RouteStopTableTable extends RouteStopTable
     type: DriftSqlType.int,
     requiredDuringInsert: false,
   );
+  static const VerificationMeta _isCoverMeta = const VerificationMeta(
+    'isCover',
+  );
+  @override
+  late final GeneratedColumn<bool> isCover = GeneratedColumn<bool>(
+    'is_cover',
+    aliasedName,
+    false,
+    type: DriftSqlType.bool,
+    requiredDuringInsert: false,
+    defaultConstraints: GeneratedColumn.constraintIsAlways(
+      'CHECK ("is_cover" IN (0, 1))',
+    ),
+    defaultValue: const Constant(false),
+  );
+  static const VerificationMeta _coveredDriverNameMeta = const VerificationMeta(
+    'coveredDriverName',
+  );
+  @override
+  late final GeneratedColumn<String> coveredDriverName =
+      GeneratedColumn<String>(
+        'covered_driver_name',
+        aliasedName,
+        true,
+        type: DriftSqlType.string,
+        requiredDuringInsert: false,
+      );
   @override
   List<GeneratedColumn> get $columns => [
     createdAt,
@@ -2862,6 +2941,8 @@ class $RouteStopTableTable extends RouteStopTable
     isRequested,
     note,
     scheduledVisitId,
+    isCover,
+    coveredDriverName,
   ];
   @override
   String get aliasedName => _alias ?? actualTableName;
@@ -3009,6 +3090,21 @@ class $RouteStopTableTable extends RouteStopTable
         ),
       );
     }
+    if (data.containsKey('is_cover')) {
+      context.handle(
+        _isCoverMeta,
+        isCover.isAcceptableOrUnknown(data['is_cover']!, _isCoverMeta),
+      );
+    }
+    if (data.containsKey('covered_driver_name')) {
+      context.handle(
+        _coveredDriverNameMeta,
+        coveredDriverName.isAcceptableOrUnknown(
+          data['covered_driver_name']!,
+          _coveredDriverNameMeta,
+        ),
+      );
+    }
     return context;
   }
 
@@ -3086,6 +3182,14 @@ class $RouteStopTableTable extends RouteStopTable
         DriftSqlType.int,
         data['${effectivePrefix}scheduled_visit_id'],
       ),
+      isCover: attachedDatabase.typeMapping.read(
+        DriftSqlType.bool,
+        data['${effectivePrefix}is_cover'],
+      )!,
+      coveredDriverName: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}covered_driver_name'],
+      ),
     );
   }
 
@@ -3118,6 +3222,13 @@ class RouteStopTableData extends DataClass
   /// The admin's note for a requested visit.
   final String? note;
   final int? scheduledVisitId;
+
+  /// Set by the server when the stop was moved to this route to cover
+  /// another driver; the customer keeps its owner.
+  final bool isCover;
+
+  /// The owner driver's display name of a covered stop.
+  final String? coveredDriverName;
   const RouteStopTableData({
     required this.createdAt,
     required this.lastModifiedDate,
@@ -3136,6 +3247,8 @@ class RouteStopTableData extends DataClass
     required this.isRequested,
     this.note,
     this.scheduledVisitId,
+    required this.isCover,
+    this.coveredDriverName,
   });
   @override
   Map<String, Expression> toColumns(bool nullToAbsent) {
@@ -3171,6 +3284,10 @@ class RouteStopTableData extends DataClass
     if (!nullToAbsent || scheduledVisitId != null) {
       map['scheduled_visit_id'] = Variable<int>(scheduledVisitId);
     }
+    map['is_cover'] = Variable<bool>(isCover);
+    if (!nullToAbsent || coveredDriverName != null) {
+      map['covered_driver_name'] = Variable<String>(coveredDriverName);
+    }
     return map;
   }
 
@@ -3205,6 +3322,10 @@ class RouteStopTableData extends DataClass
       scheduledVisitId: scheduledVisitId == null && nullToAbsent
           ? const Value.absent()
           : Value(scheduledVisitId),
+      isCover: Value(isCover),
+      coveredDriverName: coveredDriverName == null && nullToAbsent
+          ? const Value.absent()
+          : Value(coveredDriverName),
     );
   }
 
@@ -3235,6 +3356,10 @@ class RouteStopTableData extends DataClass
       isRequested: serializer.fromJson<bool>(json['isRequested']),
       note: serializer.fromJson<String?>(json['note']),
       scheduledVisitId: serializer.fromJson<int?>(json['scheduledVisitId']),
+      isCover: serializer.fromJson<bool>(json['isCover']),
+      coveredDriverName: serializer.fromJson<String?>(
+        json['coveredDriverName'],
+      ),
     );
   }
   @override
@@ -3260,6 +3385,8 @@ class RouteStopTableData extends DataClass
       'isRequested': serializer.toJson<bool>(isRequested),
       'note': serializer.toJson<String?>(note),
       'scheduledVisitId': serializer.toJson<int?>(scheduledVisitId),
+      'isCover': serializer.toJson<bool>(isCover),
+      'coveredDriverName': serializer.toJson<String?>(coveredDriverName),
     };
   }
 
@@ -3281,6 +3408,8 @@ class RouteStopTableData extends DataClass
     bool? isRequested,
     Value<String?> note = const Value.absent(),
     Value<int?> scheduledVisitId = const Value.absent(),
+    bool? isCover,
+    Value<String?> coveredDriverName = const Value.absent(),
   }) => RouteStopTableData(
     createdAt: createdAt ?? this.createdAt,
     lastModifiedDate: lastModifiedDate ?? this.lastModifiedDate,
@@ -3307,6 +3436,10 @@ class RouteStopTableData extends DataClass
     scheduledVisitId: scheduledVisitId.present
         ? scheduledVisitId.value
         : this.scheduledVisitId,
+    isCover: isCover ?? this.isCover,
+    coveredDriverName: coveredDriverName.present
+        ? coveredDriverName.value
+        : this.coveredDriverName,
   );
   RouteStopTableData copyWithCompanion(RouteStopTableCompanion data) {
     return RouteStopTableData(
@@ -3345,6 +3478,10 @@ class RouteStopTableData extends DataClass
       scheduledVisitId: data.scheduledVisitId.present
           ? data.scheduledVisitId.value
           : this.scheduledVisitId,
+      isCover: data.isCover.present ? data.isCover.value : this.isCover,
+      coveredDriverName: data.coveredDriverName.present
+          ? data.coveredDriverName.value
+          : this.coveredDriverName,
     );
   }
 
@@ -3367,7 +3504,9 @@ class RouteStopTableData extends DataClass
           ..write('rescheduledFromStopId: $rescheduledFromStopId, ')
           ..write('isRequested: $isRequested, ')
           ..write('note: $note, ')
-          ..write('scheduledVisitId: $scheduledVisitId')
+          ..write('scheduledVisitId: $scheduledVisitId, ')
+          ..write('isCover: $isCover, ')
+          ..write('coveredDriverName: $coveredDriverName')
           ..write(')'))
         .toString();
   }
@@ -3391,6 +3530,8 @@ class RouteStopTableData extends DataClass
     isRequested,
     note,
     scheduledVisitId,
+    isCover,
+    coveredDriverName,
   );
   @override
   bool operator ==(Object other) =>
@@ -3412,7 +3553,9 @@ class RouteStopTableData extends DataClass
           other.rescheduledFromStopId == this.rescheduledFromStopId &&
           other.isRequested == this.isRequested &&
           other.note == this.note &&
-          other.scheduledVisitId == this.scheduledVisitId);
+          other.scheduledVisitId == this.scheduledVisitId &&
+          other.isCover == this.isCover &&
+          other.coveredDriverName == this.coveredDriverName);
 }
 
 class RouteStopTableCompanion extends UpdateCompanion<RouteStopTableData> {
@@ -3433,6 +3576,8 @@ class RouteStopTableCompanion extends UpdateCompanion<RouteStopTableData> {
   final Value<bool> isRequested;
   final Value<String?> note;
   final Value<int?> scheduledVisitId;
+  final Value<bool> isCover;
+  final Value<String?> coveredDriverName;
   final Value<int> rowid;
   const RouteStopTableCompanion({
     this.createdAt = const Value.absent(),
@@ -3452,6 +3597,8 @@ class RouteStopTableCompanion extends UpdateCompanion<RouteStopTableData> {
     this.isRequested = const Value.absent(),
     this.note = const Value.absent(),
     this.scheduledVisitId = const Value.absent(),
+    this.isCover = const Value.absent(),
+    this.coveredDriverName = const Value.absent(),
     this.rowid = const Value.absent(),
   });
   RouteStopTableCompanion.insert({
@@ -3472,6 +3619,8 @@ class RouteStopTableCompanion extends UpdateCompanion<RouteStopTableData> {
     this.isRequested = const Value.absent(),
     this.note = const Value.absent(),
     this.scheduledVisitId = const Value.absent(),
+    this.isCover = const Value.absent(),
+    this.coveredDriverName = const Value.absent(),
     this.rowid = const Value.absent(),
   }) : routeId = Value(routeId),
        customerId = Value(customerId),
@@ -3495,6 +3644,8 @@ class RouteStopTableCompanion extends UpdateCompanion<RouteStopTableData> {
     Expression<bool>? isRequested,
     Expression<String>? note,
     Expression<int>? scheduledVisitId,
+    Expression<bool>? isCover,
+    Expression<String>? coveredDriverName,
     Expression<int>? rowid,
   }) {
     return RawValuesInsertable({
@@ -3516,6 +3667,8 @@ class RouteStopTableCompanion extends UpdateCompanion<RouteStopTableData> {
       if (isRequested != null) 'is_requested': isRequested,
       if (note != null) 'note': note,
       if (scheduledVisitId != null) 'scheduled_visit_id': scheduledVisitId,
+      if (isCover != null) 'is_cover': isCover,
+      if (coveredDriverName != null) 'covered_driver_name': coveredDriverName,
       if (rowid != null) 'rowid': rowid,
     });
   }
@@ -3538,6 +3691,8 @@ class RouteStopTableCompanion extends UpdateCompanion<RouteStopTableData> {
     Value<bool>? isRequested,
     Value<String?>? note,
     Value<int?>? scheduledVisitId,
+    Value<bool>? isCover,
+    Value<String?>? coveredDriverName,
     Value<int>? rowid,
   }) {
     return RouteStopTableCompanion(
@@ -3559,6 +3714,8 @@ class RouteStopTableCompanion extends UpdateCompanion<RouteStopTableData> {
       isRequested: isRequested ?? this.isRequested,
       note: note ?? this.note,
       scheduledVisitId: scheduledVisitId ?? this.scheduledVisitId,
+      isCover: isCover ?? this.isCover,
+      coveredDriverName: coveredDriverName ?? this.coveredDriverName,
       rowid: rowid ?? this.rowid,
     );
   }
@@ -3619,6 +3776,12 @@ class RouteStopTableCompanion extends UpdateCompanion<RouteStopTableData> {
     if (scheduledVisitId.present) {
       map['scheduled_visit_id'] = Variable<int>(scheduledVisitId.value);
     }
+    if (isCover.present) {
+      map['is_cover'] = Variable<bool>(isCover.value);
+    }
+    if (coveredDriverName.present) {
+      map['covered_driver_name'] = Variable<String>(coveredDriverName.value);
+    }
     if (rowid.present) {
       map['rowid'] = Variable<int>(rowid.value);
     }
@@ -3645,6 +3808,8 @@ class RouteStopTableCompanion extends UpdateCompanion<RouteStopTableData> {
           ..write('isRequested: $isRequested, ')
           ..write('note: $note, ')
           ..write('scheduledVisitId: $scheduledVisitId, ')
+          ..write('isCover: $isCover, ')
+          ..write('coveredDriverName: $coveredDriverName, ')
           ..write('rowid: $rowid')
           ..write(')'))
         .toString();
@@ -14349,6 +14514,7 @@ typedef $$CustomerTableTableCreateCompanionBuilder =
       Value<String> customerId,
       required String name,
       Value<String?> phone,
+      Value<bool> isCover,
       Value<int> rowid,
     });
 typedef $$CustomerTableTableUpdateCompanionBuilder =
@@ -14360,6 +14526,7 @@ typedef $$CustomerTableTableUpdateCompanionBuilder =
       Value<String> customerId,
       Value<String> name,
       Value<String?> phone,
+      Value<bool> isCover,
       Value<int> rowid,
     });
 
@@ -14672,6 +14839,11 @@ class $$CustomerTableTableFilterComposer
     builder: (column) => ColumnFilters(column),
   );
 
+  ColumnFilters<bool> get isCover => $composableBuilder(
+    column: $table.isCover,
+    builder: (column) => ColumnFilters(column),
+  );
+
   Expression<bool> routeStopTableRefs(
     Expression<bool> Function($$RouteStopTableTableFilterComposer f) f,
   ) {
@@ -14949,6 +15121,11 @@ class $$CustomerTableTableOrderingComposer
     column: $table.phone,
     builder: (column) => ColumnOrderings(column),
   );
+
+  ColumnOrderings<bool> get isCover => $composableBuilder(
+    column: $table.isCover,
+    builder: (column) => ColumnOrderings(column),
+  );
 }
 
 class $$CustomerTableTableAnnotationComposer
@@ -14984,6 +15161,9 @@ class $$CustomerTableTableAnnotationComposer
 
   GeneratedColumn<String> get phone =>
       $composableBuilder(column: $table.phone, builder: (column) => column);
+
+  GeneratedColumn<bool> get isCover =>
+      $composableBuilder(column: $table.isCover, builder: (column) => column);
 
   Expression<T> routeStopTableRefs<T extends Object>(
     Expression<T> Function($$RouteStopTableTableAnnotationComposer a) f,
@@ -15265,6 +15445,7 @@ class $$CustomerTableTableTableManager
                 Value<String> customerId = const Value.absent(),
                 Value<String> name = const Value.absent(),
                 Value<String?> phone = const Value.absent(),
+                Value<bool> isCover = const Value.absent(),
                 Value<int> rowid = const Value.absent(),
               }) => CustomerTableCompanion(
                 createdAt: createdAt,
@@ -15274,6 +15455,7 @@ class $$CustomerTableTableTableManager
                 customerId: customerId,
                 name: name,
                 phone: phone,
+                isCover: isCover,
                 rowid: rowid,
               ),
           createCompanionCallback:
@@ -15285,6 +15467,7 @@ class $$CustomerTableTableTableManager
                 Value<String> customerId = const Value.absent(),
                 required String name,
                 Value<String?> phone = const Value.absent(),
+                Value<bool> isCover = const Value.absent(),
                 Value<int> rowid = const Value.absent(),
               }) => CustomerTableCompanion.insert(
                 createdAt: createdAt,
@@ -15294,6 +15477,7 @@ class $$CustomerTableTableTableManager
                 customerId: customerId,
                 name: name,
                 phone: phone,
+                isCover: isCover,
                 rowid: rowid,
               ),
           withReferenceMapper: (p0) => p0
@@ -17062,6 +17246,8 @@ typedef $$RouteStopTableTableCreateCompanionBuilder =
       Value<bool> isRequested,
       Value<String?> note,
       Value<int?> scheduledVisitId,
+      Value<bool> isCover,
+      Value<String?> coveredDriverName,
       Value<int> rowid,
     });
 typedef $$RouteStopTableTableUpdateCompanionBuilder =
@@ -17083,6 +17269,8 @@ typedef $$RouteStopTableTableUpdateCompanionBuilder =
       Value<bool> isRequested,
       Value<String?> note,
       Value<int?> scheduledVisitId,
+      Value<bool> isCover,
+      Value<String?> coveredDriverName,
       Value<int> rowid,
     });
 
@@ -17264,6 +17452,16 @@ class $$RouteStopTableTableFilterComposer
     builder: (column) => ColumnFilters(column),
   );
 
+  ColumnFilters<bool> get isCover => $composableBuilder(
+    column: $table.isCover,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get coveredDriverName => $composableBuilder(
+    column: $table.coveredDriverName,
+    builder: (column) => ColumnFilters(column),
+  );
+
   $$RouteTableTableFilterComposer get routeId {
     final $$RouteTableTableFilterComposer composer = $composerBuilder(
       composer: this,
@@ -17438,6 +17636,16 @@ class $$RouteStopTableTableOrderingComposer
     builder: (column) => ColumnOrderings(column),
   );
 
+  ColumnOrderings<bool> get isCover => $composableBuilder(
+    column: $table.isCover,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<String> get coveredDriverName => $composableBuilder(
+    column: $table.coveredDriverName,
+    builder: (column) => ColumnOrderings(column),
+  );
+
   $$RouteTableTableOrderingComposer get routeId {
     final $$RouteTableTableOrderingComposer composer = $composerBuilder(
       composer: this,
@@ -17571,6 +17779,14 @@ class $$RouteStopTableTableAnnotationComposer
 
   GeneratedColumn<int> get scheduledVisitId => $composableBuilder(
     column: $table.scheduledVisitId,
+    builder: (column) => column,
+  );
+
+  GeneratedColumn<bool> get isCover =>
+      $composableBuilder(column: $table.isCover, builder: (column) => column);
+
+  GeneratedColumn<String> get coveredDriverName => $composableBuilder(
+    column: $table.coveredDriverName,
     builder: (column) => column,
   );
 
@@ -17722,6 +17938,8 @@ class $$RouteStopTableTableTableManager
                 Value<bool> isRequested = const Value.absent(),
                 Value<String?> note = const Value.absent(),
                 Value<int?> scheduledVisitId = const Value.absent(),
+                Value<bool> isCover = const Value.absent(),
+                Value<String?> coveredDriverName = const Value.absent(),
                 Value<int> rowid = const Value.absent(),
               }) => RouteStopTableCompanion(
                 createdAt: createdAt,
@@ -17741,6 +17959,8 @@ class $$RouteStopTableTableTableManager
                 isRequested: isRequested,
                 note: note,
                 scheduledVisitId: scheduledVisitId,
+                isCover: isCover,
+                coveredDriverName: coveredDriverName,
                 rowid: rowid,
               ),
           createCompanionCallback:
@@ -17762,6 +17982,8 @@ class $$RouteStopTableTableTableManager
                 Value<bool> isRequested = const Value.absent(),
                 Value<String?> note = const Value.absent(),
                 Value<int?> scheduledVisitId = const Value.absent(),
+                Value<bool> isCover = const Value.absent(),
+                Value<String?> coveredDriverName = const Value.absent(),
                 Value<int> rowid = const Value.absent(),
               }) => RouteStopTableCompanion.insert(
                 createdAt: createdAt,
@@ -17781,6 +18003,8 @@ class $$RouteStopTableTableTableManager
                 isRequested: isRequested,
                 note: note,
                 scheduledVisitId: scheduledVisitId,
+                isCover: isCover,
+                coveredDriverName: coveredDriverName,
                 rowid: rowid,
               ),
           withReferenceMapper: (p0) => p0

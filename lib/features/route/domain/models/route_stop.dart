@@ -30,6 +30,12 @@ class RouteStop {
   /// The admin's note for a requested visit.
   final String? note;
 
+  /// True when the stop was moved to this route to cover another driver.
+  final bool isCover;
+
+  /// The owner driver's display name of a covered stop.
+  final String? coveredDriverName;
+
   const RouteStop({
     required this.id,
     required this.customer,
@@ -42,6 +48,8 @@ class RouteStop {
     this.visit,
     this.isRequested = false,
     this.note,
+    this.isCover = false,
+    this.coveredDriverName,
   });
 
   RouteStop copyWith({StopStatus? status}) => RouteStop(
@@ -56,5 +64,7 @@ class RouteStop {
     visit: visit,
     isRequested: isRequested,
     note: note,
+    isCover: isCover,
+    coveredDriverName: coveredDriverName,
   );
 }
