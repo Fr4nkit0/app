@@ -314,10 +314,14 @@ class DriftCustomerRepository implements CustomerRepository {
               .get())
           .firstOrNull;
 
-  /// Customers Clientes and the sales picker list: enabled and not
-  /// reassigned to another driver ([RemovedCustomers]).
+  /// Customers Clientes and the sales picker list: enabled, not reassigned
+  /// to another driver ([RemovedCustomers]) and not covered: a covered
+  /// customer only reaches the driver through covered stops, so it shows on
+  /// the route and the visit, never in Clientes.
   Expression<bool> _listed($CustomerTableTable t) =>
-      t.enabled.equals(true) & RemovedCustomers.isShown(db, t.customerId);
+      t.enabled.equals(true) &
+      t.isCover.equals(false) &
+      RemovedCustomers.isShown(db, t.customerId);
 
   @override
   Future<Customer?> getCustomerById(String id) async {

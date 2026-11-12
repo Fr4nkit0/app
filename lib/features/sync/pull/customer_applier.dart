@@ -53,6 +53,7 @@ class CustomerApplier implements PullApplier {
             .getSingleOrNull();
 
     final fields = fieldsOf(c);
+    final isCover = isCoverOf(c);
     final String localId;
     if (existing == null) {
       localId =
@@ -63,16 +64,23 @@ class CustomerApplier implements PullApplier {
                       customerId: clientUuid == null
                           ? const Value.absent()
                           : Value(clientUuid),
+                      isCover: isCover,
                     ),
                   ))
               .customerId;
     } else {
       if (context.unsent.customers.contains(existing.customerId)) {
         await _shadow.storePulledCustomer(existing.customerId, fields);
+        // The cover mark is the server's alone: no local change carries it.
+        if (isCover.present) {
+          await (_db.update(_db.customerTable)
+                ..where((t) => t.customerId.equals(existing.customerId)))
+              .write(CustomerTableCompanion(isCover: isCover));
+        }
       } else {
         await (_db.update(_db.customerTable)
               ..where((t) => t.customerId.equals(existing.customerId)))
-            .write(fields);
+            .write(fields.copyWith(isCover: isCover));
       }
       localId = existing.customerId;
       await _removed.show(localId);
@@ -80,6 +88,13 @@ class CustomerApplier implements PullApplier {
     context.ids.recordCustomer(serverId, localId);
     return localId;
   }
+
+  /// Whether the driver only gets [c] through covered stops. A server older
+  /// than route covers sends no mark: the stored one stays, and a new
+  /// customer is an own customer.
+  static Value<bool> isCoverOf(Json c) => c.containsKey('is_cover')
+      ? Value(c['is_cover'] == true)
+      : const Value.absent();
 
   /// The local columns of the server customer row [c], server id included.
   static CustomerTableCompanion fieldsOf(Json c) => CustomerTableCompanion(

@@ -3,6 +3,7 @@ import 'package:app/core/utils/address_formatter.dart';
 import 'package:app/core/utils/money_formatter.dart';
 import 'package:app/features/route/domain/models/route_stop.dart';
 import 'package:app/features/route/domain/models/stop_status.dart';
+import 'package:app/features/route/presentation/widgets/stop_cover_label.dart';
 import 'package:app/features/route/presentation/widgets/stop_requested_label.dart';
 import 'package:app/features/route/presentation/widgets/stop_reschedule_label.dart';
 import 'package:app/core/theme/marilin_tokens.dart';
@@ -193,6 +194,7 @@ class RouteStopCard extends StatelessWidget {
                                 maxLines: 1,
                                 overflow: TextOverflow.ellipsis,
                               ),
+                              StopCoverLabel(stop: stop),
                               StopRequestedLabel(stop: stop),
                               StopRescheduleLabel(stop: stop),
                               if (visitLine != null) ...[

@@ -94,15 +94,10 @@ class DriftRouteRepository implements RouteRepository {
         final stopRow = row.readTable(_db.routeStopTable);
         final custRow = row.readTable(_db.customerTable);
 
-        // Fetch primary address via secondary query.
-        final addrRow =
-            await (_db.select(_db.customerAddressTable)..where(
-                  (t) =>
-                      t.customerId.equals(custRow.customerId) &
-                      t.isPrimary.equals(true) &
-                      t.enabled.equals(true),
-                ))
-                .getSingleOrNull();
+        final addrRow = await _stopAddress(
+          custRow.customerId,
+          stopRow.customerAddressId,
+        );
 
         final addresses = addrRow != null
             ? [
@@ -112,7 +107,7 @@ class DriftRouteRepository implements RouteRepository {
                   apartment: addrRow.apartment,
                   floor: addrRow.floor,
                   visualReference: addrRow.visualReference,
-                  isPrimary: true,
+                  isPrimary: addrRow.isPrimary,
                   latitude: addrRow.latitude,
                   longitude: addrRow.longitude,
                 ),
@@ -130,6 +125,17 @@ class DriftRouteRepository implements RouteRepository {
           requestedRow = rowById[requestedRow.rescheduledFromStopId];
         }
         final isRequested = requestedRow?.isRequested ?? false;
+
+        // Same for the cover: a stop rescheduled from a covered one is still
+        // a cover of the same owner driver.
+        RouteStopTableData? coverRow = stopRow;
+        final seenCover = <String>{};
+        while (coverRow != null &&
+            !coverRow.isCover &&
+            seenCover.add(coverRow.routeStopId)) {
+          coverRow = rowById[coverRow.rescheduledFromStopId];
+        }
+        final isCover = coverRow?.isCover ?? false;
 
         final currentBalance = _account.balanceIn(row);
         final debtAmount = currentBalance > 0 ? currentBalance : 0.0;
@@ -155,6 +161,8 @@ class DriftRouteRepository implements RouteRepository {
             visit: visits[stopRow.routeStopId],
             isRequested: isRequested,
             note: isRequested ? requestedRow!.note : null,
+            isCover: isCover,
+            coveredDriverName: isCover ? coverRow!.coveredDriverName : null,
           ),
         );
       }
@@ -169,6 +177,30 @@ class DriftRouteRepository implements RouteRepository {
 
       return stops;
     });
+  }
+
+  /// The address the stop is planned at: its own one while it exists and
+  /// is enabled, else the customer's enabled primary address.
+  Future<CustomerAddressTableData?> _stopAddress(
+    String customerId,
+    String? stopAddressId,
+  ) async {
+    if (stopAddressId != null) {
+      final own =
+          await (_db.select(_db.customerAddressTable)..where(
+                (t) =>
+                    t.addressId.equals(stopAddressId) & t.enabled.equals(true),
+              ))
+              .getSingleOrNull();
+      if (own != null) return own;
+    }
+    return (_db.select(_db.customerAddressTable)..where(
+          (t) =>
+              t.customerId.equals(customerId) &
+              t.isPrimary.equals(true) &
+              t.enabled.equals(true),
+        ))
+        .getSingleOrNull();
   }
 
   /// Whether the joined stop is closed: no longer pending or with a recorded

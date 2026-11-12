@@ -164,6 +164,46 @@ void main() {
       expect(row.scheduledVisitId, isNull);
     });
 
+    test('stores the cover mark and the owner driver, clears them and leaves '
+        'them when the server sends no mark', () async {
+      await StopApplier(db).applyChanges({
+        'route_stops': [
+          {...stop(id: 73), 'is_cover': true, 'covered_driver_name': 'Pedro'},
+        ],
+      }, await pullContext(db));
+      var row = await stopWithServerId(73);
+      expect(row.isCover, isTrue);
+      expect(row.coveredDriverName, 'Pedro');
+
+      // An older server sends no mark: the stored one stays.
+      await StopApplier(db).applyChanges({
+        'route_stops': [stop(id: 73, status: 'FINISHED')],
+      }, await pullContext(db));
+      row = await stopWithServerId(73);
+      expect(row.status, 'done');
+      expect(row.isCover, isTrue);
+      expect(row.coveredDriverName, 'Pedro');
+
+      await StopApplier(db).applyChanges({
+        'route_stops': [
+          {...stop(id: 73), 'is_cover': false, 'covered_driver_name': null},
+        ],
+      }, await pullContext(db));
+      row = await stopWithServerId(73);
+      expect(row.isCover, isFalse);
+      expect(row.coveredDriverName, isNull);
+    });
+
+    test('a new stop without a cover mark is an own stop', () async {
+      await StopApplier(db).applyChanges({
+        'route_stops': [stop(id: 73)],
+      }, await pullContext(db));
+
+      final row = await stopWithServerId(73);
+      expect(row.isCover, isFalse);
+      expect(row.coveredDriverName, isNull);
+    });
+
     test('skips a stop whose route or customer is not on the device', () async {
       await StopApplier(db).applyChanges({
         'route_stops': [
@@ -215,6 +255,37 @@ void main() {
         expect(row.isRequested, isFalse);
         expect(row.note, isNull);
       }
+    });
+
+    test('stores the cover mark and the owner driver; a missing key leaves '
+        'the stored values', () async {
+      await seedStop('stop-1', serverId: 73);
+      await (db.update(
+        db.routeStopTable,
+      )..where((t) => t.routeStopId.equals('stop-1'))).write(
+        const RouteStopTableCompanion(
+          isCover: Value(true),
+          coveredDriverName: Value('Luis'),
+        ),
+      );
+      final context = await bootstrapContext(db);
+      context.ids.recordCustomer(11, 'cust-1');
+
+      await StopApplier(db).replaceRoute('route-1', [
+        {...stop(id: 71), 'is_cover': true, 'covered_driver_name': 'Pedro'},
+        {...stop(id: 72), 'is_cover': false, 'covered_driver_name': null},
+        stop(id: 73),
+      ], context);
+
+      final covered = await stopWithServerId(71);
+      expect(covered.isCover, isTrue);
+      expect(covered.coveredDriverName, 'Pedro');
+      final own = await stopWithServerId(72);
+      expect(own.isCover, isFalse);
+      expect(own.coveredDriverName, isNull);
+      final untouched = await stopWithServerId(73);
+      expect(untouched.isCover, isTrue);
+      expect(untouched.coveredDriverName, 'Luis');
     });
 
     test('skips a stop whose customer is not in the same download', () async {
