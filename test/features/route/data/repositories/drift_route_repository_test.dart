@@ -304,6 +304,27 @@ void main() {
       expect(own.isCover, isFalse);
       expect(own.coveredDriverName, isNull);
     });
+
+    test(
+      'a covered customer, hidden from Clientes, still shows on the route',
+      () async {
+        await insertRoute('route-today', todayStr);
+        final now = DateTime.now();
+        await insertStop(
+          stopId: 'stop-cover',
+          routeId: 'route-today',
+          customerId: 'mock-customer-1',
+          scheduledAt: DateTime(now.year, now.month, now.day, 9, 0),
+        );
+        await (db.update(db.customerTable)
+              ..where((t) => t.customerId.equals('mock-customer-1')))
+            .write(const CustomerTableCompanion(isCover: drift.Value(true)));
+
+        final stops = await sut.watchDayStops().first;
+        expect(stops.single.id, 'stop-cover');
+        expect(stops.single.customer.id, 'mock-customer-1');
+      },
+    );
   });
 
   // ──────────────────────────────────────────────────────────────────────────
@@ -634,6 +655,55 @@ void main() {
         expect(again.note, 'Llamar antes');
       },
     );
+
+    test('a stop rescheduled from a covered stop keeps the cover and the '
+        'owner driver', () async {
+      await seedTodayStop('stop-1');
+      await (db.update(
+        db.routeStopTable,
+      )..where((t) => t.routeStopId.equals('stop-1'))).write(
+        const RouteStopTableCompanion(
+          isCover: drift.Value(true),
+          coveredDriverName: drift.Value('Pedro'),
+        ),
+      );
+      final now = DateTime.now();
+
+      final newId = await sut.rescheduleStop(
+        'stop-1',
+        DateTime(now.year, now.month, now.day, 16, 30),
+      );
+      final created = (await sut.watchDayStops().first).singleWhere(
+        (s) => s.id == newId,
+      );
+      expect(created.isCover, isTrue);
+      expect(created.coveredDriverName, 'Pedro');
+
+      final againId = await sut.rescheduleStop(
+        newId,
+        DateTime(now.year, now.month, now.day, 18),
+      );
+      final again = (await sut.watchDayStops().first).singleWhere(
+        (s) => s.id == againId,
+      );
+      expect(again.isCover, isTrue);
+      expect(again.coveredDriverName, 'Pedro');
+    });
+
+    test('a stop rescheduled from an own stop is not covered', () async {
+      await seedTodayStop('stop-1');
+      final now = DateTime.now();
+
+      final newId = await sut.rescheduleStop(
+        'stop-1',
+        DateTime(now.year, now.month, now.day, 16, 30),
+      );
+      final created = (await sut.watchDayStops().first).singleWhere(
+        (s) => s.id == newId,
+      );
+      expect(created.isCover, isFalse);
+      expect(created.coveredDriverName, isNull);
+    });
 
     test('a stop rescheduled from a normal stop is not requested', () async {
       await seedTodayStop('stop-1');

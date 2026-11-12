@@ -1,6 +1,7 @@
 import 'dart:io';
 
 import 'package:flutter_test/flutter_test.dart';
+import 'package:drift/drift.dart' show Value;
 import 'package:drift/native.dart';
 import 'package:app/core/services/database.helper.dart';
 import 'package:app/features/customers/data/repositories/drift.customer.repository.dart';
@@ -126,6 +127,72 @@ void main() {
       // "ramon" matches neighborhood "San Ramón" (c-2) and name "José Ramón" (c-1)
       final results3 = await driftRepo.searchCustomers(query: 'ramon', page: 0, pageSize: 10);
       expect(results3.length, 2);
+    });
+  });
+
+  group('covered customers', () {
+    late AppDatabase db;
+    late DriftCustomerRepository driftRepo;
+
+    Customer customer(String id, String name) => Customer(
+      id: id,
+      name: name,
+      phone: '387-$id',
+      addresses: [
+        CustomerAddress(id: 'a-$id', street: 'Mitre 10', isPrimary: true),
+      ],
+      preferences: [],
+    );
+
+    setUp(() async {
+      db = AppDatabase(NativeDatabase.memory());
+      driftRepo = DriftCustomerRepository(db);
+      await driftRepo.saveCustomer(customer('own', 'Ramón Propio'));
+      await driftRepo.saveCustomer(customer('cover', 'Ramón Cubierto'));
+      await (db.update(db.customerTable)
+            ..where((t) => t.customerId.equals('cover')))
+          .write(const CustomerTableCompanion(isCover: Value(true)));
+    });
+
+    tearDown(() async {
+      await db.close();
+    });
+
+    List<String> ids(List<Customer> list) => [for (final c in list) c.id];
+
+    test('are left out of the Clientes page', () async {
+      final page = await driftRepo.getCustomersPage(page: 0, pageSize: 10);
+      expect(ids(page), ['own']);
+    });
+
+    test('are left out of the search, with and without a query', () async {
+      expect(
+        ids(
+          await driftRepo.searchCustomers(
+            query: 'ramon',
+            page: 0,
+            pageSize: 10,
+          ),
+        ),
+        ['own'],
+      );
+      expect(
+        ids(await driftRepo.searchCustomers(query: '', page: 0, pageSize: 10)),
+        ['own'],
+      );
+    });
+
+    test('are left out of the watched list and the count', () async {
+      expect(ids(await driftRepo.watchAllCustomers().first), ['own']);
+      expect(await driftRepo.watchCustomerCount().first, 1);
+    });
+
+    test('an own customer (marker false) stays listed', () async {
+      await (db.update(db.customerTable)
+            ..where((t) => t.customerId.equals('cover')))
+          .write(const CustomerTableCompanion(isCover: Value(false)));
+      final page = await driftRepo.getCustomersPage(page: 0, pageSize: 10);
+      expect(ids(page)..sort(), ['cover', 'own']);
     });
   });
 
