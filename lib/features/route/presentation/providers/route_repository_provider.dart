@@ -37,19 +37,21 @@ final routeAllStopsProvider = StreamProvider<List<RouteStop>>((ref) {
 });
 
 /// Exposes the total number of stops available for the day in real-time
-final routeTotalStopsCountProvider = StreamProvider<int>((ref) {
-  return ref
-      .watch(routeRepositoryProvider)
-      .watchDayStops()
-      .map((list) => list.length);
+final routeTotalStopsCountProvider = StreamProvider<int>((ref) async* {
+  yield (await ref.watch(routeAllStopsProvider.future)).length;
 });
 
-/// Exposes the reactive list of day stops sliced by the current pagination limit
-final routeDayProvider = StreamProvider<List<RouteStop>>((ref) {
+/// Exposes the reactive list of day stops sliced by the current pagination
+/// limit.
+///
+/// The page is cut from the snapshot of [routeAllStopsProvider] instead of
+/// opening a database watcher of its own: the page and the total always come
+/// from the same read, and loading the next page while a sync writes does not
+/// start another full read that could land before or after the sync's.
+final routeDayProvider = StreamProvider<List<RouteStop>>((ref) async* {
   final limit = ref.watch(routePaginationLimitProvider);
-  return ref.watch(routeRepositoryProvider).watchDayStops().map((list) {
-    return list.take(limit).toList();
-  });
+  final stops = await ref.watch(routeAllStopsProvider.future);
+  yield stops.take(limit).toList();
 });
 
 final routeStopByIdProvider = Provider.family<RouteStop?, String>((ref, id) {

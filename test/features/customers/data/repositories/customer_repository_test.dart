@@ -1,4 +1,5 @@
 import 'dart:io';
+import 'dart:math';
 
 import 'package:flutter_test/flutter_test.dart';
 import 'package:drift/drift.dart' show Value;
@@ -193,6 +194,87 @@ void main() {
           .write(const CustomerTableCompanion(isCover: Value(false)));
       final page = await driftRepo.getCustomersPage(page: 0, pageSize: 10);
       expect(ids(page)..sort(), ['cover', 'own']);
+    });
+  });
+
+  group('Clientes paging order', () {
+    late AppDatabase db;
+    late DriftCustomerRepository driftRepo;
+
+    /// 25 customers, most of them sharing a name, stored in no particular
+    /// order (the pull does not download them sorted).
+    final seeded = <(String, String)>[
+      for (var i = 1; i <= 20; i++) ('k-${i.toString().padLeft(2, '0')}', 'Kiosco'),
+      ('a-1', 'almacén Don Pepe'),
+      ('b-1', 'Bar Central'),
+      ('z-1', 'Zapatería'),
+      ('a-2', 'Agua Viva'),
+      ('k-cover', 'Kiosco'),
+    ];
+
+    setUp(() async {
+      db = AppDatabase(NativeDatabase.memory());
+      driftRepo = DriftCustomerRepository(db);
+      final shuffled = [...seeded]..shuffle(Random(3));
+      for (final (id, name) in shuffled) {
+        await db.into(db.customerTable).insert(
+              CustomerTableCompanion.insert(customerId: Value(id), name: name),
+            );
+      }
+      await (db.update(db.customerTable)
+            ..where((t) => t.customerId.equals('k-cover')))
+          .write(const CustomerTableCompanion(isCover: Value(true)));
+    });
+
+    tearDown(() async {
+      await db.close();
+    });
+
+    /// Name (ignoring case), then id: customers sharing a name keep a fixed
+    /// place between reads.
+    final expected = [
+      'a-2', // Agua Viva
+      'a-1', // almacén Don Pepe
+      'b-1', // Bar Central
+      for (var i = 1; i <= 20; i++) 'k-${i.toString().padLeft(2, '0')}',
+      'z-1', // Zapatería
+    ];
+
+    Future<List<String>> pageThrough(
+      Future<List<Customer>> Function(int page) read,
+    ) async {
+      final ids = <String>[];
+      for (var page = 0; ; page++) {
+        final customers = await read(page);
+        ids.addAll(customers.map((c) => c.id));
+        if (customers.length < 10) return ids;
+      }
+    }
+
+    test('paging the list yields every customer once, by name then id', () async {
+      final ids = await pageThrough(
+        (page) => driftRepo.getCustomersPage(page: page, pageSize: 10),
+      );
+
+      expect(ids.toSet(), hasLength(ids.length), reason: 'duplicated customers');
+      expect(ids, expected);
+    });
+
+    test('paging an empty search yields the same order as the list', () async {
+      final ids = await pageThrough(
+        (page) => driftRepo.searchCustomers(query: '', page: page, pageSize: 10),
+      );
+
+      expect(ids, expected);
+    });
+
+    test('paging a search keeps the list order among the matches', () async {
+      final ids = await pageThrough(
+        (page) =>
+            driftRepo.searchCustomers(query: 'kiosco', page: page, pageSize: 10),
+      );
+
+      expect(ids, [for (var i = 1; i <= 20; i++) 'k-${i.toString().padLeft(2, '0')}']);
     });
   });
 

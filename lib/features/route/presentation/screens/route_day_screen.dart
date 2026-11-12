@@ -42,16 +42,27 @@ class _RouteDayScreenState extends ConsumerState<RouteDayScreen> {
     super.dispose();
   }
 
-  void _onScroll() {
-    if (_scrollController.position.pixels >=
-        _scrollController.position.maxScrollExtent - 200) {
-      final currentLimit = ref.read(routePaginationLimitProvider);
-      final allStopsAsync = ref.read(routeAllStopsProvider);
-      final totalStopsCount = allStopsAsync.value?.length ?? 0;
+  void _onScroll() => _loadMoreIfAtEnd();
 
-      if (currentLimit < totalStopsCount) {
-        ref.read(routePaginationLimitProvider.notifier).increment(10);
-      }
+  /// Asks for the next page when the end of the list is on screen.
+  ///
+  /// Runs on scroll and after a frame that left stops unloaded: a sync can
+  /// add stops while the end of the list is already on screen, and no scroll
+  /// would come to load them.
+  void _loadMoreIfAtEnd() {
+    if (!mounted || !_scrollController.hasClients) return;
+    final position = _scrollController.position;
+    if (position.pixels < position.maxScrollExtent - 200) return;
+
+    final currentLimit = ref.read(routePaginationLimitProvider);
+    final totalStopsCount = ref.read(routeAllStopsProvider).value?.length ?? 0;
+    // The page asked for last has not arrived yet: one more scroll event
+    // must not ask again.
+    final loadedCount = ref.read(routeDayProvider).value?.length ?? 0;
+    if (loadedCount < currentLimit) return;
+
+    if (currentLimit < totalStopsCount) {
+      ref.read(routePaginationLimitProvider.notifier).increment(10);
     }
   }
 
@@ -77,10 +88,17 @@ class _RouteDayScreenState extends ConsumerState<RouteDayScreen> {
     return Scaffold(
       body: SafeArea(
         child: stopsAsync.when(
+          // Loading the next page keeps the list (and its scroll) on screen.
+          skipLoadingOnReload: true,
           data: (stops) {
             final allStops = allStopsAsync.value ?? [];
             final totalCount = allStops.length;
             final isFullyLoaded = stops.length >= totalCount;
+            if (!isFullyLoaded) {
+              WidgetsBinding.instance.addPostFrameCallback(
+                (_) => _loadMoreIfAtEnd(),
+              );
+            }
 
             return RefreshIndicator(
               // Pull-to-refresh asks the server again, e.g. for a route that

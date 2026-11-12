@@ -81,6 +81,9 @@ class DriftRouteRepository implements RouteRepository {
         for (final stop in stopRows) stop.routeStopId: stop.scheduledAt,
       };
       final rowById = {for (final stop in stopRows) stop.routeStopId: stop};
+      final sequenceById = {
+        for (final stop in stopRows) stop.routeStopId: stop.sequence,
+      };
       final rescheduledToById = {
         for (final stop in stopRows)
           if (stop.rescheduledFromStopId != null)
@@ -167,12 +170,20 @@ class DriftRouteRepository implements RouteRepository {
         );
       }
 
-      // Pending-first, then scheduledAt ascending.
+      // Pending-first, then scheduledAt, then route sequence, then id. The
+      // order must be total: List.sort is not stable and the query has no
+      // ORDER BY, so stops sharing a time (a route without scheduled times)
+      // would otherwise reshuffle on every emission, and the paginated list
+      // would repeat some stops and skip others while the user scrolls.
       stops.sort((a, b) {
         final aPending = a.status == StopStatus.pending;
         final bPending = b.status == StopStatus.pending;
         if (aPending != bPending) return aPending ? -1 : 1;
-        return a.scheduledAt.compareTo(b.scheduledAt);
+        final byTime = a.scheduledAt.compareTo(b.scheduledAt);
+        if (byTime != 0) return byTime;
+        final bySequence = sequenceById[a.id]!.compareTo(sequenceById[b.id]!);
+        if (bySequence != 0) return bySequence;
+        return a.id.compareTo(b.id);
       });
 
       return stops;
