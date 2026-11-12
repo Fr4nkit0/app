@@ -323,6 +323,15 @@ class DriftCustomerRepository implements CustomerRepository {
       t.isCover.equals(false) &
       RemovedCustomers.isShown(db, t.customerId);
 
+  /// The Clientes order, shared by the paged list and the search: by name
+  /// ignoring case, then by id. The order must be total: customers sharing
+  /// a name would otherwise come back in any order, and paging with an
+  /// offset would repeat some of them and skip others.
+  List<OrderClauseGenerator<$CustomerTableTable>> get _listOrder => [
+    (t) => OrderingTerm.asc(t.name.collate(Collate.noCase)),
+    (t) => OrderingTerm.asc(t.customerId),
+  ];
+
   @override
   Future<Customer?> getCustomerById(String id) async {
     final customerData = await (db.select(
@@ -385,6 +394,7 @@ class DriftCustomerRepository implements CustomerRepository {
     final customerRows =
         await (db.select(db.customerTable)
               ..where(_listed)
+              ..orderBy(_listOrder)
               ..limit(pageSize, offset: offset))
             .get();
 
@@ -453,9 +463,11 @@ class DriftCustomerRepository implements CustomerRepository {
   }
 
   Future<List<Customer>> _getAllCustomers() async {
-    final customerRows = await (db.select(
-      db.customerTable,
-    )..where(_listed)).get();
+    final customerRows =
+        await (db.select(db.customerTable)
+              ..where(_listed)
+              ..orderBy(_listOrder))
+            .get();
 
     if (customerRows.isEmpty) return [];
 

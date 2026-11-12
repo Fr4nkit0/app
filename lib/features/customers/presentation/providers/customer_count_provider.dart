@@ -57,6 +57,16 @@ class PaginatedCustomerListState {
 class PaginatedCustomerList extends Notifier<PaginatedCustomerListState> {
   static const int _pageSize = 10;
 
+  /// Bumped by every read that replaces the shown list (a reload, a new
+  /// search, a refresh). A read that finishes after a newer replacement
+  /// started is discarded: appending a page computed against the previous
+  /// list repeats customers (or drops the reloaded ones).
+  int _generation = 0;
+
+  /// Pages the user asked to see, including the one on its way. A reload
+  /// reads this deep so the page it discards is not lost.
+  int _requestedPages = 0;
+
   @override
   PaginatedCustomerListState build() {
     // Drift's live query emits whenever a sync or an edit touches the
@@ -67,19 +77,38 @@ class PaginatedCustomerList extends Notifier<PaginatedCustomerListState> {
     return PaginatedCustomerListState();
   }
 
-  /// Reloads as many customers as are already shown, keeping the search and
-  /// the scroll depth.
+  Future<List<Customer>> _read({
+    required String query,
+    required int page,
+    required int pageSize,
+  }) {
+    final repository = ref.read(customerRepositoryProvider);
+    return query.isEmpty
+        ? repository.getCustomersPage(page: page, pageSize: pageSize)
+        : repository.searchCustomers(
+            query: query,
+            page: page,
+            pageSize: pageSize,
+          );
+  }
+
+  /// Reloads as many customers as are already shown or on their way,
+  /// keeping the search and the scroll depth.
+  ///
+  /// It supersedes a page still loading, and marks the list as loading so
+  /// no page is asked for against the list it is about to replace.
   Future<void> reload() async {
-    final pages = state.currentPage < 1 ? 1 : state.currentPage;
+    final generation = ++_generation;
+    final pages = _requestedPages < 1 ? 1 : _requestedPages;
+    _requestedPages = pages;
+    state = state.copyWith(isLoading: true);
     try {
-      final repository = ref.read(customerRepositoryProvider);
-      final customers = state.searchQuery.isEmpty
-          ? await repository.getCustomersPage(page: 0, pageSize: _pageSize * pages)
-          : await repository.searchCustomers(
-              query: state.searchQuery,
-              page: 0,
-              pageSize: _pageSize * pages,
-            );
+      final customers = await _read(
+        query: state.searchQuery,
+        page: 0,
+        pageSize: _pageSize * pages,
+      );
+      if (generation != _generation) return;
       state = state.copyWith(
         customers: customers,
         currentPage: pages,
@@ -88,6 +117,9 @@ class PaginatedCustomerList extends Notifier<PaginatedCustomerListState> {
       );
     } catch (_) {
       // Keep what is shown; the next change or a manual refresh retries.
+      if (generation == _generation) {
+        state = state.copyWith(isLoading: false);
+      }
     }
   }
 
@@ -95,69 +127,66 @@ class PaginatedCustomerList extends Notifier<PaginatedCustomerListState> {
   Future<void> loadNextPage() async {
     if (state.isLoading || state.hasReachedMax) return;
 
+    final generation = _generation;
+    final page = state.currentPage;
+    _requestedPages = page + 1;
     state = state.copyWith(isLoading: true);
 
     try {
-      final repository = ref.read(customerRepositoryProvider);
-      final List<Customer> newCustomers;
+      final newCustomers = await _read(
+        query: state.searchQuery,
+        page: page,
+        pageSize: _pageSize,
+      );
+      // A reload or a new search replaced the list meanwhile; it owns the
+      // loading flag and already covers this page.
+      if (generation != _generation) return;
 
-      if (state.searchQuery.isEmpty) {
-        // Normal pagination
-        newCustomers = await repository.getCustomersPage(
-          page: state.currentPage,
-          pageSize: _pageSize,
-        );
-      } else {
-        // Search pagination
-        newCustomers = await repository.searchCustomers(
-          query: state.searchQuery,
-          page: state.currentPage,
-          pageSize: _pageSize,
-        );
-      }
-
-      if (newCustomers.length < _pageSize) {
-        state = state.copyWith(
-          customers: [...state.customers, ...newCustomers],
-          currentPage: state.currentPage + 1,
-          hasReachedMax: true,
-          isLoading: false,
-        );
-      } else {
-        state = state.copyWith(
-          customers: [...state.customers, ...newCustomers],
-          currentPage: state.currentPage + 1,
-          isLoading: false,
-        );
-      }
+      // Offsets shift when a customer is added or removed between two
+      // pages; the reload that change triggers fixes the list, and until
+      // then a customer is never shown twice.
+      final shown = {for (final c in state.customers) c.id};
+      state = state.copyWith(
+        customers: [
+          ...state.customers,
+          for (final c in newCustomers)
+            if (!shown.contains(c.id)) c,
+        ],
+        currentPage: page + 1,
+        hasReachedMax: newCustomers.length < _pageSize,
+        isLoading: false,
+      );
     } catch (e) {
-      state = state.copyWith(isLoading: false);
+      if (generation == _generation) {
+        state = state.copyWith(isLoading: false);
+      }
     }
   }
 
   /// Updates search query, resets list, and triggers load
   Future<void> setSearchQuery(String query) async {
-    // Reset state for new search
-    state = state.copyWith(
-      searchQuery: query,
-      customers: [],
-      currentPage: 0,
-      hasReachedMax: false,
-      isLoading: false,
-    );
+    _reset(searchQuery: query);
     // Load first page of results
     await loadNextPage();
   }
 
   /// Resets the list and reloads from page 0 (keeps current search query)
   Future<void> refresh() async {
+    _reset();
+    await loadNextPage();
+  }
+
+  /// Empties the list and supersedes any read still on its way.
+  void _reset({String? searchQuery}) {
+    _generation++;
+    _requestedPages = 0;
     state = state.copyWith(
+      searchQuery: searchQuery,
       customers: [],
       currentPage: 0,
       hasReachedMax: false,
       isLoading: false,
     );
-    await loadNextPage();
   }
 }
 
