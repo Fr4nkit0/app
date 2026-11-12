@@ -38,6 +38,13 @@ class RouteStopTable extends Table with Timestamps {
   late final note = text().nullable()();
   late final scheduledVisitId = integer().nullable()();
 
+  /// Set by the server when the stop was moved to this route to cover
+  /// another driver; the customer keeps its owner.
+  late final isCover = boolean().withDefault(const Constant(false))();
+
+  /// The owner driver's display name of a covered stop.
+  late final coveredDriverName = text().nullable()();
+
   @override
   Set<Column<Object>> get primaryKey => {routeStopId};
 }

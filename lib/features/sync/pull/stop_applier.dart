@@ -54,6 +54,8 @@ class StopApplier implements PullApplier {
         enabled: enabledOf(s),
         isRequested: _isRequested(s),
         note: _note(s),
+        isCover: _isCover(s),
+        coveredDriverName: _coveredDriverName(s),
         scheduledVisitId: s.containsKey('scheduled_visit_id')
             ? Value(s['scheduled_visit_id'] as int?)
             : const Value.absent(),
@@ -114,6 +116,8 @@ class StopApplier implements PullApplier {
         scheduledTime: Value(time),
         isRequested: _isRequested(s),
         note: _note(s),
+        isCover: _isCover(s),
+        coveredDriverName: _coveredDriverName(s),
         serverId: Value(serverId),
       );
       final existing = await (_db.select(
@@ -156,6 +160,17 @@ class StopApplier implements PullApplier {
 
   static Value<String?> _note(Json s) => s.containsKey('note')
       ? Value(s['note'] as String?)
+      : const Value.absent();
+
+  /// A server older than route covers sends no mark: the stored one stays,
+  /// and a new stop is an own stop.
+  static Value<bool> _isCover(Json s) => s.containsKey('is_cover')
+      ? Value(s['is_cover'] == true)
+      : const Value.absent();
+
+  static Value<String?> _coveredDriverName(Json s) =>
+      s.containsKey('covered_driver_name')
+      ? Value(s['covered_driver_name'] as String?)
       : const Value.absent();
 
   static String _status(String? serverStatus) => switch (serverStatus) {

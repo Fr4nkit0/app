@@ -9,6 +9,8 @@ import 'package:app/features/sync/pull/preference_applier.dart';
 
 import 'pull_support.dart';
 
+const _absent = Object();
+
 void main() {
   late AppDatabase db;
 
@@ -65,6 +67,75 @@ void main() {
         expect(await context.ids.customer(11), 'cust-1');
       },
     );
+  });
+
+  group('CustomerApplier cover mark', () {
+    Map<String, dynamic> row({Object? isCover = _absent}) => {
+      'id': 11,
+      'client_uuid': null,
+      'name': 'Ana',
+      'phone_number': null,
+      if (isCover != _absent) 'is_cover': isCover,
+    };
+
+    Future<CustomerTableData> byServerId() => (db.select(
+      db.customerTable,
+    )..where((t) => t.serverId.equals(11))).getSingle();
+
+    for (final (label, contextOf) in [
+      ('pull', pullContext),
+      ('bootstrap', bootstrapContext),
+    ]) {
+      test('$label stores is_cover, false clears it and a missing key '
+          'leaves it', () async {
+        final applier = CustomerApplier(db);
+
+        await applier.upsert(row(isCover: true), await contextOf(db));
+        expect((await byServerId()).isCover, isTrue);
+
+        await applier.upsert(row(), await contextOf(db));
+        expect((await byServerId()).isCover, isTrue);
+
+        await applier.upsert(row(isCover: false), await contextOf(db));
+        expect((await byServerId()).isCover, isFalse);
+      });
+
+      test('$label stores is_cover on a customer with unsent changes and '
+          'keeps its local copy', () async {
+        await seedCustomer(
+          db,
+          id: 'cust-1',
+          serverId: 11,
+          name: 'Ana (edited)',
+        );
+        await enqueueUnsent(db, PendingEntity.customer, 'cust-1');
+
+        await CustomerApplier(
+          db,
+        ).upsert(row(isCover: true), await contextOf(db));
+        var stored = await customer('cust-1');
+        expect(stored.isCover, isTrue);
+        expect(stored.name, 'Ana (edited)');
+
+        await CustomerApplier(db).upsert(row(), await contextOf(db));
+        expect((await customer('cust-1')).isCover, isTrue);
+
+        await CustomerApplier(
+          db,
+        ).upsert(row(isCover: false), await contextOf(db));
+        stored = await customer('cust-1');
+        expect(stored.isCover, isFalse);
+        expect(stored.name, 'Ana (edited)');
+      });
+    }
+
+    test('a new customer without the key is an own customer', () async {
+      await CustomerApplier(db).applyChanges({
+        'customers': [row()],
+      }, await pullContext(db));
+
+      expect((await byServerId()).isCover, isFalse);
+    });
   });
 
   group('AddressApplier', () {
