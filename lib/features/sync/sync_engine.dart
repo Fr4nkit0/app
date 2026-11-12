@@ -3,8 +3,10 @@ import 'dart:io';
 
 import 'package:dio/dio.dart';
 import 'package:drift/drift.dart';
+import 'package:flutter/foundation.dart' show debugPrint;
 
 import '../../core/services/database.helper.dart';
+import 'data/repositories/covered_customers.dart';
 import 'data/repositories/pending_change.repository.dart';
 import 'data/repositories/server_shadow.dart';
 import 'domain/models/pending_change.dart';
@@ -41,6 +43,7 @@ class SyncEngine {
        _sync = sync,
        _queue = DriftPendingChangeRepository(db),
        _shadow = ServerShadow(db),
+       _coveredCleanup = CoveredCustomerCleanup(db, today: now),
        _pushers = pushers ?? defaultPushers(db, today: now ?? DateTime.now),
        _now = now ?? DateTime.now;
 
@@ -93,6 +96,7 @@ class SyncEngine {
   final SyncService _sync;
   final PendingChangeRepository _queue;
   final ServerShadow _shadow;
+  final CoveredCustomerCleanup _coveredCleanup;
   final List<EntityPusher> _pushers;
   final DateTime Function() _now;
   final _running = StreamController<bool>.broadcast();
@@ -128,6 +132,7 @@ class SyncEngine {
       } else {
         await _sync.pull();
       }
+      await _forgetCoveredCustomers();
       await _recordCycle(SyncCycleResult.success, null);
     } catch (e) {
       if (_isOffline(e)) {
@@ -137,6 +142,17 @@ class SyncEngine {
       }
     }
     return status();
+  }
+
+  /// Forgets the covered customers that are done with, once push and
+  /// download succeeded. A failure rolls the cleanup back and leaves the
+  /// cycle successful: the sync itself worked, and the next cycle retries.
+  Future<void> _forgetCoveredCustomers() async {
+    try {
+      await _coveredCleanup.run();
+    } catch (e) {
+      debugPrint('Covered customer cleanup failed, retried next cycle: $e');
+    }
   }
 
   /// Sends every pending change in one request. Queue entries change state
