@@ -6,7 +6,7 @@ import 'package:drift/drift.dart';
 import 'package:flutter/foundation.dart' show debugPrint;
 
 import '../../core/services/database.helper.dart';
-import 'data/repositories/covered_customers.dart';
+import 'covered_customer_cleanup.dart';
 import 'data/repositories/pending_change.repository.dart';
 import 'data/repositories/server_shadow.dart';
 import 'domain/models/pending_change.dart';
