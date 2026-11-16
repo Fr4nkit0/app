@@ -634,14 +634,14 @@ class _FooterState extends ConsumerState<_Footer> {
                                     if (delivered.containsKey(type.code)) type,
                                 ],
                                 custody: custody,
-                                // Returned = delivered by default, but a
-                                // customer holding none of a type returns 0.
+                                // Returned = delivered by default, capped at
+                                // what the customer actually holds.
                                 initialReturns: {
                                   for (final MapEntry(:key, :value)
                                       in delivered.entries)
-                                    key: (custody[key] ?? 0) > 0
-                                        ? draft.returnedContainers[key] ?? value
-                                        : 0,
+                                    key: (draft.returnedContainers[key] ??
+                                            value)
+                                        .clamp(0, custody[key] ?? 0),
                                 },
                                 title: 'Retorno de Envases',
                                 message:
