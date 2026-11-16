@@ -8,6 +8,8 @@ import 'package:app/core/theme/app.theme.dart';
 import 'package:app/core/theme/theme_mode_controller.dart';
 import 'package:app/features/auth/auth_controller.dart';
 import 'package:app/features/history/presentation/widgets/history_sync_status_card.dart';
+import 'package:app/features/products/domain/models/product.dart';
+import 'package:app/features/products/presentation/providers/product_list_provider.dart';
 import 'package:app/features/profile/profile_screen.dart';
 import 'package:app/features/profile/widgets/profile_avatar.dart';
 import 'package:app/features/route/domain/models/route_stop.dart';
@@ -27,9 +29,13 @@ class _SignedIn extends AuthController {
 void main() {
   setUp(() => FlutterSecureStorage.setMockInitialValues({}));
 
-  ProviderContainer makeContainer({SyncStatus status = const SyncStatus()}) {
+  ProviderContainer makeContainer({
+    SyncStatus status = const SyncStatus(),
+    List<Product> products = const [],
+  }) {
     final container = ProviderContainer(
       overrides: [
+        productListProvider.overrideWith((ref) => Stream.value(products)),
         authControllerProvider.overrideWith(_SignedIn.new),
         syncStatusProvider.overrideWith((ref) => Stream.value(status)),
         syncRunningProvider.overrideWith((ref) => Stream.value(false)),
@@ -49,8 +55,9 @@ void main() {
   Future<ProviderContainer> pumpProfile(
     WidgetTester tester, {
     SyncStatus status = const SyncStatus(),
+    List<Product> products = const [],
   }) async {
-    final container = makeContainer(status: status);
+    final container = makeContainer(status: status, products: products);
     await tester.pumpWidget(
       UncontrolledProviderScope(
         container: container,
@@ -70,6 +77,75 @@ void main() {
     expect(find.text('Mi perfil'), findsOneWidget);
     expect(find.text('Esteban Benítez'), findsOneWidget);
     expect(find.widgetWithText(ProfileAvatar, 'EB'), findsOneWidget);
+  });
+
+  testWidgets('shows what each product has left on the truck', (tester) async {
+    await pumpProfile(
+      tester,
+      products: const [
+        Product(
+          id: 'p1',
+          name: 'Bidón 20L',
+          unitLabel: 'Retornable',
+          price: 3500,
+          available: 12,
+        ),
+        Product(
+          id: 'p2',
+          name: 'Soda 2L',
+          unitLabel: 'Sifón',
+          price: 900,
+          available: 0,
+        ),
+      ],
+    );
+
+    final section = find.text('Carga en la camioneta');
+    expect(section, findsOneWidget);
+    expect(
+      tester.getTopLeft(section).dy,
+      lessThan(tester.getTopLeft(find.text('Sincronización')).dy),
+    );
+    expect(
+      find.descendant(
+        of: find.byKey(const ValueKey('truck-load-p1')),
+        matching: find.text('Bidón 20L'),
+      ),
+      findsOneWidget,
+    );
+    expect(
+      find.descendant(
+        of: find.byKey(const ValueKey('truck-load-p1')),
+        matching: find.text('12'),
+      ),
+      findsOneWidget,
+    );
+    expect(
+      find.descendant(
+        of: find.byKey(const ValueKey('truck-load-p2')),
+        matching: find.text('Soda 2L'),
+      ),
+      findsOneWidget,
+    );
+    expect(
+      find.descendant(
+        of: find.byKey(const ValueKey('truck-load-p2')),
+        matching: find.text('0'),
+      ),
+      findsOneWidget,
+    );
+  });
+
+  testWidgets('says the truck has no load yet when there are no products', (
+    tester,
+  ) async {
+    await pumpProfile(tester);
+
+    expect(find.text('Carga en la camioneta'), findsOneWidget);
+    expect(
+      find.text('Todavía no hay carga. Sincronizá para traerla.'),
+      findsOneWidget,
+    );
   });
 
   testWidgets('shows how the sync is doing', (tester) async {
@@ -101,6 +177,12 @@ void main() {
 
   testWidgets('choosing Oscuro switches and saves the theme', (tester) async {
     final container = await pumpProfile(tester);
+    await tester.scrollUntilVisible(
+      find.text('Oscuro'),
+      200,
+      scrollable: find.byType(Scrollable),
+    );
+    await tester.pumpAndSettle();
 
     await tester.tap(find.text('Oscuro'));
     await tester.pumpAndSettle();

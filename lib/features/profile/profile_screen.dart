@@ -7,13 +7,15 @@ import 'package:app/core/widgets/screen_header.dart';
 import 'package:app/features/auth/auth_controller.dart';
 import 'package:app/features/auth/logout_button.dart';
 import 'package:app/features/history/presentation/widgets/history_sync_status_card.dart';
+import 'package:app/features/products/presentation/providers/product_list_provider.dart';
 import 'package:app/features/profile/widgets/profile_avatar.dart';
+import 'package:app/features/profile/widgets/truck_load_card.dart';
 import 'package:app/features/sync/domain/models/sync_status.dart';
 import 'package:app/features/sync/presentation/providers/sync_providers.dart';
 
-/// The driver's own screen: who is signed in, how the sync is doing, the
-/// theme, signing out and the app version. Opened from the avatar on the
-/// route screen.
+/// The driver's own screen: who is signed in, what is left on the truck, how
+/// the sync is doing, the theme, signing out and the app version. Opened from
+/// the avatar on the route screen.
 class ProfileScreen extends ConsumerWidget {
   const ProfileScreen({super.key});
 
@@ -25,6 +27,7 @@ class ProfileScreen extends ConsumerWidget {
         ref.watch(syncStatusProvider).value ?? const SyncStatus();
     final isSyncRunning = ref.watch(syncRunningProvider).value ?? false;
     final version = ref.watch(appVersionProvider).value;
+    final truckLoad = ref.watch(productListProvider);
     final tokens = context.marilin;
 
     return Scaffold(
@@ -43,6 +46,17 @@ class ProfileScreen extends ConsumerWidget {
                 children: [
                   _IdentityBlock(name: name, version: version),
                   const SizedBox(height: 32),
+                  const _SectionTitle('Carga en la camioneta'),
+                  const SizedBox(height: 10),
+                  switch (truckLoad) {
+                    AsyncData(:final value) => TruckLoadCard(products: value),
+                    AsyncError() => Text(
+                      'No se pudo leer la carga.',
+                      style: tokens.subtitle.copyWith(fontSize: 13),
+                    ),
+                    _ => const Center(child: CircularProgressIndicator()),
+                  },
+                  const SizedBox(height: 28),
                   const _SectionTitle('Sincronización'),
                   const SizedBox(height: 10),
                   HistorySyncStatusCard(
