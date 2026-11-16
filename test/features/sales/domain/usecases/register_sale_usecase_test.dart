@@ -369,6 +369,14 @@ void main() {
       Future<List<(Object?, Object?)>> record() async {
         final local = AppDatabase(NativeDatabase.memory());
         addTearDown(local.close);
+        await local
+            .into(local.customerBalanceTable)
+            .insert(
+              CustomerBalanceTableCompanion.insert(
+                customerId: testCustomer.id,
+                currentBalance: const drift.Value(7200),
+              ),
+            );
         await RegisterSaleUseCase(
           saleRepo: DriftSaleRepository(local),
           paymentRepo: DriftPaymentRepository(local),
@@ -439,6 +447,61 @@ void main() {
       expect(
         await paymentRepo.watchCustomerBalance(testCustomer.id).first,
         7200,
+      );
+    });
+
+    test('S5: rejects a debt above the current debt and writes '
+        'nothing', () async {
+      await owe(7200);
+
+      await expectLater(
+        sut.execute(saleBy(PaymentMethod.transfer), debtAmount: 7300),
+        throwsA(
+          isA<ValidationFailure>().having(
+            (f) => f.message,
+            'message',
+            'La deuda a cobrar supera lo que debe el cliente.',
+          ),
+        ),
+      );
+
+      expect(await db.select(db.saleTable).get(), isEmpty);
+      expect(await db.select(db.paymentTable).get(), isEmpty);
+      expect(await db.select(db.pendingChangeTable).get(), isEmpty);
+      expect(
+        await paymentRepo.watchCustomerBalance(testCustomer.id).first,
+        7200,
+      );
+    });
+
+    test('S5: a customer without debt cannot pay debt with a sale', () async {
+      await expectLater(
+        sut.execute(saleBy(PaymentMethod.cash), debtAmount: 100),
+        throwsA(isA<ValidationFailure>()),
+      );
+
+      expect(await db.select(db.saleTable).get(), isEmpty);
+      expect(await db.select(db.paymentTable).get(), isEmpty);
+    });
+
+    test('S5: the cap is the debt before this sale, including earlier '
+        'sales on credit', () async {
+      await owe(1000);
+      await sut.execute(saleBy(PaymentMethod.credit, id: 'sale-on-credit'));
+
+      await sut.execute(
+        saleBy(PaymentMethod.cash, id: 'sale-paying-debt'),
+        debtAmount: 14000,
+      );
+
+      expect(await paymentRepo.watchCustomerBalance(testCustomer.id).first, 0);
+      // This sale's own total is not debt it can pay.
+      await expectLater(
+        sut.execute(
+          saleBy(PaymentMethod.cash, id: 'sale-over-own-total'),
+          debtAmount: 1,
+        ),
+        throwsA(isA<ValidationFailure>()),
       );
     });
 

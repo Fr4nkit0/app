@@ -1,3 +1,4 @@
+import 'package:app/features/payments/domain/models/sale_debt_allocation.dart';
 import 'package:app/features/customers/domain/models/customer.dart';
 import 'package:app/features/sales/domain/models/payment_method.dart';
 import 'package:app/features/sales/domain/models/sale_item.dart';
@@ -14,6 +15,17 @@ class SaleDraftState {
   final double? transferAmount;
   final Map<String, int> returnedContainers;
 
+  /// Whether the driver also collects previous debt with this sale.
+  final bool collectDebt;
+
+  /// How much previous debt is collected while [collectDebt] is on; null
+  /// while the driver has not typed a valid amount.
+  final double? debtAmount;
+
+  /// What the customer owed when the driver switched [collectDebt] on; the
+  /// [debtAmount] cannot go above it.
+  final double currentDebt;
+
   const SaleDraftState({
     this.customer,
     this.visitId,
@@ -22,7 +34,21 @@ class SaleDraftState {
     this.cashAmount,
     this.transferAmount,
     this.returnedContainers = const {},
+    this.collectDebt = false,
+    this.debtAmount,
+    this.currentDebt = 0,
   });
+
+  /// The methods that can also collect previous debt: the money is handed
+  /// over on the spot.
+  static const debtMethods = {
+    PaymentMethod.cash,
+    PaymentMethod.transfer,
+    PaymentMethod.mixed,
+  };
+
+  /// Largest difference between amounts that still counts as equal.
+  static const tolerance = 0.01;
 
   SaleDraftState copyWith({
     Customer? customer,
@@ -32,11 +58,15 @@ class SaleDraftState {
     double? cashAmount,
     double? transferAmount,
     Map<String, int>? returnedContainers,
+    bool? collectDebt,
+    double? debtAmount,
+    double? currentDebt,
     bool clearCustomer = false,
     bool clearRouteStopId = false,
     bool clearPaymentMethod = false,
     bool clearCashAmount = false,
     bool clearTransferAmount = false,
+    bool clearDebtAmount = false,
   }) {
     return SaleDraftState(
       customer: clearCustomer ? null : (customer ?? this.customer),
@@ -50,6 +80,9 @@ class SaleDraftState {
           ? null
           : (transferAmount ?? this.transferAmount),
       returnedContainers: returnedContainers ?? this.returnedContainers,
+      collectDebt: collectDebt ?? this.collectDebt,
+      debtAmount: clearDebtAmount ? null : (debtAmount ?? this.debtAmount),
+      currentDebt: currentDebt ?? this.currentDebt,
     );
   }
 
@@ -60,11 +93,32 @@ class SaleDraftState {
 
   double get mixedTotal => (cashAmount ?? 0) + (transferAmount ?? 0);
 
+  /// Whether previous debt is collected with this sale: switched on and
+  /// paid by one of the [debtMethods].
+  bool get collectsDebt => collectDebt && debtMethods.contains(paymentMethod);
+
+  /// The previous debt collected with this sale; 0 when none is.
+  double get debtToCollect => collectsDebt ? (debtAmount ?? 0) : 0;
+
+  /// What the driver collects: the sale plus the debt collected with it.
+  double get operationTotal => total + debtToCollect;
+
+  /// The debt amount is above 0 and not above [currentDebt]; always true
+  /// while no debt is collected.
+  bool get isValidDebtAmount {
+    if (!collectsDebt) return true;
+    final amount = debtAmount;
+    return amount != null && amount > 0 && amount <= currentDebt + tolerance;
+  }
+
   bool get isValidPayment {
     if (paymentMethod == null) return false;
     switch (paymentMethod!) {
       case PaymentMethod.mixed:
-        return (mixedTotal - total).abs() <= 0.01;
+        // With debt, the allocation's tolerance decides: a split it would
+        // reject must not reach the confirm button.
+        final limit = collectsDebt ? SaleDebtAllocation.tolerance : tolerance;
+        return (mixedTotal - operationTotal).abs() <= limit;
       case PaymentMethod.credit:
         return true;
       case PaymentMethod.cash:
@@ -75,7 +129,7 @@ class SaleDraftState {
   }
 
   double get remaining =>
-      paymentMethod == PaymentMethod.mixed ? (total - mixedTotal) : 0;
+      paymentMethod == PaymentMethod.mixed ? (operationTotal - mixedTotal) : 0;
 
   bool get canProceedToStep3 => customer != null && items.isNotEmpty;
 
@@ -83,7 +137,8 @@ class SaleDraftState {
       customer != null &&
       items.isNotEmpty &&
       paymentMethod != null &&
-      isValidPayment;
+      isValidPayment &&
+      isValidDebtAmount;
 
   /// The sale lines as container deliveries, for the custody rules.
   Iterable<({String? containerType, int quantity})> get containerDeliveries =>

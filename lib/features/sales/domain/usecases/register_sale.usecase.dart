@@ -44,8 +44,9 @@ class RegisterSaleUseCase {
   /// [SaleDebtAllocation]. The sale keeps only its own part, the debt is
   /// paid by payments linked to no sale and every payment of a method shares
   /// one transaction uuid. Throws [ValidationFailure] for a negative
-  /// [debtAmount], debt with a credit or route sale, or a mixed split that
-  /// does not cover the sale plus the debt.
+  /// [debtAmount], debt with a credit or route sale, a mixed split that
+  /// does not cover the sale plus the debt, or a [debtAmount] above what
+  /// the customer owes before this sale (read in the same unit of work).
   Future<void> execute(
     Sale sale, {
     Payment? payment,
@@ -69,6 +70,14 @@ class RegisterSaleUseCase {
         : _withDebt(sale, debtAmount);
 
     await _transaction(() async {
+      if (debtAmount > 0) {
+        final owed = await _saleRepo.customerBalanceOf(sale.customer.id);
+        if (debtAmount > owed + SaleDebtAllocation.tolerance) {
+          throw const ValidationFailure(
+            'La deuda a cobrar supera lo que debe el cliente.',
+          );
+        }
+      }
       await _saleRepo.saveSale(saved);
 
       final payments = [?payment, ...operationPayments];

@@ -12,8 +12,16 @@ class SaleDraft extends Notifier<SaleDraftState> {
   @override
   SaleDraftState build() => const SaleDraftState();
 
+  /// The debt being collected belonged to the previous customer, so it
+  /// goes with it.
   void selectCustomer(Customer customer, {String? visitId}) {
-    state = state.copyWith(customer: customer, visitId: visitId);
+    state = state.copyWith(
+      customer: customer,
+      visitId: visitId,
+      collectDebt: false,
+      clearDebtAmount: true,
+      currentDebt: 0,
+    );
   }
 
   /// Lines were priced for the previous customer's agreements, so they go
@@ -24,6 +32,9 @@ class SaleDraft extends Notifier<SaleDraftState> {
       clearRouteStopId: true,
       items: const [],
       returnedContainers: const {},
+      collectDebt: false,
+      clearDebtAmount: true,
+      currentDebt: 0,
     );
   }
 
@@ -71,11 +82,39 @@ class SaleDraft extends Notifier<SaleDraftState> {
   void setPaymentMethod(PaymentMethod method) {
     // Always clear split amounts when changing method.
     // If the new method is mixed, the user will fill them in; if not, they are stale.
+    // A credit or route sale collects no debt (S4).
+    final keepsDebt = SaleDraftState.debtMethods.contains(method);
     state = state.copyWith(
       paymentMethod: method,
       clearCashAmount: true,
       clearTransferAmount: true,
+      collectDebt: keepsDebt ? null : false,
+      clearDebtAmount: !keepsDebt,
     );
+  }
+
+  /// Switches collecting previous debt with this sale on or off. On, it
+  /// starts at the whole [currentDebt] the customer owes; it stays off for
+  /// a customer without debt or a method that cannot collect it.
+  void setCollectDebt(bool on, {required double currentDebt}) {
+    final canCollect =
+        on &&
+        currentDebt > 0 &&
+        SaleDraftState.debtMethods.contains(state.paymentMethod);
+    state = canCollect
+        ? state.copyWith(
+            collectDebt: true,
+            debtAmount: currentDebt,
+            currentDebt: currentDebt,
+          )
+        : state.copyWith(collectDebt: false, clearDebtAmount: true);
+  }
+
+  /// The previous debt to collect; null while the typed amount is invalid.
+  void setDebtAmount(double? amount) {
+    state = amount == null
+        ? state.copyWith(clearDebtAmount: true)
+        : state.copyWith(debtAmount: amount);
   }
 
   void setMixedAmounts({double? cash, double? transfer}) {
@@ -108,7 +147,11 @@ class SaleDraft extends Notifier<SaleDraftState> {
     // A failed sale throws and keeps the draft so the driver can retry.
     await ref
         .read(registerSaleUseCaseProvider)
-        .execute(sale, containerMovements: movements);
+        .execute(
+          sale,
+          containerMovements: movements,
+          debtAmount: draft.debtToCollect,
+        );
 
     // The customer balance moves with the sale and its settling payments
     // (see CustomerAccount); nothing to update here.
