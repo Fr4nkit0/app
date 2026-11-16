@@ -19,13 +19,15 @@ class PaymentSplit {
 
   /// The payments of this split: cash first, then transfer; a part of 0
   /// produces no payment. [idFor] receives the payment's position in the
-  /// returned list.
+  /// returned list. [transactionUuidFor], when given, sets the transaction
+  /// uuid of each payment by its type.
   List<Payment> toPayments({
     required String customerId,
     required DateTime at,
     required String Function(int index) idFor,
     String? visitId,
     String? saleId,
+    String Function(PaymentType type)? transactionUuidFor,
   }) {
     final payments = <Payment>[];
     void add(PaymentType type, double amount, DateTime createdAt) =>
@@ -38,6 +40,7 @@ class PaymentSplit {
             createdAt: createdAt,
             visitId: visitId,
             saleId: saleId,
+            transactionUuid: transactionUuidFor?.call(type),
           ),
         );
 

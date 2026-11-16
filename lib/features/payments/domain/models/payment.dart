@@ -42,6 +42,7 @@ class Payment {
     this.saleId,
     this.notes,
     this.isCancelled = false,
+    this.transactionUuid,
   });
 
   final String id;
@@ -55,6 +56,12 @@ class Payment {
 
   /// A cancelled payment stays listed but no longer counts.
   final bool isCancelled;
+
+  /// The money movement this payment is part of, shared with the other
+  /// payments of the same method in one operation (a sale paid together
+  /// with previous debt); null for a payment on its own. It travels only in
+  /// the queued change, so a payment read back from storage has none.
+  final String? transactionUuid;
 
   /// Only a confirmed payment of [now]'s day that did not settle a sale can
   /// be cancelled on its own; a sale's payments go with the sale.

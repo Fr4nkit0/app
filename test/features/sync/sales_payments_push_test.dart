@@ -224,8 +224,10 @@ void main() {
     String? visitId,
     double? cash,
     double? transfer,
+    double debtAmount = 0,
   }) async {
     await registerSale.execute(
+      debtAmount: debtAmount,
       Sale(
         id: id,
         customer: customer,
@@ -359,6 +361,33 @@ void main() {
       expect(settled.map((p) => p['payment_method_id']), [5, 6]);
       expect(settled.map((p) => p['amount']), [1000.0, 1400.0]);
       expect(await displayedBalance(), 1000);
+    },
+  );
+
+  test(
+    'S9: a sale paid together with the previous debt pushes both payments '
+    'with one transaction uuid; payments outside it carry none',
+    () async {
+      await sell(method: PaymentMethod.transfer, debtAmount: 1000);
+      await pay(id: 'pay-alone', amount: 300);
+
+      await engine.push();
+
+      final sentPayments = sent('payments');
+      final operation = [
+        for (final p in sentPayments)
+          if (p['uuid'] != 'pay-alone') p,
+      ];
+      expect(
+        operation.map((p) => (p['sale_uuid'], p['amount'])),
+        [('sale-1', 2400.0), (null, 1000.0)],
+      );
+      expect(operation.map((p) => p['payment_method_id']), [6, 6]);
+      final uuids = {for (final p in operation) p['transaction_uuid']};
+      expect(uuids.single, isA<String>());
+      final alone = sentPayments.singleWhere((p) => p['uuid'] == 'pay-alone');
+      expect(alone.containsKey('transaction_uuid'), isFalse);
+      expect(await displayedBalance(), -300);
     },
   );
 

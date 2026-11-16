@@ -1,3 +1,6 @@
+import 'dart:convert';
+
+import 'package:drift/drift.dart' as drift;
 import 'package:drift/native.dart';
 import 'package:flutter_test/flutter_test.dart';
 
@@ -265,6 +268,197 @@ void main() {
         );
       },
     );
+  });
+
+  group('execute — also paying previous debt (S7, S9, S10)', () {
+    Future<void> owe(double amount) async {
+      await db
+          .into(db.customerTable)
+          .insert(
+            CustomerTableCompanion.insert(
+              customerId: drift.Value(testCustomer.id),
+              name: testCustomer.name,
+            ),
+          );
+      await db
+          .into(db.customerBalanceTable)
+          .insert(
+            CustomerBalanceTableCompanion.insert(
+              customerId: testCustomer.id,
+              currentBalance: drift.Value(amount),
+            ),
+          );
+    }
+
+    Sale saleBy(
+      PaymentMethod method, {
+      String id = 'sale-debt',
+      double? cash,
+      double? transfer,
+    }) => Sale(
+      id: id,
+      customer: testCustomer,
+      items: const [SaleItem(product: testProduct, quantity: 2)],
+      total: 13000.0,
+      paymentMethod: method,
+      date: DateTime(2026, 11, 16, 9, 30),
+      cashAmount: cash,
+      transferAmount: transfer,
+      visitId: 'v1',
+    );
+
+    Future<List<Map<String, dynamic>>> queuedPayments() async => [
+      for (final c in await db.select(db.pendingChangeTable).get())
+        if (c.entity == 'payment')
+          jsonDecode(c.payload!) as Map<String, dynamic>,
+    ];
+
+    test('S9: a 13000 sale plus 7200 of debt by one transfer is two payments '
+        'sharing one transaction uuid and the account ends at 0', () async {
+      await owe(7200);
+
+      await sut.execute(saleBy(PaymentMethod.transfer), debtAmount: 7200);
+
+      final rows = await db.select(db.paymentTable).get();
+      expect(
+        {for (final r in rows) r.amount: (r.saleId, r.paymentMethod)},
+        {
+          13000.0: ('sale-debt', 'TRANSFERENCIA'),
+          7200.0: (null, 'TRANSFERENCIA'),
+        },
+      );
+      final queued = await queuedPayments();
+      expect(queued, hasLength(2));
+      final uuids = {for (final p in queued) p['transactionUuid']};
+      expect(uuids, hasLength(1));
+      expect(uuids.single, isA<String>());
+      expect(await paymentRepo.watchCustomerBalance(testCustomer.id).first, 0);
+    });
+
+    test('S6: a mixed operation books cash and transfer on the sale first '
+        'and the transfer remainder on the debt', () async {
+      await owe(7200);
+
+      await sut.execute(
+        saleBy(PaymentMethod.mixed, cash: 5000, transfer: 15200),
+        debtAmount: 7200,
+      );
+
+      final queued = await queuedPayments();
+      expect(
+        queued.map(
+          (p) => (p['saleId'], p['paymentMethod'], p['amount'] as num),
+        ),
+        [
+          ('sale-debt', 'EFECTIVO', 5000),
+          ('sale-debt', 'TRANSFERENCIA', 8000),
+          (null, 'TRANSFERENCIA', 7200),
+        ],
+      );
+      expect(queued[1]['transactionUuid'], queued[2]['transactionUuid']);
+      expect(queued[0]['transactionUuid'], isNotNull);
+      expect(queued[0]['transactionUuid'], isNot(queued[1]['transactionUuid']));
+      // The sale keeps only its own part (S7).
+      final sale = await saleRepo.findSale('sale-debt');
+      expect((sale?.cashAmount, sale?.transferAmount), (5000, 8000));
+      expect(await paymentRepo.watchCustomerBalance(testCustomer.id).first, 0);
+    });
+
+    test('S2: ids and transaction uuids are deterministic for the same '
+        'sale', () async {
+      Future<List<(Object?, Object?)>> record() async {
+        final local = AppDatabase(NativeDatabase.memory());
+        addTearDown(local.close);
+        await RegisterSaleUseCase(
+          saleRepo: DriftSaleRepository(local),
+          paymentRepo: DriftPaymentRepository(local),
+          inventoryRepo: DriftInventoryRepository(local),
+          transaction: driftTransactionRunner(local),
+        ).execute(
+          saleBy(PaymentMethod.mixed, cash: 5000, transfer: 15200),
+          debtAmount: 7200,
+        );
+        return [
+          for (final c in await local.select(local.pendingChangeTable).get())
+            if (c.entity == 'payment')
+              (c.entityId, (jsonDecode(c.payload!) as Map)['transactionUuid']),
+        ];
+      }
+
+      final first = await record();
+      expect(first, hasLength(3));
+      expect(await record(), first);
+      // Sale payments keep the ids they always had.
+      expect(
+        first.take(2).map((p) => p.$1),
+        RegisterSaleUseCase.settlingPayments(
+          saleBy(PaymentMethod.mixed, cash: 5000, transfer: 8000),
+        ).map((p) => p.id),
+      );
+    });
+
+    test('without debt the payments and their queued changes are as '
+        'before', () async {
+      await sut.execute(
+        saleBy(PaymentMethod.mixed, cash: 5000, transfer: 8000),
+        debtAmount: 0,
+      );
+
+      final queued = await queuedPayments();
+      expect(queued, hasLength(2));
+      for (final p in queued) {
+        expect(p.containsKey('transactionUuid'), isFalse);
+        expect(p['saleId'], 'sale-debt');
+      }
+    });
+
+    test('a failing later write leaves neither the sale nor the debt '
+        'payment', () async {
+      await owe(7200);
+      ContainerMovement movement() => ContainerMovement(
+        id: 'same-movement-id',
+        customerId: testCustomer.id,
+        containerType: 'JUG',
+        deliveredQuantity: 1,
+        returnedQuantity: 0,
+        createdAt: DateTime(2026),
+      );
+
+      await expectLater(
+        sut.execute(
+          saleBy(PaymentMethod.cash),
+          debtAmount: 7200,
+          containerMovements: [movement(), movement()],
+        ),
+        throwsA(isA<StorageFailure>()),
+      );
+
+      expect(await db.select(db.saleTable).get(), isEmpty);
+      expect(await db.select(db.paymentTable).get(), isEmpty);
+      expect(await db.select(db.pendingChangeTable).get(), isEmpty);
+      expect(
+        await paymentRepo.watchCustomerBalance(testCustomer.id).first,
+        7200,
+      );
+    });
+
+    test('rejects a negative debt, a debt on a credit sale and a mixed '
+        'split that does not cover the sale plus the debt', () async {
+      for (final (sale, debt) in [
+        (saleBy(PaymentMethod.cash), -1.0),
+        (saleBy(PaymentMethod.credit), 7200.0),
+        (saleBy(PaymentMethod.route), 7200.0),
+        (saleBy(PaymentMethod.mixed, cash: 5000, transfer: 8000), 7200.0),
+      ]) {
+        await expectLater(
+          sut.execute(sale, debtAmount: debt),
+          throwsA(isA<ValidationFailure>()),
+        );
+      }
+      expect(await db.select(db.saleTable).get(), isEmpty);
+      expect(await db.select(db.paymentTable).get(), isEmpty);
+      expect(await db.select(db.pendingChangeTable).get(), isEmpty);
+    });
   });
 
   // ───────────────────────────────────────────────────────────────

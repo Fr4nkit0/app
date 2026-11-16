@@ -33,6 +33,7 @@ class _FakeRegisterSale implements RegisterSaleUseCase {
     Sale sale, {
     Payment? payment,
     List<ContainerMovement>? containerMovements,
+    double debtAmount = 0,
   }) {
     calls++;
     movements = containerMovements;
