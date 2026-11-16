@@ -63,18 +63,18 @@ void main() {
 
   tearDown(() => dir.deleteSync(recursive: true));
 
-  test('the schema version is the development baseline 17', () {
+  test('the schema version is the development baseline 18', () {
     final db = AppDatabase(NativeDatabase.memory());
     addTearDown(db.close);
 
-    expect(db.schemaVersion, 17);
+    expect(db.schemaVersion, 18);
   });
 
   test('a fresh install creates every table with the current columns', () async {
     final db = AppDatabase(NativeDatabase(file));
     addTearDown(db.close);
 
-    expect(await _userVersion(db), 17);
+    expect(await _userVersion(db), 18);
     for (final table in db.allTables) {
       expect(
         await _columns(db, table.actualTableName),
@@ -108,7 +108,7 @@ void main() {
         reason: table.actualTableName,
       );
     }
-    expect(await _userVersion(db), 17);
+    expect(await _userVersion(db), 18);
   });
 
   test('reopening a rebuilt database keeps the data written after the '
@@ -126,6 +126,6 @@ void main() {
 
     final customers = await second.select(second.customerTable).get();
     expect(customers.map((c) => c.customerId), ['c-2']);
-    expect(await _userVersion(second), 17);
+    expect(await _userVersion(second), 18);
   });
 }
