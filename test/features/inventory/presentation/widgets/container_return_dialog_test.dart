@@ -89,6 +89,28 @@ void main() {
     ]);
   });
 
+  testWidgets('initial returns above the custody start at the custody', (
+    tester,
+  ) async {
+    await pump(
+      tester,
+      custody: const {'JUG': 5, 'SIPHON': 0},
+      initialReturns: const {'JUG': 10, 'SIPHON': 4},
+    );
+
+    expect(find.text('10'), findsNothing);
+    expect(find.text('5'), findsOneWidget);
+    expect(find.text('0'), findsOneWidget);
+    expect(tester.widget<IconButton>(plus('Bidón 20L')).onPressed, isNull);
+
+    await tester.tap(find.text('Guardar'));
+    await tester.pump();
+
+    expect(confirmed, [
+      {'JUG': 5, 'SIPHON': 0},
+    ]);
+  });
+
   testWidgets('starts from the initial returns and takes custom copy', (
     tester,
   ) async {

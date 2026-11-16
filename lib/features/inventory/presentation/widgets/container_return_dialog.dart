@@ -27,7 +27,8 @@ class ContainerReturnDialog extends StatefulWidget {
   /// Containers the customer holds, by container code.
   final Map<String, int> custody;
 
-  /// Returns per container code to start from; 0 when absent.
+  /// Returns per container code to start from; 0 when absent. Values above
+  /// the customer's [custody] start at the custody.
   final Map<String, int> initialReturns;
 
   /// Receives the returns of every shown type, by container code.
@@ -44,7 +45,10 @@ class ContainerReturnDialog extends StatefulWidget {
 class _ContainerReturnDialogState extends State<ContainerReturnDialog> {
   late final Map<String, int> _returns = {
     for (final type in widget.containerTypes)
-      type.code: widget.initialReturns[type.code] ?? 0,
+      type.code: (widget.initialReturns[type.code] ?? 0).clamp(
+        0,
+        widget.custody[type.code] ?? 0,
+      ),
   };
 
   @override
