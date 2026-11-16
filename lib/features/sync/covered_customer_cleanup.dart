@@ -1,10 +1,13 @@
 import 'package:drift/drift.dart';
 
-import '../../../../core/services/database.helper.dart';
-import '../../domain/models/pending_change.dart';
-import '../../pull/pull_applier.dart' show dateOnly;
-import 'removed_customers.dart';
-import 'server_shadow.dart';
+import 'package:app/features/inventory/data/repositories/custody.dart';
+import 'package:app/features/payments/data/repositories/customer_account.dart';
+
+import '../../core/services/database.helper.dart';
+import 'data/repositories/removed_customers.dart';
+import 'data/repositories/server_shadow.dart';
+import 'domain/models/pending_change.dart';
+import 'pull/pull_applier.dart' show dateOnly;
 
 /// Forgets, on this device only, the customers the driver got through
 /// covered stops (`customers.is_cover`), once they are done with:
@@ -21,10 +24,16 @@ import 'server_shadow.dart';
 /// never touched.
 class CoveredCustomerCleanup {
   CoveredCustomerCleanup(this._db, {DateTime Function()? today})
-    : _today = today ?? DateTime.now;
+    : _today = today ?? DateTime.now,
+      _account = CustomerAccount(_db),
+      _custody = Custody(_db);
 
   final AppDatabase _db;
   final DateTime Function() _today;
+
+  // Each ledger is cleared by the module that owns it (ADR 0003).
+  final CustomerAccount _account;
+  final Custody _custody;
 
   /// Queue states that keep a customer: something still has to reach the
   /// server or the driver still has to look at it.
@@ -194,15 +203,11 @@ class CoveredCustomerCleanup {
     await (_db.delete(
       _db.customerAccountEntryTable,
     )..where((t) => t.customerId.equals(customerId))).go();
-    await (_db.delete(
-      _db.customerBalanceTable,
-    )..where((t) => t.customerId.equals(customerId))).go();
+    await _account.forget(customerId);
     await (_db.delete(
       _db.containerMovementTable,
     )..where((t) => t.customerId.equals(customerId))).go();
-    await (_db.delete(
-      _db.customerContainerBalanceTable,
-    )..where((t) => t.customerId.equals(customerId))).go();
+    await _custody.forget(customerId);
     await (_db.delete(
       _db.customerAgreementTable,
     )..where((t) => t.customerId.equals(customerId))).go();

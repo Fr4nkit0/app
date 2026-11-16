@@ -15,6 +15,12 @@ class CustomerAccount {
 
   final AppDatabase _db;
 
+  /// Drops the balance of [customerId], on this device only; nothing is
+  /// queued. For a customer being forgotten locally.
+  Future<void> forget(String customerId) => (_db.delete(
+    _db.customerBalanceTable,
+  )..where((t) => t.customerId.equals(customerId))).go();
+
   /// Moves the account of [customerId] by [delta] (positive: owes more).
   Future<void> post(
     String customerId,
@@ -25,7 +31,9 @@ class CustomerAccount {
       _db.customerBalanceTable,
     )..where((t) => t.customerId.equals(customerId))).getSingleOrNull();
     if (existing == null) {
-      await _db.into(_db.customerBalanceTable).insert(
+      await _db
+          .into(_db.customerBalanceTable)
+          .insert(
             CustomerBalanceTableCompanion.insert(
               customerId: customerId,
               currentBalance: Value(delta),
@@ -34,9 +42,9 @@ class CustomerAccount {
           );
       return;
     }
-    await (_db.update(_db.customerBalanceTable)
-          ..where((t) => t.customerId.equals(customerId)))
-        .write(
+    await (_db.update(
+      _db.customerBalanceTable,
+    )..where((t) => t.customerId.equals(customerId))).write(
       CustomerBalanceTableCompanion(
         currentBalance: Value(existing.currentBalance + delta),
         lastEntryId: lastEntryId == null
@@ -57,9 +65,9 @@ class CustomerAccount {
 
   /// The balance of [customerId]; 0 while they have no account.
   Future<double> balanceOf(String customerId) async =>
-      (await (_db.select(_db.customerBalanceTable)
-                ..where((t) => t.customerId.equals(customerId)))
-              .getSingleOrNull())
+      (await (_db.select(
+            _db.customerBalanceTable,
+          )..where((t) => t.customerId.equals(customerId))).getSingleOrNull())
           ?.currentBalance ??
       0.0;
 
@@ -97,7 +105,9 @@ class CustomerAccount {
     Value<bool> enabled = const Value.absent(),
   }) async {
     final pending = await pendingDelta(customerId);
-    await _db.into(_db.customerBalanceTable).insertOnConflictUpdate(
+    await _db
+        .into(_db.customerBalanceTable)
+        .insertOnConflictUpdate(
           CustomerBalanceTableCompanion.insert(
             customerId: customerId,
             currentBalance: Value(serverBalance + pending),
@@ -119,19 +129,21 @@ class CustomerAccount {
     String payments(int entity) =>
         '(SELECT COALESCE(SUM(p.amount), 0.0) FROM payments p '
         'WHERE p.customer_id = ?1 AND p.payment_id IN ${pendingIds(entity)})';
-    final row = await _db.customSelect(
-      'SELECT ${sales(2)} - ${payments(3)} - ${sales(4)} + ${payments(5)} '
-      'AS delta',
-      variables: [
-        Variable.withString(customerId),
-        Variable.withString(PendingEntity.sale.wireName),
-        Variable.withString(PendingEntity.payment.wireName),
-        Variable.withString(PendingEntity.saleCancellation.wireName),
-        Variable.withString(PendingEntity.paymentCancellation.wireName),
-        Variable.withString(PendingStatus.pending.wireName),
-      ],
-      readsFrom: {_db.saleTable, _db.paymentTable, _db.pendingChangeTable},
-    ).getSingle();
+    final row = await _db
+        .customSelect(
+          'SELECT ${sales(2)} - ${payments(3)} - ${sales(4)} + ${payments(5)} '
+          'AS delta',
+          variables: [
+            Variable.withString(customerId),
+            Variable.withString(PendingEntity.sale.wireName),
+            Variable.withString(PendingEntity.payment.wireName),
+            Variable.withString(PendingEntity.saleCancellation.wireName),
+            Variable.withString(PendingEntity.paymentCancellation.wireName),
+            Variable.withString(PendingStatus.pending.wireName),
+          ],
+          readsFrom: {_db.saleTable, _db.paymentTable, _db.pendingChangeTable},
+        )
+        .getSingle();
     return row.read<double>('delta');
   }
 }

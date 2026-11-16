@@ -15,6 +15,12 @@ class Custody {
 
   final AppDatabase _db;
 
+  /// Drops every custody row of [customerId], on this device only; nothing
+  /// is queued. For a customer being forgotten locally.
+  Future<void> forget(String customerId) => (_db.delete(
+    _db.customerContainerBalanceTable,
+  )..where((t) => t.customerId.equals(customerId))).go();
+
   /// Moves the custody of [containerType] held by [customerId] by [delta]
   /// (positive: holds more).
   Future<void> post(String customerId, String containerType, int delta) async {
