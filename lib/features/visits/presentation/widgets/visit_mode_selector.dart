@@ -89,6 +89,9 @@ class _ModeCard extends StatelessWidget {
               ),
             ),
             child: Stack(
+              // Stack defaults to topStart with loose constraints, which left-
+              // aligned the column whenever its texts were narrower than the card.
+              alignment: Alignment.topCenter,
               clipBehavior: Clip.none,
               children: [
                 Column(
