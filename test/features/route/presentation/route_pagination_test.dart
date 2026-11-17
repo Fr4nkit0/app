@@ -226,7 +226,10 @@ void main() {
     /// Scrolls down until [name] shows, as a driver flinging to the end.
     Future<void> scrollUntil(WidgetTester tester, String name) async {
       for (var i = 0; i < 30 && find.text(name).evaluate().isEmpty; i++) {
-        await tester.drag(find.byType(CustomScrollView), const Offset(0, -3000));
+        await tester.drag(
+          find.byType(CustomScrollView),
+          const Offset(0, -3000),
+        );
         await tester.pump();
         // Loading the next page keeps the list on screen.
         expect(find.byType(CustomScrollView), findsOneWidget);

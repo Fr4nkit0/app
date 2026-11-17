@@ -9,6 +9,9 @@ import 'package:app/features/route/presentation/providers/route_repository_provi
 import 'package:app/features/visits/presentation/screens/visit_screen.dart';
 import 'package:app/features/route/presentation/widgets/next_stop_card.dart';
 import 'package:app/features/route/presentation/widgets/route_downloading_state.dart';
+import 'package:app/features/route/domain/models/route_stop_filter.dart';
+import 'package:app/features/route/presentation/widgets/neighborhood_picker_sheet.dart';
+import 'package:app/features/route/presentation/widgets/route_filter_bar.dart';
 import 'package:app/features/route/presentation/widgets/route_progress_line.dart';
 import 'package:app/features/route/presentation/widgets/route_stop_card.dart';
 import 'package:app/features/inventory/presentation/providers/inventory_repository_provider.dart';
@@ -22,24 +25,72 @@ import 'package:app/features/sync/presentation/widgets/sync_status_button_contai
 class RouteDayScreen extends ConsumerStatefulWidget {
   const RouteDayScreen({super.key});
 
+  static const searchFieldKey = Key('route-search-field');
+
   @override
   ConsumerState<RouteDayScreen> createState() => _RouteDayScreenState();
 }
 
 class _RouteDayScreenState extends ConsumerState<RouteDayScreen> {
   late final ScrollController _scrollController;
+  late final TextEditingController _searchController;
 
   @override
   void initState() {
     super.initState();
     _scrollController = ScrollController();
     _scrollController.addListener(_onScroll);
+    _searchController = TextEditingController(
+      text: ref.read(routeStopFilterProvider).query,
+    );
   }
 
   @override
   void dispose() {
     _scrollController.dispose();
+    _searchController.dispose();
     super.dispose();
+  }
+
+  void _clearQuery() {
+    _searchController.clear();
+    ref.read(routeStopFilterProvider.notifier).setQuery('');
+  }
+
+  void _clearFilter() {
+    _searchController.clear();
+    ref.read(routeStopFilterProvider.notifier).clear();
+  }
+
+  Future<void> _pickNeighborhood(List<RouteStop> allStops) async {
+    final notifier = ref.read(routeStopFilterProvider.notifier);
+    FocusScope.of(context).unfocus();
+    await showModalBottomSheet<void>(
+      context: context,
+      isScrollControlled: true,
+      showDragHandle: true,
+      builder: (sheetContext) => Padding(
+        padding: EdgeInsets.only(
+          bottom: MediaQuery.viewInsetsOf(sheetContext).bottom,
+        ),
+        child: NeighborhoodPickerSheet(
+          neighborhoods: RouteNeighborhood.of(allStops),
+          selected: ref.read(routeStopFilterProvider).neighborhood,
+          onSelected: (neighborhood) {
+            notifier.setNeighborhood(neighborhood);
+            Navigator.of(sheetContext).pop();
+          },
+        ),
+      ),
+    );
+  }
+
+  static Map<StopStatus?, int> _statusCounts(List<RouteStop> stops) {
+    final counts = <StopStatus?, int>{null: stops.length};
+    for (final stop in stops) {
+      counts[stop.status] = (counts[stop.status] ?? 0) + 1;
+    }
+    return counts;
   }
 
   void _onScroll() => _loadMoreIfAtEnd();
@@ -71,6 +122,8 @@ class _RouteDayScreenState extends ConsumerState<RouteDayScreen> {
     final stopsAsync = ref.watch(routeDayProvider);
     final allStopsAsync = ref.watch(routeAllStopsProvider);
     final nextStop = ref.watch(nextStopProvider);
+    final filter = ref.watch(routeStopFilterProvider);
+    final filtering = filter.isActive;
     final isSyncRunning = ref.watch(syncRunningProvider).value ?? false;
     // Without a cycle that reached the server, an empty day means today's
     // route was never downloaded, not that the server has none.
@@ -93,7 +146,9 @@ class _RouteDayScreenState extends ConsumerState<RouteDayScreen> {
           data: (stops) {
             final allStops = allStopsAsync.value ?? [];
             final totalCount = allStops.length;
-            final isFullyLoaded = stops.length >= totalCount;
+            // A filter searches the whole day, not only the loaded pages.
+            final visible = filtering ? filter.apply(allStops) : stops;
+            final isFullyLoaded = filtering || stops.length >= totalCount;
             if (!isFullyLoaded) {
               WidgetsBinding.instance.addPostFrameCallback(
                 (_) => _loadMoreIfAtEnd(),
@@ -110,11 +165,47 @@ class _RouteDayScreenState extends ConsumerState<RouteDayScreen> {
               },
               child: CustomScrollView(
                 controller: _scrollController,
+                keyboardDismissBehavior:
+                    ScrollViewKeyboardDismissBehavior.onDrag,
                 // Scrollable even when the content fits, so the pull works.
                 physics: const AlwaysScrollableScrollPhysics(),
                 slivers: [
                   SliverToBoxAdapter(child: _RouteHeader(stops: allStops)),
                   if (allStops.isNotEmpty)
+                    // Pinned: the filters stay at hand while scrolling.
+                    PinnedHeaderSliver(
+                      child: ColoredBox(
+                        color: Theme.of(context).scaffoldBackgroundColor,
+                        child: Padding(
+                          padding: const EdgeInsets.fromLTRB(20, 12, 20, 8),
+                          child: RouteFilterBar(
+                            searchFieldKey: RouteDayScreen.searchFieldKey,
+                            controller: _searchController,
+                            neighborhood: filter.neighborhood,
+                            status: filter.status,
+                            statusCounts: _statusCounts(allStops),
+                            shownCount: visible.length,
+                            totalCount: totalCount,
+                            onQueryChanged: ref
+                                .read(routeStopFilterProvider.notifier)
+                                .setQuery,
+                            onClearQuery: _clearQuery,
+                            onPickNeighborhood: () =>
+                                _pickNeighborhood(allStops),
+                            onClearNeighborhood: () => ref
+                                .read(routeStopFilterProvider.notifier)
+                                .setNeighborhood(null),
+                            onStatusChanged: ref
+                                .read(routeStopFilterProvider.notifier)
+                                .setStatus,
+                            onClearAll: _clearFilter,
+                          ),
+                        ),
+                      ),
+                    ),
+                  // A filtered list stands alone: the next stop and the
+                  // progress describe the whole day.
+                  if (allStops.isNotEmpty && !filtering)
                     SliverToBoxAdapter(
                       child: Padding(
                         padding: const EdgeInsets.fromLTRB(20, 16, 20, 0),
@@ -123,17 +214,18 @@ class _RouteDayScreenState extends ConsumerState<RouteDayScreen> {
                             : RouteDoneCard(closedCount: allStops.length),
                       ),
                     ),
-                  SliverToBoxAdapter(
-                    child: Padding(
-                      padding: const EdgeInsets.fromLTRB(20, 16, 20, 0),
-                      child: RouteProgressLine(
-                        done: allStops
-                            .where((s) => s.status != StopStatus.pending)
-                            .length,
-                        total: allStops.length,
+                  if (!filtering)
+                    SliverToBoxAdapter(
+                      child: Padding(
+                        padding: const EdgeInsets.fromLTRB(20, 16, 20, 0),
+                        child: RouteProgressLine(
+                          done: allStops
+                              .where((s) => s.status != StopStatus.pending)
+                              .length,
+                          total: allStops.length,
+                        ),
                       ),
                     ),
-                  ),
                   if (allStops.isEmpty)
                     SliverFillRemaining(
                       // Taller than what is left on a small phone: scroll instead of overflowing.
@@ -163,25 +255,37 @@ class _RouteDayScreenState extends ConsumerState<RouteDayScreen> {
                                         ref.read(syncEngineProvider).runCycle(),
                             ),
                     )
+                  else if (visible.isEmpty)
+                    SliverFillRemaining(
+                      hasScrollBody: false,
+                      child: EmptyState(
+                        icon: Icons.search_off_outlined,
+                        title: 'Ninguna parada coincide',
+                        message:
+                            'Probá con otro nombre, otro barrio u otro estado.',
+                        actionLabel: 'Limpiar filtros',
+                        onAction: _clearFilter,
+                      ),
+                    )
                   else ...[
                     SliverPadding(
                       padding: const EdgeInsets.only(top: 8, bottom: 8),
                       sliver: SliverList(
                         delegate: SliverChildBuilderDelegate(
                           (context, i) => RouteStopCard(
-                            stop: stops[i],
+                            stop: visible[i],
                             isFirst: i == 0,
-                            isLast: i == stops.length - 1 && isFullyLoaded,
-                            isNext: stops[i].id == nextStop?.id,
-                            holdsRecords: heldStopIds.contains(stops[i].id),
+                            isLast: i == visible.length - 1 && isFullyLoaded,
+                            isNext: visible[i].id == nextStop?.id,
+                            holdsRecords: heldStopIds.contains(visible[i].id),
                             onTap: () => Navigator.of(context).push(
                               MaterialPageRoute(
                                 builder: (_) =>
-                                    VisitScreen(stopId: stops[i].id),
+                                    VisitScreen(stopId: visible[i].id),
                               ),
                             ),
                           ),
-                          childCount: stops.length,
+                          childCount: visible.length,
                         ),
                       ),
                     ),

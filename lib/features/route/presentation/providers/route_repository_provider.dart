@@ -4,6 +4,7 @@ import 'package:app/core/services/database.helper.dart';
 import 'package:app/features/route/data/repositories/drift_route_repository.dart';
 import 'package:app/features/route/data/repositories/route.repository.dart';
 import 'package:app/features/route/domain/models/route_stop.dart';
+import 'package:app/features/route/domain/models/route_stop_filter.dart';
 import 'package:app/features/route/domain/models/stop_status.dart';
 
 final routeRepositoryProvider = Provider<RouteRepository>(
@@ -68,3 +69,24 @@ final nextStopProvider = Provider<RouteStop?>((ref) {
   final stops = ref.watch(routeAllStopsProvider).value;
   return stops?.where((s) => s.status == StopStatus.pending).firstOrNull;
 });
+
+/// The customer search, neighborhood and status the driver narrows the
+/// route list to.
+class RouteStopFilterNotifier extends Notifier<RouteStopFilter> {
+  @override
+  RouteStopFilter build() => RouteStopFilter.none;
+
+  void setQuery(String query) => state = state.withQuery(query);
+
+  void setStatus(StopStatus? status) => state = state.withStatus(status);
+
+  void setNeighborhood(String? neighborhood) =>
+      state = state.withNeighborhood(neighborhood);
+
+  void clear() => state = RouteStopFilter.none;
+}
+
+final routeStopFilterProvider =
+    NotifierProvider<RouteStopFilterNotifier, RouteStopFilter>(
+      RouteStopFilterNotifier.new,
+    );
