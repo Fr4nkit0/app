@@ -220,6 +220,7 @@ void main() {
               addressId: const drift.Value('addr-second'),
               customerId: const drift.Value('mock-customer-1'),
               street: const drift.Value('Mitre 55'),
+              neighborhood: const drift.Value('Barrio Güemes'),
               enabled: drift.Value(enabled),
             ),
           );
@@ -245,6 +246,7 @@ void main() {
         expect(stop.customer.addresses, hasLength(1));
         expect(stop.customer.addresses.single.id, 'addr-second');
         expect(stop.customer.addresses.single.street, 'Mitre 55');
+        expect(stop.customer.addresses.single.neighborhood, 'Barrio Güemes');
         expect(stop.customer.addresses.single.isPrimary, isFalse);
       });
 
@@ -575,15 +577,16 @@ void main() {
       String stopId, {
       String? note,
       bool enabled = true,
-    }) => (db.update(
-      db.routeStopTable,
-    )..where((t) => t.routeStopId.equals(stopId))).write(
-      RouteStopTableCompanion(
-        isRequested: const drift.Value(true),
-        note: drift.Value(note),
-        enabled: drift.Value(enabled),
-      ),
-    );
+    }) =>
+        (db.update(
+          db.routeStopTable,
+        )..where((t) => t.routeStopId.equals(stopId))).write(
+          RouteStopTableCompanion(
+            isRequested: const drift.Value(true),
+            note: drift.Value(note),
+            enabled: drift.Value(enabled),
+          ),
+        );
 
     Future<void> seedTodayStop(String stopId, {int hour = 9}) async {
       final now = DateTime.now();
@@ -886,11 +889,10 @@ void main() {
     final now = DateTime.now();
     DateTime at(int hour) => DateTime(now.year, now.month, now.day, hour);
 
-    Future<void> disableCustomer(String customerId) => (db.update(
-      db.customerTable,
-    )..where((t) => t.customerId.equals(customerId))).write(
-      const CustomerTableCompanion(enabled: drift.Value(false)),
-    );
+    Future<void> disableCustomer(String customerId) =>
+        (db.update(db.customerTable)
+              ..where((t) => t.customerId.equals(customerId)))
+            .write(const CustomerTableCompanion(enabled: drift.Value(false)));
 
     Future<void> visit(String stopId, String customerId) => db
         .into(db.visitTable)
@@ -1022,10 +1024,7 @@ void main() {
       await disableCustomer('mock-customer-1');
       await Future.delayed(const Duration(milliseconds: 30));
 
-      expect(emissions.last.map((s) => s.id), [
-        'stop-other',
-        'stop-closed',
-      ]);
+      expect(emissions.last.map((s) => s.id), ['stop-other', 'stop-closed']);
     });
   });
 }
