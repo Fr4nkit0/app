@@ -16,28 +16,32 @@ class VisitModeSelector extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return Row(
-      children: [
-        Expanded(
-          child: _ModeCard(
-            title: 'Registrar venta',
-            subtitle: 'Cobrás productos ahora',
-            icon: Icons.point_of_sale_outlined,
-            isSelected: isSaleSelected,
-            onTap: onSelectSale,
+    // Same height for both cards, whatever the subtitle length.
+    return IntrinsicHeight(
+      child: Row(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: [
+          Expanded(
+            child: _ModeCard(
+              title: 'Registrar venta',
+              subtitle: 'Cobrás productos ahora',
+              icon: Icons.point_of_sale_outlined,
+              isSelected: isSaleSelected,
+              onTap: onSelectSale,
+            ),
           ),
-        ),
-        const SizedBox(width: 12),
-        Expanded(
-          child: _ModeCard(
-            title: 'Solo visita',
-            subtitle: 'Sin venta: entrega, gestión o ausente',
-            icon: Icons.assignment_turned_in_outlined,
-            isSelected: !isSaleSelected,
-            onTap: onSelectVisit,
+          const SizedBox(width: 12),
+          Expanded(
+            child: _ModeCard(
+              title: 'Solo visita',
+              subtitle: 'Sin venta: entrega, gestión o ausente',
+              icon: Icons.assignment_turned_in_outlined,
+              isSelected: !isSaleSelected,
+              onTap: onSelectVisit,
+            ),
           ),
-        ),
-      ],
+        ],
+      ),
     );
   }
 }
@@ -59,55 +63,94 @@ class _ModeCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final activeColor = MarilinColors.brandBlue;
+    final tokens = context.marilin;
+    final activeColor = tokens.brandBlue;
 
-    return Material(
-      color: Colors.transparent,
-      child: InkWell(
-        onTap: onTap,
-        borderRadius: BorderRadius.circular(16),
-        child: AnimatedContainer(
-          duration: const Duration(milliseconds: 200),
-          padding: const EdgeInsets.symmetric(vertical: 16, horizontal: 12),
-          decoration: BoxDecoration(
-            color: isSelected
-                ? activeColor.withValues(alpha: 0.08)
-                : context.marilin.surface,
-            borderRadius: BorderRadius.circular(16),
-            border: Border.all(
-              color: isSelected ? activeColor : context.marilin.border,
-              width: isSelected ? 2 : 1,
+    return Semantics(
+      button: true,
+      selected: isSelected,
+      child: Material(
+        color: Colors.transparent,
+        child: InkWell(
+          onTap: onTap,
+          borderRadius: BorderRadius.circular(20),
+          child: AnimatedContainer(
+            duration: const Duration(milliseconds: 200),
+            curve: Curves.easeOutCubic,
+            padding: const EdgeInsets.fromLTRB(14, 16, 14, 16),
+            decoration: BoxDecoration(
+              color: isSelected
+                  ? activeColor.withValues(alpha: 0.14)
+                  : tokens.surface,
+              borderRadius: BorderRadius.circular(20),
+              border: Border.all(
+                color: isSelected ? activeColor : tokens.border,
+                width: isSelected ? 2 : 1,
+              ),
             ),
-          ),
-          child: Column(
-            children: [
-              Icon(
-                icon,
-                color: isSelected ? activeColor : context.marilin.textMuted,
-                size: 28,
-              ),
-              const SizedBox(height: 8),
-              Text(
-                title,
-                style: TextStyle(
-                  fontWeight: FontWeight.w900,
-                  fontSize: 15,
-                  color: isSelected
-                      ? context.marilin.ink
-                      : context.marilin.textMuted,
+            child: Stack(
+              clipBehavior: Clip.none,
+              children: [
+                Column(
+                  mainAxisAlignment: MainAxisAlignment.center,
+                  children: [
+                    AnimatedContainer(
+                      duration: const Duration(milliseconds: 200),
+                      padding: const EdgeInsets.all(10),
+                      decoration: BoxDecoration(
+                        color: isSelected
+                            ? activeColor.withValues(alpha: 0.18)
+                            : tokens.fill,
+                        shape: BoxShape.circle,
+                      ),
+                      child: Icon(
+                        icon,
+                        color: isSelected ? activeColor : tokens.inkSecondary,
+                        size: 24,
+                      ),
+                    ),
+                    const SizedBox(height: 10),
+                    // The unselected card stays readable: it is an option,
+                    // not a disabled control.
+                    Text(
+                      title,
+                      textAlign: TextAlign.center,
+                      style: TextStyle(
+                        fontWeight: FontWeight.w800,
+                        fontSize: 15,
+                        color: tokens.ink,
+                      ),
+                    ),
+                    const SizedBox(height: 4),
+                    Text(
+                      subtitle,
+                      textAlign: TextAlign.center,
+                      maxLines: 2,
+                      overflow: TextOverflow.ellipsis,
+                      style: TextStyle(
+                        fontSize: 12,
+                        height: 1.3,
+                        fontWeight: FontWeight.w500,
+                        color: tokens.textMuted,
+                      ),
+                    ),
+                  ],
                 ),
-              ),
-              const SizedBox(height: 2),
-              Text(
-                subtitle,
-                textAlign: TextAlign.center,
-                style: TextStyle(
-                  fontSize: 12,
-                  fontWeight: FontWeight.w600,
-                  color: context.marilin.textMuted,
+                Positioned(
+                  top: -6,
+                  right: -6,
+                  child: AnimatedOpacity(
+                    duration: const Duration(milliseconds: 200),
+                    opacity: isSelected ? 1 : 0,
+                    child: Icon(
+                      Icons.check_circle_rounded,
+                      color: activeColor,
+                      size: 20,
+                    ),
+                  ),
                 ),
-              ),
-            ],
+              ],
+            ),
           ),
         ),
       ),
