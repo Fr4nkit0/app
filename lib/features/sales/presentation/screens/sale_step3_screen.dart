@@ -17,7 +17,9 @@ import 'package:app/features/inventory/domain/models/customer_container_balance.
 import 'package:app/features/inventory/presentation/widgets/container_return_dialog.dart';
 
 import 'package:app/core/theme/marilin_tokens.dart';
+import 'package:app/features/payments/presentation/providers/payment_repository_provider.dart';
 import 'package:app/features/payments/presentation/widgets/amount_field.dart';
+import 'package:app/features/sales/presentation/widgets/collect_debt_card.dart';
 
 class SaleStep3Screen extends ConsumerWidget {
   const SaleStep3Screen({super.key});
@@ -25,6 +27,17 @@ class SaleStep3Screen extends ConsumerWidget {
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final draft = ref.watch(saleDraftProvider);
+    // The debt comes from the customer account; the customer's snapshot
+    // stands in until it loads.
+    final customer = draft.customer;
+    final balance = customer == null
+        ? 0.0
+        : ref.watch(customerBalanceProvider(customer.id)).value ??
+              customer.debtAmount;
+    final currentDebt = balance > 0 ? balance : 0.0;
+    final offersDebt =
+        currentDebt > 0 &&
+        SaleDraftState.debtMethods.contains(draft.paymentMethod);
 
     final bottomInset = MediaQuery.of(context).viewPadding.bottom;
 
@@ -62,7 +75,7 @@ class SaleStep3Screen extends ConsumerWidget {
                             ),
                           ),
                           const SizedBox(height: 20),
-                          _TotalBlock(draft: draft),
+                          _TotalBlock(draft: draft, currentDebt: currentDebt),
                           const SizedBox(height: 24),
                           // Payment method grid + mixed fields
                           Padding(
@@ -74,6 +87,13 @@ class SaleStep3Screen extends ConsumerWidget {
                                 const SizedBox(height: 10),
                                 _PaymentGrid(draft: draft),
                                 const SizedBox(height: 12),
+                                if (offersDebt) ...[
+                                  _CollectDebtSection(
+                                    draft: draft,
+                                    currentDebt: currentDebt,
+                                  ),
+                                  const SizedBox(height: 12),
+                                ],
                                 // Progressive-disclosure mixed amounts
                                 _MixedAmountsSection(draft: draft),
                                 // Live remaining indicator
@@ -123,15 +143,16 @@ class _Header extends StatelessWidget {
 // ─── Total block ──────────────────────────────────────────────────────────────
 
 class _TotalBlock extends StatelessWidget {
-  const _TotalBlock({required this.draft});
+  const _TotalBlock({required this.draft, required this.currentDebt});
 
   final SaleDraftState draft;
+  final double currentDebt;
 
   @override
   Widget build(BuildContext context) {
     final tokens = Theme.of(context).extension<SalesTokens>()!;
     final muted = context.marilin.textMuted;
-    final debt = draft.customer?.debtAmount ?? 0;
+    final debt = currentDebt;
     return Padding(
       padding: const EdgeInsets.symmetric(horizontal: 20),
       child: Column(
@@ -146,7 +167,7 @@ class _TotalBlock extends StatelessWidget {
             ),
           ),
           Text(
-            formatMoney(draft.total),
+            formatMoney(draft.operationTotal),
             style: TextStyle(
               fontSize: 40,
               fontWeight: FontWeight.w900,
@@ -154,8 +175,19 @@ class _TotalBlock extends StatelessWidget {
               fontFeatures: tokens.tabularStyle.fontFeatures,
             ),
           ),
-          // Previous debt is context, display-only (never mutates debtAmount)
-          if (debt > 0)
+          // Previous debt is context unless the driver collects it below.
+          if (draft.collectsDebt)
+            Text(
+              'Venta ${formatMoney(draft.total)} + deuda '
+              '${formatMoney(draft.debtToCollect)}',
+              style: TextStyle(
+                fontSize: 14,
+                fontWeight: FontWeight.w600,
+                color: muted,
+                fontFeatures: tokens.tabularStyle.fontFeatures,
+              ),
+            )
+          else if (debt > 0)
             Row(
               children: [
                 Icon(Icons.history_rounded, size: 16, color: muted),
@@ -172,6 +204,35 @@ class _TotalBlock extends StatelessWidget {
             ),
         ],
       ),
+    );
+  }
+}
+
+// ─── "Cobrar también la deuda" (S4, S5) ───────────────────────────────────────
+
+class _CollectDebtSection extends ConsumerWidget {
+  const _CollectDebtSection({required this.draft, required this.currentDebt});
+
+  final SaleDraftState draft;
+  final double currentDebt;
+
+  String? get _error {
+    if (!draft.collectsDebt || draft.isValidDebtAmount) return null;
+    final amount = draft.debtAmount;
+    if (amount == null || amount <= 0) return 'Ingresá un monto mayor a \$0';
+    return 'No puede superar la deuda de ${formatMoney(draft.currentDebt)}';
+  }
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final notifier = ref.read(saleDraftProvider.notifier);
+    return CollectDebtCard(
+      currentDebt: currentDebt,
+      enabled: draft.collectsDebt,
+      amount: draft.debtAmount,
+      errorText: _error,
+      onToggle: (on) => notifier.setCollectDebt(on, currentDebt: currentDebt),
+      onAmountChanged: notifier.setDebtAmount,
     );
   }
 }
@@ -370,11 +431,10 @@ class _MixedAmountsSectionState extends ConsumerState<_MixedAmountsSection> {
         .setMixedAmounts(cash: cash, transfer: transfer);
   }
 
+  /// Fills one field with everything collected: the sale plus any debt.
   void _fillAll({required bool cash}) {
-    final total = widget.draft.total;
-    final text = total == total.roundToDouble()
-        ? total.toStringAsFixed(0)
-        : total.toStringAsFixed(2);
+    final total = widget.draft.operationTotal;
+    final text = editableAmount(total);
     _cashController.text = cash ? text : '0';
     _transferController.text = cash ? '0' : text;
     ref
@@ -524,180 +584,211 @@ class _FooterState extends ConsumerState<_Footer> {
         ],
       ),
       padding: const EdgeInsets.fromLTRB(16, 12, 16, 24),
-      child: Row(
+      child: Column(
+        mainAxisSize: MainAxisSize.min,
         children: [
-          // Botón Atrás
-          Expanded(
-            flex: 4,
-            child: OutlinedButton(
-              onPressed: _busy ? null : () => Navigator.of(context).pop(),
-              style: OutlinedButton.styleFrom(
-                foregroundColor: Theme.of(context).colorScheme.primary,
-                side: BorderSide(
-                  color: Theme.of(context).colorScheme.primary,
-                  width: 1.5,
+          // The whole operation, right before confirming it (S9).
+          if (draft.collectsDebt)
+            Padding(
+              padding: const EdgeInsets.only(bottom: 10),
+              child: Align(
+                alignment: Alignment.centerLeft,
+                child: Text(
+                  'Total a cobrar ${formatMoney(draft.operationTotal)}',
+                  style: TextStyle(
+                    fontSize: 16,
+                    fontWeight: FontWeight.w800,
+                    color: context.marilin.ink,
+                    fontFeatures: tokens.tabularStyle.fontFeatures,
+                  ),
                 ),
-                minimumSize: const Size(0, 56),
-                shape: RoundedRectangleBorder(
-                  borderRadius: BorderRadius.circular(12),
-                ),
-              ),
-              child: const Text(
-                'Atrás',
-                style: TextStyle(fontWeight: FontWeight.w700),
               ),
             ),
-          ),
-          const SizedBox(width: 10),
-          // Botón Confirmar — gated by canConfirm (REQ-COB-06)
-          Expanded(
-            flex: 6,
-            child: Consumer(
-              builder: (context, ref, child) {
-                final balancesAsync = ref.watch(
-                  customerContainerBalancesProvider(draft.customer?.id ?? ''),
-                );
-                final containerTypes = ref
-                    .watch(containerTypesProvider)
-                    .maybeWhen(
-                      data: (types) => types,
-                      orElse: () => <ContainerType>[],
-                    );
-
-                return FilledButton(
-                  onPressed: draft.canConfirm && !_busy
-                      ? () async {
-                          final delivered = deliveredByContainerType(
-                            draft.containerDeliveries,
-                          );
-                          final hasContainers = delivered.isNotEmpty;
-                          final visitId = draft.visitId;
-
-                          final balances = balancesAsync.maybeWhen(
-                            data: (list) => list,
-                            orElse: () => <CustomerContainerBalance>[],
-                          );
-                          final hasActiveCustody = balances.any(
-                            (b) => b.quantity > 0,
-                          );
-
-                          Future<void> handleCommit() async {
-                            if (_busy) return;
-                            setState(() => _busy = true);
-                            try {
-                              await ref
-                                  .read(saleDraftProvider.notifier)
-                                  .commit();
-                            } catch (e) {
-                              if (context.mounted) {
-                                setState(() => _busy = false);
-                                TopToast.showError(
-                                  context,
-                                  failureMessage(
-                                    e,
-                                    fallback:
-                                        'No se guardó la venta. Reintentá.',
-                                  ),
-                                );
-                              }
-                              return;
-                            }
-                            if (visitId != null) {
-                              ref.invalidate(visitMovementsProvider(visitId));
-                            }
-                            if (context.mounted) {
-                              if (visitId != null) {
-                                Navigator.of(context).pop();
-                                Navigator.of(context).pop();
-                              } else {
-                                Navigator.of(
-                                  context,
-                                ).popUntil((route) => route.isFirst);
-
-                                // Show gorgeous premium top toast ONLY for general sales outside routes!
-                                TopToast.showSuccess(
-                                  context,
-                                  'Venta registrada con éxito',
-                                );
-                              }
-                            }
-                          }
-
-                          if (hasContainers && hasActiveCustody) {
-                            final custody = custodyByContainerType(balances);
-                            showDialog(
-                              context: context,
-                              barrierDismissible: false,
-                              builder: (dialogContext) => ContainerReturnDialog(
-                                containerTypes: [
-                                  for (final type in containerTypes)
-                                    if (delivered.containsKey(type.code)) type,
-                                ],
-                                custody: custody,
-                                // Returned = delivered by default, capped at
-                                // what the customer actually holds.
-                                initialReturns: {
-                                  for (final MapEntry(:key, :value)
-                                      in delivered.entries)
-                                    key: (draft.returnedContainers[key] ??
-                                            value)
-                                        .clamp(0, custody[key] ?? 0),
-                                },
-                                title: 'Retorno de Envases',
-                                message:
-                                    'Confirmá o ajustá la cantidad de envases retornados por el cliente.',
-                                confirmLabel: 'Confirmar',
-                                onConfirm: (adjustedReturns) async {
-                                  Navigator.of(dialogContext).pop();
-                                  for (final entry in adjustedReturns.entries) {
-                                    ref
-                                        .read(saleDraftProvider.notifier)
-                                        .setReturnedQuantity(
-                                          entry.key,
-                                          entry.value,
-                                        );
-                                  }
-                                  await handleCommit();
-                                },
-                              ),
-                            );
-                          } else {
-                            for (final type in delivered.keys) {
-                              ref
-                                  .read(saleDraftProvider.notifier)
-                                  .setReturnedQuantity(type, 0);
-                            }
-                            await handleCommit();
-                          }
-                        }
-                      : null,
-                  style: FilledButton.styleFrom(
-                    backgroundColor: tokens.primary,
-                    disabledBackgroundColor: context.marilin.border,
+          Row(
+            children: [
+              // Botón Atrás
+              Expanded(
+                flex: 4,
+                child: OutlinedButton(
+                  onPressed: _busy ? null : () => Navigator.of(context).pop(),
+                  style: OutlinedButton.styleFrom(
+                    foregroundColor: Theme.of(context).colorScheme.primary,
+                    side: BorderSide(
+                      color: Theme.of(context).colorScheme.primary,
+                      width: 1.5,
+                    ),
                     minimumSize: const Size(0, 56),
                     shape: RoundedRectangleBorder(
                       borderRadius: BorderRadius.circular(12),
                     ),
                   ),
-                  child: _busy
-                      ? const SizedBox(
-                          width: 20,
-                          height: 20,
-                          child: CircularProgressIndicator(
-                            strokeWidth: 2.5,
-                            color: Colors.white,
-                          ),
-                        )
-                      : const Text(
-                          'Confirmar',
-                          style: TextStyle(
-                            fontWeight: FontWeight.w800,
-                            fontSize: 15,
-                          ),
+                  child: const Text(
+                    'Atrás',
+                    style: TextStyle(fontWeight: FontWeight.w700),
+                  ),
+                ),
+              ),
+              const SizedBox(width: 10),
+              // Botón Confirmar — gated by canConfirm (REQ-COB-06)
+              Expanded(
+                flex: 6,
+                child: Consumer(
+                  builder: (context, ref, child) {
+                    final balancesAsync = ref.watch(
+                      customerContainerBalancesProvider(
+                        draft.customer?.id ?? '',
+                      ),
+                    );
+                    final containerTypes = ref
+                        .watch(containerTypesProvider)
+                        .maybeWhen(
+                          data: (types) => types,
+                          orElse: () => <ContainerType>[],
+                        );
+
+                    return FilledButton(
+                      onPressed: draft.canConfirm && !_busy
+                          ? () async {
+                              final delivered = deliveredByContainerType(
+                                draft.containerDeliveries,
+                              );
+                              final hasContainers = delivered.isNotEmpty;
+                              final visitId = draft.visitId;
+
+                              final balances = balancesAsync.maybeWhen(
+                                data: (list) => list,
+                                orElse: () => <CustomerContainerBalance>[],
+                              );
+                              final hasActiveCustody = balances.any(
+                                (b) => b.quantity > 0,
+                              );
+
+                              Future<void> handleCommit() async {
+                                if (_busy) return;
+                                setState(() => _busy = true);
+                                try {
+                                  await ref
+                                      .read(saleDraftProvider.notifier)
+                                      .commit();
+                                } catch (e) {
+                                  if (context.mounted) {
+                                    setState(() => _busy = false);
+                                    TopToast.showError(
+                                      context,
+                                      failureMessage(
+                                        e,
+                                        fallback:
+                                            'No se guardó la venta. Reintentá.',
+                                      ),
+                                    );
+                                  }
+                                  return;
+                                }
+                                if (visitId != null) {
+                                  ref.invalidate(
+                                    visitMovementsProvider(visitId),
+                                  );
+                                }
+                                if (context.mounted) {
+                                  if (visitId != null) {
+                                    Navigator.of(context).pop();
+                                    Navigator.of(context).pop();
+                                  } else {
+                                    Navigator.of(
+                                      context,
+                                    ).popUntil((route) => route.isFirst);
+
+                                    // Show gorgeous premium top toast ONLY for general sales outside routes!
+                                    TopToast.showSuccess(
+                                      context,
+                                      'Venta registrada con éxito',
+                                    );
+                                  }
+                                }
+                              }
+
+                              if (hasContainers && hasActiveCustody) {
+                                final custody = custodyByContainerType(
+                                  balances,
+                                );
+                                showDialog(
+                                  context: context,
+                                  barrierDismissible: false,
+                                  builder: (dialogContext) => ContainerReturnDialog(
+                                    containerTypes: [
+                                      for (final type in containerTypes)
+                                        if (delivered.containsKey(type.code))
+                                          type,
+                                    ],
+                                    custody: custody,
+                                    // Returned = delivered by default, capped at
+                                    // what the customer actually holds.
+                                    initialReturns: {
+                                      for (final MapEntry(:key, :value)
+                                          in delivered.entries)
+                                        key:
+                                            (draft.returnedContainers[key] ??
+                                                    value)
+                                                .clamp(0, custody[key] ?? 0),
+                                    },
+                                    title: 'Retorno de Envases',
+                                    message:
+                                        'Confirmá o ajustá la cantidad de envases retornados por el cliente.',
+                                    confirmLabel: 'Confirmar',
+                                    onConfirm: (adjustedReturns) async {
+                                      Navigator.of(dialogContext).pop();
+                                      for (final entry
+                                          in adjustedReturns.entries) {
+                                        ref
+                                            .read(saleDraftProvider.notifier)
+                                            .setReturnedQuantity(
+                                              entry.key,
+                                              entry.value,
+                                            );
+                                      }
+                                      await handleCommit();
+                                    },
+                                  ),
+                                );
+                              } else {
+                                for (final type in delivered.keys) {
+                                  ref
+                                      .read(saleDraftProvider.notifier)
+                                      .setReturnedQuantity(type, 0);
+                                }
+                                await handleCommit();
+                              }
+                            }
+                          : null,
+                      style: FilledButton.styleFrom(
+                        backgroundColor: tokens.primary,
+                        disabledBackgroundColor: context.marilin.border,
+                        minimumSize: const Size(0, 56),
+                        shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(12),
                         ),
-                );
-              },
-            ),
+                      ),
+                      child: _busy
+                          ? const SizedBox(
+                              width: 20,
+                              height: 20,
+                              child: CircularProgressIndicator(
+                                strokeWidth: 2.5,
+                                color: Colors.white,
+                              ),
+                            )
+                          : const Text(
+                              'Confirmar',
+                              style: TextStyle(
+                                fontWeight: FontWeight.w800,
+                                fontSize: 15,
+                              ),
+                            ),
+                    );
+                  },
+                ),
+              ),
+            ],
           ),
         ],
       ),

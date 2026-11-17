@@ -2,6 +2,7 @@ import 'package:app/core/theme/app.theme.dart';
 import 'package:app/features/customers/domain/models/customer.dart';
 import 'package:app/features/inventory/domain/models/customer_container_balance.dart';
 import 'package:app/features/inventory/presentation/providers/inventory_repository_provider.dart';
+import 'package:app/features/payments/presentation/providers/payment_repository_provider.dart';
 import 'package:app/features/products/domain/models/product.dart';
 import 'package:app/features/sales/domain/models/payment_method.dart';
 import 'package:app/features/sales/domain/models/sale_draft_state.dart';
@@ -61,6 +62,9 @@ void main() {
       ProviderScope(
         overrides: [
           saleDraftProvider.overrideWith(() => _PreparedDraft(draft)),
+          customerBalanceProvider.overrideWith(
+            (ref, id) => Stream.value(draft.customer?.debtAmount ?? 0),
+          ),
           customerContainerBalancesProvider.overrideWith(
             (ref, id) => Stream.value(const <CustomerContainerBalance>[]),
           ),

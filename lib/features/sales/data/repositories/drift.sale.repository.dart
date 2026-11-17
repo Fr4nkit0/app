@@ -36,6 +36,10 @@ class DriftSaleRepository implements SaleRepository {
     return row == null ? null : _toSale(row);
   }
 
+  @override
+  Future<double> customerBalanceOf(String customerId) =>
+      _account.balanceOf(customerId);
+
   JoinedSelectStatement<HasResultSet, dynamic> _salesQuery(
     Expression<bool> where,
   ) => _db.select(_db.saleTable).join([
@@ -256,8 +260,7 @@ class DriftSaleRepository implements SaleRepository {
     );
     await _returnStock(saleId, -1);
     await (_db.delete(_db.customerAccountEntryTable)..where(
-          (t) =>
-              t.saleId.equals(saleId) & t.entryType.equals(creditNoteEntry),
+          (t) => t.saleId.equals(saleId) & t.entryType.equals(creditNoteEntry),
         ))
         .go();
     await _account.post(sale.customerId, sale.totalAmount);
