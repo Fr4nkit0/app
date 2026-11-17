@@ -22,6 +22,7 @@ import 'package:app/features/customers/data/database/customer.agreement.table.da
 import 'package:app/features/inventory/data/database/container_type.table.dart';
 import 'package:app/features/payments/data/database/payment_method.table.dart';
 import 'package:app/features/visits/data/database/visit_outcome.table.dart';
+import 'package:app/features/balance_corrections/data/database/balance_correction.table.dart';
 
 import 'database_mixins.dart';
 
@@ -52,16 +53,17 @@ part 'database.helper.g.dart';
     CustomerAgreementTable,
     SyncStateTable,
     NeighborhoodTable,
+    BalanceCorrectionTable,
   ],
 )
 class AppDatabase extends _$AppDatabase {
   AppDatabase([QueryExecutor? executor]) : super(executor ?? _openConnection());
 
-  /// 18 is the development baseline: one schema, no upgrade history. Before
-  /// the first production release this version must be frozen, and every
-  /// later schema change must ship with its own upgrade step.
+  /// 18 is the development baseline. 19 adds `balance_corrections` with its
+  /// own upgrade step, so devices on 18 keep their unsent changes; anything
+  /// older is still rebuilt empty.
   @override
-  int get schemaVersion => 18;
+  int get schemaVersion => 19;
 
   @override
   MigrationStrategy get migration => MigrationStrategy(
@@ -71,6 +73,10 @@ class AppDatabase extends _$AppDatabase {
     // Any older development schema is rebuilt empty; unsent local data is
     // lost, the same as reinstalling the app.
     onUpgrade: (m, from, to) async {
+      if (from == 18) {
+        await m.createTable(balanceCorrectionTable);
+        return;
+      }
       // Reverse declaration order drops dependents before what they reference.
       for (final entity in allSchemaEntities.toList().reversed) {
         await m.drop(entity);

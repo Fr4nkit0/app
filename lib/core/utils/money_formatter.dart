@@ -12,3 +12,12 @@ String formatMoney(double value) {
   final decimals = parts.length > 1 ? ',${parts[1]}' : '';
   return '${value < 0 ? '-' : ''}\$$buffer$decimals';
 }
+
+/// A customer account [balance] in driver copy: `Debe $1.500` when the
+/// customer owes, `Saldo a favor: $200` when they hold credit, `Al día`
+/// otherwise. Never a negative amount.
+String formatAccountBalance(double balance) => balance > 0
+    ? 'Debe ${formatMoney(balance)}'
+    : balance == 0
+    ? 'Al día'
+    : 'Saldo a favor: ${formatMoney(-balance)}';

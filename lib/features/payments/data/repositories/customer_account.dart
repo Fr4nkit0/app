@@ -5,7 +5,8 @@ import 'package:app/features/sync/domain/models/pending_change.dart';
 
 /// The customer account the driver sees: the balance downloaded from the
 /// server plus the sales and minus the payments not yet sent (a pending
-/// cancellation takes its record back out).
+/// cancellation takes its record back out), plus the difference of the
+/// debt corrections not yet sent.
 ///
 /// The only module that reads or writes the customer balance. Every local
 /// sale or payment posts a movement at once, a rejected one is posted back
@@ -118,7 +119,8 @@ class CustomerAccount {
   }
 
   /// Pending sales minus pending payments of [customerId], minus the sales
-  /// and plus the payments whose cancellation is pending.
+  /// and plus the payments whose cancellation is pending, plus the
+  /// difference of the pending debt corrections.
   Future<double> pendingDelta(String customerId) async {
     String pendingIds(int entity) =>
         '(SELECT entity_id FROM pending_changes '
@@ -129,10 +131,15 @@ class CustomerAccount {
     String payments(int entity) =>
         '(SELECT COALESCE(SUM(p.amount), 0.0) FROM payments p '
         'WHERE p.customer_id = ?1 AND p.payment_id IN ${pendingIds(entity)})';
+    const corrections =
+        '(SELECT COALESCE(SUM(b.counted - b.seen_balance), 0.0) '
+        "FROM balance_corrections b WHERE b.customer_id = ?1 AND b.target = 'debt' "
+        'AND b.correction_id IN (SELECT entity_id FROM pending_changes '
+        'WHERE entity = ?7 AND status = ?6))';
     final row = await _db
         .customSelect(
           'SELECT ${sales(2)} - ${payments(3)} - ${sales(4)} + ${payments(5)} '
-          'AS delta',
+          '+ $corrections AS delta',
           variables: [
             Variable.withString(customerId),
             Variable.withString(PendingEntity.sale.wireName),
@@ -140,8 +147,14 @@ class CustomerAccount {
             Variable.withString(PendingEntity.saleCancellation.wireName),
             Variable.withString(PendingEntity.paymentCancellation.wireName),
             Variable.withString(PendingStatus.pending.wireName),
+            Variable.withString(PendingEntity.balanceCorrection.wireName),
           ],
-          readsFrom: {_db.saleTable, _db.paymentTable, _db.pendingChangeTable},
+          readsFrom: {
+            _db.saleTable,
+            _db.paymentTable,
+            _db.balanceCorrectionTable,
+            _db.pendingChangeTable,
+          },
         )
         .getSingle();
     return row.read<double>('delta');
