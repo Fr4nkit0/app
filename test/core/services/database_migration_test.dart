@@ -12,7 +12,10 @@ class _LegacyUser implements QueryExecutorUser {
   int get schemaVersion => 16;
 
   @override
-  Future<void> beforeOpen(QueryExecutor executor, OpeningDetails details) async {}
+  Future<void> beforeOpen(
+    QueryExecutor executor,
+    OpeningDetails details,
+  ) async {}
 }
 
 /// Writes a v16 development database: route_stops with the legacy `notes`
@@ -63,33 +66,65 @@ void main() {
 
   tearDown(() => dir.deleteSync(recursive: true));
 
-  test('the schema version is the development baseline 18', () {
+  test('the schema version is 19', () {
     final db = AppDatabase(NativeDatabase.memory());
     addTearDown(db.close);
 
-    expect(db.schemaVersion, 18);
+    expect(db.schemaVersion, 19);
   });
 
-  test('a fresh install creates every table with the current columns', () async {
+  test('a version 18 database gains balance_corrections and keeps its '
+      'data and unsent changes', () async {
+    // A v18 database: the current schema without balance_corrections.
+    final v18 = AppDatabase(NativeDatabase(file));
+    await v18.customStatement('DROP TABLE balance_corrections');
+    await v18.customStatement(
+      "INSERT INTO customers (customer_id, name) VALUES ('c-1', 'Ana')",
+    );
+    await v18.customStatement(
+      'INSERT INTO pending_changes (entity, entity_id, action) '
+      "VALUES ('customer', 'c-1', 'insert')",
+    );
+    await v18.customStatement('PRAGMA user_version = 18');
+    await v18.close();
+
     final db = AppDatabase(NativeDatabase(file));
     addTearDown(db.close);
 
-    expect(await _userVersion(db), 18);
-    for (final table in db.allTables) {
-      expect(
-        await _columns(db, table.actualTableName),
-        {for (final c in table.$columns) c.name},
-        reason: table.actualTableName,
-      );
-    }
+    expect(await _userVersion(db), 19);
+    expect((await db.select(db.customerTable).get()).map((c) => c.customerId), [
+      'c-1',
+    ]);
     expect(
-      await _columns(db, 'route_stops'),
-      allOf(
-        containsAll(['is_requested', 'note', 'scheduled_visit_id']),
-        isNot(contains('notes')),
-      ),
+      (await db.select(db.pendingChangeTable).get()).map((c) => c.entityId),
+      ['c-1'],
     );
+    expect(await _columns(db, 'balance_corrections'), {
+      for (final c in db.balanceCorrectionTable.$columns) c.name,
+    });
   });
+
+  test(
+    'a fresh install creates every table with the current columns',
+    () async {
+      final db = AppDatabase(NativeDatabase(file));
+      addTearDown(db.close);
+
+      expect(await _userVersion(db), 19);
+      for (final table in db.allTables) {
+        expect(await _columns(db, table.actualTableName), {
+          for (final c in table.$columns) c.name,
+        }, reason: table.actualTableName);
+      }
+      expect(
+        await _columns(db, 'route_stops'),
+        allOf(
+          containsAll(['is_requested', 'note', 'scheduled_visit_id']),
+          isNot(contains('notes')),
+        ),
+      );
+    },
+  );
 
   test('an older development database is rebuilt empty with the current '
       'schema', () async {
@@ -102,13 +137,11 @@ void main() {
     expect(await db.select(db.routeTable).get(), isEmpty);
     expect(await db.select(db.routeStopTable).get(), isEmpty);
     for (final table in db.allTables) {
-      expect(
-        await _columns(db, table.actualTableName),
-        {for (final c in table.$columns) c.name},
-        reason: table.actualTableName,
-      );
+      expect(await _columns(db, table.actualTableName), {
+        for (final c in table.$columns) c.name,
+      }, reason: table.actualTableName);
     }
-    expect(await _userVersion(db), 18);
+    expect(await _userVersion(db), 19);
   });
 
   test('reopening a rebuilt database keeps the data written after the '
@@ -126,6 +159,6 @@ void main() {
 
     final customers = await second.select(second.customerTable).get();
     expect(customers.map((c) => c.customerId), ['c-2']);
-    expect(await _userVersion(second), 18);
+    expect(await _userVersion(second), 19);
   });
 }

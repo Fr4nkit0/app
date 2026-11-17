@@ -62,7 +62,9 @@ class CoveredCustomerCleanup {
       "UNION ALL SELECT 'payment_cancellation', payment_id, customer_id "
       'FROM payments '
       "UNION ALL SELECT 'container_movement', container_movement_id, "
-      'customer_id FROM container_movements)';
+      'customer_id FROM container_movements '
+      "UNION ALL SELECT 'balance_correction', correction_id, customer_id "
+      'FROM balance_corrections)';
 
   /// Forgets every covered customer that is done with; returns their ids.
   /// Runs in one transaction: a failure leaves every row in place.
@@ -167,6 +169,11 @@ class CoveredCustomerCleanup {
         _db.containerMovementTable.containerMovementId,
         _db.containerMovementTable.customerId,
       ),
+      PendingEntity.balanceCorrection: await idsOf(
+        _db.balanceCorrectionTable,
+        _db.balanceCorrectionTable.correctionId,
+        _db.balanceCorrectionTable.customerId,
+      ),
     };
 
     for (final MapEntry(key: entity, value: ids) in owned.entries) {
@@ -208,6 +215,9 @@ class CoveredCustomerCleanup {
       _db.containerMovementTable,
     )..where((t) => t.customerId.equals(customerId))).go();
     await _custody.forget(customerId);
+    await (_db.delete(
+      _db.balanceCorrectionTable,
+    )..where((t) => t.customerId.equals(customerId))).go();
     await (_db.delete(
       _db.customerAgreementTable,
     )..where((t) => t.customerId.equals(customerId))).go();

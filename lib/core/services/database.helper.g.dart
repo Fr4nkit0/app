@@ -14329,6 +14329,805 @@ class NeighborhoodTableCompanion
   }
 }
 
+class $BalanceCorrectionTableTable extends BalanceCorrectionTable
+    with TableInfo<$BalanceCorrectionTableTable, BalanceCorrectionTableData> {
+  @override
+  final GeneratedDatabase attachedDatabase;
+  final String? _alias;
+  $BalanceCorrectionTableTable(this.attachedDatabase, [this._alias]);
+  static const VerificationMeta _createdAtMeta = const VerificationMeta(
+    'createdAt',
+  );
+  @override
+  late final GeneratedColumn<DateTime> createdAt = GeneratedColumn<DateTime>(
+    'created_at',
+    aliasedName,
+    false,
+    type: DriftSqlType.dateTime,
+    requiredDuringInsert: false,
+    defaultValue: currentDateAndTime,
+  );
+  static const VerificationMeta _lastModifiedDateMeta = const VerificationMeta(
+    'lastModifiedDate',
+  );
+  @override
+  late final GeneratedColumn<DateTime> lastModifiedDate =
+      GeneratedColumn<DateTime>(
+        'last_modified_date',
+        aliasedName,
+        false,
+        type: DriftSqlType.dateTime,
+        requiredDuringInsert: false,
+        defaultValue: currentDateAndTime,
+      );
+  static const VerificationMeta _enabledMeta = const VerificationMeta(
+    'enabled',
+  );
+  @override
+  late final GeneratedColumn<bool> enabled = GeneratedColumn<bool>(
+    'enabled',
+    aliasedName,
+    false,
+    type: DriftSqlType.bool,
+    requiredDuringInsert: false,
+    defaultConstraints: GeneratedColumn.constraintIsAlways(
+      'CHECK ("enabled" IN (0, 1))',
+    ),
+    defaultValue: const Constant(true),
+  );
+  static const VerificationMeta _serverIdMeta = const VerificationMeta(
+    'serverId',
+  );
+  @override
+  late final GeneratedColumn<int> serverId = GeneratedColumn<int>(
+    'server_id',
+    aliasedName,
+    true,
+    type: DriftSqlType.int,
+    requiredDuringInsert: false,
+  );
+  static const VerificationMeta _correctionIdMeta = const VerificationMeta(
+    'correctionId',
+  );
+  @override
+  late final GeneratedColumn<String> correctionId = GeneratedColumn<String>(
+    'correction_id',
+    aliasedName,
+    false,
+    type: DriftSqlType.string,
+    requiredDuringInsert: false,
+    clientDefault: () => uuid.v4(),
+  );
+  static const VerificationMeta _customerIdMeta = const VerificationMeta(
+    'customerId',
+  );
+  @override
+  late final GeneratedColumn<String> customerId = GeneratedColumn<String>(
+    'customer_id',
+    aliasedName,
+    false,
+    type: DriftSqlType.string,
+    requiredDuringInsert: true,
+    defaultConstraints: GeneratedColumn.constraintIsAlways(
+      'REFERENCES customers (customer_id) ON DELETE RESTRICT',
+    ),
+  );
+  static const VerificationMeta _visitIdMeta = const VerificationMeta(
+    'visitId',
+  );
+  @override
+  late final GeneratedColumn<String> visitId = GeneratedColumn<String>(
+    'visit_id',
+    aliasedName,
+    true,
+    type: DriftSqlType.string,
+    requiredDuringInsert: false,
+  );
+  static const VerificationMeta _targetMeta = const VerificationMeta('target');
+  @override
+  late final GeneratedColumn<String> target = GeneratedColumn<String>(
+    'target',
+    aliasedName,
+    false,
+    type: DriftSqlType.string,
+    requiredDuringInsert: true,
+  );
+  static const VerificationMeta _containerTypeMeta = const VerificationMeta(
+    'containerType',
+  );
+  @override
+  late final GeneratedColumn<String> containerType = GeneratedColumn<String>(
+    'container_type',
+    aliasedName,
+    true,
+    type: DriftSqlType.string,
+    requiredDuringInsert: false,
+  );
+  static const VerificationMeta _countedMeta = const VerificationMeta(
+    'counted',
+  );
+  @override
+  late final GeneratedColumn<double> counted = GeneratedColumn<double>(
+    'counted',
+    aliasedName,
+    false,
+    type: DriftSqlType.double,
+    requiredDuringInsert: true,
+  );
+  static const VerificationMeta _seenBalanceMeta = const VerificationMeta(
+    'seenBalance',
+  );
+  @override
+  late final GeneratedColumn<double> seenBalance = GeneratedColumn<double>(
+    'seen_balance',
+    aliasedName,
+    false,
+    type: DriftSqlType.double,
+    requiredDuringInsert: true,
+  );
+  static const VerificationMeta _reasonMeta = const VerificationMeta('reason');
+  @override
+  late final GeneratedColumn<String> reason = GeneratedColumn<String>(
+    'reason',
+    aliasedName,
+    false,
+    type: DriftSqlType.string,
+    requiredDuringInsert: true,
+  );
+  static const VerificationMeta _correctedAtMeta = const VerificationMeta(
+    'correctedAt',
+  );
+  @override
+  late final GeneratedColumn<DateTime> correctedAt = GeneratedColumn<DateTime>(
+    'corrected_at',
+    aliasedName,
+    false,
+    type: DriftSqlType.dateTime,
+    requiredDuringInsert: true,
+  );
+  @override
+  List<GeneratedColumn> get $columns => [
+    createdAt,
+    lastModifiedDate,
+    enabled,
+    serverId,
+    correctionId,
+    customerId,
+    visitId,
+    target,
+    containerType,
+    counted,
+    seenBalance,
+    reason,
+    correctedAt,
+  ];
+  @override
+  String get aliasedName => _alias ?? actualTableName;
+  @override
+  String get actualTableName => $name;
+  static const String $name = 'balance_corrections';
+  @override
+  VerificationContext validateIntegrity(
+    Insertable<BalanceCorrectionTableData> instance, {
+    bool isInserting = false,
+  }) {
+    final context = VerificationContext();
+    final data = instance.toColumns(true);
+    if (data.containsKey('created_at')) {
+      context.handle(
+        _createdAtMeta,
+        createdAt.isAcceptableOrUnknown(data['created_at']!, _createdAtMeta),
+      );
+    }
+    if (data.containsKey('last_modified_date')) {
+      context.handle(
+        _lastModifiedDateMeta,
+        lastModifiedDate.isAcceptableOrUnknown(
+          data['last_modified_date']!,
+          _lastModifiedDateMeta,
+        ),
+      );
+    }
+    if (data.containsKey('enabled')) {
+      context.handle(
+        _enabledMeta,
+        enabled.isAcceptableOrUnknown(data['enabled']!, _enabledMeta),
+      );
+    }
+    if (data.containsKey('server_id')) {
+      context.handle(
+        _serverIdMeta,
+        serverId.isAcceptableOrUnknown(data['server_id']!, _serverIdMeta),
+      );
+    }
+    if (data.containsKey('correction_id')) {
+      context.handle(
+        _correctionIdMeta,
+        correctionId.isAcceptableOrUnknown(
+          data['correction_id']!,
+          _correctionIdMeta,
+        ),
+      );
+    }
+    if (data.containsKey('customer_id')) {
+      context.handle(
+        _customerIdMeta,
+        customerId.isAcceptableOrUnknown(data['customer_id']!, _customerIdMeta),
+      );
+    } else if (isInserting) {
+      context.missing(_customerIdMeta);
+    }
+    if (data.containsKey('visit_id')) {
+      context.handle(
+        _visitIdMeta,
+        visitId.isAcceptableOrUnknown(data['visit_id']!, _visitIdMeta),
+      );
+    }
+    if (data.containsKey('target')) {
+      context.handle(
+        _targetMeta,
+        target.isAcceptableOrUnknown(data['target']!, _targetMeta),
+      );
+    } else if (isInserting) {
+      context.missing(_targetMeta);
+    }
+    if (data.containsKey('container_type')) {
+      context.handle(
+        _containerTypeMeta,
+        containerType.isAcceptableOrUnknown(
+          data['container_type']!,
+          _containerTypeMeta,
+        ),
+      );
+    }
+    if (data.containsKey('counted')) {
+      context.handle(
+        _countedMeta,
+        counted.isAcceptableOrUnknown(data['counted']!, _countedMeta),
+      );
+    } else if (isInserting) {
+      context.missing(_countedMeta);
+    }
+    if (data.containsKey('seen_balance')) {
+      context.handle(
+        _seenBalanceMeta,
+        seenBalance.isAcceptableOrUnknown(
+          data['seen_balance']!,
+          _seenBalanceMeta,
+        ),
+      );
+    } else if (isInserting) {
+      context.missing(_seenBalanceMeta);
+    }
+    if (data.containsKey('reason')) {
+      context.handle(
+        _reasonMeta,
+        reason.isAcceptableOrUnknown(data['reason']!, _reasonMeta),
+      );
+    } else if (isInserting) {
+      context.missing(_reasonMeta);
+    }
+    if (data.containsKey('corrected_at')) {
+      context.handle(
+        _correctedAtMeta,
+        correctedAt.isAcceptableOrUnknown(
+          data['corrected_at']!,
+          _correctedAtMeta,
+        ),
+      );
+    } else if (isInserting) {
+      context.missing(_correctedAtMeta);
+    }
+    return context;
+  }
+
+  @override
+  Set<GeneratedColumn> get $primaryKey => {correctionId};
+  @override
+  BalanceCorrectionTableData map(
+    Map<String, dynamic> data, {
+    String? tablePrefix,
+  }) {
+    final effectivePrefix = tablePrefix != null ? '$tablePrefix.' : '';
+    return BalanceCorrectionTableData(
+      createdAt: attachedDatabase.typeMapping.read(
+        DriftSqlType.dateTime,
+        data['${effectivePrefix}created_at'],
+      )!,
+      lastModifiedDate: attachedDatabase.typeMapping.read(
+        DriftSqlType.dateTime,
+        data['${effectivePrefix}last_modified_date'],
+      )!,
+      enabled: attachedDatabase.typeMapping.read(
+        DriftSqlType.bool,
+        data['${effectivePrefix}enabled'],
+      )!,
+      serverId: attachedDatabase.typeMapping.read(
+        DriftSqlType.int,
+        data['${effectivePrefix}server_id'],
+      ),
+      correctionId: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}correction_id'],
+      )!,
+      customerId: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}customer_id'],
+      )!,
+      visitId: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}visit_id'],
+      ),
+      target: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}target'],
+      )!,
+      containerType: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}container_type'],
+      ),
+      counted: attachedDatabase.typeMapping.read(
+        DriftSqlType.double,
+        data['${effectivePrefix}counted'],
+      )!,
+      seenBalance: attachedDatabase.typeMapping.read(
+        DriftSqlType.double,
+        data['${effectivePrefix}seen_balance'],
+      )!,
+      reason: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}reason'],
+      )!,
+      correctedAt: attachedDatabase.typeMapping.read(
+        DriftSqlType.dateTime,
+        data['${effectivePrefix}corrected_at'],
+      )!,
+    );
+  }
+
+  @override
+  $BalanceCorrectionTableTable createAlias(String alias) {
+    return $BalanceCorrectionTableTable(attachedDatabase, alias);
+  }
+}
+
+class BalanceCorrectionTableData extends DataClass
+    implements Insertable<BalanceCorrectionTableData> {
+  final DateTime createdAt;
+  final DateTime lastModifiedDate;
+  final bool enabled;
+  final int? serverId;
+  final String correctionId;
+  final String customerId;
+  final String? visitId;
+
+  /// `debt` or `containers` (BalanceTarget wire name).
+  final String target;
+
+  /// Catalog code (container_types.code); only for `containers`.
+  final String? containerType;
+
+  /// The real balance the driver counted (debt: positive means owed).
+  final double counted;
+
+  /// The local balance shown when the driver corrected it.
+  final double seenBalance;
+  final String reason;
+  final DateTime correctedAt;
+  const BalanceCorrectionTableData({
+    required this.createdAt,
+    required this.lastModifiedDate,
+    required this.enabled,
+    this.serverId,
+    required this.correctionId,
+    required this.customerId,
+    this.visitId,
+    required this.target,
+    this.containerType,
+    required this.counted,
+    required this.seenBalance,
+    required this.reason,
+    required this.correctedAt,
+  });
+  @override
+  Map<String, Expression> toColumns(bool nullToAbsent) {
+    final map = <String, Expression>{};
+    map['created_at'] = Variable<DateTime>(createdAt);
+    map['last_modified_date'] = Variable<DateTime>(lastModifiedDate);
+    map['enabled'] = Variable<bool>(enabled);
+    if (!nullToAbsent || serverId != null) {
+      map['server_id'] = Variable<int>(serverId);
+    }
+    map['correction_id'] = Variable<String>(correctionId);
+    map['customer_id'] = Variable<String>(customerId);
+    if (!nullToAbsent || visitId != null) {
+      map['visit_id'] = Variable<String>(visitId);
+    }
+    map['target'] = Variable<String>(target);
+    if (!nullToAbsent || containerType != null) {
+      map['container_type'] = Variable<String>(containerType);
+    }
+    map['counted'] = Variable<double>(counted);
+    map['seen_balance'] = Variable<double>(seenBalance);
+    map['reason'] = Variable<String>(reason);
+    map['corrected_at'] = Variable<DateTime>(correctedAt);
+    return map;
+  }
+
+  BalanceCorrectionTableCompanion toCompanion(bool nullToAbsent) {
+    return BalanceCorrectionTableCompanion(
+      createdAt: Value(createdAt),
+      lastModifiedDate: Value(lastModifiedDate),
+      enabled: Value(enabled),
+      serverId: serverId == null && nullToAbsent
+          ? const Value.absent()
+          : Value(serverId),
+      correctionId: Value(correctionId),
+      customerId: Value(customerId),
+      visitId: visitId == null && nullToAbsent
+          ? const Value.absent()
+          : Value(visitId),
+      target: Value(target),
+      containerType: containerType == null && nullToAbsent
+          ? const Value.absent()
+          : Value(containerType),
+      counted: Value(counted),
+      seenBalance: Value(seenBalance),
+      reason: Value(reason),
+      correctedAt: Value(correctedAt),
+    );
+  }
+
+  factory BalanceCorrectionTableData.fromJson(
+    Map<String, dynamic> json, {
+    ValueSerializer? serializer,
+  }) {
+    serializer ??= driftRuntimeOptions.defaultSerializer;
+    return BalanceCorrectionTableData(
+      createdAt: serializer.fromJson<DateTime>(json['createdAt']),
+      lastModifiedDate: serializer.fromJson<DateTime>(json['lastModifiedDate']),
+      enabled: serializer.fromJson<bool>(json['enabled']),
+      serverId: serializer.fromJson<int?>(json['serverId']),
+      correctionId: serializer.fromJson<String>(json['correctionId']),
+      customerId: serializer.fromJson<String>(json['customerId']),
+      visitId: serializer.fromJson<String?>(json['visitId']),
+      target: serializer.fromJson<String>(json['target']),
+      containerType: serializer.fromJson<String?>(json['containerType']),
+      counted: serializer.fromJson<double>(json['counted']),
+      seenBalance: serializer.fromJson<double>(json['seenBalance']),
+      reason: serializer.fromJson<String>(json['reason']),
+      correctedAt: serializer.fromJson<DateTime>(json['correctedAt']),
+    );
+  }
+  @override
+  Map<String, dynamic> toJson({ValueSerializer? serializer}) {
+    serializer ??= driftRuntimeOptions.defaultSerializer;
+    return <String, dynamic>{
+      'createdAt': serializer.toJson<DateTime>(createdAt),
+      'lastModifiedDate': serializer.toJson<DateTime>(lastModifiedDate),
+      'enabled': serializer.toJson<bool>(enabled),
+      'serverId': serializer.toJson<int?>(serverId),
+      'correctionId': serializer.toJson<String>(correctionId),
+      'customerId': serializer.toJson<String>(customerId),
+      'visitId': serializer.toJson<String?>(visitId),
+      'target': serializer.toJson<String>(target),
+      'containerType': serializer.toJson<String?>(containerType),
+      'counted': serializer.toJson<double>(counted),
+      'seenBalance': serializer.toJson<double>(seenBalance),
+      'reason': serializer.toJson<String>(reason),
+      'correctedAt': serializer.toJson<DateTime>(correctedAt),
+    };
+  }
+
+  BalanceCorrectionTableData copyWith({
+    DateTime? createdAt,
+    DateTime? lastModifiedDate,
+    bool? enabled,
+    Value<int?> serverId = const Value.absent(),
+    String? correctionId,
+    String? customerId,
+    Value<String?> visitId = const Value.absent(),
+    String? target,
+    Value<String?> containerType = const Value.absent(),
+    double? counted,
+    double? seenBalance,
+    String? reason,
+    DateTime? correctedAt,
+  }) => BalanceCorrectionTableData(
+    createdAt: createdAt ?? this.createdAt,
+    lastModifiedDate: lastModifiedDate ?? this.lastModifiedDate,
+    enabled: enabled ?? this.enabled,
+    serverId: serverId.present ? serverId.value : this.serverId,
+    correctionId: correctionId ?? this.correctionId,
+    customerId: customerId ?? this.customerId,
+    visitId: visitId.present ? visitId.value : this.visitId,
+    target: target ?? this.target,
+    containerType: containerType.present
+        ? containerType.value
+        : this.containerType,
+    counted: counted ?? this.counted,
+    seenBalance: seenBalance ?? this.seenBalance,
+    reason: reason ?? this.reason,
+    correctedAt: correctedAt ?? this.correctedAt,
+  );
+  BalanceCorrectionTableData copyWithCompanion(
+    BalanceCorrectionTableCompanion data,
+  ) {
+    return BalanceCorrectionTableData(
+      createdAt: data.createdAt.present ? data.createdAt.value : this.createdAt,
+      lastModifiedDate: data.lastModifiedDate.present
+          ? data.lastModifiedDate.value
+          : this.lastModifiedDate,
+      enabled: data.enabled.present ? data.enabled.value : this.enabled,
+      serverId: data.serverId.present ? data.serverId.value : this.serverId,
+      correctionId: data.correctionId.present
+          ? data.correctionId.value
+          : this.correctionId,
+      customerId: data.customerId.present
+          ? data.customerId.value
+          : this.customerId,
+      visitId: data.visitId.present ? data.visitId.value : this.visitId,
+      target: data.target.present ? data.target.value : this.target,
+      containerType: data.containerType.present
+          ? data.containerType.value
+          : this.containerType,
+      counted: data.counted.present ? data.counted.value : this.counted,
+      seenBalance: data.seenBalance.present
+          ? data.seenBalance.value
+          : this.seenBalance,
+      reason: data.reason.present ? data.reason.value : this.reason,
+      correctedAt: data.correctedAt.present
+          ? data.correctedAt.value
+          : this.correctedAt,
+    );
+  }
+
+  @override
+  String toString() {
+    return (StringBuffer('BalanceCorrectionTableData(')
+          ..write('createdAt: $createdAt, ')
+          ..write('lastModifiedDate: $lastModifiedDate, ')
+          ..write('enabled: $enabled, ')
+          ..write('serverId: $serverId, ')
+          ..write('correctionId: $correctionId, ')
+          ..write('customerId: $customerId, ')
+          ..write('visitId: $visitId, ')
+          ..write('target: $target, ')
+          ..write('containerType: $containerType, ')
+          ..write('counted: $counted, ')
+          ..write('seenBalance: $seenBalance, ')
+          ..write('reason: $reason, ')
+          ..write('correctedAt: $correctedAt')
+          ..write(')'))
+        .toString();
+  }
+
+  @override
+  int get hashCode => Object.hash(
+    createdAt,
+    lastModifiedDate,
+    enabled,
+    serverId,
+    correctionId,
+    customerId,
+    visitId,
+    target,
+    containerType,
+    counted,
+    seenBalance,
+    reason,
+    correctedAt,
+  );
+  @override
+  bool operator ==(Object other) =>
+      identical(this, other) ||
+      (other is BalanceCorrectionTableData &&
+          other.createdAt == this.createdAt &&
+          other.lastModifiedDate == this.lastModifiedDate &&
+          other.enabled == this.enabled &&
+          other.serverId == this.serverId &&
+          other.correctionId == this.correctionId &&
+          other.customerId == this.customerId &&
+          other.visitId == this.visitId &&
+          other.target == this.target &&
+          other.containerType == this.containerType &&
+          other.counted == this.counted &&
+          other.seenBalance == this.seenBalance &&
+          other.reason == this.reason &&
+          other.correctedAt == this.correctedAt);
+}
+
+class BalanceCorrectionTableCompanion
+    extends UpdateCompanion<BalanceCorrectionTableData> {
+  final Value<DateTime> createdAt;
+  final Value<DateTime> lastModifiedDate;
+  final Value<bool> enabled;
+  final Value<int?> serverId;
+  final Value<String> correctionId;
+  final Value<String> customerId;
+  final Value<String?> visitId;
+  final Value<String> target;
+  final Value<String?> containerType;
+  final Value<double> counted;
+  final Value<double> seenBalance;
+  final Value<String> reason;
+  final Value<DateTime> correctedAt;
+  final Value<int> rowid;
+  const BalanceCorrectionTableCompanion({
+    this.createdAt = const Value.absent(),
+    this.lastModifiedDate = const Value.absent(),
+    this.enabled = const Value.absent(),
+    this.serverId = const Value.absent(),
+    this.correctionId = const Value.absent(),
+    this.customerId = const Value.absent(),
+    this.visitId = const Value.absent(),
+    this.target = const Value.absent(),
+    this.containerType = const Value.absent(),
+    this.counted = const Value.absent(),
+    this.seenBalance = const Value.absent(),
+    this.reason = const Value.absent(),
+    this.correctedAt = const Value.absent(),
+    this.rowid = const Value.absent(),
+  });
+  BalanceCorrectionTableCompanion.insert({
+    this.createdAt = const Value.absent(),
+    this.lastModifiedDate = const Value.absent(),
+    this.enabled = const Value.absent(),
+    this.serverId = const Value.absent(),
+    this.correctionId = const Value.absent(),
+    required String customerId,
+    this.visitId = const Value.absent(),
+    required String target,
+    this.containerType = const Value.absent(),
+    required double counted,
+    required double seenBalance,
+    required String reason,
+    required DateTime correctedAt,
+    this.rowid = const Value.absent(),
+  }) : customerId = Value(customerId),
+       target = Value(target),
+       counted = Value(counted),
+       seenBalance = Value(seenBalance),
+       reason = Value(reason),
+       correctedAt = Value(correctedAt);
+  static Insertable<BalanceCorrectionTableData> custom({
+    Expression<DateTime>? createdAt,
+    Expression<DateTime>? lastModifiedDate,
+    Expression<bool>? enabled,
+    Expression<int>? serverId,
+    Expression<String>? correctionId,
+    Expression<String>? customerId,
+    Expression<String>? visitId,
+    Expression<String>? target,
+    Expression<String>? containerType,
+    Expression<double>? counted,
+    Expression<double>? seenBalance,
+    Expression<String>? reason,
+    Expression<DateTime>? correctedAt,
+    Expression<int>? rowid,
+  }) {
+    return RawValuesInsertable({
+      if (createdAt != null) 'created_at': createdAt,
+      if (lastModifiedDate != null) 'last_modified_date': lastModifiedDate,
+      if (enabled != null) 'enabled': enabled,
+      if (serverId != null) 'server_id': serverId,
+      if (correctionId != null) 'correction_id': correctionId,
+      if (customerId != null) 'customer_id': customerId,
+      if (visitId != null) 'visit_id': visitId,
+      if (target != null) 'target': target,
+      if (containerType != null) 'container_type': containerType,
+      if (counted != null) 'counted': counted,
+      if (seenBalance != null) 'seen_balance': seenBalance,
+      if (reason != null) 'reason': reason,
+      if (correctedAt != null) 'corrected_at': correctedAt,
+      if (rowid != null) 'rowid': rowid,
+    });
+  }
+
+  BalanceCorrectionTableCompanion copyWith({
+    Value<DateTime>? createdAt,
+    Value<DateTime>? lastModifiedDate,
+    Value<bool>? enabled,
+    Value<int?>? serverId,
+    Value<String>? correctionId,
+    Value<String>? customerId,
+    Value<String?>? visitId,
+    Value<String>? target,
+    Value<String?>? containerType,
+    Value<double>? counted,
+    Value<double>? seenBalance,
+    Value<String>? reason,
+    Value<DateTime>? correctedAt,
+    Value<int>? rowid,
+  }) {
+    return BalanceCorrectionTableCompanion(
+      createdAt: createdAt ?? this.createdAt,
+      lastModifiedDate: lastModifiedDate ?? this.lastModifiedDate,
+      enabled: enabled ?? this.enabled,
+      serverId: serverId ?? this.serverId,
+      correctionId: correctionId ?? this.correctionId,
+      customerId: customerId ?? this.customerId,
+      visitId: visitId ?? this.visitId,
+      target: target ?? this.target,
+      containerType: containerType ?? this.containerType,
+      counted: counted ?? this.counted,
+      seenBalance: seenBalance ?? this.seenBalance,
+      reason: reason ?? this.reason,
+      correctedAt: correctedAt ?? this.correctedAt,
+      rowid: rowid ?? this.rowid,
+    );
+  }
+
+  @override
+  Map<String, Expression> toColumns(bool nullToAbsent) {
+    final map = <String, Expression>{};
+    if (createdAt.present) {
+      map['created_at'] = Variable<DateTime>(createdAt.value);
+    }
+    if (lastModifiedDate.present) {
+      map['last_modified_date'] = Variable<DateTime>(lastModifiedDate.value);
+    }
+    if (enabled.present) {
+      map['enabled'] = Variable<bool>(enabled.value);
+    }
+    if (serverId.present) {
+      map['server_id'] = Variable<int>(serverId.value);
+    }
+    if (correctionId.present) {
+      map['correction_id'] = Variable<String>(correctionId.value);
+    }
+    if (customerId.present) {
+      map['customer_id'] = Variable<String>(customerId.value);
+    }
+    if (visitId.present) {
+      map['visit_id'] = Variable<String>(visitId.value);
+    }
+    if (target.present) {
+      map['target'] = Variable<String>(target.value);
+    }
+    if (containerType.present) {
+      map['container_type'] = Variable<String>(containerType.value);
+    }
+    if (counted.present) {
+      map['counted'] = Variable<double>(counted.value);
+    }
+    if (seenBalance.present) {
+      map['seen_balance'] = Variable<double>(seenBalance.value);
+    }
+    if (reason.present) {
+      map['reason'] = Variable<String>(reason.value);
+    }
+    if (correctedAt.present) {
+      map['corrected_at'] = Variable<DateTime>(correctedAt.value);
+    }
+    if (rowid.present) {
+      map['rowid'] = Variable<int>(rowid.value);
+    }
+    return map;
+  }
+
+  @override
+  String toString() {
+    return (StringBuffer('BalanceCorrectionTableCompanion(')
+          ..write('createdAt: $createdAt, ')
+          ..write('lastModifiedDate: $lastModifiedDate, ')
+          ..write('enabled: $enabled, ')
+          ..write('serverId: $serverId, ')
+          ..write('correctionId: $correctionId, ')
+          ..write('customerId: $customerId, ')
+          ..write('visitId: $visitId, ')
+          ..write('target: $target, ')
+          ..write('containerType: $containerType, ')
+          ..write('counted: $counted, ')
+          ..write('seenBalance: $seenBalance, ')
+          ..write('reason: $reason, ')
+          ..write('correctedAt: $correctedAt, ')
+          ..write('rowid: $rowid')
+          ..write(')'))
+        .toString();
+  }
+}
+
 abstract class _$AppDatabase extends GeneratedDatabase {
   _$AppDatabase(QueryExecutor e) : super(e);
   $AppDatabaseManager get managers => $AppDatabaseManager(this);
@@ -14369,6 +15168,8 @@ abstract class _$AppDatabase extends GeneratedDatabase {
   late final $SyncStateTableTable syncStateTable = $SyncStateTableTable(this);
   late final $NeighborhoodTableTable neighborhoodTable =
       $NeighborhoodTableTable(this);
+  late final $BalanceCorrectionTableTable balanceCorrectionTable =
+      $BalanceCorrectionTableTable(this);
   @override
   Iterable<TableInfo<Table, Object?>> get allTables =>
       allSchemaEntities.whereType<TableInfo<Table, Object?>>();
@@ -14397,6 +15198,7 @@ abstract class _$AppDatabase extends GeneratedDatabase {
     customerAgreementTable,
     syncStateTable,
     neighborhoodTable,
+    balanceCorrectionTable,
   ];
   @override
   StreamQueryUpdateRules get streamUpdateRules => const StreamQueryUpdateRules([
@@ -14793,6 +15595,39 @@ final class $$CustomerTableTableReferences
       manager.$state.copyWith(prefetchedData: cache),
     );
   }
+
+  static MultiTypedResultKey<
+    $BalanceCorrectionTableTable,
+    List<BalanceCorrectionTableData>
+  >
+  _balanceCorrectionTableRefsTable(_$AppDatabase db) =>
+      MultiTypedResultKey.fromTable(
+        db.balanceCorrectionTable,
+        aliasName: $_aliasNameGenerator(
+          db.customerTable.customerId,
+          db.balanceCorrectionTable.customerId,
+        ),
+      );
+
+  $$BalanceCorrectionTableTableProcessedTableManager
+  get balanceCorrectionTableRefs {
+    final manager =
+        $$BalanceCorrectionTableTableTableManager(
+          $_db,
+          $_db.balanceCorrectionTable,
+        ).filter(
+          (f) => f.customerId.customerId.sqlEquals(
+            $_itemColumn<String>('customer_id')!,
+          ),
+        );
+
+    final cache = $_typedResult.readTableOrNull(
+      _balanceCorrectionTableRefsTable($_db),
+    );
+    return ProcessedTableManager(
+      manager.$state.copyWith(prefetchedData: cache),
+    );
+  }
 }
 
 class $$CustomerTableTableFilterComposer
@@ -15068,6 +15903,32 @@ class $$CustomerTableTableFilterComposer
               }) => $$CustomerAgreementTableTableFilterComposer(
                 $db: $db,
                 $table: $db.customerAgreementTable,
+                $addJoinBuilderToRootComposer: $addJoinBuilderToRootComposer,
+                joinBuilder: joinBuilder,
+                $removeJoinBuilderFromRootComposer:
+                    $removeJoinBuilderFromRootComposer,
+              ),
+        );
+    return f(composer);
+  }
+
+  Expression<bool> balanceCorrectionTableRefs(
+    Expression<bool> Function($$BalanceCorrectionTableTableFilterComposer f) f,
+  ) {
+    final $$BalanceCorrectionTableTableFilterComposer composer =
+        $composerBuilder(
+          composer: this,
+          getCurrentColumn: (t) => t.customerId,
+          referencedTable: $db.balanceCorrectionTable,
+          getReferencedColumn: (t) => t.customerId,
+          builder:
+              (
+                joinBuilder, {
+                $addJoinBuilderToRootComposer,
+                $removeJoinBuilderFromRootComposer,
+              }) => $$BalanceCorrectionTableTableFilterComposer(
+                $db: $db,
+                $table: $db.balanceCorrectionTable,
                 $addJoinBuilderToRootComposer: $addJoinBuilderToRootComposer,
                 joinBuilder: joinBuilder,
                 $removeJoinBuilderFromRootComposer:
@@ -15398,6 +16259,32 @@ class $$CustomerTableTableAnnotationComposer
         );
     return f(composer);
   }
+
+  Expression<T> balanceCorrectionTableRefs<T extends Object>(
+    Expression<T> Function($$BalanceCorrectionTableTableAnnotationComposer a) f,
+  ) {
+    final $$BalanceCorrectionTableTableAnnotationComposer composer =
+        $composerBuilder(
+          composer: this,
+          getCurrentColumn: (t) => t.customerId,
+          referencedTable: $db.balanceCorrectionTable,
+          getReferencedColumn: (t) => t.customerId,
+          builder:
+              (
+                joinBuilder, {
+                $addJoinBuilderToRootComposer,
+                $removeJoinBuilderFromRootComposer,
+              }) => $$BalanceCorrectionTableTableAnnotationComposer(
+                $db: $db,
+                $table: $db.balanceCorrectionTable,
+                $addJoinBuilderToRootComposer: $addJoinBuilderToRootComposer,
+                joinBuilder: joinBuilder,
+                $removeJoinBuilderFromRootComposer:
+                    $removeJoinBuilderFromRootComposer,
+              ),
+        );
+    return f(composer);
+  }
 }
 
 class $$CustomerTableTableTableManager
@@ -15423,6 +16310,7 @@ class $$CustomerTableTableTableManager
             bool containerMovementTableRefs,
             bool customerContainerBalanceTableRefs,
             bool customerAgreementTableRefs,
+            bool balanceCorrectionTableRefs,
           })
         > {
   $$CustomerTableTableTableManager(_$AppDatabase db, $CustomerTableTable table)
@@ -15499,6 +16387,7 @@ class $$CustomerTableTableTableManager
                 containerMovementTableRefs = false,
                 customerContainerBalanceTableRefs = false,
                 customerAgreementTableRefs = false,
+                balanceCorrectionTableRefs = false,
               }) {
                 return PrefetchHooks(
                   db: db,
@@ -15514,6 +16403,7 @@ class $$CustomerTableTableTableManager
                     if (customerContainerBalanceTableRefs)
                       db.customerContainerBalanceTable,
                     if (customerAgreementTableRefs) db.customerAgreementTable,
+                    if (balanceCorrectionTableRefs) db.balanceCorrectionTable,
                   ],
                   addJoins: null,
                   getPrefetchedDataCallback: (items) async {
@@ -15707,6 +16597,27 @@ class $$CustomerTableTableTableManager
                               ),
                           typedResults: items,
                         ),
+                      if (balanceCorrectionTableRefs)
+                        await $_getPrefetchedData<
+                          CustomerTableData,
+                          $CustomerTableTable,
+                          BalanceCorrectionTableData
+                        >(
+                          currentTable: table,
+                          referencedTable: $$CustomerTableTableReferences
+                              ._balanceCorrectionTableRefsTable(db),
+                          managerFromTypedResult: (p0) =>
+                              $$CustomerTableTableReferences(
+                                db,
+                                table,
+                                p0,
+                              ).balanceCorrectionTableRefs,
+                          referencedItemsForCurrentItem:
+                              (item, referencedItems) => referencedItems.where(
+                                (e) => e.customerId == item.customerId,
+                              ),
+                          typedResults: items,
+                        ),
                     ];
                   },
                 );
@@ -15737,6 +16648,7 @@ typedef $$CustomerTableTableProcessedTableManager =
         bool containerMovementTableRefs,
         bool customerContainerBalanceTableRefs,
         bool customerAgreementTableRefs,
+        bool balanceCorrectionTableRefs,
       })
     >;
 typedef $$CustomerAddressTableTableCreateCompanionBuilder =
@@ -27238,6 +28150,512 @@ typedef $$NeighborhoodTableTableProcessedTableManager =
       NeighborhoodTableData,
       PrefetchHooks Function()
     >;
+typedef $$BalanceCorrectionTableTableCreateCompanionBuilder =
+    BalanceCorrectionTableCompanion Function({
+      Value<DateTime> createdAt,
+      Value<DateTime> lastModifiedDate,
+      Value<bool> enabled,
+      Value<int?> serverId,
+      Value<String> correctionId,
+      required String customerId,
+      Value<String?> visitId,
+      required String target,
+      Value<String?> containerType,
+      required double counted,
+      required double seenBalance,
+      required String reason,
+      required DateTime correctedAt,
+      Value<int> rowid,
+    });
+typedef $$BalanceCorrectionTableTableUpdateCompanionBuilder =
+    BalanceCorrectionTableCompanion Function({
+      Value<DateTime> createdAt,
+      Value<DateTime> lastModifiedDate,
+      Value<bool> enabled,
+      Value<int?> serverId,
+      Value<String> correctionId,
+      Value<String> customerId,
+      Value<String?> visitId,
+      Value<String> target,
+      Value<String?> containerType,
+      Value<double> counted,
+      Value<double> seenBalance,
+      Value<String> reason,
+      Value<DateTime> correctedAt,
+      Value<int> rowid,
+    });
+
+final class $$BalanceCorrectionTableTableReferences
+    extends
+        BaseReferences<
+          _$AppDatabase,
+          $BalanceCorrectionTableTable,
+          BalanceCorrectionTableData
+        > {
+  $$BalanceCorrectionTableTableReferences(
+    super.$_db,
+    super.$_table,
+    super.$_typedResult,
+  );
+
+  static $CustomerTableTable _customerIdTable(_$AppDatabase db) =>
+      db.customerTable.createAlias(
+        $_aliasNameGenerator(
+          db.balanceCorrectionTable.customerId,
+          db.customerTable.customerId,
+        ),
+      );
+
+  $$CustomerTableTableProcessedTableManager get customerId {
+    final $_column = $_itemColumn<String>('customer_id')!;
+
+    final manager = $$CustomerTableTableTableManager(
+      $_db,
+      $_db.customerTable,
+    ).filter((f) => f.customerId.sqlEquals($_column));
+    final item = $_typedResult.readTableOrNull(_customerIdTable($_db));
+    if (item == null) return manager;
+    return ProcessedTableManager(
+      manager.$state.copyWith(prefetchedData: [item]),
+    );
+  }
+}
+
+class $$BalanceCorrectionTableTableFilterComposer
+    extends Composer<_$AppDatabase, $BalanceCorrectionTableTable> {
+  $$BalanceCorrectionTableTableFilterComposer({
+    required super.$db,
+    required super.$table,
+    super.joinBuilder,
+    super.$addJoinBuilderToRootComposer,
+    super.$removeJoinBuilderFromRootComposer,
+  });
+  ColumnFilters<DateTime> get createdAt => $composableBuilder(
+    column: $table.createdAt,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<DateTime> get lastModifiedDate => $composableBuilder(
+    column: $table.lastModifiedDate,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<bool> get enabled => $composableBuilder(
+    column: $table.enabled,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<int> get serverId => $composableBuilder(
+    column: $table.serverId,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get correctionId => $composableBuilder(
+    column: $table.correctionId,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get visitId => $composableBuilder(
+    column: $table.visitId,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get target => $composableBuilder(
+    column: $table.target,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get containerType => $composableBuilder(
+    column: $table.containerType,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<double> get counted => $composableBuilder(
+    column: $table.counted,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<double> get seenBalance => $composableBuilder(
+    column: $table.seenBalance,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get reason => $composableBuilder(
+    column: $table.reason,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<DateTime> get correctedAt => $composableBuilder(
+    column: $table.correctedAt,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  $$CustomerTableTableFilterComposer get customerId {
+    final $$CustomerTableTableFilterComposer composer = $composerBuilder(
+      composer: this,
+      getCurrentColumn: (t) => t.customerId,
+      referencedTable: $db.customerTable,
+      getReferencedColumn: (t) => t.customerId,
+      builder:
+          (
+            joinBuilder, {
+            $addJoinBuilderToRootComposer,
+            $removeJoinBuilderFromRootComposer,
+          }) => $$CustomerTableTableFilterComposer(
+            $db: $db,
+            $table: $db.customerTable,
+            $addJoinBuilderToRootComposer: $addJoinBuilderToRootComposer,
+            joinBuilder: joinBuilder,
+            $removeJoinBuilderFromRootComposer:
+                $removeJoinBuilderFromRootComposer,
+          ),
+    );
+    return composer;
+  }
+}
+
+class $$BalanceCorrectionTableTableOrderingComposer
+    extends Composer<_$AppDatabase, $BalanceCorrectionTableTable> {
+  $$BalanceCorrectionTableTableOrderingComposer({
+    required super.$db,
+    required super.$table,
+    super.joinBuilder,
+    super.$addJoinBuilderToRootComposer,
+    super.$removeJoinBuilderFromRootComposer,
+  });
+  ColumnOrderings<DateTime> get createdAt => $composableBuilder(
+    column: $table.createdAt,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<DateTime> get lastModifiedDate => $composableBuilder(
+    column: $table.lastModifiedDate,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<bool> get enabled => $composableBuilder(
+    column: $table.enabled,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<int> get serverId => $composableBuilder(
+    column: $table.serverId,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<String> get correctionId => $composableBuilder(
+    column: $table.correctionId,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<String> get visitId => $composableBuilder(
+    column: $table.visitId,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<String> get target => $composableBuilder(
+    column: $table.target,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<String> get containerType => $composableBuilder(
+    column: $table.containerType,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<double> get counted => $composableBuilder(
+    column: $table.counted,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<double> get seenBalance => $composableBuilder(
+    column: $table.seenBalance,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<String> get reason => $composableBuilder(
+    column: $table.reason,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<DateTime> get correctedAt => $composableBuilder(
+    column: $table.correctedAt,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  $$CustomerTableTableOrderingComposer get customerId {
+    final $$CustomerTableTableOrderingComposer composer = $composerBuilder(
+      composer: this,
+      getCurrentColumn: (t) => t.customerId,
+      referencedTable: $db.customerTable,
+      getReferencedColumn: (t) => t.customerId,
+      builder:
+          (
+            joinBuilder, {
+            $addJoinBuilderToRootComposer,
+            $removeJoinBuilderFromRootComposer,
+          }) => $$CustomerTableTableOrderingComposer(
+            $db: $db,
+            $table: $db.customerTable,
+            $addJoinBuilderToRootComposer: $addJoinBuilderToRootComposer,
+            joinBuilder: joinBuilder,
+            $removeJoinBuilderFromRootComposer:
+                $removeJoinBuilderFromRootComposer,
+          ),
+    );
+    return composer;
+  }
+}
+
+class $$BalanceCorrectionTableTableAnnotationComposer
+    extends Composer<_$AppDatabase, $BalanceCorrectionTableTable> {
+  $$BalanceCorrectionTableTableAnnotationComposer({
+    required super.$db,
+    required super.$table,
+    super.joinBuilder,
+    super.$addJoinBuilderToRootComposer,
+    super.$removeJoinBuilderFromRootComposer,
+  });
+  GeneratedColumn<DateTime> get createdAt =>
+      $composableBuilder(column: $table.createdAt, builder: (column) => column);
+
+  GeneratedColumn<DateTime> get lastModifiedDate => $composableBuilder(
+    column: $table.lastModifiedDate,
+    builder: (column) => column,
+  );
+
+  GeneratedColumn<bool> get enabled =>
+      $composableBuilder(column: $table.enabled, builder: (column) => column);
+
+  GeneratedColumn<int> get serverId =>
+      $composableBuilder(column: $table.serverId, builder: (column) => column);
+
+  GeneratedColumn<String> get correctionId => $composableBuilder(
+    column: $table.correctionId,
+    builder: (column) => column,
+  );
+
+  GeneratedColumn<String> get visitId =>
+      $composableBuilder(column: $table.visitId, builder: (column) => column);
+
+  GeneratedColumn<String> get target =>
+      $composableBuilder(column: $table.target, builder: (column) => column);
+
+  GeneratedColumn<String> get containerType => $composableBuilder(
+    column: $table.containerType,
+    builder: (column) => column,
+  );
+
+  GeneratedColumn<double> get counted =>
+      $composableBuilder(column: $table.counted, builder: (column) => column);
+
+  GeneratedColumn<double> get seenBalance => $composableBuilder(
+    column: $table.seenBalance,
+    builder: (column) => column,
+  );
+
+  GeneratedColumn<String> get reason =>
+      $composableBuilder(column: $table.reason, builder: (column) => column);
+
+  GeneratedColumn<DateTime> get correctedAt => $composableBuilder(
+    column: $table.correctedAt,
+    builder: (column) => column,
+  );
+
+  $$CustomerTableTableAnnotationComposer get customerId {
+    final $$CustomerTableTableAnnotationComposer composer = $composerBuilder(
+      composer: this,
+      getCurrentColumn: (t) => t.customerId,
+      referencedTable: $db.customerTable,
+      getReferencedColumn: (t) => t.customerId,
+      builder:
+          (
+            joinBuilder, {
+            $addJoinBuilderToRootComposer,
+            $removeJoinBuilderFromRootComposer,
+          }) => $$CustomerTableTableAnnotationComposer(
+            $db: $db,
+            $table: $db.customerTable,
+            $addJoinBuilderToRootComposer: $addJoinBuilderToRootComposer,
+            joinBuilder: joinBuilder,
+            $removeJoinBuilderFromRootComposer:
+                $removeJoinBuilderFromRootComposer,
+          ),
+    );
+    return composer;
+  }
+}
+
+class $$BalanceCorrectionTableTableTableManager
+    extends
+        RootTableManager<
+          _$AppDatabase,
+          $BalanceCorrectionTableTable,
+          BalanceCorrectionTableData,
+          $$BalanceCorrectionTableTableFilterComposer,
+          $$BalanceCorrectionTableTableOrderingComposer,
+          $$BalanceCorrectionTableTableAnnotationComposer,
+          $$BalanceCorrectionTableTableCreateCompanionBuilder,
+          $$BalanceCorrectionTableTableUpdateCompanionBuilder,
+          (BalanceCorrectionTableData, $$BalanceCorrectionTableTableReferences),
+          BalanceCorrectionTableData,
+          PrefetchHooks Function({bool customerId})
+        > {
+  $$BalanceCorrectionTableTableTableManager(
+    _$AppDatabase db,
+    $BalanceCorrectionTableTable table,
+  ) : super(
+        TableManagerState(
+          db: db,
+          table: table,
+          createFilteringComposer: () =>
+              $$BalanceCorrectionTableTableFilterComposer(
+                $db: db,
+                $table: table,
+              ),
+          createOrderingComposer: () =>
+              $$BalanceCorrectionTableTableOrderingComposer(
+                $db: db,
+                $table: table,
+              ),
+          createComputedFieldComposer: () =>
+              $$BalanceCorrectionTableTableAnnotationComposer(
+                $db: db,
+                $table: table,
+              ),
+          updateCompanionCallback:
+              ({
+                Value<DateTime> createdAt = const Value.absent(),
+                Value<DateTime> lastModifiedDate = const Value.absent(),
+                Value<bool> enabled = const Value.absent(),
+                Value<int?> serverId = const Value.absent(),
+                Value<String> correctionId = const Value.absent(),
+                Value<String> customerId = const Value.absent(),
+                Value<String?> visitId = const Value.absent(),
+                Value<String> target = const Value.absent(),
+                Value<String?> containerType = const Value.absent(),
+                Value<double> counted = const Value.absent(),
+                Value<double> seenBalance = const Value.absent(),
+                Value<String> reason = const Value.absent(),
+                Value<DateTime> correctedAt = const Value.absent(),
+                Value<int> rowid = const Value.absent(),
+              }) => BalanceCorrectionTableCompanion(
+                createdAt: createdAt,
+                lastModifiedDate: lastModifiedDate,
+                enabled: enabled,
+                serverId: serverId,
+                correctionId: correctionId,
+                customerId: customerId,
+                visitId: visitId,
+                target: target,
+                containerType: containerType,
+                counted: counted,
+                seenBalance: seenBalance,
+                reason: reason,
+                correctedAt: correctedAt,
+                rowid: rowid,
+              ),
+          createCompanionCallback:
+              ({
+                Value<DateTime> createdAt = const Value.absent(),
+                Value<DateTime> lastModifiedDate = const Value.absent(),
+                Value<bool> enabled = const Value.absent(),
+                Value<int?> serverId = const Value.absent(),
+                Value<String> correctionId = const Value.absent(),
+                required String customerId,
+                Value<String?> visitId = const Value.absent(),
+                required String target,
+                Value<String?> containerType = const Value.absent(),
+                required double counted,
+                required double seenBalance,
+                required String reason,
+                required DateTime correctedAt,
+                Value<int> rowid = const Value.absent(),
+              }) => BalanceCorrectionTableCompanion.insert(
+                createdAt: createdAt,
+                lastModifiedDate: lastModifiedDate,
+                enabled: enabled,
+                serverId: serverId,
+                correctionId: correctionId,
+                customerId: customerId,
+                visitId: visitId,
+                target: target,
+                containerType: containerType,
+                counted: counted,
+                seenBalance: seenBalance,
+                reason: reason,
+                correctedAt: correctedAt,
+                rowid: rowid,
+              ),
+          withReferenceMapper: (p0) => p0
+              .map(
+                (e) => (
+                  e.readTable(table),
+                  $$BalanceCorrectionTableTableReferences(db, table, e),
+                ),
+              )
+              .toList(),
+          prefetchHooksCallback: ({customerId = false}) {
+            return PrefetchHooks(
+              db: db,
+              explicitlyWatchedTables: [],
+              addJoins:
+                  <
+                    T extends TableManagerState<
+                      dynamic,
+                      dynamic,
+                      dynamic,
+                      dynamic,
+                      dynamic,
+                      dynamic,
+                      dynamic,
+                      dynamic,
+                      dynamic,
+                      dynamic,
+                      dynamic
+                    >
+                  >(state) {
+                    if (customerId) {
+                      state =
+                          state.withJoin(
+                                currentTable: table,
+                                currentColumn: table.customerId,
+                                referencedTable:
+                                    $$BalanceCorrectionTableTableReferences
+                                        ._customerIdTable(db),
+                                referencedColumn:
+                                    $$BalanceCorrectionTableTableReferences
+                                        ._customerIdTable(db)
+                                        .customerId,
+                              )
+                              as T;
+                    }
+
+                    return state;
+                  },
+              getPrefetchedDataCallback: (items) async {
+                return [];
+              },
+            );
+          },
+        ),
+      );
+}
+
+typedef $$BalanceCorrectionTableTableProcessedTableManager =
+    ProcessedTableManager<
+      _$AppDatabase,
+      $BalanceCorrectionTableTable,
+      BalanceCorrectionTableData,
+      $$BalanceCorrectionTableTableFilterComposer,
+      $$BalanceCorrectionTableTableOrderingComposer,
+      $$BalanceCorrectionTableTableAnnotationComposer,
+      $$BalanceCorrectionTableTableCreateCompanionBuilder,
+      $$BalanceCorrectionTableTableUpdateCompanionBuilder,
+      (BalanceCorrectionTableData, $$BalanceCorrectionTableTableReferences),
+      BalanceCorrectionTableData,
+      PrefetchHooks Function({bool customerId})
+    >;
 
 class $AppDatabaseManager {
   final _$AppDatabase _db;
@@ -27307,4 +28725,9 @@ class $AppDatabaseManager {
       $$SyncStateTableTableTableManager(_db, _db.syncStateTable);
   $$NeighborhoodTableTableTableManager get neighborhoodTable =>
       $$NeighborhoodTableTableTableManager(_db, _db.neighborhoodTable);
+  $$BalanceCorrectionTableTableTableManager get balanceCorrectionTable =>
+      $$BalanceCorrectionTableTableTableManager(
+        _db,
+        _db.balanceCorrectionTable,
+      );
 }

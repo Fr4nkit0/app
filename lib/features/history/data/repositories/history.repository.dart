@@ -3,6 +3,7 @@ import 'dart:convert';
 import 'package:drift/drift.dart';
 
 import 'package:app/core/services/database.helper.dart';
+import 'package:app/core/utils/money_formatter.dart';
 import 'package:app/features/history/domain/models/customer_record.dart';
 import 'package:app/features/history/domain/models/history_entry.dart';
 import 'package:app/features/history/domain/models/history_entry_type.dart';
@@ -276,6 +277,7 @@ class DriftHistoryRepository implements HistoryRepository {
         PendingEntity.customerAgreement => await _agreements(ids),
         PendingEntity.customerAddress => await _addresses(ids),
         PendingEntity.customerPreference => await _preferences(ids),
+        PendingEntity.balanceCorrection => await _balanceCorrections(ids),
       };
       for (final MapEntry(:key, :value) in found.entries) {
         details[_key(entity, key)] = value;
@@ -325,6 +327,23 @@ class DriftHistoryRepository implements HistoryRepository {
           customerId: r.customerId,
           description:
               'Entregó ${r.deliveredQuantity} · Devolvió ${r.returnedQuantity}',
+        ),
+    };
+  }
+
+  Future<Map<String, _Detail>> _balanceCorrections(Set<String> ids) async {
+    final rows = await (_db.select(
+      _db.balanceCorrectionTable,
+    )..where((t) => t.correctionId.isIn(ids))).get();
+    return {
+      for (final r in rows)
+        r.correctionId: _Detail(
+          customerId: r.customerId,
+          description: r.containerType == null
+              ? '${formatAccountBalance(r.seenBalance)} → '
+                    '${formatAccountBalance(r.counted)} · ${r.reason}'
+              : 'Envases ${r.containerType}: ${r.seenBalance.round()} → '
+                    '${r.counted.round()} · ${r.reason}',
         ),
     };
   }
@@ -434,7 +453,8 @@ class DriftHistoryRepository implements HistoryRepository {
     PendingEntity.paymentCancellation => HistoryEntryType.payment,
     PendingEntity.customerAgreement => HistoryEntryType.agreement,
     PendingEntity.customerAddress ||
-    PendingEntity.customerPreference => HistoryEntryType.customer,
+    PendingEntity.customerPreference ||
+    PendingEntity.balanceCorrection => HistoryEntryType.customer,
   };
 
   static String _describe(PendingEntity entity, PendingAction action) =>
@@ -458,6 +478,7 @@ class DriftHistoryRepository implements HistoryRepository {
         (PendingEntity.customerPreference, PendingAction.insert) =>
           'Preferencia agregada',
         (PendingEntity.customerPreference, _) => 'Preferencia actualizada',
+        (PendingEntity.balanceCorrection, _) => 'Saldo corregido',
       };
 }
 

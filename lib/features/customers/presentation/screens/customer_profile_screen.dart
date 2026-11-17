@@ -24,6 +24,9 @@ import 'package:app/features/sales/presentation/screens/sale_step1_screen.dart';
 import 'package:app/features/inventory/presentation/providers/inventory_repository_provider.dart';
 import 'package:app/features/inventory/domain/custody.dart';
 import 'package:app/features/inventory/domain/models/container_type.dart';
+import 'package:app/features/inventory/domain/models/customer_container_balance.dart';
+import 'package:app/features/balance_corrections/domain/models/balance_correction.dart';
+import 'package:app/features/balance_corrections/presentation/correct_balance.dart';
 import 'package:app/features/inventory/presentation/widgets/container_return_dialog.dart';
 import 'package:app/features/inventory/presentation/widgets/register_container_return_dialog.dart';
 import 'package:app/core/widgets/error_state.dart';
@@ -364,27 +367,22 @@ class _CustomerProfileScreenState extends ConsumerState<CustomerProfileScreen> {
                                 crossAxisAlignment: CrossAxisAlignment.start,
                                 children: [
                                   Row(
-                                    mainAxisAlignment:
-                                        MainAxisAlignment.spaceBetween,
                                     children: [
-                                      Text(
-                                        'Saldo en dinero',
-                                        style: TextStyle(
-                                          fontSize: 12,
-                                          fontWeight: FontWeight.w600,
-                                          color: balance > 0
-                                              ? Colors.red.shade900
-                                              : Colors.green.shade900,
+                                      Expanded(
+                                        child: Text(
+                                          'Saldo en dinero',
+                                          style: TextStyle(
+                                            fontSize: 12,
+                                            fontWeight: FontWeight.w600,
+                                            color: balance > 0
+                                                ? Colors.red.shade900
+                                                : Colors.green.shade900,
+                                          ),
                                         ),
                                       ),
-                                      Icon(
-                                        balance > 0
-                                            ? Icons.credit_card_rounded
-                                            : (balance == 0
-                                                  ? Icons.check_circle_rounded
-                                                  : Icons
-                                                        .monetization_on_outlined),
-                                        size: 16,
+                                      // Replaces the card's status icon:
+                                      // the amount below already tells it.
+                                      _buildCorrectBalanceButton(
                                         color: balance > 0
                                             ? context.marilin.vivid(
                                                 MarilinColors.destructive,
@@ -392,10 +390,14 @@ class _CustomerProfileScreenState extends ConsumerState<CustomerProfileScreen> {
                                             : context.marilin.vivid(
                                                 MarilinColors.success,
                                               ),
+                                        onPressed: () => correctBalance(
+                                          context,
+                                          customerId: customer.id,
+                                        ),
                                       ),
                                     ],
                                   ),
-                                  const SizedBox(height: 12),
+                                  const SizedBox(height: 4),
                                   Text(
                                     balance > 0
                                         ? formatMoney(balance)
@@ -461,25 +463,34 @@ class _CustomerProfileScreenState extends ConsumerState<CustomerProfileScreen> {
                                 crossAxisAlignment: CrossAxisAlignment.start,
                                 children: [
                                   Row(
-                                    mainAxisAlignment:
-                                        MainAxisAlignment.spaceBetween,
                                     children: [
-                                      Text(
-                                        'Comodatos activos',
-                                        style: TextStyle(
-                                          fontSize: 12,
-                                          fontWeight: FontWeight.w600,
-                                          color: context.marilin.ink,
+                                      Expanded(
+                                        child: Text(
+                                          'Comodatos activos',
+                                          style: TextStyle(
+                                            fontSize: 12,
+                                            fontWeight: FontWeight.w600,
+                                            color: context.marilin.ink,
+                                          ),
                                         ),
                                       ),
-                                      Icon(
-                                        Icons.inventory_2_outlined,
-                                        size: 16,
+                                      _buildCorrectBalanceButton(
                                         color: MarilinColors.brandBlue,
+                                        onPressed: () => correctBalance(
+                                          context,
+                                          customerId: customer.id,
+                                          initialTarget:
+                                              BalanceTarget.containers,
+                                          initialContainerType:
+                                              _firstHeldContainerType(
+                                                containerTypes,
+                                                containerBalancesAsync.value,
+                                              ),
+                                        ),
                                       ),
                                     ],
                                   ),
-                                  const SizedBox(height: 12),
+                                  const SizedBox(height: 4),
                                   containerBalancesAsync.when(
                                     data: (balances) {
                                       final custody = custodyByContainerType(
@@ -799,6 +810,39 @@ class _CustomerProfileScreenState extends ConsumerState<CustomerProfileScreen> {
         ),
       ],
     );
+  }
+
+  /// The "Corregir saldo" entry of a balance card: a 48dp icon button in
+  /// its header.
+  Widget _buildCorrectBalanceButton({
+    required Color color,
+    required VoidCallback onPressed,
+  }) {
+    return IconButton(
+      tooltip: 'Corregir saldo',
+      icon: const Icon(Icons.edit_outlined, size: 18),
+      color: color,
+      style: IconButton.styleFrom(
+        minimumSize: const Size(48, 48),
+        tapTargetSize: MaterialTapTargetSize.padded,
+      ),
+      onPressed: onPressed,
+    );
+  }
+
+  /// The catalog type the customer holds first, else the first catalog
+  /// type; the custody correction opens on it.
+  String? _firstHeldContainerType(
+    List<ContainerType> types,
+    List<CustomerContainerBalance>? balances,
+  ) {
+    final custody = custodyByContainerType(
+      balances ?? const <CustomerContainerBalance>[],
+    );
+    for (final type in types) {
+      if ((custody[type.code] ?? 0) > 0) return type.code;
+    }
+    return types.isEmpty ? null : types.first.code;
   }
 
   Widget _buildProfileCustodyRow({

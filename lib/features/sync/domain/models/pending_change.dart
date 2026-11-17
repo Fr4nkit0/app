@@ -22,7 +22,10 @@ enum PendingEntity {
   saleCancellation('sale_cancellation'),
 
   /// The cancellation of a payment; its entity id is the payment's id.
-  paymentCancellation('payment_cancellation');
+  paymentCancellation('payment_cancellation'),
+
+  /// A debt or container custody the driver counted and corrected.
+  balanceCorrection('balance_correction');
 
   const PendingEntity(this.wireName);
 

@@ -49,6 +49,14 @@ class Custody {
     );
   }
 
+  /// The containers of [containerType] [customerId] holds; 0 when none.
+  Future<int> quantityOf(String customerId, String containerType) async =>
+      (await (_db.select(
+            _db.customerContainerBalanceTable,
+          )..where((t) => _of(t, customerId, containerType))).getSingleOrNull())
+          ?.quantity ??
+      0;
+
   /// The custody of [customerId], one balance per container code.
   Stream<List<CustomerContainerBalance>> watch(String customerId) {
     return (_db.select(
@@ -67,27 +75,38 @@ class Custody {
 
   /// Delivered minus returned containers of [containerType] in the
   /// movements of [customerId] the server has not received yet, and in the
-  /// local reversals of the sales whose cancellation it has not received.
+  /// local reversals of the sales whose cancellation it has not received,
+  /// plus the difference of the custody corrections it has not received.
   Future<int> pendingMovements(String customerId, String containerType) async {
     String pendingIds(int entity) =>
         '(SELECT entity_id FROM pending_changes '
         'WHERE entity = ?$entity AND status = ?4)';
     final row = await _db
         .customSelect(
-          'SELECT COALESCE(SUM(m.delivered_quantity - m.returned_quantity), 0) '
-          'AS delta FROM container_movements m '
+          'SELECT (SELECT COALESCE(SUM(m.delivered_quantity - '
+          'm.returned_quantity), 0) FROM container_movements m '
           'WHERE m.customer_id = ?1 AND m.container_type = ?2 '
           'AND (m.container_movement_id IN ${pendingIds(3)} '
           ' OR (m.reverses_movement_id IS NOT NULL AND m.server_id IS NULL '
-          '  AND m.sale_id IN ${pendingIds(5)}))',
+          '  AND m.sale_id IN ${pendingIds(5)}))) '
+          '+ (SELECT COALESCE(SUM(CAST(ROUND(b.counted - b.seen_balance) '
+          'AS INTEGER)), 0) FROM balance_corrections b '
+          "WHERE b.customer_id = ?1 AND b.target = 'containers' "
+          'AND b.container_type = ?2 '
+          'AND b.correction_id IN ${pendingIds(6)}) AS delta',
           variables: [
             Variable.withString(customerId),
             Variable.withString(containerType),
             Variable.withString(PendingEntity.containerMovement.wireName),
             Variable.withString(PendingStatus.pending.wireName),
             Variable.withString(PendingEntity.saleCancellation.wireName),
+            Variable.withString(PendingEntity.balanceCorrection.wireName),
           ],
-          readsFrom: {_db.containerMovementTable, _db.pendingChangeTable},
+          readsFrom: {
+            _db.containerMovementTable,
+            _db.balanceCorrectionTable,
+            _db.pendingChangeTable,
+          },
         )
         .getSingle();
     return row.read<int>('delta');

@@ -19,4 +19,16 @@ void main() {
       expect(formatMoney(-1500), '-\$1.500');
     });
   });
+
+  group('formatAccountBalance', () {
+    test('a debt reads "Debe"', () {
+      expect(formatAccountBalance(1500), r'Debe $1.500');
+    });
+    test('zero reads "Al día"', () {
+      expect(formatAccountBalance(0), 'Al día');
+    });
+    test('a credit reads "Saldo a favor" without a sign', () {
+      expect(formatAccountBalance(-200.5), r'Saldo a favor: $200,50');
+    });
+  });
 }

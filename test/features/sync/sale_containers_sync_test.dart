@@ -313,6 +313,7 @@ void main() {
           'payments',
           'sale_cancellations',
           'payment_cancellations',
+          'balance_corrections',
         ],
       );
     });
