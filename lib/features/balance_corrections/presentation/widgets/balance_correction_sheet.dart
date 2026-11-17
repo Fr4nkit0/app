@@ -108,24 +108,18 @@ class _BalanceCorrectionSheetState extends State<BalanceCorrectionSheet> {
     super.dispose();
   }
 
-  /// The debt, every catalog type and any type the customer holds that the
-  /// catalog no longer lists (shown by its code).
-  List<_TargetOption> get _options {
-    final catalog = {for (final type in widget.containerTypes) type.code};
-    final extra =
-        widget.custody.keys.where((c) => !catalog.contains(c)).toList()..sort();
-    return [
-      _TargetOption.debt(widget.debt),
-      for (final type in widget.containerTypes)
-        _TargetOption.containers(
-          type.code,
-          type.label,
-          widget.custody[type.code] ?? 0,
-        ),
-      for (final code in extra)
-        _TargetOption.containers(code, code, widget.custody[code] ?? 0),
-    ];
-  }
+  /// The debt and every catalog type. A code the customer holds that the
+  /// catalog no longer lists is left out: the server could never take its
+  /// correction.
+  List<_TargetOption> get _options => [
+    _TargetOption.debt(widget.debt),
+    for (final type in widget.containerTypes)
+      _TargetOption.containers(
+        type.code,
+        type.label,
+        widget.custody[type.code] ?? 0,
+      ),
+  ];
 
   bool _isSelected(_TargetOption option) =>
       option.target == _target && option.code == _containerType;

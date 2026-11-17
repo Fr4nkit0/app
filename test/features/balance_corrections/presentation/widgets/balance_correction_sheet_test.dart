@@ -84,12 +84,12 @@ void main() {
     );
   });
 
-  testWidgets('a container type the customer holds but the catalog lacks '
-      'is still offered, by its code', (tester) async {
+  testWidgets('a container type the catalog lacks is not offered: the '
+      'server could never take its correction', (tester) async {
     await pumpSheet(tester, custody: const {'B20': 3, 'OLD': 2});
 
-    expect(find.text('OLD'), findsOneWidget);
-    expect(find.text('2'), findsOneWidget);
+    expect(find.text('OLD'), findsNothing);
+    expect(find.text('2'), findsNothing);
   });
 
   testWidgets('confirm stays disabled until the count parses and the '

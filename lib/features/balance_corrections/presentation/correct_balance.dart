@@ -6,8 +6,6 @@ import 'package:app/features/balance_corrections/domain/models/balance_correctio
 import 'package:app/features/balance_corrections/presentation/providers/correct_balance_usecase_provider.dart';
 import 'package:app/features/balance_corrections/presentation/widgets/balance_correction_sheet.dart';
 import 'package:app/features/inventory/domain/custody.dart';
-import 'package:app/features/inventory/domain/models/container_type.dart';
-import 'package:app/features/inventory/domain/models/customer_container_balance.dart';
 import 'package:app/features/inventory/presentation/providers/inventory_repository_provider.dart';
 import 'package:app/features/payments/presentation/providers/payment_repository_provider.dart';
 
@@ -53,12 +51,19 @@ class _BalanceCorrectionHost extends ConsumerWidget {
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
-    final debt = ref.watch(customerBalanceProvider(customerId)).value ?? 0;
-    final balances =
-        ref.watch(customerContainerBalancesProvider(customerId)).value ??
-        const <CustomerContainerBalance>[];
-    final types =
-        ref.watch(containerTypesProvider).value ?? const <ContainerType>[];
+    final debt = ref.watch(customerBalanceProvider(customerId)).value;
+    final balances = ref
+        .watch(customerContainerBalancesProvider(customerId))
+        .value;
+    final types = ref.watch(containerTypesProvider).value;
+    // The sheet takes its initial target and debt side once: wait for
+    // every value instead of opening on placeholders.
+    if (debt == null || balances == null || types == null) {
+      return const Padding(
+        padding: EdgeInsets.all(32),
+        child: Center(child: CircularProgressIndicator()),
+      );
+    }
 
     return BalanceCorrectionSheet(
       debt: debt,
