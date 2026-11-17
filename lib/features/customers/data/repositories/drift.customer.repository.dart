@@ -1,7 +1,7 @@
 import 'package:app/core/errors/domain_failure.dart';
-import 'package:app/core/utils/string_utils.dart';
 import 'package:app/features/customers/data/repositories/customer.repository.dart';
 import 'package:app/features/customers/domain/models/customer.dart';
+import 'package:app/features/customers/domain/customer_search.dart';
 import 'package:app/features/customers/domain/models/customer.address.dart';
 import 'package:app/features/customers/domain/models/customer_edit.dart';
 import 'package:app/features/customers/domain/models/customer.preference.dart';
@@ -353,6 +353,7 @@ class DriftCustomerRepository implements CustomerRepository {
     final customer = Customer(
       id: customerData.customerId,
       name: customerData.name,
+      number: customerData.serverId,
       phone: customerData.phone,
       debtAmount: debtAmount,
       addresses: addresses
@@ -431,6 +432,7 @@ class DriftCustomerRepository implements CustomerRepository {
       return Customer(
         id: cid,
         name: row.name,
+        number: row.serverId,
         phone: row.phone,
         debtAmount: balanceMap[cid] ?? 0.0,
         addresses: (addrMap[cid] ?? [])
@@ -502,6 +504,7 @@ class DriftCustomerRepository implements CustomerRepository {
       return Customer(
         id: cid,
         name: row.name,
+        number: row.serverId,
         phone: row.phone,
         debtAmount: balanceMap[cid] ?? 0.0,
         addresses: (addrMap[cid] ?? [])
@@ -549,13 +552,7 @@ class DriftCustomerRepository implements CustomerRepository {
       return allCustomers.sublist(start, end);
     }
 
-    final filtered = allCustomers.where((customer) {
-      final addressesStr = customer.addresses
-          .map((a) => '${a.street ?? ''} ${a.neighborhood ?? ''}')
-          .join(' ');
-      final target = '${customer.name} ${customer.phone ?? ''} $addressesStr';
-      return StringUtils.fuzzyMatch(query, target);
-    }).toList();
+    final filtered = CustomerSearch.filter(query, allCustomers);
 
     final start = page * pageSize;
     if (start >= filtered.length) return [];
@@ -611,6 +608,7 @@ class DriftCustomerRepository implements CustomerRepository {
           customers[cid] = Customer(
             id: cid,
             name: customerData.name,
+            number: customerData.serverId,
             phone: customerData.phone,
             debtAmount: _account.balanceIn(row),
             addresses: [],

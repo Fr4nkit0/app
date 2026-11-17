@@ -1,3 +1,4 @@
+import 'package:app/features/customers/presentation/widgets/customer_name_text.dart';
 import 'package:app/core/providers/clock_provider.dart';
 import 'package:app/core/utils/money_formatter.dart';
 import 'package:flutter/material.dart';
@@ -225,8 +226,9 @@ class _CustomerProfileScreenState extends ConsumerState<CustomerProfileScreen> {
             ),
           ),
           const SizedBox(height: 16),
-          Text(
-            customer.name,
+          CustomerNameText(
+            name: customer.name,
+            number: customer.number,
             style: TextStyle(
               fontSize: 24,
               fontWeight: FontWeight.w800,

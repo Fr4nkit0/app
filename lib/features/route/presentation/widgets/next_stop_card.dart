@@ -1,3 +1,4 @@
+import 'package:app/features/customers/presentation/widgets/customer_name_text.dart';
 import 'package:app/core/utils/money_formatter.dart';
 import 'package:flutter/material.dart';
 import 'package:url_launcher/url_launcher.dart';
@@ -64,8 +65,9 @@ class NextStopCard extends StatelessWidget {
                   ),
                 ),
                 const SizedBox(height: 6),
-                Text(
-                  customer.name,
+                CustomerNameText(
+                  name: customer.name,
+                  number: customer.number,
                   maxLines: 2,
                   overflow: TextOverflow.ellipsis,
                   style: TextStyle(

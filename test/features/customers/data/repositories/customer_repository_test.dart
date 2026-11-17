@@ -129,6 +129,46 @@ void main() {
       final results3 = await driftRepo.searchCustomers(query: 'ramon', page: 0, pageSize: 10);
       expect(results3.length, 2);
     });
+
+    Future<List<String>> idsFor(String query) async => [
+          for (final c in await driftRepo.searchCustomers(
+            query: query,
+            page: 0,
+            pageSize: 10,
+          ))
+            c.id,
+        ];
+
+    test('letters scattered across other words do not match: "franco" finds '
+        'Franco only', () async {
+      for (final (id, name, street) in [
+        ('c-3', 'Café Martínez Belgrano', 'Av. Belgrano 680'),
+        ('c-4', 'Fernando Ruiz', 'Córdoba 245'),
+        ('c-5', 'Franco Calisaya', 'Pasaje Los Ceibos 245'),
+      ]) {
+        await driftRepo.saveCustomer(
+          Customer(
+            id: id,
+            name: name,
+            addresses: [CustomerAddress(id: 'a-$id', street: street, neighborhood: 'Centro', isPrimary: true)],
+            preferences: [],
+          ),
+        );
+      }
+
+      expect(await idsFor('franco'), ['c-5']);
+    });
+
+    test('name matches come before address matches', () async {
+      // c-2 lives in "San Ramón"; c-1 is named "José Ramón".
+      expect(await idsFor('ramon'), ['c-1', 'c-2']);
+      expect(await idsFor('san'), ['c-2']);
+    });
+
+    test('the phone is not searched: digits are the customer number', () async {
+      expect(await idsFor('112233'), isEmpty);
+      expect(await idsFor('4455'), isEmpty);
+    });
   });
 
   group('covered customers', () {
@@ -266,6 +306,29 @@ void main() {
       );
 
       expect(ids, expected);
+    });
+
+    test('a number finds only that customer, never a phone with the same '
+        'digits; a customer without a number is found by name only', () async {
+      await (db.update(db.customerTable)
+            ..where((t) => t.customerId.equals('b-1')))
+          .write(const CustomerTableCompanion(serverId: Value(128)));
+      await (db.update(db.customerTable)
+            ..where((t) => t.customerId.equals('z-1')))
+          .write(const CustomerTableCompanion(phone: Value('3871280000')));
+
+      final byNumber =
+          await driftRepo.searchCustomers(query: '#128', page: 0, pageSize: 10);
+      expect(byNumber.map((c) => c.id), ['b-1']);
+      expect(byNumber.single.number, 128);
+
+      final digits =
+          await driftRepo.searchCustomers(query: '128', page: 0, pageSize: 10);
+      expect(digits.map((c) => c.id), ['b-1']);
+
+      final unsynced =
+          await driftRepo.searchCustomers(query: 'agua', page: 0, pageSize: 10);
+      expect(unsynced.single.number, isNull);
     });
 
     test('paging a search keeps the list order among the matches', () async {

@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:app/features/customers/presentation/widgets/customer_name_text.dart';
 import 'package:app/core/theme/marilin_tokens.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:url_launcher/url_launcher.dart';
@@ -110,8 +111,9 @@ class CustomerListTile extends ConsumerWidget {
                         child: Column(
                           crossAxisAlignment: CrossAxisAlignment.start,
                           children: [
-                            Text(
-                              customer.name,
+                            CustomerNameText(
+                              name: customer.name,
+                              number: customer.number,
                               style: TextStyle(
                                 fontSize: 15,
                                 fontWeight: FontWeight.w700,
