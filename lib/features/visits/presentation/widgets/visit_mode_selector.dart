@@ -92,7 +92,9 @@ class _ModeCard extends StatelessWidget {
               clipBehavior: Clip.none,
               children: [
                 Column(
-                  mainAxisAlignment: MainAxisAlignment.center,
+                  // Top-aligned so icon and title line up across both cards,
+                  // even when one subtitle wraps to two lines.
+                  mainAxisAlignment: MainAxisAlignment.start,
                   children: [
                     AnimatedContainer(
                       duration: const Duration(milliseconds: 200),
