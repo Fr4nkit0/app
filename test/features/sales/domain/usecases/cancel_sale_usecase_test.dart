@@ -50,7 +50,12 @@ void main() {
     addresses: const [],
     preferences: const [],
   );
-  const water = Product(id: 'p-1', name: 'Agua 20L', unitLabel: '', price: 1200);
+  const water = Product(
+    id: 'p-1',
+    name: 'Agua 20L',
+    unitLabel: '',
+    price: 1200,
+  );
 
   CancelSaleUseCase useCase({PaymentRepository? paymentRepo}) =>
       CancelSaleUseCase(
@@ -83,6 +88,7 @@ void main() {
     double? cash,
     double? transfer,
     List<ContainerMovement>? containers,
+    double debtAmount = 0,
   }) async {
     final sale = Sale(
       id: id,
@@ -100,7 +106,7 @@ void main() {
       paymentRepo: payments,
       inventoryRepo: DriftInventoryRepository(db),
       transaction: driftTransactionRunner(db),
-    ).execute(sale, containerMovements: containers);
+    ).execute(sale, containerMovements: containers, debtAmount: debtAmount);
     return sale;
   }
 
@@ -126,9 +132,8 @@ void main() {
     db.productTable,
   )..where((t) => t.productId.equals('p-1'))).getSingle()).stock;
 
-  Future<SaleTableData> saleRow([String id = 'sale-1']) => (db.select(
-    db.saleTable,
-  )..where((t) => t.saleId.equals(id))).getSingle();
+  Future<SaleTableData> saleRow([String id = 'sale-1']) =>
+      (db.select(db.saleTable)..where((t) => t.saleId.equals(id))).getSingle();
 
   Future<Map<String, String>> paymentStatuses() async => {
     for (final p in await db.select(db.paymentTable).get())
@@ -217,6 +222,29 @@ void main() {
     expect(found?.isCancelled, isTrue);
   });
 
+  test('S8: a sale paid together with previous debt cancels only its own '
+      'payment; the debt payment stays and the debt does not come '
+      'back', () async {
+    await sell(method: PaymentMethod.transfer, debtAmount: 1000);
+    expect(await balance(), 0);
+    final rows = await db.select(db.paymentTable).get();
+    final salePayment = rows.singleWhere((p) => p.saleId == 'sale-1');
+    final debtPayment = rows.singleWhere((p) => p.saleId == null);
+    expect(debtPayment.amount, 1000);
+
+    await useCase().execute('sale-1');
+
+    expect(await paymentStatuses(), {
+      salePayment.paymentId: 'CANCELLED',
+      debtPayment.paymentId: 'CONFIRMED',
+    });
+    expect(
+      (await queued(PendingEntity.paymentCancellation)).map((c) => c.entityId),
+      [salePayment.paymentId],
+    );
+    expect(await balance(), 0);
+  });
+
   test('a credit sale returns the balance to where it was before it', () async {
     await sell(method: PaymentMethod.credit);
     expect(await balance(), 3400);
@@ -238,26 +266,29 @@ void main() {
     expect(await balance(), 1000);
   });
 
-  test('a sale of another day cannot be cancelled and nothing changes', () async {
-    await sell(date: DateTime(2026, 10, 28, 18));
-    final pending = await queue.countPending();
+  test(
+    'a sale of another day cannot be cancelled and nothing changes',
+    () async {
+      await sell(date: DateTime(2026, 10, 28, 18));
+      final pending = await queue.countPending();
 
-    await expectLater(
-      useCase().execute('sale-1'),
-      throwsA(
-        isA<ValidationFailure>().having(
-          (f) => f.message,
-          'message',
-          'Solo se pueden anular las ventas de hoy.',
+      await expectLater(
+        useCase().execute('sale-1'),
+        throwsA(
+          isA<ValidationFailure>().having(
+            (f) => f.message,
+            'message',
+            'Solo se pueden anular las ventas de hoy.',
+          ),
         ),
-      ),
-    );
+      );
 
-    expect((await saleRow()).status, 'CONFIRMED');
-    expect(await queue.countPending(), pending);
-    expect(await balance(), 1000);
-    expect(await stock(), 8);
-  });
+      expect((await saleRow()).status, 'CONFIRMED');
+      expect(await queue.countPending(), pending);
+      expect(await balance(), 1000);
+      expect(await stock(), 8);
+    },
+  );
 
   test('a reason longer than 500 characters is refused', () async {
     await sell();
@@ -273,7 +304,8 @@ void main() {
     await sell();
     await useCase().execute('sale-1');
     final pending = await queue.countPending();
-    final entries = (await db.select(db.customerAccountEntryTable).get()).length;
+    final entries =
+        (await db.select(db.customerAccountEntryTable).get()).length;
 
     await useCase().execute('sale-1');
 
@@ -353,9 +385,9 @@ void main() {
 
       expect(await custody(), {'JUG': 1});
       expect(
-        (await db.select(
-          db.containerMovementTable,
-        ).get()).map((m) => m.containerMovementId),
+        (await db.select(db.containerMovementTable).get()).map(
+          (m) => m.containerMovementId,
+        ),
         ['m-jug'],
       );
     });
@@ -364,7 +396,8 @@ void main() {
   test('a failure inside the unit of work changes nothing', () async {
     await sell();
     final pending = await queue.countPending();
-    final entries = (await db.select(db.customerAccountEntryTable).get()).length;
+    final entries =
+        (await db.select(db.customerAccountEntryTable).get()).length;
 
     await expectLater(
       useCase(paymentRepo: _FailingPaymentRepository(db)).execute('sale-1'),

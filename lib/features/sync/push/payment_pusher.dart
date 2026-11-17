@@ -2,6 +2,7 @@ import 'package:drift/drift.dart';
 
 import '../../../core/services/database.helper.dart';
 import '../../payments/data/repositories/customer_account.dart';
+import '../../payments/data/repositories/payment.repository.dart';
 import '../domain/models/pending_change.dart';
 import 'entity_pusher.dart';
 import 'references.dart';
@@ -35,8 +36,11 @@ class PaymentPusher implements EntityPusher, RejectionAware {
   @override
   Future<PushPlan> plan(List<PendingChange> changes) async {
     final idsByPayment = <String, List<int>>{};
+    final transactionByPayment = <String, String>{};
     for (final c in changes) {
       idsByPayment.putIfAbsent(c.entityId, () => []).add(c.id);
+      final transaction = c.payload?[DriftPaymentRepository.transactionUuidKey];
+      if (transaction is String) transactionByPayment[c.entityId] = transaction;
     }
 
     final records = <PushRecord>[];
@@ -95,6 +99,8 @@ class PaymentPusher implements EntityPusher, RejectionAware {
             'payment_method_id': method.id,
             'amount': payment.amount,
             'paid_at': payment.createdAt.toUtc().toIso8601String(),
+            // Only a payment that shares its money movement with others.
+            'transaction_uuid': ?transactionByPayment[paymentId],
           },
         ),
       );

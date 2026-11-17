@@ -119,6 +119,10 @@ class DriftPaymentRepository implements PaymentRepository {
             'saleId': payment.saleId,
             'notes': payment.notes,
             'createdAt': payment.createdAt.toIso8601String(),
+            // Not stored in the payment table: the change carries it to the
+            // server, and a retry resends the same one.
+            if (payment.transactionUuid != null)
+              transactionUuidKey: payment.transactionUuid,
           },
         );
       }
@@ -256,6 +260,10 @@ class DriftPaymentRepository implements PaymentRepository {
   }
 
   static const adjustmentEntry = 'ADJUSTMENT';
+
+  /// Payload key of a queued payment holding its [Payment.transactionUuid];
+  /// absent for a payment on its own.
+  static const transactionUuidKey = 'transactionUuid';
 
   Payment _rowToPayment(PaymentTableData row) => Payment(
     id: row.paymentId,
