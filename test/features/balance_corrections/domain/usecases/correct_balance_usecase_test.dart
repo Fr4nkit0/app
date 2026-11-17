@@ -87,6 +87,22 @@ void main() {
       expect(await account.balanceOf('cust-1'), -200.46);
     });
 
+    test('rounds the balance seen to cents', () async {
+      await account.post('cust-1', 1000);
+      await account.post('cust-1', 0.1);
+      await account.post('cust-1', 0.2);
+
+      await useCase().execute(
+        customerId: 'cust-1',
+        target: BalanceTarget.debt,
+        counted: 1000,
+        reason: 'Recontado',
+      );
+
+      final row = await db.select(db.balanceCorrectionTable).getSingle();
+      expect(row.seenBalance, 1000.3);
+    });
+
     test('the next download keeps the pending difference (ADR 0003)', () async {
       await account.post('cust-1', 1500);
       await useCase().execute(

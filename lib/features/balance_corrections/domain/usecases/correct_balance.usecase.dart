@@ -67,14 +67,17 @@ class CorrectBalanceUseCase {
         }
         value = counted.toDouble();
       case BalanceTarget.debt:
-        value = (counted * 100).round() / 100;
+        value = _cents(counted);
     }
 
     return _transaction(() async {
-      final seen = await _repo.shownBalance(
-        customerId,
-        target,
-        containerType: containerType,
+      // Debt sums can carry float noise (1000.3000000000001).
+      final seen = _cents(
+        await _repo.shownBalance(
+          customerId,
+          target,
+          containerType: containerType,
+        ),
       );
       final correction = BalanceCorrection(
         id: _newId(),
@@ -93,4 +96,6 @@ class CorrectBalanceUseCase {
       return correction;
     });
   }
+
+  static double _cents(num value) => (value * 100).round() / 100;
 }

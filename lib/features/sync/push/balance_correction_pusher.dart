@@ -69,8 +69,9 @@ class BalanceCorrectionPusher implements EntityPusher, RejectionAware {
       }
 
       final visit = await resolveVisit(_db, correction.visitId);
-      num amount(double value) =>
-          target == BalanceTarget.containers ? value.round() : value;
+      num amount(double value) => target == BalanceTarget.containers
+          ? value.round()
+          : (value * 100).round() / 100;
       records.add(
         PushRecord(
           uuid: correctionId,
