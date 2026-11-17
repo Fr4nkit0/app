@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:app/features/customers/presentation/widgets/customer_name_text.dart';
 import 'package:app/core/utils/address_formatter.dart';
 import 'package:app/core/utils/money_formatter.dart';
 import 'package:app/features/route/domain/models/route_stop.dart';
@@ -169,8 +170,9 @@ class RouteStopCard extends StatelessWidget {
                           child: Column(
                             crossAxisAlignment: CrossAxisAlignment.start,
                             children: [
-                              Text(
-                                stop.customer.name,
+                              CustomerNameText(
+                                name: stop.customer.name,
+                                number: stop.customer.number,
                                 maxLines: 2,
                                 overflow: TextOverflow.ellipsis,
                                 style: TextStyle(

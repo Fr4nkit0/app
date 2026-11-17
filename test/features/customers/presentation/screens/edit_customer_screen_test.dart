@@ -108,7 +108,8 @@ void main() {
 
     // Back on the profile, which shows the new name.
     expect(find.text('Editar cliente'), findsNothing);
-    expect(find.text('Kiosco Sur'), findsWidgets);
+    // The profile shows the name followed by the customer number.
+    expect(find.text('Kiosco Sur  #501', findRichText: true), findsWidgets);
     expect(find.text('Kiosco Norte'), findsNothing);
 
     // Drift schedules a zero-duration timer when a watched query is cancelled.
