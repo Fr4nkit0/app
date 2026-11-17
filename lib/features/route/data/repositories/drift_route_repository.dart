@@ -150,6 +150,7 @@ class DriftRouteRepository implements RouteRepository {
             customer: Customer(
               id: custRow.customerId,
               name: custRow.name,
+              number: custRow.serverId,
               phone: custRow.phone,
               addresses: addresses,
               preferences: const [],

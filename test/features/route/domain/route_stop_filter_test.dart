@@ -11,11 +11,13 @@ RouteStop _stop(
   String name, {
   List<String?> neighborhoods = const [],
   StopStatus status = StopStatus.pending,
+  int? number,
 }) => RouteStop(
   id: id,
   customer: Customer(
     id: 'c-$id',
     name: name,
+    number: number,
     addresses: [
       for (final (i, n) in neighborhoods.indexed)
         CustomerAddress(id: 'a-$id-$i', neighborhood: n),
@@ -65,9 +67,47 @@ void main() {
       expect(ids(const RouteStopFilter(query: 'centro')), ['4']);
     });
 
+    test('letters spread over several words do not match; letters in order '
+        'inside one word only show when nothing matches better', () {
+      final people = [
+        _stop('a', 'Fernando Ruiz'),
+        _stop('b', 'Franco Calisaya'),
+        _stop('c', 'Mayorista Sur'),
+      ];
+      List<String> peopleIds(String q) => [
+        for (final s in RouteStopFilter(query: q).apply(people)) s.id,
+      ];
+      expect(peopleIds('franco'), ['b']);
+      expect(peopleIds('f'), ['a', 'b']);
+      expect(peopleIds('myrst'), ['c']);
+      expect(peopleIds('frnc'), ['b']);
+    });
+
     test('every query word must match', () {
       expect(ids(const RouteStopFilter(query: 'kiosco norte')), ['1']);
       expect(ids(const RouteStopFilter(query: 'kiosco rosa')), isEmpty);
+    });
+  });
+
+  group('query: customer number', () {
+    final numbered = [
+      _stop('1', 'Kiosco Norte', number: 128),
+      _stop('2', 'Almacén 128', number: 12),
+      _stop('3', 'Nuevo sin sincronizar'),
+    ];
+    List<String> numberedIds(String query) => [
+      for (final s in RouteStopFilter(query: query).apply(numbered)) s.id,
+    ];
+
+    test('digits match the exact number, with or without "#", and still '
+        'the name', () {
+      expect(numberedIds('128'), ['1', '2']);
+      expect(numberedIds('#12'), ['2']);
+      expect(numberedIds('129'), isEmpty);
+    });
+
+    test('a customer not synced yet has no number: found by name only', () {
+      expect(numberedIds('nuevo'), ['3']);
     });
   });
 

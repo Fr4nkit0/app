@@ -1,6 +1,8 @@
 import 'package:flutter/foundation.dart';
 
 import 'package:app/core/utils/string_utils.dart';
+import 'package:app/features/customers/domain/customer_search.dart';
+import 'package:app/features/customers/domain/models/customer_number.dart';
 import 'package:app/features/route/domain/models/route_stop.dart';
 import 'package:app/features/route/domain/models/stop_status.dart';
 
@@ -35,9 +37,12 @@ class RouteStopFilter {
       RouteStopFilter(query: query, neighborhood: neighborhood, status: value);
 
   /// Whether [stop] passes: its status is [status], one of its addresses is
-  /// in [neighborhood], and every query word starts a word of the
-  /// customer's name. Case, accents and spacing are ignored.
-  bool matches(RouteStop stop) {
+  /// in [neighborhood], and the query is the customer's number (`128` or
+  /// `#128`) or every query word begins a word of the customer's name.
+  /// Case, accents and spacing are ignored.
+  bool matches(RouteStop stop) => _matches(stop, looseName: false);
+
+  bool _matches(RouteStop stop, {required bool looseName}) {
     if (status != null && stop.status != status) return false;
     final wanted = neighborhood;
     if (wanted != null &&
@@ -47,12 +52,22 @@ class RouteStopFilter {
       return false;
     }
     if (query.trim().isEmpty) return true;
-    return StringUtils.wordStartMatch(query, stop.customer.name);
+    if (CustomerNumber.matches(query, stop.customer.number)) return true;
+    if (CustomerNumber.isExplicit(query)) return false;
+    final name = CustomerSearch.matchName(query, stop.customer.name);
+    return name == CustomerMatch.name ||
+        (looseName && name == CustomerMatch.loose);
   }
 
   /// The stops of [stops] that pass, in their order.
-  List<RouteStop> apply(List<RouteStop> stops) =>
-      isActive ? stops.where(matches).toList() : stops;
+  /// A name with the query's letters in order inside one of its words
+  /// ("mao" in "Mayo") only shows when no stop matches better.
+  List<RouteStop> apply(List<RouteStop> stops) {
+    if (!isActive) return stops;
+    final strong = stops.where(matches).toList();
+    if (strong.isNotEmpty || query.trim().isEmpty) return strong;
+    return stops.where((s) => _matches(s, looseName: true)).toList();
+  }
 
   /// The comparable form of a neighborhood name; empty for none.
   static String neighborhoodKey(String? name) => name == null
