@@ -262,6 +262,19 @@ void main() {
           ),
         );
     await db
+        .into(db.balanceCorrectionTable)
+        .insert(
+          BalanceCorrectionTableCompanion.insert(
+            correctionId: Value('corr-$id'),
+            customerId: id,
+            target: 'debt',
+            counted: 100,
+            seenBalance: 200,
+            reason: 'Conté en el lugar',
+            correctedAt: DateTime(2026, 11, 11, 10),
+          ),
+        );
+    await db
         .into(db.customerContainerBalanceTable)
         .insert(
           CustomerContainerBalanceTableCompanion.insert(
@@ -324,6 +337,7 @@ void main() {
         'customer_balances',
         'container_movements',
         'customer_container_balances',
+        'balance_corrections',
       ])
         table: await count(
           "SELECT COUNT(*) AS n FROM $table WHERE customer_id = '$id'",
@@ -384,6 +398,11 @@ void main() {
         PendingEntity.payment,
         'pay-cov',
         PendingStatus.dismissed,
+      );
+      await queueChange(
+        PendingEntity.balanceCorrection,
+        'corr-cov',
+        PendingStatus.sent,
       );
       await queueChange(PendingEntity.sale, 'sale-own', PendingStatus.sent);
 
@@ -459,6 +478,7 @@ void main() {
     (PendingEntity.routeStop, 'stop-cov-r-old'),
     (PendingEntity.containerMovement, 'mov-cov'),
     (PendingEntity.paymentCancellation, 'pay-cov'),
+    (PendingEntity.balanceCorrection, 'corr-cov'),
   ]) {
     test('a rejected ${entity.wireName} keeps the customer', () async {
       await seedCustomer('cov', isCover: true);

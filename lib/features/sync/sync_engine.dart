@@ -13,6 +13,7 @@ import 'domain/models/pending_change.dart';
 import 'domain/models/sync_status.dart';
 import 'pull/pull_applier.dart' show dateOnly;
 import 'push/agreement_pusher.dart';
+import 'push/balance_correction_pusher.dart';
 import 'push/container_movement_pusher.dart';
 import 'push/customer_address_pusher.dart';
 import 'push/customer_preference_pusher.dart';
@@ -89,6 +90,7 @@ class SyncEngine {
     PaymentPusher(db, today: today),
     SaleCancellationPusher(db, today: today),
     PaymentCancellationPusher(db, today: today),
+    BalanceCorrectionPusher(db, today: today),
   ];
 
   final Dio _dio;
@@ -356,7 +358,9 @@ class SyncEngine {
       "UNION ALL SELECT 'payment_cancellation', payment_id, visit_id "
       'FROM payments '
       "UNION ALL SELECT 'container_movement', container_movement_id, "
-      'visit_id FROM container_movements), '
+      'visit_id FROM container_movements '
+      "UNION ALL SELECT 'balance_correction', correction_id, visit_id "
+      'FROM balance_corrections), '
       'held AS (SELECT l.visit_id AS stop_id FROM pending_changes c '
       'JOIN linked l ON l.entity = c.entity AND l.id = c.entity_id '
       'WHERE c.status = ?1 AND l.visit_id IN (SELECT id FROM open_stops)) ';
