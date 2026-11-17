@@ -113,6 +113,7 @@ class DriftRouteRepository implements RouteRepository {
                   isPrimary: addrRow.isPrimary,
                   latitude: addrRow.latitude,
                   longitude: addrRow.longitude,
+                  neighborhood: addrRow.neighborhood,
                 ),
               ]
             : const <CustomerAddress>[];
