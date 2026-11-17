@@ -27,6 +27,45 @@ void main() {
     expect(find.text('Sin venta: entrega, gestión o ausente'), findsOneWidget);
   });
 
+  testWidgets('each mode card centers its content horizontally', (
+    tester,
+  ) async {
+    // Wide cards so the texts do not wrap to the full card width.
+    tester.view.physicalSize = const Size(1200, 900);
+    tester.view.devicePixelRatio = 1;
+    addTearDown(tester.view.reset);
+
+    await tester.pumpWidget(
+      host(
+        Padding(
+          padding: const EdgeInsets.all(24),
+          child: VisitModeSelector(
+            isSaleSelected: false,
+            onSelectSale: () {},
+            onSelectVisit: () {},
+          ),
+        ),
+      ),
+    );
+
+    for (final text in [
+      'Registrar venta',
+      'Cobrás productos ahora',
+      'Solo visita',
+    ]) {
+      final textFinder = find.text(text);
+      final card = find.ancestor(
+        of: textFinder,
+        matching: find.byType(InkWell),
+      );
+      expect(
+        tester.getCenter(textFinder).dx,
+        moreOrLessEquals(tester.getCenter(card).dx, epsilon: 1),
+        reason: '"$text" is off-center in its card',
+      );
+    }
+  });
+
   Widget footer({
     bool isDone = false,
     bool hasSales = false,
