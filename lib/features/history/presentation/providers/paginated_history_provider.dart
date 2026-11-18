@@ -2,8 +2,9 @@ import 'dart:async';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:app/features/history/domain/models/history_entry.dart';
 import 'package:app/features/history/domain/models/history_entry_type.dart';
-import 'package:app/features/history/presentation/providers/history_list_provider.dart';
-import 'package:app/features/sync/domain/models/pending_change.dart';
+import 'package:app/features/history/data/repositories/history.repository.dart';
+import 'package:app/features/history/domain/models/history_filter.dart';
+import 'package:app/features/history/presentation/providers/history_repository_provider.dart';
 
 class HistoryTodaySummary {
   const HistoryTodaySummary({
@@ -73,162 +74,121 @@ class PaginatedHistoryState {
 }
 
 class PaginatedHistoryNotifier extends Notifier<PaginatedHistoryState> {
-  List<HistoryEntry> _allEntries = [];
   static const int pageSize = 6;
 
-  List<HistoryEntry> _visibleSource(PaginatedHistoryState from) {
-    // A dismissed notice stays in the queue but leaves the list.
-    Iterable<HistoryEntry> list = _allEntries.where(
-      (e) => e.status != PendingStatus.dismissed,
-    );
-    if (from.issuesOnly) list = list.where((e) => e.isIssue);
-    final filter = from.typeFilter;
-    if (filter != null) {
-      list = list.where((e) => e.type == filter);
-    }
-    final q = from.searchQuery.trim().toLowerCase();
-    if (q.isNotEmpty) {
-      list = list.where((e) {
-        final name = e.customerName.toLowerCase();
-        final desc = e.description.toLowerCase();
-        final reason = (e.rejectionReason ?? '').toLowerCase();
-        return name.contains(q) || desc.contains(q) || reason.contains(q);
-      });
-    }
-    return list.toList();
-  }
+  late HistoryRepository _repository;
+  StreamSubscription<List<HistoryEntry>>? _entriesSubscription;
 
-  HistoryTodaySummary _computeTodaySummary() {
-    final now = DateTime.now();
-    final today = DateTime(now.year, now.month, now.day);
-    var sales = 0;
-    var visits = 0;
-    var payments = 0;
-    var deliveries = 0;
-
-    for (final e in _allEntries) {
-      final day = DateTime(e.date.year, e.date.month, e.date.day);
-      if (day != today) continue;
-      switch (e.type) {
-        case HistoryEntryType.sale:
-          sales++;
-        case HistoryEntryType.visit:
-          visits++;
-        case HistoryEntryType.payment:
-          payments++;
-        case HistoryEntryType.delivery:
-          deliveries++;
-        case HistoryEntryType.customer:
-        case HistoryEntryType.routeStop:
-        case HistoryEntryType.agreement:
-          break;
-      }
-    }
-
-    return HistoryTodaySummary(
-      sales: sales,
-      visits: visits,
-      payments: payments,
-      deliveries: deliveries,
-    );
-  }
-
-  PaginatedHistoryState _sliced(PaginatedHistoryState from) {
-    final source = _visibleSource(from);
-    final int currentEntriesCount = pageSize * from.currentPage;
-    final slicedEntries = source.take(currentEntriesCount).toList();
-
-    return from.copyWith(
-      entries: slicedEntries,
-      isLoading: false,
-      hasReachedMax: slicedEntries.length >= source.length,
-      todaySummary: _computeTodaySummary(),
-    );
-  }
-
-  void _applySlice() => state = _sliced(state);
+  /// Whether the current subscription has not emitted yet; the previous
+  /// entries stay on screen meanwhile and no further page is requested.
+  bool _awaitingEntries = false;
 
   @override
   PaginatedHistoryState build() {
-    ref.listen<AsyncValue<List<HistoryEntry>>>(historyListProvider, (
-      previous,
-      next,
-    ) {
-      next.when(
-        data: (allData) {
-          _allEntries = allData;
-          _applySlice();
-        },
-        error: (err, stack) {
-          state = state.copyWith(isLoading: false);
-        },
-        loading: () {},
-      );
+    _repository = ref.watch(historyRepositoryProvider);
+
+    final countsSubscription = _repository
+        .watchCountsByType(since: _startOfToday)
+        .listen(
+          (counts) => state = state.copyWith(todaySummary: _summaryOf(counts)),
+          onError: (Object _, StackTrace _) {},
+        );
+    ref.onDispose(() {
+      countsSubscription.cancel();
+      _entriesSubscription?.cancel();
+      _entriesSubscription = null;
     });
 
-    // What build returns replaces any state set while it runs, so a list
-    // already loaded (the screen opened again) is sliced here.
     const initial = PaginatedHistoryState(entries: []);
-    final current = ref.read(historyListProvider);
-    if (current case AsyncData(:final value)) {
-      _allEntries = value;
-      return _sliced(initial);
-    }
-    return current.hasError ? initial.copyWith(isLoading: false) : initial;
+    // Emissions are asynchronous, so the state built here is in place
+    // before the first one arrives.
+    _subscribe(initial);
+    return initial;
+  }
+
+  static DateTime _startOfToday() {
+    final now = DateTime.now();
+    return DateTime(now.year, now.month, now.day);
+  }
+
+  static HistoryTodaySummary _summaryOf(Map<HistoryEntryType, int> counts) =>
+      HistoryTodaySummary(
+        sales: counts[HistoryEntryType.sale] ?? 0,
+        visits: counts[HistoryEntryType.visit] ?? 0,
+        payments: counts[HistoryEntryType.payment] ?? 0,
+        deliveries: counts[HistoryEntryType.delivery] ?? 0,
+      );
+
+  /// Watches the newest records [from] lists, one more than the pages shown
+  /// so the end of the list is known, replacing the previous watch.
+  void _subscribe(PaginatedHistoryState from) {
+    _entriesSubscription?.cancel();
+    _awaitingEntries = true;
+    final shown = pageSize * from.currentPage;
+    final filter = HistoryFilter(
+      type: from.typeFilter,
+      issuesOnly: from.issuesOnly,
+      search: from.searchQuery,
+      hideDismissed: true,
+    );
+    _entriesSubscription = _repository
+        .watchHistory(filter: filter, limit: shown + 1)
+        .listen(
+          (emitted) {
+            _awaitingEntries = false;
+            state = state.copyWith(
+              entries: emitted.take(shown).toList(),
+              hasReachedMax: emitted.length <= shown,
+              isLoading: false,
+              isLoadingMore: false,
+            );
+          },
+          onError: (Object _, StackTrace _) {
+            _awaitingEntries = false;
+            state = state.copyWith(isLoading: false, isLoadingMore: false);
+          },
+        );
+  }
+
+  void _restart(PaginatedHistoryState next) {
+    state = next;
+    _subscribe(next);
   }
 
   void setSearchQuery(String query) {
-    state = state.copyWith(
-      searchQuery: query,
-      currentPage: 1,
-      entries: [],
-      hasReachedMax: false,
-      isLoading: false,
-    );
-    _applySlice();
+    _restart(state.copyWith(searchQuery: query, currentPage: 1));
   }
 
   void setTypeFilter(HistoryEntryType? type) {
-    state = state.copyWith(
-      typeFilter: type,
-      clearTypeFilter: type == null,
-      currentPage: 1,
-      entries: [],
-      hasReachedMax: false,
-      isLoading: false,
+    _restart(
+      state.copyWith(
+        typeFilter: type,
+        clearTypeFilter: type == null,
+        currentPage: 1,
+      ),
     );
-    _applySlice();
   }
 
   void toggleIssuesOnly() {
-    state = state.copyWith(
-      issuesOnly: !state.issuesOnly,
-      currentPage: 1,
-      entries: [],
-      hasReachedMax: false,
-      isLoading: false,
-    );
-    _applySlice();
+    _restart(state.copyWith(issuesOnly: !state.issuesOnly, currentPage: 1));
   }
 
   Future<void> loadMore() async {
-    if (state.isLoading || state.isLoadingMore || state.hasReachedMax) return;
-
-    state = state.copyWith(isLoadingMore: true);
-
-    await Future.delayed(const Duration(milliseconds: 400));
-
-    final int nextPage = state.currentPage + 1;
-    state = state.copyWith(currentPage: nextPage, isLoadingMore: false);
-    _applySlice();
+    if (state.isLoading ||
+        state.isLoadingMore ||
+        state.hasReachedMax ||
+        _awaitingEntries) {
+      return;
+    }
+    _restart(
+      state.copyWith(currentPage: state.currentPage + 1, isLoadingMore: true),
+    );
   }
 
   /// The list follows the queue live, so a refresh only goes back to the
-  /// first page; showing the loader again would wait for an emission that
-  /// may never come.
+  /// first page; the entries shown stay until the new watch emits.
   void refresh() {
-    state = state.copyWith(currentPage: 1, hasReachedMax: false);
-    _applySlice();
+    _restart(state.copyWith(currentPage: 1));
   }
 }
 
