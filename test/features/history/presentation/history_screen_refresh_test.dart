@@ -5,13 +5,15 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:app/core/theme/app.theme.dart';
 import 'package:app/features/history/domain/models/history_entry.dart';
 import 'package:app/features/history/domain/models/history_entry_type.dart';
-import 'package:app/features/history/presentation/providers/history_list_provider.dart';
+import 'package:app/features/history/presentation/providers/history_repository_provider.dart';
 import 'package:app/features/history/presentation/providers/paginated_history_provider.dart';
 import 'package:app/features/history/presentation/screens/history_screen.dart';
 import 'package:app/features/sync/domain/models/pending_change.dart';
 import 'package:app/features/sync/domain/models/sync_status.dart';
 import 'package:app/features/sync/presentation/providers/sync_providers.dart';
 import 'package:app/features/sync/sync_engine.dart';
+
+import 'fake_history_repository.dart';
 
 /// Engine whose cycle ends with [result] after [takes]; a lease held by
 /// another isolate ends the same way, with the current status.
@@ -54,7 +56,9 @@ void main() {
     await tester.pumpWidget(
       ProviderScope(
         overrides: [
-          historyListProvider.overrideWith((ref) => Stream.value([_entry])),
+          historyRepositoryProvider.overrideWithValue(
+            FakeHistoryRepository(() => Stream.value([_entry])),
+          ),
           syncStatusProvider.overrideWith(
             (ref) => Stream.value(const SyncStatus()),
           ),
@@ -100,7 +104,9 @@ void main() {
   test('the list is back when Historial is opened again', () async {
     final container = ProviderContainer(
       overrides: [
-        historyListProvider.overrideWith((ref) => Stream.value([_entry])),
+        historyRepositoryProvider.overrideWithValue(
+          FakeHistoryRepository(() => Stream.value([_entry])),
+        ),
       ],
     );
     addTearDown(container.dispose);
@@ -109,7 +115,10 @@ void main() {
     first.close();
     await Future<void>.delayed(Duration.zero);
 
-    final state = container.listen(paginatedHistoryProvider, (_, _) {}).read();
+    final second = container.listen(paginatedHistoryProvider, (_, _) {});
+    // The list arrives with the first emission of the new watch.
+    await Future<void>.delayed(Duration.zero);
+    final state = second.read();
 
     expect(state.isLoading, isFalse);
     expect(state.entries, [_entry]);

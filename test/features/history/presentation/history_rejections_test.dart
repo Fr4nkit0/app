@@ -7,13 +7,15 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:app/core/theme/app.theme.dart';
 import 'package:app/features/history/domain/models/history_entry.dart';
 import 'package:app/features/history/domain/models/history_entry_type.dart';
-import 'package:app/features/history/presentation/providers/history_list_provider.dart';
+import 'package:app/features/history/presentation/providers/history_repository_provider.dart';
 import 'package:app/features/history/presentation/screens/history_screen.dart';
 import 'package:app/features/sync/data/repositories/pending_change.repository.dart';
 import 'package:app/features/sync/domain/models/pending_change.dart';
 import 'package:app/features/sync/domain/models/sync_status.dart';
 import 'package:app/features/sync/presentation/providers/pending_change_repository_provider.dart';
 import 'package:app/features/sync/presentation/providers/sync_providers.dart';
+
+import 'fake_history_repository.dart';
 
 HistoryEntry _entry(
   int id,
@@ -80,10 +82,12 @@ void main() {
     await tester.pumpWidget(
       ProviderScope(
         overrides: [
-          historyListProvider.overrideWith((ref) async* {
-            yield queue.entries;
-            yield* queue.controller.stream;
-          }),
+          historyRepositoryProvider.overrideWithValue(
+            FakeHistoryRepository(() async* {
+              yield queue.entries;
+              yield* queue.controller.stream;
+            }),
+          ),
           pendingChangeRepositoryProvider.overrideWithValue(queue),
           syncStatusProvider.overrideWith(
             (ref) => Stream.value(const SyncStatus(rejectedCount: 1)),
