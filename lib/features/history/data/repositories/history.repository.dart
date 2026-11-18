@@ -7,6 +7,7 @@ import 'package:app/core/utils/money_formatter.dart';
 import 'package:app/features/history/domain/models/customer_record.dart';
 import 'package:app/features/history/domain/models/history_entry.dart';
 import 'package:app/features/history/domain/models/history_entry_type.dart';
+import 'package:app/features/history/domain/models/history_filter.dart';
 import 'package:app/features/payments/domain/models/payment.dart';
 import 'package:app/features/sales/data/database/record_status.dart';
 import 'package:app/features/sales/domain/models/payment_method.dart';
@@ -14,8 +15,18 @@ import 'package:app/features/sync/data/repositories/admin_cancellations.dart';
 import 'package:app/features/sync/domain/models/pending_change.dart';
 
 abstract class HistoryRepository {
-  /// Every record in the local sync queue, newest first.
-  Stream<List<HistoryEntry>> watchHistory();
+  /// The records in the local sync queue that [filter] lists, newest
+  /// first: the newest [limit] of them, or every one when [limit] is null.
+  Stream<List<HistoryEntry>> watchHistory({
+    HistoryFilter filter = const HistoryFilter(),
+    int? limit,
+  });
+
+  /// How many records of each type were queued from [since] on, read again
+  /// at every change of the queue; a type with none is left out.
+  Stream<Map<HistoryEntryType, int>> watchCountsByType({
+    required DateTime Function() since,
+  });
 
   /// The visits, sales, payments and container movements of [customerId]
   /// stored on the device, newest first: the newest [limit] of them, or
@@ -36,11 +47,125 @@ class DriftHistoryRepository implements HistoryRepository {
 
   static const _unknownCustomer = 'Cliente desconocido';
 
+  /// How many queue rows a search reads at a time while it fills a page.
+  static const _searchBatch = 100;
+
   @override
-  Stream<List<HistoryEntry>> watchHistory() {
+  Stream<List<HistoryEntry>> watchHistory({
+    HistoryFilter filter = const HistoryFilter(),
+    int? limit,
+  }) {
+    if (filter.hasSearch) return _watchSearch(filter, limit);
     final query = _db.select(_db.pendingChangeTable)
+      ..where((t) => _listedBy(t, filter))
       ..orderBy([(t) => OrderingTerm.desc(t.pendingChangeId)]);
+    if (limit != null) query.limit(limit);
     return query.watch().asyncMap(_toEntries);
+  }
+
+  /// The searched text is in names and descriptions the device builds, not
+  /// in columns, so the queue is read newest first a batch at a time, by
+  /// keyset, until the page is full.
+  Stream<List<HistoryEntry>> _watchSearch(
+    HistoryFilter filter,
+    int? limit,
+  ) async* {
+    yield await _search(filter, limit);
+    await for (final _ in _db.tableUpdates(
+      TableUpdateQuery.onTable(_db.pendingChangeTable),
+    )) {
+      yield await _search(filter, limit);
+    }
+  }
+
+  Future<List<HistoryEntry>> _search(HistoryFilter filter, int? limit) async {
+    final found = <HistoryEntry>[];
+    int? before;
+    while (true) {
+      final query = _db.select(_db.pendingChangeTable)
+        ..where(
+          (t) =>
+              _listedBy(t, filter) &
+              (before == null
+                  ? const Constant(true)
+                  : t.pendingChangeId.isSmallerThanValue(before)),
+        )
+        ..orderBy([(t) => OrderingTerm.desc(t.pendingChangeId)])
+        ..limit(_searchBatch);
+      final rows = await query.get();
+      found.addAll((await _toEntries(rows)).where(filter.matchesSearch));
+      if (limit != null && found.length >= limit) {
+        return found.take(limit).toList();
+      }
+      if (rows.length < _searchBatch) return found;
+      before = rows.last.pendingChangeId;
+    }
+  }
+
+  /// The queue rows [filter] lists, except its search text.
+  Expression<bool> _listedBy($PendingChangeTableTable t, HistoryFilter filter) {
+    var listed = _notVisitedStopUpdate(t);
+    if (filter.hideDismissed) {
+      listed &= t.status.isNotValue(PendingStatus.dismissed.wireName);
+    }
+    if (filter.issuesOnly) {
+      listed &= t.status.isIn([
+        PendingStatus.rejected.wireName,
+        PendingStatus.outdated.wireName,
+      ]);
+    }
+    if (filter.type case final type?) {
+      listed &= t.entity.isIn([
+        for (final entity in PendingEntity.values)
+          if (_typeOf(entity) == type) entity.wireName,
+      ]);
+    }
+    return listed;
+  }
+
+  /// Closing a visit also queues a stop update; the visit row already says
+  /// what happened at that stop, so the update is not listed.
+  Expression<bool> _notVisitedStopUpdate($PendingChangeTableTable t) {
+    final queuedVisits = _db.selectOnly(_db.pendingChangeTable)
+      ..addColumns([_db.pendingChangeTable.entityId])
+      ..where(
+        _db.pendingChangeTable.entity.equals(PendingEntity.visit.wireName),
+      );
+    final visitedStops = _db.selectOnly(_db.visitTable)
+      ..addColumns([_db.visitTable.routeStopId])
+      ..where(_db.visitTable.visitId.isInQuery(queuedVisits));
+    return (t.entity.equals(PendingEntity.routeStop.wireName) &
+            t.action.equals(PendingAction.update.wireName) &
+            t.entityId.isInQuery(visitedStops))
+        .not();
+  }
+
+  @override
+  Stream<Map<HistoryEntryType, int>> watchCountsByType({
+    required DateTime Function() since,
+  }) async* {
+    yield await _countsByType(since());
+    await for (final _ in _db.tableUpdates(
+      TableUpdateQuery.onTable(_db.pendingChangeTable),
+    )) {
+      yield await _countsByType(since());
+    }
+  }
+
+  Future<Map<HistoryEntryType, int>> _countsByType(DateTime since) async {
+    final t = _db.pendingChangeTable;
+    final count = t.pendingChangeId.count();
+    final query = _db.selectOnly(t)
+      ..addColumns([t.entity, count])
+      ..where(t.createdAt.isBiggerOrEqualValue(since))
+      ..groupBy([t.entity]);
+    final counts = <HistoryEntryType, int>{};
+    for (final row in await query.get()) {
+      final type = _typeOf(PendingEntity.fromWire(row.read(t.entity)!));
+      final n = row.read(count) ?? 0;
+      counts.update(type, (c) => c + n, ifAbsent: () => n);
+    }
+    return counts;
   }
 
   /// Reads the record tables themselves, not the sync queue, so records the
