@@ -17,6 +17,10 @@ abstract class CustomerRepository {
   Future<void> disableCustomer(String customerId);
   Stream<int> watchCustomerCount();
   Stream<List<Customer>> watchAllCustomers();
+
+  /// The listed customer with [id], or null when it does not exist or is
+  /// hidden from the lists.
+  Stream<Customer?> watchCustomer(String id);
   Future<List<Customer>> getCustomersPage({
     required int page,
     required int pageSize,

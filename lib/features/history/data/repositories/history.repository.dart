@@ -17,9 +17,13 @@ abstract class HistoryRepository {
   /// Every record in the local sync queue, newest first.
   Stream<List<HistoryEntry>> watchHistory();
 
-  /// Every visit, sale, payment and container movement of [customerId]
-  /// stored on the device, newest first.
-  Stream<List<CustomerRecord>> watchCustomerRecords(String customerId);
+  /// The visits, sales, payments and container movements of [customerId]
+  /// stored on the device, newest first: the newest [limit] of them, or
+  /// every one when [limit] is null.
+  Stream<List<CustomerRecord>> watchCustomerRecords(
+    String customerId, {
+    int? limit,
+  });
 }
 
 /// Builds the history from the sync queue: each queued change is one record
@@ -42,8 +46,11 @@ class DriftHistoryRepository implements HistoryRepository {
   /// Reads the record tables themselves, not the sync queue, so records the
   /// bootstrap or a pull stored (with no pending change) are listed too.
   @override
-  Stream<List<CustomerRecord>> watchCustomerRecords(String customerId) async* {
-    yield await _customerRecords(customerId);
+  Stream<List<CustomerRecord>> watchCustomerRecords(
+    String customerId, {
+    int? limit,
+  }) async* {
+    yield await _customerRecords(customerId, limit);
     await for (final _ in _db.tableUpdates(
       TableUpdateQuery.onAllTables([
         _db.visitTable,
@@ -54,27 +61,40 @@ class DriftHistoryRepository implements HistoryRepository {
         _admin.watchedTable,
       ]),
     )) {
-      yield await _customerRecords(customerId);
+      yield await _customerRecords(customerId, limit);
     }
   }
 
-  Future<List<CustomerRecord>> _customerRecords(String customerId) async {
+  /// The newest [limit] records of all kinds are among the newest [limit]
+  /// of each kind, so each table is read up to [limit] rows only.
+  Future<List<CustomerRecord>> _customerRecords(
+    String customerId,
+    int? limit,
+  ) async {
     final records = [
-      ...await _customerVisits(customerId),
-      ...await _customerSales(customerId),
-      ...await _customerPayments(customerId),
-      ...await _customerMovements(customerId),
-    ];
-    return records..sort((a, b) => b.date.compareTo(a.date));
+      ...await _customerVisits(customerId, limit),
+      ...await _customerSales(customerId, limit),
+      ...await _customerPayments(customerId, limit),
+      ...await _customerMovements(customerId, limit),
+    ]..sort((a, b) => b.date.compareTo(a.date));
+    return limit == null ? records : records.take(limit).toList();
   }
 
-  Future<List<CustomerRecord>> _customerVisits(String customerId) async {
+  Future<List<CustomerRecord>> _customerVisits(
+    String customerId,
+    int? limit,
+  ) async {
     final query = _db.select(_db.visitTable).join([
       leftOuterJoin(
         _db.visitOutcomeTable,
         _db.visitOutcomeTable.id.equalsExp(_db.visitTable.outcomeId),
       ),
     ])..where(_db.visitTable.customerId.equals(customerId));
+    if (limit != null) {
+      query
+        ..orderBy([OrderingTerm.desc(_db.visitTable.arrived_at)])
+        ..limit(limit);
+    }
     return query.map((row) {
       final visit = row.readTable(_db.visitTable);
       return CustomerRecord(
@@ -87,10 +107,18 @@ class DriftHistoryRepository implements HistoryRepository {
     }).get();
   }
 
-  Future<List<CustomerRecord>> _customerSales(String customerId) async {
-    final sales = await (_db.select(
-      _db.saleTable,
-    )..where((t) => t.customerId.equals(customerId))).get();
+  Future<List<CustomerRecord>> _customerSales(
+    String customerId,
+    int? limit,
+  ) async {
+    final salesQuery = _db.select(_db.saleTable)
+      ..where((t) => t.customerId.equals(customerId));
+    if (limit != null) {
+      salesQuery
+        ..orderBy([(t) => OrderingTerm.desc(t.saleDate)])
+        ..limit(limit);
+    }
+    final sales = await salesQuery.get();
     final itemsQuery = _db.select(_db.saleItemTable).join([
       innerJoin(
         _db.productTable,
@@ -129,10 +157,18 @@ class DriftHistoryRepository implements HistoryRepository {
     ];
   }
 
-  Future<List<CustomerRecord>> _customerPayments(String customerId) async {
-    final payments = await (_db.select(
-      _db.paymentTable,
-    )..where((t) => t.customerId.equals(customerId))).get();
+  Future<List<CustomerRecord>> _customerPayments(
+    String customerId,
+    int? limit,
+  ) async {
+    final paymentsQuery = _db.select(_db.paymentTable)
+      ..where((t) => t.customerId.equals(customerId));
+    if (limit != null) {
+      paymentsQuery
+        ..orderBy([(t) => OrderingTerm.desc(t.createdAt)])
+        ..limit(limit);
+    }
+    final payments = await paymentsQuery.get();
     final byAdmin = await _admin.paymentIds();
     return [
       for (final payment in payments)
@@ -153,7 +189,10 @@ class DriftHistoryRepository implements HistoryRepository {
 
   /// A reversal only undoes another movement, so it is not listed; the
   /// movement of a cancelled sale is listed as cancelled instead.
-  Future<List<CustomerRecord>> _customerMovements(String customerId) async {
+  Future<List<CustomerRecord>> _customerMovements(
+    String customerId,
+    int? limit,
+  ) async {
     final query =
         _db.select(_db.containerMovementTable).join([
           leftOuterJoin(
@@ -164,6 +203,11 @@ class DriftHistoryRepository implements HistoryRepository {
           _db.containerMovementTable.customerId.equals(customerId) &
               _db.containerMovementTable.reversesMovementId.isNull(),
         );
+    if (limit != null) {
+      query
+        ..orderBy([OrderingTerm.desc(_db.containerMovementTable.createdAt)])
+        ..limit(limit);
+    }
     return query.map((row) {
       final movement = row.readTable(_db.containerMovementTable);
       return CustomerRecord(

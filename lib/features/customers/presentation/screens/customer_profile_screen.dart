@@ -18,6 +18,7 @@ import 'package:app/features/customers/presentation/widgets/customer_agreements_
 import 'package:app/features/customers/presentation/widgets/customer_preferences_section.dart';
 import 'package:app/features/customers/presentation/widgets/customer_history_list.dart';
 import 'package:app/features/history/presentation/providers/customer_history_provider.dart';
+import 'package:app/features/history/domain/models/customer_record.dart';
 import 'package:app/features/sales/presentation/providers/cancel_sale_usecase_provider.dart';
 import 'package:app/features/sales/presentation/providers/sale_draft_provider.dart';
 import 'package:app/features/sales/presentation/widgets/cancel_record_dialog.dart';
@@ -47,6 +48,12 @@ class CustomerProfileScreen extends ConsumerStatefulWidget {
 
 class _CustomerProfileScreenState extends ConsumerState<CustomerProfileScreen> {
   int _selectedTab = 0;
+
+  /// How many records the Historial tab shows; grows a page per "Ver más".
+  int _recordsLimit = customerRecordsPageSize;
+
+  /// The records last shown, kept while a larger page loads.
+  List<CustomerRecord>? _shownRecords;
 
   /// Disabling is allowed with a stop today; the dialog only warns about it.
   Future<void> _disable(Customer customer) async {
@@ -617,36 +624,46 @@ class _CustomerProfileScreenState extends ConsumerState<CustomerProfileScreen> {
     }
   }
 
-  /// Every record of the customer stored on the device, including the ones
-  /// the bootstrap brought from the server.
+  /// The newest records of the customer stored on the device, including
+  /// the ones the bootstrap brought from the server, a page at a time.
   Widget _buildHistoryTab(Customer customer) {
     final containerLabels = <String, String>{
       for (final type
           in ref.watch(containerTypesProvider).value ?? const <ContainerType>[])
         type.code: type.label,
     };
+    final limit = _recordsLimit;
+    Widget list(List<CustomerRecord> records) => records.isEmpty
+        ? _buildEmptyState(
+            icon: Icons.history_outlined,
+            title: 'Sin actividad reciente',
+            subtitle: 'Este cliente no tiene historial de visitas ni ventas.',
+          )
+        : CustomerHistoryList(
+            records: records.take(limit).toList(),
+            containerLabels: containerLabels,
+            now: ref.watch(clockProvider)(),
+            onCancelSale: _cancelSale,
+            onCancelPayment: _cancelPayment,
+            onShowMore: records.length > limit
+                ? () => setState(() => _recordsLimit += customerRecordsPageSize)
+                : null,
+          );
     return ref
-        .watch(customerRecordsProvider(customer.id))
+        .watch(customerRecordsProvider((customerId: customer.id, limit: limit)))
         .when(
           skipLoadingOnReload: true,
-          data: (records) => records.isEmpty
-              ? _buildEmptyState(
-                  icon: Icons.history_outlined,
-                  title: 'Sin actividad reciente',
-                  subtitle:
-                      'Este cliente no tiene historial de visitas ni ventas.',
-                )
-              : CustomerHistoryList(
-                  records: records,
-                  containerLabels: containerLabels,
-                  now: ref.watch(clockProvider)(),
-                  onCancelSale: _cancelSale,
-                  onCancelPayment: _cancelPayment,
-                ),
-          loading: () => const Padding(
-            padding: EdgeInsets.all(32),
-            child: Center(child: CircularProgressIndicator()),
-          ),
+          data: (records) {
+            _shownRecords = records;
+            return list(records);
+          },
+          loading: () => switch (_shownRecords) {
+            final shown? => list(shown),
+            null => const Padding(
+              padding: EdgeInsets.all(32),
+              child: Center(child: CircularProgressIndicator()),
+            ),
+          },
           error: (_, _) => _buildEmptyState(
             icon: Icons.error_outline,
             title: 'No pudimos cargar el historial',

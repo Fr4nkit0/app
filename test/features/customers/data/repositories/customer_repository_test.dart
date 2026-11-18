@@ -228,6 +228,28 @@ void main() {
       expect(await driftRepo.watchCustomerCount().first, 1);
     });
 
+    test('watching one customer reads only that customer, and a covered one '
+        'does not resolve', () async {
+      final own = await driftRepo.watchCustomer('own').first;
+      expect(own?.name, 'Ramón Propio');
+      expect(own?.addresses.single.street, 'Mitre 10');
+      expect(await driftRepo.watchCustomer('cover').first, isNull);
+      expect(await driftRepo.watchCustomer('missing').first, isNull);
+    });
+
+    test('a watched customer emits again when it changes', () async {
+      final names = driftRepo.watchCustomer('own').map((c) => c?.name);
+      final expectation = expectLater(
+        names,
+        emitsInOrder(['Ramón Propio', 'Ramón Nuevo']),
+      );
+      await Future<void>.delayed(const Duration(milliseconds: 10));
+      await (db.update(db.customerTable)
+            ..where((t) => t.customerId.equals('own')))
+          .write(const CustomerTableCompanion(name: Value('Ramón Nuevo')));
+      await expectation;
+    });
+
     test('an own customer (marker false) stays listed', () async {
       await (db.update(db.customerTable)
             ..where((t) => t.customerId.equals('cover')))

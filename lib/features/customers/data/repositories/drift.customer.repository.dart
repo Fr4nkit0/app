@@ -573,7 +573,17 @@ class DriftCustomerRepository implements CustomerRepository {
   }
 
   @override
-  Stream<List<Customer>> watchAllCustomers() {
+  Stream<List<Customer>> watchAllCustomers() =>
+      _watchCustomers(_listed(db.customerTable));
+
+  @override
+  Stream<Customer?> watchCustomer(String id) => _watchCustomers(
+    _listed(db.customerTable) & db.customerTable.customerId.equals(id),
+  ).map((customers) => customers.firstOrNull);
+
+  /// The customers matching [filter] with their enabled addresses,
+  /// preferences and balance, re-emitted whenever any of them changes.
+  Stream<List<Customer>> _watchCustomers(Expression<bool> filter) {
     final query = db.select(db.customerTable).join([
       leftOuterJoin(
         db.customerAddressTable,
@@ -590,7 +600,7 @@ class DriftCustomerRepository implements CustomerRepository {
             db.customerPreferenceTable.enabled.equals(true),
       ),
       _account.balanceJoin(db.customerTable.customerId),
-    ])..where(_listed(db.customerTable));
+    ])..where(filter);
 
     return query.watch().map((rows) {
       final Map<String, Customer> customers = {};

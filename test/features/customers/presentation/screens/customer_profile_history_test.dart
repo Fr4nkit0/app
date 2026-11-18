@@ -22,6 +22,7 @@ import 'package:app/features/sales/domain/models/sale_item.dart';
 import 'package:app/features/sales/domain/usecases/register_sale.usecase.dart';
 import 'package:app/features/sync/data/repositories/pending_change.repository.dart';
 import 'package:app/features/sync/domain/models/pending_change.dart';
+import 'package:app/features/visits/presentation/widgets/visit_record_tile.dart';
 
 /// Lets the in-memory database answer; its queries run outside fake time.
 Future<void> settle(WidgetTester tester) async {
@@ -212,6 +213,35 @@ void main() {
       find.textContaining('Bidón 20L · Entregó 8 · Devolvió 3'),
       findsOneWidget,
     );
+    await unmount(tester);
+  });
+
+  testWidgets('the Historial tab shows the newest 20 records and loads more '
+      'on demand', (tester) async {
+    await tester.runAsync(() async {
+      await seedBootstrap();
+      for (var i = 0; i < 25; i++) {
+        await db
+            .into(db.paymentTable)
+            .insert(
+              PaymentTableCompanion.insert(
+                customerId: 'cust-1',
+                amount: 100.0 + i,
+                paymentMethod: 'TRANSFERENCIA',
+              ),
+            );
+      }
+    });
+    await pumpProfile(tester, 'cust-1');
+
+    expect(find.byType(VisitRecordTile), findsNWidgets(20));
+    final more = find.text('Ver más');
+    await tester.ensureVisible(more);
+    await tester.tap(more);
+    await settle(tester);
+
+    expect(find.byType(VisitRecordTile), findsNWidgets(29));
+    expect(find.text('Ver más'), findsNothing);
     await unmount(tester);
   });
 

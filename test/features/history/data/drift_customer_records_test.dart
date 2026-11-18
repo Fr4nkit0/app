@@ -310,6 +310,27 @@ void main() {
     await expectation;
   });
 
+  test('a limit keeps only the newest records across every kind', () async {
+    final all = await sut.watchCustomerRecords('cus-1').first;
+    expect(all.length, greaterThan(3));
+
+    final newest = await sut.watchCustomerRecords('cus-1', limit: 3).first;
+
+    expect(newest.length, 3);
+    expect(
+      [for (final r in newest) r.date],
+      [for (final r in all.take(3)) r.date],
+    );
+  });
+
+  test('a limit larger than the records returns them all', () async {
+    final all = await sut.watchCustomerRecords('cus-1').first;
+    final limited = await sut
+        .watchCustomerRecords('cus-1', limit: all.length + 5)
+        .first;
+    expect(limited.length, all.length);
+  });
+
   test('a customer with no records gets an empty list', () async {
     await db
         .into(db.customerTable)
