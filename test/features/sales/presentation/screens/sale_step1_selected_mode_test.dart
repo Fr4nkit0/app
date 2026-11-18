@@ -26,7 +26,6 @@ Customer _customer() => Customer(
   preferences: const [],
   productLabels: const [],
   debtAmount: 0,
-  isFrequent: false,
 );
 
 /// Wraps with MaterialApp+SalesTokens.

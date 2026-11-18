@@ -774,17 +774,6 @@ class _CustomerProfileScreenState extends ConsumerState<CustomerProfileScreen> {
                   value: customer.phone ?? 'No registrado',
                   icon: Icons.phone_android_rounded,
                 ),
-                Divider(height: 16, color: context.marilin.fill),
-                _buildDataRow(
-                  label: 'Frecuencia de compra',
-                  value: customer.isFrequent
-                      ? 'Cliente Frecuente'
-                      : 'Cliente Ocasional',
-                  icon: Icons.star_border_rounded,
-                  valueColor: customer.isFrequent
-                      ? Colors.amber.shade800
-                      : null,
-                ),
               ],
             ),
           ),

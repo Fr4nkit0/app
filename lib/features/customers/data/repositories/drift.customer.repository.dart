@@ -508,9 +508,20 @@ class DriftCustomerRepository implements CustomerRepository {
         .watchSingle();
   }
 
+  /// Follows every table [_listedCustomers] and [_listed] read, including
+  /// the sync state that marks customers removed ([RemovedCustomers]).
   @override
-  Stream<List<Customer>> watchAllCustomers() =>
-      _watchCustomers(_listed(db.customerTable));
+  Stream<void> watchChanges() => db
+      .tableUpdates(
+        TableUpdateQuery.onAllTables([
+          db.customerTable,
+          db.customerAddressTable,
+          db.customerPreferenceTable,
+          _account.watchedTable,
+          db.syncStateTable,
+        ]),
+      )
+      .map((_) {});
 
   @override
   Stream<Customer?> watchCustomer(String id) => _watchCustomers(

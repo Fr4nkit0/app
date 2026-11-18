@@ -2,10 +2,6 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:app/features/customers/domain/models/customer.dart';
 import 'package:app/features/customers/presentation/providers/customer_repository_provider.dart';
 
-final customerListProvider = StreamProvider<List<Customer>>((ref) {
-  return ref.watch(customerRepositoryProvider).watchAllCustomers();
-});
-
 /// Watches a single listed customer by ID, reading only that customer.
 final customerByIdProvider = StreamProvider.family<Customer?, String>(
   (ref, id) => ref.watch(customerRepositoryProvider).watchCustomer(id),
@@ -20,12 +16,16 @@ class PaginatedCustomerListState {
   final bool isLoading;
   final String searchQuery;
 
+  /// The last read failed; what was already shown stays.
+  final bool loadFailed;
+
   PaginatedCustomerListState({
     this.customers = const [],
     this.currentPage = 0,
     this.hasReachedMax = false,
     this.isLoading = false,
     this.searchQuery = '',
+    this.loadFailed = false,
   });
 
   PaginatedCustomerListState copyWith({
@@ -34,6 +34,7 @@ class PaginatedCustomerListState {
     bool? hasReachedMax,
     bool? isLoading,
     String? searchQuery,
+    bool? loadFailed,
   }) {
     return PaginatedCustomerListState(
       customers: customers ?? this.customers,
@@ -41,6 +42,7 @@ class PaginatedCustomerListState {
       hasReachedMax: hasReachedMax ?? this.hasReachedMax,
       isLoading: isLoading ?? this.isLoading,
       searchQuery: searchQuery ?? this.searchQuery,
+      loadFailed: loadFailed ?? this.loadFailed,
     );
   }
 }
@@ -60,11 +62,14 @@ class PaginatedCustomerList extends Notifier<PaginatedCustomerListState> {
 
   @override
   PaginatedCustomerListState build() {
-    // Drift's live query emits whenever a sync or an edit touches the
-    // customers, so the loaded pages are reloaded instead of going stale.
-    ref.listen(customerListProvider, (_, next) {
-      if (next.hasValue) reload();
-    });
+    // The repository signals whenever a sync or an edit touches what the
+    // list shows, so the loaded pages are reloaded instead of going stale.
+    // The signal itself reads nothing: only the shown pages are re-read.
+    final changes = ref
+        .watch(customerRepositoryProvider)
+        .watchChanges()
+        .listen((_) => reload());
+    ref.onDispose(changes.cancel);
     return PaginatedCustomerListState();
   }
 
@@ -105,11 +110,12 @@ class PaginatedCustomerList extends Notifier<PaginatedCustomerListState> {
         currentPage: pages,
         hasReachedMax: customers.length < _pageSize * pages,
         isLoading: false,
+        loadFailed: false,
       );
     } catch (_) {
       // Keep what is shown; the next change or a manual refresh retries.
       if (generation == _generation) {
-        state = state.copyWith(isLoading: false);
+        state = state.copyWith(isLoading: false, loadFailed: true);
       }
     }
   }
@@ -146,10 +152,11 @@ class PaginatedCustomerList extends Notifier<PaginatedCustomerListState> {
         currentPage: page + 1,
         hasReachedMax: newCustomers.length < _pageSize,
         isLoading: false,
+        loadFailed: false,
       );
     } catch (e) {
       if (generation == _generation) {
-        state = state.copyWith(isLoading: false);
+        state = state.copyWith(isLoading: false, loadFailed: true);
       }
     }
   }
@@ -177,11 +184,23 @@ class PaginatedCustomerList extends Notifier<PaginatedCustomerListState> {
       currentPage: 0,
       hasReachedMax: false,
       isLoading: false,
+      loadFailed: false,
     );
   }
 }
 
+/// The Clientes tab's list.
 final paginatedCustomerListProvider =
     NotifierProvider<PaginatedCustomerList, PaginatedCustomerListState>(
       PaginatedCustomerList.new,
     );
+
+/// The sale picker's list: same paged search as Clientes, with its own
+/// query and pages. Both tabs stay mounted side by side, so sharing one
+/// instance would leak a search typed in one into the other. Disposed
+/// while the picker is not shown.
+final customerPickerListProvider =
+    NotifierProvider.autoDispose<
+      PaginatedCustomerList,
+      PaginatedCustomerListState
+    >(PaginatedCustomerList.new);

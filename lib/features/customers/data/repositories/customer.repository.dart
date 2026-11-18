@@ -16,7 +16,11 @@ abstract class CustomerRepository {
   /// Throws [NotFoundFailure] when the customer does not exist.
   Future<void> disableCustomer(String customerId);
   Stream<int> watchCustomerCount();
-  Stream<List<Customer>> watchAllCustomers();
+
+  /// Emits whenever something the customer lists show may have changed:
+  /// a customer, its addresses, preferences or balance, or its removal.
+  /// Reads no customer; listeners re-read what they show.
+  Stream<void> watchChanges();
 
   /// The listed customer with [id], or null when it does not exist or is
   /// hidden from the lists.

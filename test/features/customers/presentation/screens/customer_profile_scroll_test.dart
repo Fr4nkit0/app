@@ -177,6 +177,22 @@ void main() {
     expect(find.text('Sanatorio').hitTestable(), findsNothing);
   }
 
+  testWidgets('the account data shows no purchase frequency row', (
+    tester,
+  ) async {
+    await pumpProfile(tester);
+    await tester.tap(find.text('Datos'));
+    await settle(tester);
+
+    expect(find.text('Teléfono', skipOffstage: false), findsOneWidget);
+    expect(
+      find.text('Frecuencia de compra', skipOffstage: false),
+      findsNothing,
+    );
+    expect(find.text('Cliente Ocasional', skipOffstage: false), findsNothing);
+    await unmount(tester);
+  });
+
   testWidgets('marking the primary address keeps the scroll position', (
     tester,
   ) async {

@@ -328,11 +328,10 @@ void main() {
     await service.pull();
 
     final customers = DriftCustomerRepository(db);
-    expect((await customers.watchAllCustomers().first).map((c) => c.name), ['Ana']);
     expect((await customers.getCustomersPage(page: 0, pageSize: 10)).map((c) => c.name), ['Ana']);
     expect((await customers.searchCustomers(query: 'Beto', page: 0, pageSize: 10)).map((c) => c.name), isEmpty);
     expect(await customers.watchCustomerCount().first, 1);
-    expect((await customers.watchAllCustomers().first).single.addresses, isEmpty);
+    expect((await customers.getCustomersPage(page: 0, pageSize: 10)).single.addresses, isEmpty);
 
     final products = await DriftProductRepository(db).watchAllProducts().first;
     expect(products.map((p) => p.name), ['Water 20L']);

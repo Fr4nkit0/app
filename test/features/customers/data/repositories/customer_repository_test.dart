@@ -12,6 +12,99 @@ import 'package:app/features/customers/domain/customer_search.dart';
 import 'package:app/features/customers/data/repositories/customer_search_prefilter.dart';
 
 void main() {
+  group('watchChanges', () {
+    late AppDatabase db;
+    late DriftCustomerRepository repo;
+
+    setUp(() async {
+      db = AppDatabase(NativeDatabase.memory());
+      repo = DriftCustomerRepository(db);
+      await db
+          .into(db.customerTable)
+          .insert(
+            CustomerTableCompanion.insert(
+              customerId: const Value('c-1'),
+              name: 'Kiosco',
+            ),
+          );
+    });
+    tearDown(() => db.close());
+
+    /// Counts the signals [write] causes.
+    Future<int> signalsOf(Future<void> Function() write) async {
+      var signals = 0;
+      final subscription = repo.watchChanges().listen((_) => signals++);
+      await Future<void>.delayed(const Duration(milliseconds: 20));
+      await write();
+      await Future<void>.delayed(const Duration(milliseconds: 20));
+      await subscription.cancel();
+      return signals;
+    }
+
+    test('signals a write to anything the customer lists show', () async {
+      final writes = <String, Future<void> Function()>{
+        'customer': () => db
+            .into(db.customerTable)
+            .insert(
+              CustomerTableCompanion.insert(
+                customerId: const Value('c-2'),
+                name: 'Almacen',
+              ),
+            ),
+        'address': () => db
+            .into(db.customerAddressTable)
+            .insert(
+              CustomerAddressTableCompanion.insert(
+                customerId: const Value('c-1'),
+                street: const Value('Belgrano 340'),
+              ),
+            ),
+        'preference': () => db
+            .into(db.customerPreferenceTable)
+            .insert(
+              CustomerPreferenceTableCompanion.insert(
+                customerId: const Value('c-1'),
+                timeWindowStart: '09:00',
+              ),
+            ),
+        'balance': () => db
+            .into(db.customerBalanceTable)
+            .insert(
+              CustomerBalanceTableCompanion.insert(
+                customerId: 'c-1',
+                currentBalance: const Value(1500),
+              ),
+            ),
+        'removal': () => db
+            .into(db.syncStateTable)
+            .insert(
+              SyncStateTableCompanion.insert(
+                key: 'removed_customer:c-1',
+                value: '2026-11-18T12:00:00Z',
+              ),
+            ),
+      };
+      for (final MapEntry(:key, :value) in writes.entries) {
+        expect(await signalsOf(value), greaterThan(0), reason: key);
+      }
+    });
+
+    test('stays quiet for a write the lists do not show', () async {
+      final signals = await signalsOf(
+        () => db
+            .into(db.productTable)
+            .insert(
+              ProductTableCompanion.insert(
+                productId: const Value('p-1'),
+                name: 'Agua 20L',
+                price: 5200,
+              ),
+            ),
+      );
+      expect(signals, 0);
+    });
+  });
+
   group('DriftCustomerRepository Mapping', () {
     late AppDatabase db;
     late DriftCustomerRepository repo;
@@ -250,8 +343,10 @@ void main() {
       );
     });
 
-    test('are left out of the watched list and the count', () async {
-      expect(ids(await driftRepo.watchAllCustomers().first), ['own']);
+    test('are left out of the list and the count', () async {
+      expect(ids(await driftRepo.getCustomersPage(page: 0, pageSize: 10)), [
+        'own',
+      ]);
       expect(await driftRepo.watchCustomerCount().first, 1);
     });
 

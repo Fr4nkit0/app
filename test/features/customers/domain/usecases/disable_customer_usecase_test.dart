@@ -79,7 +79,6 @@ void main() {
 
     List<String> ids(Iterable<dynamic> customers) =>
         [for (final c in customers) c.id as String];
-    expect(ids(await repo.watchAllCustomers().first), ['cust-2']);
     expect(ids(await repo.getCustomersPage(page: 0, pageSize: 10)), ['cust-2']);
     expect(
       ids(await repo.searchCustomers(query: 'Kiosco', page: 0, pageSize: 10)),

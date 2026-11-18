@@ -390,9 +390,6 @@ void main() {
 
     Future<List<String>> visibleNames() async {
       final repo = DriftCustomerRepository(db);
-      final watched = (await repo.watchAllCustomers().first)
-          .map((c) => c.name)
-          .toList();
       final paged = (await repo.getCustomersPage(
         page: 0,
         pageSize: 10,
@@ -402,10 +399,9 @@ void main() {
         page: 0,
         pageSize: 10,
       )).map((c) => c.name).toList();
-      expect(paged..sort(), watched.toList()..sort());
-      expect(searched..sort(), watched.toList()..sort());
-      expect(await repo.watchCustomerCount().first, watched.length);
-      return watched..sort();
+      expect(searched..sort(), paged..sort());
+      expect(await repo.watchCustomerCount().first, paged.length);
+      return paged;
     }
 
     test('hides a customer matched by server id from Clientes and sales, '
@@ -447,17 +443,20 @@ void main() {
     test(
       'the Clientes list watching the customers drops it after the pull',
       () async {
-        final names = DriftCustomerRepository(db).watchAllCustomers().map(
-          (list) => [for (final c in list) c.name]..sort(),
-        );
-        final emitted = expectLater(names, emitsThrough(['Almacen Sur']));
+        final repo = DriftCustomerRepository(db);
+        final changed = repo.watchChanges().first;
         pullRows = {
           'customers_removed': [removed(id: 10)],
         };
 
         await sync.pull();
 
-        await emitted;
+        await changed;
+        final names = [
+          for (final c in await repo.getCustomersPage(page: 0, pageSize: 10))
+            c.name,
+        ];
+        expect(names, ['Almacen Sur']);
       },
     );
 

@@ -10,6 +10,7 @@ import 'package:app/features/customers/data/repositories/customer.repository.dar
 import 'package:app/features/customers/domain/models/customer.dart';
 import 'package:app/features/customers/presentation/providers/customer_repository_provider.dart';
 import 'package:app/features/customers/presentation/providers/customer_count_provider.dart';
+import 'package:app/features/sync/data/repositories/removed_customers.dart';
 
 void main() {
   group('database', _databaseTests);
@@ -51,6 +52,24 @@ void _databaseTests() {
     );
   });
 
+  test('a customer removed by a pull leaves the list without a manual refresh', () async {
+    for (final (id, name) in [('c-1', 'Kiosco Norte'), ('c-2', 'Almacen Sur')]) {
+      await db.into(db.customerTable).insert(
+            CustomerTableCompanion.insert(customerId: drift.Value(id), name: name),
+          );
+    }
+    await container.read(paginatedCustomerListProvider.notifier).loadNextPage();
+    await settle();
+
+    await RemovedCustomers(db).hide(serverId: null, clientUuid: 'c-1', removedAt: '2026-11-18T12:00:00Z');
+    await settle();
+
+    expect(
+      container.read(paginatedCustomerListProvider).customers.map((c) => c.name),
+      ['Almacen Sur'],
+    );
+  });
+
   test('a customer renamed by a pull is shown with its new name', () async {
     await db.into(db.customerTable).insert(
           CustomerTableCompanion.insert(customerId: const drift.Value('c-1'), name: 'Prueba'),
@@ -83,10 +102,10 @@ class _GatedCustomerRepository implements CustomerRepository {
 
   List<Customer> stored;
   final reads = <_PageRead>[];
-  final _changes = StreamController<List<Customer>>.broadcast();
+  final _changes = StreamController<void>.broadcast();
 
-  /// A sync writes the customers: the live query emits.
-  void sync() => _changes.add(stored);
+  /// A sync writes the customers: the change signal emits.
+  void sync() => _changes.add(null);
 
   void answer(_PageRead read) {
     final start = read.page * read.pageSize;
@@ -96,7 +115,7 @@ class _GatedCustomerRepository implements CustomerRepository {
   Future<void> close() => _changes.close();
 
   @override
-  Stream<List<Customer>> watchAllCustomers() => _changes.stream;
+  Stream<void> watchChanges() => _changes.stream;
 
   @override
   Future<List<Customer>> getCustomersPage({
