@@ -1,5 +1,6 @@
 import 'package:app/core/errors/domain_failure.dart';
 import 'package:app/features/customers/data/repositories/customer.repository.dart';
+import 'package:app/features/customers/data/repositories/customer_search_prefilter.dart';
 import 'package:app/features/customers/domain/models/customer.dart';
 import 'package:app/features/customers/domain/customer_search.dart';
 import 'package:app/features/customers/domain/models/customer.address.dart';
@@ -390,14 +391,21 @@ class DriftCustomerRepository implements CustomerRepository {
   Future<List<Customer>> getCustomersPage({
     required int page,
     required int pageSize,
+  }) => _listedCustomers(limit: pageSize, offset: page * pageSize);
+
+  /// The listed customers matching [filter] (all of them when null), in
+  /// the Clientes order and optionally paged by [limit] and [offset], with
+  /// their enabled addresses, preferences and balance.
+  Future<List<Customer>> _listedCustomers({
+    Expression<bool> Function($CustomerTableTable t)? filter,
+    int? limit,
+    int? offset,
   }) async {
-    final offset = page * pageSize;
-    final customerRows =
-        await (db.select(db.customerTable)
-              ..where(_listed)
-              ..orderBy(_listOrder)
-              ..limit(pageSize, offset: offset))
-            .get();
+    final select = db.select(db.customerTable)
+      ..where((t) => filter == null ? _listed(t) : _listed(t) & filter(t))
+      ..orderBy(_listOrder);
+    if (limit != null) select.limit(limit, offset: offset);
+    final customerRows = await select.get();
 
     if (customerRows.isEmpty) return [];
 
@@ -464,95 +472,23 @@ class DriftCustomerRepository implements CustomerRepository {
     }).toList();
   }
 
-  Future<List<Customer>> _getAllCustomers() async {
-    final customerRows =
-        await (db.select(db.customerTable)
-              ..where(_listed)
-              ..orderBy(_listOrder))
-            .get();
-
-    if (customerRows.isEmpty) return [];
-
-    final customerIds = customerRows.map((c) => c.customerId).toList();
-
-    final addresses =
-        await (db.select(db.customerAddressTable)..where(
-              (t) => t.customerId.isIn(customerIds) & t.enabled.equals(true),
-            ))
-            .get();
-
-    final preferences =
-        await (db.select(db.customerPreferenceTable)..where(
-              (t) => t.customerId.isIn(customerIds) & t.enabled.equals(true),
-            ))
-            .get();
-
-    final balanceMap = await _account.balancesOf(customerIds);
-
-    final addrMap = <String, List<CustomerAddressTableData>>{};
-    for (final a in addresses) {
-      addrMap.putIfAbsent(a.customerId, () => []).add(a);
-    }
-
-    final prefMap = <String, List<CustomerPreferenceTableData>>{};
-    for (final p in preferences) {
-      prefMap.putIfAbsent(p.customerId, () => []).add(p);
-    }
-
-    return customerRows.map((row) {
-      final cid = row.customerId;
-      return Customer(
-        id: cid,
-        name: row.name,
-        number: row.serverId,
-        phone: row.phone,
-        debtAmount: balanceMap[cid] ?? 0.0,
-        addresses: (addrMap[cid] ?? [])
-            .map(
-              (a) => CustomerAddress(
-                id: a.addressId,
-                street: a.street,
-                apartment: a.apartment,
-                floor: a.floor,
-                visualReference: a.visualReference,
-                isPrimary: a.isPrimary,
-                latitude: a.latitude,
-                longitude: a.longitude,
-                neighborhood: a.neighborhood,
-              ),
-            )
-            .toList(),
-        preferences: (prefMap[cid] ?? [])
-            .map(
-              (p) => CustomerPreference(
-                id: p.customerPreferenceId,
-                dayOfWeek: p.dayOfWeek,
-                timeWindowStart: p.timeWindowStart,
-                timeWindowEnd: p.timeWindowEnd,
-              ),
-            )
-            .toList(),
-      );
-    }).toList();
-  }
-
+  /// SQLite narrows the customers to the candidates of
+  /// [CustomerSearchPrefilter], and [CustomerSearch] ranks only those: same
+  /// results and order as ranking every listed customer.
   @override
   Future<List<Customer>> searchCustomers({
     required String query,
     required int page,
     required int pageSize,
   }) async {
-    final allCustomers = await _getAllCustomers();
     if (query.isEmpty) {
-      final start = page * pageSize;
-      if (start >= allCustomers.length) return [];
-      final end = (start + pageSize) < allCustomers.length
-          ? (start + pageSize)
-          : allCustomers.length;
-      return allCustomers.sublist(start, end);
+      return getCustomersPage(page: page, pageSize: pageSize);
     }
 
-    final filtered = CustomerSearch.filter(query, allCustomers);
+    final candidates = await _listedCustomers(
+      filter: (t) => CustomerSearchPrefilter.candidates(db, t, query),
+    );
+    final filtered = CustomerSearch.filter(query, candidates);
 
     final start = page * pageSize;
     if (start >= filtered.length) return [];
@@ -572,9 +508,20 @@ class DriftCustomerRepository implements CustomerRepository {
         .watchSingle();
   }
 
+  /// Follows every table [_listedCustomers] and [_listed] read, including
+  /// the sync state that marks customers removed ([RemovedCustomers]).
   @override
-  Stream<List<Customer>> watchAllCustomers() =>
-      _watchCustomers(_listed(db.customerTable));
+  Stream<void> watchChanges() => db
+      .tableUpdates(
+        TableUpdateQuery.onAllTables([
+          db.customerTable,
+          db.customerAddressTable,
+          db.customerPreferenceTable,
+          _account.watchedTable,
+          db.syncStateTable,
+        ]),
+      )
+      .map((_) {});
 
   @override
   Stream<Customer?> watchCustomer(String id) => _watchCustomers(

@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:app/core/utils/money_formatter.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
@@ -6,7 +8,6 @@ import 'package:app/core/widgets/error_state.dart';
 import 'package:app/core/theme/sales_tokens.dart';
 import 'package:app/core/widgets/screen_header.dart';
 import 'package:app/core/widgets/core_search_bar.dart';
-import 'package:app/core/utils/string_utils.dart';
 import 'package:app/features/customers/domain/models/customer.dart';
 import 'package:app/features/customers/presentation/providers/customer_count_provider.dart';
 import 'package:app/features/customers/presentation/screens/create_customer_screens.dart';
@@ -36,17 +37,6 @@ class _SaleStep1ScreenState extends ConsumerState<SaleStep1Screen> {
   void dispose() {
     _searchController.dispose();
     super.dispose();
-  }
-
-  // ─── Multi-field search predicate ─────────────────────────────────────────
-
-  bool _matches(Customer c, String query) {
-    if (query.isEmpty) return true;
-    final addressesStr = c.addresses
-        .map((a) => '${a.street ?? ''} ${a.neighborhood ?? ''}')
-        .join(' ');
-    final target = '${c.name} ${c.phone ?? ''} $addressesStr';
-    return StringUtils.fuzzyMatch(query, target);
   }
 
   // ─── Habitual order apply ──────────────────────────────────────────────────
@@ -153,7 +143,6 @@ class _SaleStep1ScreenState extends ConsumerState<SaleStep1Screen> {
                         : _SearchMode(
                             controller: _searchController,
                             query: _query,
-                            matchesFn: _matches,
                             onQueryChanged: (q) => setState(() => _query = q),
                             onSelectCustomer: (c) => ref
                                 .read(saleDraftProvider.notifier)
@@ -190,11 +179,11 @@ class _SaleStep1ScreenState extends ConsumerState<SaleStep1Screen> {
 
 // ─── SEARCH MODE ──────────────────────────────────────────────────────────────
 
-class _SearchMode extends ConsumerWidget {
+/// Picks the sale's customer from the same paged search as Clientes.
+class _SearchMode extends ConsumerStatefulWidget {
   const _SearchMode({
     required this.controller,
     required this.query,
-    required this.matchesFn,
     required this.onQueryChanged,
     required this.onSelectCustomer,
     required this.onNewCustomer,
@@ -202,15 +191,118 @@ class _SearchMode extends ConsumerWidget {
 
   final TextEditingController controller;
   final String query;
-  final bool Function(Customer, String) matchesFn;
   final ValueChanged<String> onQueryChanged;
   final ValueChanged<Customer> onSelectCustomer;
   final VoidCallback onNewCustomer;
 
   @override
-  Widget build(BuildContext context, WidgetRef ref) {
-    final customersAsync = ref.watch(customerListProvider);
+  ConsumerState<_SearchMode> createState() => _SearchModeState();
+}
+
+class _SearchModeState extends ConsumerState<_SearchMode> {
+  /// How close to the end of the list the next page is asked for.
+  static const double _loadMoreExtent = 300;
+
+  final _scrollController = ScrollController();
+  Timer? _debounceTimer;
+
+  PaginatedCustomerList get _list =>
+      ref.read(customerPickerListProvider.notifier);
+
+  @override
+  void initState() {
+    super.initState();
+    _scrollController.addListener(_loadMoreIfNearEnd);
+    // Opens on whatever the search field holds, so the list always matches
+    // the text the driver sees.
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (mounted) _list.setSearchQuery(widget.controller.text);
+    });
+  }
+
+  @override
+  void dispose() {
+    _debounceTimer?.cancel();
+    _scrollController.dispose();
+    super.dispose();
+  }
+
+  /// Asks for the next page near the end of the list, or right away while
+  /// the shown customers do not fill the screen.
+  void _loadMoreIfNearEnd() {
+    if (!_scrollController.hasClients) return;
+    final state = ref.read(customerPickerListProvider);
+    if (state.isLoading || state.hasReachedMax) return;
+    if (_scrollController.position.extentAfter < _loadMoreExtent) {
+      _list.loadNextPage();
+    }
+  }
+
+  void _onChanged(String query) {
+    widget.onQueryChanged(query);
+    _debounceTimer?.cancel();
+    _debounceTimer = Timer(const Duration(milliseconds: 400), () {
+      if (mounted) _list.setSearchQuery(query);
+    });
+  }
+
+  void _onClear() {
+    _debounceTimer?.cancel();
+    widget.controller.clear();
+    widget.onQueryChanged('');
+    _list.setSearchQuery('');
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final state = ref.watch(customerPickerListProvider);
     final selected = ref.watch(saleDraftProvider.select((s) => s.customer));
+    // A page that lands may still leave the screen unfilled.
+    ref.listen(customerPickerListProvider, (_, _) {
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        if (mounted) _loadMoreIfNearEnd();
+      });
+    });
+
+    final Widget body;
+    if (state.loadFailed && state.customers.isEmpty) {
+      body = ErrorState(
+        title: 'No pudimos cargar los clientes',
+        message:
+            'Revisá la conexión y reintentá. '
+            'Lo que ya cargaste sigue guardado en el teléfono.',
+        onRetry: _list.refresh,
+      );
+    } else if (state.searchQuery.isNotEmpty &&
+        state.customers.isEmpty &&
+        state.hasReachedMax) {
+      body = _EmptyState(query: state.searchQuery);
+    } else {
+      final customers = state.customers;
+      final showLoader = state.isLoading;
+      body = ListView.builder(
+        controller: _scrollController,
+        padding: const EdgeInsets.only(bottom: 100),
+        itemCount: 1 + customers.length + (showLoader ? 1 : 0),
+        itemBuilder: (context, index) {
+          if (index == 0) return const _SectionHeader('Todos los clientes');
+          final i = index - 1;
+          if (i < customers.length) {
+            final c = customers[i];
+            return CustomerListTile(
+              customer: c,
+              selectable: true,
+              selected: selected?.id == c.id,
+              onTap: () => widget.onSelectCustomer(c),
+            );
+          }
+          return const Padding(
+            padding: EdgeInsets.symmetric(vertical: 16),
+            child: Center(child: CircularProgressIndicator()),
+          );
+        },
+      );
+    }
 
     return Column(
       children: [
@@ -221,75 +313,21 @@ class _SearchMode extends ConsumerWidget {
             children: [
               Expanded(
                 child: CoreSearchBar(
-                  controller: controller,
-                  onChanged: onQueryChanged,
+                  controller: widget.controller,
+                  onChanged: _onChanged,
                   hintText: 'Buscar por nombre, dirección...',
                   focusedBorderColor: Theme.of(
                     context,
                   ).extension<SalesTokens>()!.primary,
-                  onClear: query.isNotEmpty
-                      ? () {
-                          controller.clear();
-                          onQueryChanged('');
-                        }
-                      : null,
+                  onClear: widget.query.isNotEmpty ? _onClear : null,
                 ),
               ),
               const SizedBox(width: 10),
-              NewCustomerButton(onTap: onNewCustomer),
+              NewCustomerButton(onTap: widget.onNewCustomer),
             ],
           ),
         ),
-        Expanded(
-          child: customersAsync.when(
-            data: (customers) {
-              final filtered = customers
-                  .where((c) => matchesFn(c, query))
-                  .toList();
-              final frequent = filtered.where((c) => c.isFrequent).toList();
-              final all = filtered;
-
-              if (query.isNotEmpty && filtered.isEmpty) {
-                return _EmptyState(query: query);
-              }
-
-              return ListView(
-                padding: const EdgeInsets.only(bottom: 100),
-                children: [
-                  if (frequent.isNotEmpty) ...[
-                    _SectionHeader('Frecuentes'),
-                    ...frequent.map(
-                      (c) => CustomerListTile(
-                        customer: c,
-                        selectable: true,
-                        selected: selected?.id == c.id,
-                        onTap: () => onSelectCustomer(c),
-                      ),
-                    ),
-                    const SizedBox(height: 8),
-                  ],
-                  _SectionHeader('Todos los clientes'),
-                  ...all.map(
-                    (c) => CustomerListTile(
-                      customer: c,
-                      selectable: true,
-                      selected: selected?.id == c.id,
-                      onTap: () => onSelectCustomer(c),
-                    ),
-                  ),
-                ],
-              );
-            },
-            loading: () => const Center(child: CircularProgressIndicator()),
-            error: (e, _) => ErrorState(
-              title: 'No pudimos cargar los clientes',
-              message:
-                  'Revisá la conexión y reintentá. '
-                  'Lo que ya cargaste sigue guardado en el teléfono.',
-              onRetry: () => ref.invalidate(customerListProvider),
-            ),
-          ),
-        ),
+        Expanded(child: body),
       ],
     );
   }
@@ -525,7 +563,7 @@ class _EmptyState extends StatelessWidget {
           ),
           const SizedBox(height: 8),
           Text(
-            '¿Buscás por teléfono o dirección?',
+            '¿Buscás por número de cliente o dirección?',
             style: TextStyle(color: context.marilin.inkHint, fontSize: 13),
             textAlign: TextAlign.center,
           ),

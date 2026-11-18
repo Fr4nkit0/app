@@ -12,7 +12,6 @@ class Customer {
   final List<CustomerAddress> addresses;
   final List<CustomerPreference> preferences;
   final double debtAmount;
-  final bool isFrequent;
   final List<String> productLabels;
 
   Customer({
@@ -23,7 +22,6 @@ class Customer {
     required this.addresses,
     required this.preferences,
     this.debtAmount = 0.0,
-    this.isFrequent = false,
     this.productLabels = const [],
   });
 }

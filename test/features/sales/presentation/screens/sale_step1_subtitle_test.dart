@@ -1,9 +1,10 @@
+import 'package:drift/native.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
+import 'package:app/core/services/database.helper.dart';
 import 'package:app/core/theme/app.theme.dart';
 import 'package:app/features/customers/domain/models/customer.dart';
-import 'package:app/features/customers/presentation/providers/customer_count_provider.dart';
 import 'package:app/features/products/domain/models/product.dart';
 import 'package:app/features/products/presentation/providers/product_list_provider.dart';
 import 'package:app/features/sales/presentation/providers/sale_draft_provider.dart';
@@ -17,9 +18,11 @@ final _customer = Customer(
 );
 
 Future<ProviderContainer> _pump(WidgetTester tester) async {
+  final db = AppDatabase(NativeDatabase.memory());
+  addTearDown(db.close);
   final container = ProviderContainer(
     overrides: [
-      customerListProvider.overrideWith((ref) => Stream.value([_customer])),
+      databaseProvider.overrideWithValue(db),
       customerProductListProvider.overrideWith((ref, id) => Stream.value(const <Product>[])),
     ],
   );
