@@ -18,6 +18,7 @@ class CustomerHistoryList extends StatelessWidget {
     required this.now,
     required this.onCancelSale,
     required this.onCancelPayment,
+    this.onShowMore,
   });
 
   final List<CustomerRecord> records;
@@ -31,6 +32,9 @@ class CustomerHistoryList extends StatelessWidget {
   /// The driver asked to cancel the sale or payment with this id.
   final ValueChanged<String> onCancelSale;
   final ValueChanged<String> onCancelPayment;
+
+  /// Asks for older records; null when every record is shown.
+  final VoidCallback? onShowMore;
 
   @override
   Widget build(BuildContext context) {
@@ -55,6 +59,8 @@ class CustomerHistoryList extends StatelessWidget {
                   ? _cancelAction(record)
                   : null,
             ),
+          if (onShowMore != null)
+            TextButton(onPressed: onShowMore, child: const Text('Ver más')),
         ],
       ),
     );

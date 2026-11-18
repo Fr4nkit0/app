@@ -5,6 +5,7 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:app/core/services/database.helper.dart';
 import 'package:app/features/history/data/repositories/history.repository.dart';
 import 'package:app/features/history/domain/models/history_entry_type.dart';
+import 'package:app/features/history/domain/models/history_filter.dart';
 import 'package:app/features/sync/data/repositories/pending_change.repository.dart';
 import 'package:app/features/sync/domain/models/pending_change.dart';
 
@@ -468,5 +469,194 @@ void main() {
 
   test('is empty when the driver has recorded nothing', () async {
     expect(await sut.watchHistory().first, isEmpty);
+  });
+
+  group('paging', () {
+    Future<void> queueSales(int count) async {
+      for (var i = 1; i <= count; i++) {
+        await insertSale('sale-$i', 100.0 * i);
+        await queue.enqueue(
+          entity: PendingEntity.sale,
+          entityId: 'sale-$i',
+          action: PendingAction.insert,
+        );
+      }
+    }
+
+    test('a limit reads only the newest records', () async {
+      await queueSales(5);
+
+      final entries = await sut.watchHistory(limit: 2).first;
+
+      expect(entries.map((e) => e.amount), [500, 400]);
+    });
+
+    test('the stop update a visit duplicates does not take a place of the '
+        'page', () async {
+      await db
+          .into(db.routeTable)
+          .insert(
+            RouteTableCompanion.insert(
+              routeId: const Value('r-1'),
+              route_date: '2026-10-29',
+            ),
+          );
+      await db
+          .into(db.routeStopTable)
+          .insert(
+            RouteStopTableCompanion.insert(
+              routeStopId: const Value('stop-1'),
+              routeId: 'r-1',
+              customerId: 'cus-1',
+              sequence: 1,
+              scheduledAt: DateTime(2026, 10, 29, 9),
+            ),
+          );
+      await db
+          .into(db.visitTable)
+          .insert(
+            VisitTableCompanion.insert(
+              visitId: const Value('visit-1'),
+              routeStopId: 'stop-1',
+              customerId: 'cus-1',
+              visitType: 'visit',
+              arrived_at: DateTime(2026, 10, 29, 10),
+            ),
+          );
+      await queue.enqueue(
+        entity: PendingEntity.visit,
+        entityId: 'visit-1',
+        action: PendingAction.insert,
+      );
+      await queue.enqueue(
+        entity: PendingEntity.routeStop,
+        entityId: 'stop-1',
+        action: PendingAction.update,
+      );
+
+      final entries = await sut.watchHistory(limit: 1).first;
+
+      expect(entries.map((e) => e.type), [HistoryEntryType.visit]);
+    });
+
+    test('a type filter pages among the records of that type', () async {
+      await queueSales(3);
+      for (final (id, amount) in [('pay-1', 10.0), ('pay-2', 20.0)]) {
+        await insertPayment(id, amount);
+        await queue.enqueue(
+          entity: PendingEntity.payment,
+          entityId: id,
+          action: PendingAction.insert,
+        );
+      }
+
+      final entries = await sut
+          .watchHistory(
+            filter: const HistoryFilter(type: HistoryEntryType.sale),
+            limit: 2,
+          )
+          .first;
+
+      expect(entries.map((e) => e.amount), [300, 200]);
+    });
+
+    test('issues only lists the rejected and dropped records, and a dismissed '
+        'one can be left out', () async {
+      await queueSales(3);
+      final [first, second, _] = await queue.getPending();
+      await queue.markRejected(first.id, 'Precio inválido');
+      await queue.markRejected(second.id, 'Sin stock');
+      await queue.dismiss(second.id);
+
+      final issues = await sut
+          .watchHistory(
+            filter: const HistoryFilter(issuesOnly: true, hideDismissed: true),
+          )
+          .first;
+      final shown = await sut
+          .watchHistory(filter: const HistoryFilter(hideDismissed: true))
+          .first;
+
+      expect(issues.map((e) => e.rejectionReason), ['Precio inválido']);
+      expect(shown, hasLength(2));
+    });
+
+    test('a search fills the page with the newest matches, however far back '
+        'they are', () async {
+      await db
+          .into(db.customerTable)
+          .insert(
+            CustomerTableCompanion.insert(
+              customerId: const Value('cus-2'),
+              name: 'Kiosco Norte',
+            ),
+          );
+      Future<void> queuePayment(String id, String customerId) async {
+        await db
+            .into(db.paymentTable)
+            .insert(
+              PaymentTableCompanion.insert(
+                paymentId: Value(id),
+                customerId: customerId,
+                amount: 1,
+                paymentMethod: 'cash',
+              ),
+            );
+        await queue.enqueue(
+          entity: PendingEntity.payment,
+          entityId: id,
+          action: PendingAction.insert,
+        );
+      }
+
+      for (var i = 0; i < 3; i++) {
+        await queuePayment('kiosco-$i', 'cus-2');
+      }
+      for (var i = 0; i < 250; i++) {
+        await queuePayment('ana-$i', 'cus-1');
+      }
+
+      final entries = await sut
+          .watchHistory(filter: const HistoryFilter(search: 'KIOSCO'), limit: 2)
+          .first;
+
+      expect(entries.map((e) => e.customerName), [
+        'Kiosco Norte',
+        'Kiosco Norte',
+      ]);
+      expect(
+        entries.map((e) => e.id).toList(),
+        orderedEquals([...entries.map((e) => e.id)]..sort((a, b) => b - a)),
+      );
+    });
+
+    test('counts the records of each type queued since a moment', () async {
+      await queueSales(2);
+      await insertPayment('pay-1', 10);
+      await queue.enqueue(
+        entity: PendingEntity.payment,
+        entityId: 'pay-1',
+        action: PendingAction.insert,
+      );
+      await queue.enqueue(
+        entity: PendingEntity.customer,
+        entityId: 'cus-1',
+        action: PendingAction.update,
+      );
+      final old = (await queue.getPending()).first;
+      await (db.update(db.pendingChangeTable)
+            ..where((t) => t.pendingChangeId.equals(old.id)))
+          .write(PendingChangeTableCompanion(createdAt: Value(DateTime(2020))));
+
+      final counts = await sut
+          .watchCountsByType(since: () => DateTime(2021))
+          .first;
+
+      expect(counts, {
+        HistoryEntryType.sale: 1,
+        HistoryEntryType.payment: 1,
+        HistoryEntryType.customer: 1,
+      });
+    });
   });
 }

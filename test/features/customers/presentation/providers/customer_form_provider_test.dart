@@ -44,6 +44,8 @@ class FakeCustomerRepository implements CustomerRepository {
   Stream<int> watchCustomerCount() => throw UnimplementedError();
   @override
   Stream<List<Customer>> watchAllCustomers() => throw UnimplementedError();
+  @override
+  Stream<Customer?> watchCustomer(String id) => throw UnimplementedError();
 }
 
 void main() {
