@@ -225,7 +225,7 @@ void main() {
         ),
       );
 
-      expect(find.text('Venta \$1.900 · A crédito'), findsOneWidget);
+      expect(find.text('Venta \$1.900 · Fiado'), findsOneWidget);
     });
 
     testWidgets('a visit without sale shows its outcome, payment and '
