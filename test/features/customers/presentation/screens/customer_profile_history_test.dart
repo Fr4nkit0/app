@@ -205,7 +205,7 @@ void main() {
     expect(find.textContaining('Entregado'), findsOneWidget);
     expect(find.text('Venta'), findsNWidgets(2));
     expect(find.textContaining('8 × Agua 20L'), findsOneWidget);
-    expect(find.textContaining('A crédito'), findsOneWidget);
+    expect(find.textContaining('Fiado'), findsOneWidget);
     expect(find.text(formatMoney(41600)), findsOneWidget);
     expect(find.text('Anulada'), findsOneWidget);
     expect(find.text('Envases'), findsOneWidget);

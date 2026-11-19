@@ -23,7 +23,7 @@ extension PaymentMethodLabel on PaymentMethod {
       case PaymentMethod.mixed:
         return 'Mixto';
       case PaymentMethod.credit:
-        return 'A crédito';
+        return 'Fiado';
       case PaymentMethod.route:
         return 'Rinde Ruta';
     }
