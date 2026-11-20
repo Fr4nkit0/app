@@ -15,6 +15,7 @@ import 'package:app/features/sales/presentation/widgets/discard_sale_dialog.dart
 
 import 'package:app/features/auth/auth_controller.dart';
 import 'package:app/features/auth/login_screen.dart';
+import 'package:app/features/auth/session_route_reset.dart';
 import 'package:app/features/sync/background/background_sync_task.dart';
 import 'package:app/features/sync/presentation/widgets/sync_triggers_host.dart';
 
@@ -64,15 +65,15 @@ class AuthWrapper extends ConsumerWidget {
   Widget build(BuildContext context, WidgetRef ref) {
     final authState = ref.watch(authControllerProvider);
 
+    final Widget content;
     if (authState.isLoading) {
-      return const Scaffold(body: Center(child: CircularProgressIndicator()));
-    }
-
-    if (authState.isAuthenticated) {
-      return const _RootShell();
+      content = const Scaffold(body: Center(child: CircularProgressIndicator()));
+    } else if (authState.isAuthenticated) {
+      content = const _RootShell();
     } else {
-      return const LoginScreen();
+      content = const LoginScreen();
     }
+    return SessionRouteReset(child: content);
   }
 }
 
