@@ -58,12 +58,12 @@ void main() {
       expect(state.neighborhood, '');
     });
 
-    test('isAddressValid requires both street and neighborhood', () {
+    test('isAddressValid requires the street but not the neighborhood', () {
       const state1 = CustomerFormState(street: '', neighborhood: '');
       expect(state1.isAddressValid, isFalse);
 
       const state2 = CustomerFormState(street: 'Belgrano 1200', neighborhood: '');
-      expect(state2.isAddressValid, isFalse);
+      expect(state2.isAddressValid, isTrue);
 
       const state3 = CustomerFormState(street: '', neighborhood: 'Centro');
       expect(state3.isAddressValid, isFalse);
