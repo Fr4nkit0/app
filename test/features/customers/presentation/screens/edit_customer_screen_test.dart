@@ -117,6 +117,45 @@ void main() {
     await tester.pump(Duration.zero);
   });
 
+  testWidgets('clearing the neighborhood saves the address without one', (
+    tester,
+  ) async {
+    await tester.pumpWidget(
+      ProviderScope(
+        overrides: [databaseProvider.overrideWithValue(db)],
+        child: MaterialApp(
+          theme: AppTheme.lightTheme,
+          home: const CustomerProfileScreen(customerId: 'cust-1'),
+        ),
+      ),
+    );
+    await settle(tester);
+
+    await tester.tap(find.byTooltip('Editar'));
+    await settle(tester);
+    await tester.tap(find.text('Siguiente'));
+    await settle(tester);
+
+    expect(find.text('Centro'), findsOneWidget);
+    await tester.tap(find.byTooltip('Quitar barrio'));
+    await tester.pump();
+    expect(find.text('Centro'), findsNothing);
+
+    await tester.tap(find.text('Guardar cambios'));
+    await settle(tester);
+
+    final address = await tester.runAsync(
+      () => db.select(db.customerAddressTable).getSingle(),
+    );
+    expect(address!.street, 'Belgrano 1200');
+    expect(address.neighborhood, isNull);
+    expect(find.text('Editar cliente'), findsNothing);
+
+    // Drift schedules a zero-duration timer when a watched query is cancelled.
+    await tester.pumpWidget(const SizedBox());
+    await tester.pump(Duration.zero);
+  });
+
   testWidgets('Enter on the phone moves on to the address step', (
     tester,
   ) async {

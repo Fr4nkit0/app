@@ -30,8 +30,8 @@ class _AddressFormScreenState extends ConsumerState<AddressFormScreen> {
 
   bool get _isEdit => widget.address != null;
 
-  bool get _isValid =>
-      _street.trim().isNotEmpty && _neighborhood.trim().isNotEmpty;
+  /// The neighborhood is optional: not every customer has one.
+  bool get _isValid => _street.trim().isNotEmpty;
 
   Future<void> _submit() async {
     setState(() => _submitting = true);

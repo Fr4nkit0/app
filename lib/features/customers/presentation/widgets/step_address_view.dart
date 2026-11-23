@@ -111,9 +111,6 @@ class _StepAddressViewState extends State<StepAddressView> {
             initialValue: widget.neighborhood.isEmpty
                 ? null
                 : widget.neighborhood,
-            validator: (v) =>
-                (v == null || v.isEmpty) ? 'El barrio es requerido' : null,
-            autovalidateMode: AutovalidateMode.onUserInteraction,
             builder: (FormFieldState<String> fieldState) {
               return GestureDetector(
                 onTap: () {
@@ -135,11 +132,21 @@ class _StepAddressViewState extends State<StepAddressView> {
                 },
                 child: InputDecorator(
                   decoration: _decoration(context).copyWith(
-                    labelText: 'Barrio',
+                    labelText: 'Barrio (opcional)',
                     hintText: 'Seleccionar barrio',
                     prefixIcon: const Icon(Icons.home_work_outlined, size: 20),
-                    suffixIcon: const Icon(Icons.arrow_drop_down),
-                    errorText: fieldState.errorText,
+                    // Not every customer has a neighborhood, so a picked one
+                    // can be taken back.
+                    suffixIcon: widget.neighborhood.isEmpty
+                        ? const Icon(Icons.arrow_drop_down)
+                        : IconButton(
+                            tooltip: 'Quitar barrio',
+                            icon: const Icon(Icons.clear),
+                            onPressed: () {
+                              widget.onNeighborhoodChanged('');
+                              fieldState.didChange(null);
+                            },
+                          ),
                   ),
                   child: Text(
                     widget.neighborhood.isEmpty

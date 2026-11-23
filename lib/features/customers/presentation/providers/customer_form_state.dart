@@ -41,7 +41,8 @@ abstract class CustomerFormState with _$CustomerFormState {
 
   bool get isIdentityValid => name.isNotEmpty;
 
-  bool get isAddressValid => street.isNotEmpty && neighborhood.isNotEmpty;
+  /// The neighborhood is optional: not every customer has one.
+  bool get isAddressValid => street.isNotEmpty;
 
   bool get isPreferenceValid => preferences.isNotEmpty;
 
