@@ -264,6 +264,18 @@ void main() {
       await tester.pump();
       expect(find.text('Cliente ${_routeSize + 2}'), findsOneWidget);
     });
+
+    testWidgets('the order button opens the reorder screen', (tester) async {
+      await pumpRoute(tester);
+
+      await tester.tap(find.widgetWithText(TextButton, 'Ordenar paradas'));
+      for (var i = 0; i < 10; i++) {
+        await tester.pump(const Duration(milliseconds: 100));
+      }
+
+      expect(find.widgetWithText(AppBar, 'Ordenar paradas'), findsOneWidget);
+      expect(find.widgetWithText(FilledButton, 'Guardar'), findsOneWidget);
+    });
   });
 }
 
@@ -298,5 +310,9 @@ class _FakeRouteRepository implements RouteRepository {
 
   @override
   Future<String> rescheduleStop(String stopId, DateTime at) =>
+      throw UnimplementedError();
+
+  @override
+  Future<void> reorderDayStops(List<String> orderedStopIds) =>
       throw UnimplementedError();
 }

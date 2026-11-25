@@ -2806,6 +2806,17 @@ class $RouteStopTableTable extends RouteStopTable
     type: DriftSqlType.int,
     requiredDuringInsert: true,
   );
+  static const VerificationMeta _positionMeta = const VerificationMeta(
+    'position',
+  );
+  @override
+  late final GeneratedColumn<int> position = GeneratedColumn<int>(
+    'position',
+    aliasedName,
+    true,
+    type: DriftSqlType.int,
+    requiredDuringInsert: false,
+  );
   static const VerificationMeta _statusMeta = const VerificationMeta('status');
   @override
   late final GeneratedColumn<String> status = GeneratedColumn<String>(
@@ -2933,6 +2944,7 @@ class $RouteStopTableTable extends RouteStopTable
     customerId,
     customerAddressId,
     sequence,
+    position,
     status,
     scheduledAt,
     visitedAt,
@@ -3024,6 +3036,12 @@ class $RouteStopTableTable extends RouteStopTable
       );
     } else if (isInserting) {
       context.missing(_sequenceMeta);
+    }
+    if (data.containsKey('position')) {
+      context.handle(
+        _positionMeta,
+        position.isAcceptableOrUnknown(data['position']!, _positionMeta),
+      );
     }
     if (data.containsKey('status')) {
       context.handle(
@@ -3150,6 +3168,10 @@ class $RouteStopTableTable extends RouteStopTable
         DriftSqlType.int,
         data['${effectivePrefix}sequence'],
       )!,
+      position: attachedDatabase.typeMapping.read(
+        DriftSqlType.int,
+        data['${effectivePrefix}position'],
+      ),
       status: attachedDatabase.typeMapping.read(
         DriftSqlType.string,
         data['${effectivePrefix}status'],
@@ -3209,7 +3231,14 @@ class RouteStopTableData extends DataClass
   final String routeId;
   final String customerId;
   final String? customerAddressId;
+
+  /// Local tie-break: the order the stops were downloaded or created in.
   final int sequence;
+
+  /// The stop's place in the route, set by the server (the admin's order or
+  /// the driver's reorder of the day). Null on stops older than route order;
+  /// those go after the positioned ones.
+  final int? position;
   final String status;
   final DateTime scheduledAt;
   final DateTime? visitedAt;
@@ -3239,6 +3268,7 @@ class RouteStopTableData extends DataClass
     required this.customerId,
     this.customerAddressId,
     required this.sequence,
+    this.position,
     required this.status,
     required this.scheduledAt,
     this.visitedAt,
@@ -3266,6 +3296,9 @@ class RouteStopTableData extends DataClass
       map['customer_address_id'] = Variable<String>(customerAddressId);
     }
     map['sequence'] = Variable<int>(sequence);
+    if (!nullToAbsent || position != null) {
+      map['position'] = Variable<int>(position);
+    }
     map['status'] = Variable<String>(status);
     map['scheduled_at'] = Variable<DateTime>(scheduledAt);
     if (!nullToAbsent || visitedAt != null) {
@@ -3306,6 +3339,9 @@ class RouteStopTableData extends DataClass
           ? const Value.absent()
           : Value(customerAddressId),
       sequence: Value(sequence),
+      position: position == null && nullToAbsent
+          ? const Value.absent()
+          : Value(position),
       status: Value(status),
       scheduledAt: Value(scheduledAt),
       visitedAt: visitedAt == null && nullToAbsent
@@ -3346,6 +3382,7 @@ class RouteStopTableData extends DataClass
         json['customerAddressId'],
       ),
       sequence: serializer.fromJson<int>(json['sequence']),
+      position: serializer.fromJson<int?>(json['position']),
       status: serializer.fromJson<String>(json['status']),
       scheduledAt: serializer.fromJson<DateTime>(json['scheduledAt']),
       visitedAt: serializer.fromJson<DateTime?>(json['visitedAt']),
@@ -3375,6 +3412,7 @@ class RouteStopTableData extends DataClass
       'customerId': serializer.toJson<String>(customerId),
       'customerAddressId': serializer.toJson<String?>(customerAddressId),
       'sequence': serializer.toJson<int>(sequence),
+      'position': serializer.toJson<int?>(position),
       'status': serializer.toJson<String>(status),
       'scheduledAt': serializer.toJson<DateTime>(scheduledAt),
       'visitedAt': serializer.toJson<DateTime?>(visitedAt),
@@ -3400,6 +3438,7 @@ class RouteStopTableData extends DataClass
     String? customerId,
     Value<String?> customerAddressId = const Value.absent(),
     int? sequence,
+    Value<int?> position = const Value.absent(),
     String? status,
     DateTime? scheduledAt,
     Value<DateTime?> visitedAt = const Value.absent(),
@@ -3422,6 +3461,7 @@ class RouteStopTableData extends DataClass
         ? customerAddressId.value
         : this.customerAddressId,
     sequence: sequence ?? this.sequence,
+    position: position.present ? position.value : this.position,
     status: status ?? this.status,
     scheduledAt: scheduledAt ?? this.scheduledAt,
     visitedAt: visitedAt.present ? visitedAt.value : this.visitedAt,
@@ -3460,6 +3500,7 @@ class RouteStopTableData extends DataClass
           ? data.customerAddressId.value
           : this.customerAddressId,
       sequence: data.sequence.present ? data.sequence.value : this.sequence,
+      position: data.position.present ? data.position.value : this.position,
       status: data.status.present ? data.status.value : this.status,
       scheduledAt: data.scheduledAt.present
           ? data.scheduledAt.value
@@ -3497,6 +3538,7 @@ class RouteStopTableData extends DataClass
           ..write('customerId: $customerId, ')
           ..write('customerAddressId: $customerAddressId, ')
           ..write('sequence: $sequence, ')
+          ..write('position: $position, ')
           ..write('status: $status, ')
           ..write('scheduledAt: $scheduledAt, ')
           ..write('visitedAt: $visitedAt, ')
@@ -3522,6 +3564,7 @@ class RouteStopTableData extends DataClass
     customerId,
     customerAddressId,
     sequence,
+    position,
     status,
     scheduledAt,
     visitedAt,
@@ -3546,6 +3589,7 @@ class RouteStopTableData extends DataClass
           other.customerId == this.customerId &&
           other.customerAddressId == this.customerAddressId &&
           other.sequence == this.sequence &&
+          other.position == this.position &&
           other.status == this.status &&
           other.scheduledAt == this.scheduledAt &&
           other.visitedAt == this.visitedAt &&
@@ -3568,6 +3612,7 @@ class RouteStopTableCompanion extends UpdateCompanion<RouteStopTableData> {
   final Value<String> customerId;
   final Value<String?> customerAddressId;
   final Value<int> sequence;
+  final Value<int?> position;
   final Value<String> status;
   final Value<DateTime> scheduledAt;
   final Value<DateTime?> visitedAt;
@@ -3589,6 +3634,7 @@ class RouteStopTableCompanion extends UpdateCompanion<RouteStopTableData> {
     this.customerId = const Value.absent(),
     this.customerAddressId = const Value.absent(),
     this.sequence = const Value.absent(),
+    this.position = const Value.absent(),
     this.status = const Value.absent(),
     this.scheduledAt = const Value.absent(),
     this.visitedAt = const Value.absent(),
@@ -3611,6 +3657,7 @@ class RouteStopTableCompanion extends UpdateCompanion<RouteStopTableData> {
     required String customerId,
     this.customerAddressId = const Value.absent(),
     required int sequence,
+    this.position = const Value.absent(),
     this.status = const Value.absent(),
     required DateTime scheduledAt,
     this.visitedAt = const Value.absent(),
@@ -3636,6 +3683,7 @@ class RouteStopTableCompanion extends UpdateCompanion<RouteStopTableData> {
     Expression<String>? customerId,
     Expression<String>? customerAddressId,
     Expression<int>? sequence,
+    Expression<int>? position,
     Expression<String>? status,
     Expression<DateTime>? scheduledAt,
     Expression<DateTime>? visitedAt,
@@ -3658,6 +3706,7 @@ class RouteStopTableCompanion extends UpdateCompanion<RouteStopTableData> {
       if (customerId != null) 'customer_id': customerId,
       if (customerAddressId != null) 'customer_address_id': customerAddressId,
       if (sequence != null) 'sequence': sequence,
+      if (position != null) 'position': position,
       if (status != null) 'status': status,
       if (scheduledAt != null) 'scheduled_at': scheduledAt,
       if (visitedAt != null) 'visited_at': visitedAt,
@@ -3683,6 +3732,7 @@ class RouteStopTableCompanion extends UpdateCompanion<RouteStopTableData> {
     Value<String>? customerId,
     Value<String?>? customerAddressId,
     Value<int>? sequence,
+    Value<int?>? position,
     Value<String>? status,
     Value<DateTime>? scheduledAt,
     Value<DateTime?>? visitedAt,
@@ -3705,6 +3755,7 @@ class RouteStopTableCompanion extends UpdateCompanion<RouteStopTableData> {
       customerId: customerId ?? this.customerId,
       customerAddressId: customerAddressId ?? this.customerAddressId,
       sequence: sequence ?? this.sequence,
+      position: position ?? this.position,
       status: status ?? this.status,
       scheduledAt: scheduledAt ?? this.scheduledAt,
       visitedAt: visitedAt ?? this.visitedAt,
@@ -3749,6 +3800,9 @@ class RouteStopTableCompanion extends UpdateCompanion<RouteStopTableData> {
     }
     if (sequence.present) {
       map['sequence'] = Variable<int>(sequence.value);
+    }
+    if (position.present) {
+      map['position'] = Variable<int>(position.value);
     }
     if (status.present) {
       map['status'] = Variable<String>(status.value);
@@ -3800,6 +3854,7 @@ class RouteStopTableCompanion extends UpdateCompanion<RouteStopTableData> {
           ..write('customerId: $customerId, ')
           ..write('customerAddressId: $customerAddressId, ')
           ..write('sequence: $sequence, ')
+          ..write('position: $position, ')
           ..write('status: $status, ')
           ..write('scheduledAt: $scheduledAt, ')
           ..write('visitedAt: $visitedAt, ')
@@ -18150,6 +18205,7 @@ typedef $$RouteStopTableTableCreateCompanionBuilder =
       required String customerId,
       Value<String?> customerAddressId,
       required int sequence,
+      Value<int?> position,
       Value<String> status,
       required DateTime scheduledAt,
       Value<DateTime?> visitedAt,
@@ -18173,6 +18229,7 @@ typedef $$RouteStopTableTableUpdateCompanionBuilder =
       Value<String> customerId,
       Value<String?> customerAddressId,
       Value<int> sequence,
+      Value<int?> position,
       Value<String> status,
       Value<DateTime> scheduledAt,
       Value<DateTime?> visitedAt,
@@ -18321,6 +18378,11 @@ class $$RouteStopTableTableFilterComposer
 
   ColumnFilters<int> get sequence => $composableBuilder(
     column: $table.sequence,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<int> get position => $composableBuilder(
+    column: $table.position,
     builder: (column) => ColumnFilters(column),
   );
 
@@ -18508,6 +18570,11 @@ class $$RouteStopTableTableOrderingComposer
     builder: (column) => ColumnOrderings(column),
   );
 
+  ColumnOrderings<int> get position => $composableBuilder(
+    column: $table.position,
+    builder: (column) => ColumnOrderings(column),
+  );
+
   ColumnOrderings<String> get status => $composableBuilder(
     column: $table.status,
     builder: (column) => ColumnOrderings(column),
@@ -18659,6 +18726,9 @@ class $$RouteStopTableTableAnnotationComposer
 
   GeneratedColumn<int> get sequence =>
       $composableBuilder(column: $table.sequence, builder: (column) => column);
+
+  GeneratedColumn<int> get position =>
+      $composableBuilder(column: $table.position, builder: (column) => column);
 
   GeneratedColumn<String> get status =>
       $composableBuilder(column: $table.status, builder: (column) => column);
@@ -18842,6 +18912,7 @@ class $$RouteStopTableTableTableManager
                 Value<String> customerId = const Value.absent(),
                 Value<String?> customerAddressId = const Value.absent(),
                 Value<int> sequence = const Value.absent(),
+                Value<int?> position = const Value.absent(),
                 Value<String> status = const Value.absent(),
                 Value<DateTime> scheduledAt = const Value.absent(),
                 Value<DateTime?> visitedAt = const Value.absent(),
@@ -18863,6 +18934,7 @@ class $$RouteStopTableTableTableManager
                 customerId: customerId,
                 customerAddressId: customerAddressId,
                 sequence: sequence,
+                position: position,
                 status: status,
                 scheduledAt: scheduledAt,
                 visitedAt: visitedAt,
@@ -18886,6 +18958,7 @@ class $$RouteStopTableTableTableManager
                 required String customerId,
                 Value<String?> customerAddressId = const Value.absent(),
                 required int sequence,
+                Value<int?> position = const Value.absent(),
                 Value<String> status = const Value.absent(),
                 required DateTime scheduledAt,
                 Value<DateTime?> visitedAt = const Value.absent(),
@@ -18907,6 +18980,7 @@ class $$RouteStopTableTableTableManager
                 customerId: customerId,
                 customerAddressId: customerAddressId,
                 sequence: sequence,
+                position: position,
                 status: status,
                 scheduledAt: scheduledAt,
                 visitedAt: visitedAt,

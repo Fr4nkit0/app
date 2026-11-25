@@ -6,6 +6,7 @@ import 'package:app/core/widgets/error_state.dart';
 import 'package:app/features/route/domain/models/route_stop.dart';
 import 'package:app/features/route/domain/models/stop_status.dart';
 import 'package:app/features/route/presentation/providers/route_repository_provider.dart';
+import 'package:app/features/route/presentation/screens/route_reorder_screen.dart';
 import 'package:app/features/visits/presentation/screens/visit_screen.dart';
 import 'package:app/features/route/presentation/widgets/next_stop_card.dart';
 import 'package:app/features/route/presentation/widgets/route_downloading_state.dart';
@@ -223,6 +224,28 @@ class _RouteDayScreenState extends ConsumerState<RouteDayScreen> {
                               .where((s) => s.status != StopStatus.pending)
                               .length,
                           total: allStops.length,
+                        ),
+                      ),
+                    ),
+                  if (!filtering &&
+                      allStops
+                              .where((s) => s.status == StopStatus.pending)
+                              .length >=
+                          2)
+                    SliverToBoxAdapter(
+                      child: Padding(
+                        padding: const EdgeInsets.fromLTRB(20, 4, 12, 0),
+                        child: Align(
+                          alignment: Alignment.centerRight,
+                          child: TextButton.icon(
+                            onPressed: () => Navigator.of(context).push(
+                              MaterialPageRoute<void>(
+                                builder: (_) => const RouteReorderScreen(),
+                              ),
+                            ),
+                            icon: const Icon(Icons.swap_vert_rounded),
+                            label: const Text('Ordenar paradas'),
+                          ),
                         ),
                       ),
                     ),

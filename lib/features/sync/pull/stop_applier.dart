@@ -12,7 +12,9 @@ class StopApplier implements PullApplier {
   final AppDatabase _db;
 
   /// Stops already stored keep their sequence; new ones go to the end of
-  /// their route. A stop created by the app is matched by its client uuid.
+  /// their route. The server's route position applies unless the route has
+  /// an unsent reorder of the driver. A stop created by the app is matched
+  /// by its client uuid.
   @override
   Future<void> applyChanges(
     Map<String, List<Json>> rows,
@@ -39,8 +41,14 @@ class StopApplier implements PullApplier {
       }
 
       final time = s['scheduled_time'] as String?;
+      final keepsOrder = context.unsent.orderedRoutes.contains(route.routeId);
       final fields = RouteStopTableCompanion(
         routeId: Value(route.routeId),
+        // A new stop of a route the driver reordered goes after the
+        // positioned stops until the server has the driver's order.
+        position: keepsOrder
+            ? (existing == null ? const Value(null) : const Value.absent())
+            : _position(s),
         customerId: Value(customerId),
         customerAddressId: Value(
           await context.ids.address(s['address_id'] as int?),
@@ -98,6 +106,7 @@ class StopApplier implements PullApplier {
       _db.routeTable,
     )..where((t) => t.routeId.equals(routeId))).getSingle();
 
+    final keepsOrder = context.unsent.orderedRoutes.contains(routeId);
     for (var i = 0; i < stops.length; i++) {
       final s = stops[i];
       final serverId = s['id'] as int;
@@ -106,6 +115,7 @@ class StopApplier implements PullApplier {
       final time = s['scheduled_time'] as String?;
       final fields = RouteStopTableCompanion(
         routeId: Value(routeId),
+        position: _position(s),
         customerId: Value(customerId),
         customerAddressId: Value(
           await context.ids.address(s['address_id'] as int?),
@@ -124,13 +134,23 @@ class StopApplier implements PullApplier {
         _db.routeStopTable,
       )..where((t) => t.serverId.equals(serverId))).getSingleOrNull();
       if (existing == null) {
-        final row = await _db.into(_db.routeStopTable).insertReturning(fields);
+        final row = await _db
+            .into(_db.routeStopTable)
+            .insertReturning(
+              keepsOrder
+                  ? fields.copyWith(position: const Value(null))
+                  : fields,
+            );
         context.ids.recordStop(serverId, row.routeStopId);
       } else {
         if (!context.unsent.stops.contains(existing.routeStopId)) {
-          await (_db.update(_db.routeStopTable)
-                ..where((t) => t.routeStopId.equals(existing.routeStopId)))
-              .write(fields);
+          await (_db.update(
+            _db.routeStopTable,
+          )..where((t) => t.routeStopId.equals(existing.routeStopId))).write(
+            keepsOrder
+                ? fields.copyWith(position: const Value.absent())
+                : fields,
+          );
         }
         context.ids.recordStop(serverId, existing.routeStopId);
       }
@@ -151,6 +171,12 @@ class StopApplier implements PullApplier {
       );
     }
   }
+
+  /// A server older than route order sends no position: the stored one
+  /// stays.
+  static Value<int?> _position(Json s) => s.containsKey('position')
+      ? Value(s['position'] as int?)
+      : const Value.absent();
 
   /// A server older than scheduled visits sends no mark: the stored one
   /// stays, and a new stop is not requested.

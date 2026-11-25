@@ -21,6 +21,7 @@ import 'push/customer_pusher.dart';
 import 'push/entity_pusher.dart';
 import 'push/payment_cancellation_pusher.dart';
 import 'push/payment_pusher.dart';
+import 'push/route_stop_order_pusher.dart';
 import 'push/route_stop_pusher.dart';
 import 'push/sale_cancellation_pusher.dart';
 import 'push/sale_pusher.dart';
@@ -83,6 +84,8 @@ class SyncEngine {
     CustomerPreferencePusher(db),
     AgreementPusher(db),
     RouteStopPusher(db),
+    // After the stops, so a reschedule of the same request is known.
+    RouteStopOrderPusher(db),
     VisitPusher(db),
     // Before the movements, so a movement made with a sale finds it.
     SalePusher(db, today: today),

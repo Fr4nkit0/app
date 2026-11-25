@@ -1,6 +1,7 @@
 import 'package:drift/drift.dart';
 
 import 'package:app/core/services/database.helper.dart';
+import 'package:app/core/services/database_mixins.dart' show uuid;
 import 'package:app/features/customers/domain/models/customer.dart';
 import 'package:app/features/customers/domain/models/customer.address.dart';
 import 'package:app/features/payments/data/repositories/customer_account.dart';
@@ -83,6 +84,9 @@ class DriftRouteRepository implements RouteRepository {
       final rowById = {for (final stop in stopRows) stop.routeStopId: stop};
       final sequenceById = {
         for (final stop in stopRows) stop.routeStopId: stop.sequence,
+      };
+      final positionById = {
+        for (final stop in stopRows) stop.routeStopId: stop.position,
       };
       final rescheduledToById = {
         for (final stop in stopRows)
@@ -172,15 +176,28 @@ class DriftRouteRepository implements RouteRepository {
         );
       }
 
-      // Pending-first, then scheduledAt, then route sequence, then id. The
-      // order must be total: List.sort is not stable and the query has no
-      // ORDER BY, so stops sharing a time (a route without scheduled times)
-      // would otherwise reshuffle on every emission, and the paginated list
-      // would repeat some stops and skip others while the user scrolls.
+      // Pending-first, then the route position (stops without one last),
+      // then scheduledAt, then the local sequence, then id: the driver walks
+      // the route order and the time is only informative. The order must be
+      // total: List.sort is not stable and the query has no ORDER BY, so
+      // stops sharing a time would otherwise reshuffle on every emission, and
+      // the paginated list would repeat some stops and skip others.
       stops.sort((a, b) {
         final aPending = a.status == StopStatus.pending;
         final bPending = b.status == StopStatus.pending;
         if (aPending != bPending) return aPending ? -1 : 1;
+        final aPosition = positionById[a.id];
+        final bPosition = positionById[b.id];
+        if (aPosition != bPosition) {
+          if (aPosition == null) return 1;
+          if (bPosition == null) return -1;
+          return aPosition.compareTo(bPosition);
+        }
+        // A stop without a time is scheduled at the start of the day; it
+        // goes after the timed ones, as the server orders it.
+        if (a.hasScheduledTime != b.hasScheduledTime) {
+          return a.hasScheduledTime ? -1 : 1;
+        }
         final byTime = a.scheduledAt.compareTo(b.scheduledAt);
         if (byTime != 0) return byTime;
         final bySequence = sequenceById[a.id]!.compareTo(sequenceById[b.id]!);
@@ -385,6 +402,72 @@ class DriftRouteRepository implements RouteRepository {
       },
     );
     return created.routeStopId;
+  }
+
+  @override
+  Future<void> reorderDayStops(List<String> orderedStopIds) async {
+    final listed = await (_db.select(
+      _db.routeStopTable,
+    )..where((t) => t.routeStopId.isIn(orderedStopIds))).get();
+    final rank = {
+      for (var i = 0; i < orderedStopIds.length; i++) orderedStopIds[i]: i,
+    };
+    final routeIds = {for (final s in listed) s.routeId};
+    for (final routeId in routeIds) {
+      final stops =
+          await (_db.select(_db.routeStopTable)..where(
+                (t) => t.routeId.equals(routeId) & t.enabled.equals(true),
+              ))
+              .get();
+      // The listed stops first, in the driver's order; the rest keep
+      // their current place after them.
+      stops.sort((a, b) {
+        final aRank = rank[a.routeStopId];
+        final bRank = rank[b.routeStopId];
+        if (aRank != null || bRank != null) {
+          if (aRank == null) return 1;
+          if (bRank == null) return -1;
+          return aRank.compareTo(bRank);
+        }
+        return _routeOrder(a, b);
+      });
+      for (var i = 0; i < stops.length; i++) {
+        await (_db.update(_db.routeStopTable)
+              ..where((t) => t.routeStopId.equals(stops[i].routeStopId)))
+            .write(RouteStopTableCompanion(position: Value(i + 1)));
+      }
+      await _queue.enqueue(
+        entity: PendingEntity.routeStopOrder,
+        entityId: routeId,
+        action: PendingAction.update,
+        // The snapshot keeps its uuid, so a retry is the same record
+        // for the server.
+        payload: {
+          'uuid': uuid.v4(),
+          'stops': [for (final s in stops) s.routeStopId],
+        },
+      );
+    }
+  }
+
+  /// The route order without the pending-first rule: position (stops
+  /// without one last), then time (stops without one last), then download
+  /// order, then id.
+  static int _routeOrder(RouteStopTableData a, RouteStopTableData b) {
+    final aPosition = a.position;
+    final bPosition = b.position;
+    if (aPosition != bPosition) {
+      if (aPosition == null) return 1;
+      if (bPosition == null) return -1;
+      return aPosition.compareTo(bPosition);
+    }
+    final aTimed = a.scheduledTime != null;
+    if (aTimed != (b.scheduledTime != null)) return aTimed ? -1 : 1;
+    final byTime = a.scheduledAt.compareTo(b.scheduledAt);
+    if (byTime != 0) return byTime;
+    final bySequence = a.sequence.compareTo(b.sequence);
+    if (bySequence != 0) return bySequence;
+    return a.routeStopId.compareTo(b.routeStopId);
   }
 
   static String _dateOnly(DateTime d) =>

@@ -49,8 +49,10 @@ void main() {
     required String routeId,
     required String customerId,
     int sequence = 1,
+    int? position,
     String status = 'pending',
     required DateTime scheduledAt,
+    String? scheduledTime,
     String? addressId,
   }) async {
     await db
@@ -61,6 +63,8 @@ void main() {
             routeId: routeId,
             customerId: customerId,
             sequence: sequence,
+            position: drift.Value(position),
+            scheduledTime: drift.Value(scheduledTime),
             status: drift.Value(status),
             scheduledAt: scheduledAt,
             customerAddressId: drift.Value(addressId),
@@ -408,6 +412,163 @@ void main() {
       expect(stops.first.id, 'stop-early');
       expect(stops.last.id, 'stop-late');
     });
+
+    test('the route position wins over the scheduled time', () async {
+      await insertRoute('route-today', todayStr);
+      final now = DateTime.now();
+      await insertStop(
+        stopId: 'stop-early',
+        routeId: 'route-today',
+        customerId: 'mock-customer-1',
+        sequence: 1,
+        position: 2,
+        scheduledAt: DateTime(now.year, now.month, now.day, 9, 0),
+      );
+      await insertStop(
+        stopId: 'stop-late',
+        routeId: 'route-today',
+        customerId: 'mock-customer-2',
+        sequence: 2,
+        position: 1,
+        scheduledAt: DateTime(now.year, now.month, now.day, 11, 0),
+      );
+
+      final stops = await sut.watchDayStops().first;
+      expect(stops.map((s) => s.id), ['stop-late', 'stop-early']);
+    });
+
+    test('stops without position go after the positioned ones, by time '
+        'and then download order', () async {
+      await insertRoute('route-today', todayStr);
+      final now = DateTime.now();
+      await insertStop(
+        stopId: 'stop-b',
+        routeId: 'route-today',
+        customerId: 'mock-customer-1',
+        sequence: 1,
+        scheduledAt: DateTime(now.year, now.month, now.day, 8, 0),
+      );
+      await insertStop(
+        stopId: 'stop-a',
+        routeId: 'route-today',
+        customerId: 'mock-customer-2',
+        sequence: 2,
+        scheduledAt: DateTime(now.year, now.month, now.day, 8, 0),
+      );
+      await insertStop(
+        stopId: 'stop-early',
+        routeId: 'route-today',
+        customerId: 'mock-customer-3',
+        sequence: 3,
+        scheduledAt: DateTime(now.year, now.month, now.day, 7, 0),
+      );
+      await insertStop(
+        stopId: 'stop-positioned',
+        routeId: 'route-today',
+        customerId: 'mock-customer-4',
+        sequence: 4,
+        position: 5,
+        scheduledAt: DateTime(now.year, now.month, now.day, 12, 0),
+      );
+
+      final stops = await sut.watchDayStops().first;
+      expect(stops.map((s) => s.id), [
+        'stop-positioned',
+        'stop-early',
+        'stop-b',
+        'stop-a',
+      ]);
+    });
+
+    test(
+      'a stop without position nor time goes after the timed ones',
+      () async {
+        await insertRoute('route-today', todayStr);
+        final now = DateTime.now();
+        // Without a time, the stop is scheduled at the start of the day.
+        await insertStop(
+          stopId: 'stop-untimed',
+          routeId: 'route-today',
+          customerId: 'mock-customer-1',
+          sequence: 1,
+          scheduledAt: DateTime(now.year, now.month, now.day),
+        );
+        await insertStop(
+          stopId: 'stop-timed',
+          routeId: 'route-today',
+          customerId: 'mock-customer-2',
+          sequence: 2,
+          scheduledAt: DateTime(now.year, now.month, now.day, 10, 0),
+          scheduledTime: '10:00:00',
+        );
+
+        final stops = await sut.watchDayStops().first;
+        expect(stops.map((s) => s.id), ['stop-timed', 'stop-untimed']);
+      },
+    );
+
+    test('a reorder leaves the unlisted stops without time after the timed '
+        'ones', () async {
+      await insertRoute('route-today', todayStr);
+      final now = DateTime.now();
+      await insertStop(
+        stopId: 'stop-listed',
+        routeId: 'route-today',
+        customerId: 'mock-customer-1',
+        sequence: 1,
+        scheduledAt: DateTime(now.year, now.month, now.day, 12, 0),
+        scheduledTime: '12:00:00',
+      );
+      await insertStop(
+        stopId: 'stop-untimed',
+        routeId: 'route-today',
+        customerId: 'mock-customer-2',
+        sequence: 2,
+        scheduledAt: DateTime(now.year, now.month, now.day),
+      );
+      await insertStop(
+        stopId: 'stop-timed',
+        routeId: 'route-today',
+        customerId: 'mock-customer-3',
+        sequence: 3,
+        scheduledAt: DateTime(now.year, now.month, now.day, 10, 0),
+        scheduledTime: '10:00:00',
+      );
+
+      await sut.reorderDayStops(['stop-listed']);
+
+      final stops = await sut.watchDayStops().first;
+      expect(stops.map((s) => s.id), [
+        'stop-listed',
+        'stop-timed',
+        'stop-untimed',
+      ]);
+    });
+
+    test('a done stop stays after the pending ones even with a lower '
+        'position', () async {
+      await insertRoute('route-today', todayStr);
+      final now = DateTime.now();
+      await insertStop(
+        stopId: 'stop-done',
+        routeId: 'route-today',
+        customerId: 'mock-customer-1',
+        position: 1,
+        status: 'done',
+        scheduledAt: DateTime(now.year, now.month, now.day, 8, 0),
+      );
+      await insertStop(
+        stopId: 'stop-pending',
+        routeId: 'route-today',
+        customerId: 'mock-customer-2',
+        sequence: 2,
+        position: 2,
+        scheduledAt: DateTime(now.year, now.month, now.day, 8, 0),
+      );
+
+      final stops = await sut.watchDayStops().first;
+      expect(stops.map((s) => s.id), ['stop-pending', 'stop-done']);
+    });
   });
 
   // ──────────────────────────────────────────────────────────────────────────
@@ -494,6 +655,70 @@ void main() {
       await Future.delayed(const Duration(milliseconds: 30));
 
       expect(emissions.last.first.status, StopStatus.done);
+    });
+  });
+
+  group('reorderDayStops', () {
+    test('numbers the stops of the route in the given order, the unlisted '
+        'ones after them, and queues one snapshot of the route', () async {
+      await insertRoute('route-today', todayStr);
+      final now = DateTime.now();
+      for (final (id, customer, sequence) in [
+        ('stop-1', 'mock-customer-1', 1),
+        ('stop-2', 'mock-customer-2', 2),
+        ('stop-3', 'mock-customer-3', 3),
+      ]) {
+        await insertStop(
+          stopId: id,
+          routeId: 'route-today',
+          customerId: customer,
+          sequence: sequence,
+          position: sequence,
+          scheduledAt: DateTime(now.year, now.month, now.day, 8, 0),
+        );
+      }
+
+      await sut.reorderDayStops(['stop-3', 'stop-1']);
+
+      final rows = await (db.select(
+        db.routeStopTable,
+      )..orderBy([(t) => drift.OrderingTerm.asc(t.position)])).get();
+      expect(rows.map((r) => (r.routeStopId, r.position)), [
+        ('stop-3', 1),
+        ('stop-1', 2),
+        ('stop-2', 3),
+      ]);
+      final stops = await sut.watchDayStops().first;
+      expect(stops.map((s) => s.id), ['stop-3', 'stop-1', 'stop-2']);
+
+      final queued = await db.select(db.pendingChangeTable).get();
+      expect(queued, hasLength(1));
+      expect(queued.single.entity, 'route_stop_order');
+      expect(queued.single.entityId, 'route-today');
+      expect(queued.single.action, 'update');
+      expect(
+        queued.single.payload,
+        allOf(
+          contains('"stops":["stop-3","stop-1","stop-2"]'),
+          contains('"uuid":"'),
+        ),
+      );
+    });
+
+    test('an unknown stop changes nothing and queues nothing', () async {
+      await insertRoute('route-today', todayStr);
+      await insertStop(
+        stopId: 'stop-1',
+        routeId: 'route-today',
+        customerId: 'mock-customer-1',
+        position: 1,
+        scheduledAt: DateTime.now(),
+      );
+
+      await sut.reorderDayStops(['missing']);
+
+      expect((await db.select(db.routeStopTable).getSingle()).position, 1);
+      expect(await db.select(db.pendingChangeTable).get(), isEmpty);
     });
   });
 

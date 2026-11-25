@@ -1,16 +1,25 @@
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:app/core/providers/clock_provider.dart';
 import 'package:app/core/services/database.helper.dart';
+import 'package:app/core/usecases/drift_transaction_runner.dart';
 import 'package:app/features/route/data/repositories/drift_route_repository.dart';
 import 'package:app/features/route/data/repositories/route.repository.dart';
 import 'package:app/features/route/domain/models/route_stop.dart';
 import 'package:app/features/route/domain/models/route_stop_filter.dart';
 import 'package:app/features/route/domain/models/stop_status.dart';
+import 'package:app/features/route/domain/usecases/reorder_day_stops.usecase.dart';
 
 final routeRepositoryProvider = Provider<RouteRepository>(
   (ref) => DriftRouteRepository(
     ref.watch(databaseProvider),
     now: ref.watch(clockProvider),
+  ),
+);
+
+final reorderDayStopsUseCaseProvider = Provider<ReorderDayStopsUseCase>(
+  (ref) => ReorderDayStopsUseCase(
+    routeRepo: ref.watch(routeRepositoryProvider),
+    transaction: ref.watch(transactionRunnerProvider),
   ),
 );
 
