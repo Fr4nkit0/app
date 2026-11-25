@@ -13,6 +13,11 @@ abstract class RouteRepository {
   /// Puts the stops of today's routes in the driver's order: each route
   /// numbers the listed stops of it first, in [orderedStopIds] order, then
   /// the rest in their current order, and queues the route's snapshot.
+  /// With [applyToTemplate] the order is also the driver's pile for the
+  /// coming routes of the same weekday (the server rewrites it).
   /// Writes several rows: callers run it in a unit of work.
-  Future<void> reorderDayStops(List<String> orderedStopIds);
+  Future<void> reorderDayStops(
+    List<String> orderedStopIds, {
+    bool applyToTemplate = false,
+  });
 }

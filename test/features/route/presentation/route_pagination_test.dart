@@ -313,6 +313,8 @@ class _FakeRouteRepository implements RouteRepository {
       throw UnimplementedError();
 
   @override
-  Future<void> reorderDayStops(List<String> orderedStopIds) =>
-      throw UnimplementedError();
+  Future<void> reorderDayStops(
+    List<String> orderedStopIds, {
+    bool applyToTemplate = false,
+  }) => throw UnimplementedError();
 }

@@ -179,4 +179,66 @@ void main() {
     expect(change.status, 'rejected');
     expect(change.rejectionReason, 'La ruta no es la de hoy.');
   });
+
+  test(
+    'sends whether the order also applies to the coming same weekdays',
+    () async {
+      await routes.reorderDayStops([
+        's-3',
+        's-1',
+        's-2',
+      ], applyToTemplate: true);
+
+      await engine.push();
+
+      final order =
+          (server.pushBodies.single['route_stop_orders'] as List).single as Map;
+      expect(order['apply_to_template'], true);
+    },
+  );
+
+  test(
+    'an order for today only is sent with apply_to_template false',
+    () async {
+      await routes.reorderDayStops(['s-3', 's-1', 's-2']);
+
+      await engine.push();
+
+      final order =
+          (server.pushBodies.single['route_stop_orders'] as List).single as Map;
+      expect(order['apply_to_template'], false);
+    },
+  );
+
+  test('a later today-only reorder does not drop an unsent one for the '
+      'coming weekdays: both travel, in order', () async {
+    await routes.reorderDayStops(['s-2', 's-1', 's-3']);
+    await routes.reorderDayStops(['s-3', 's-1', 's-2'], applyToTemplate: true);
+    await routes.reorderDayStops(['s-1', 's-3', 's-2']);
+
+    await engine.push();
+
+    final orders = [
+      for (final o in server.pushBodies.single['route_stop_orders'] as List)
+        o as Map,
+    ];
+    expect(orders.map((o) => o['apply_to_template']), [true, false]);
+    expect(orders.map((o) => o['stops']), [
+      [
+        {'id': 72},
+        {'id': 70},
+        {'id': 71},
+      ],
+      [
+        {'id': 70},
+        {'id': 72},
+        {'id': 71},
+      ],
+    ]);
+    expect((await orderChanges()).map((c) => c.status), [
+      'sent',
+      'sent',
+      'sent',
+    ]);
+  });
 }

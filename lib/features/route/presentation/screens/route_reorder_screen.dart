@@ -82,9 +82,47 @@ class _RouteReorderScreenState extends ConsumerState<RouteReorderScreen> {
     });
   }
 
+  static const _weekdays = [
+    '',
+    'lunes',
+    'martes',
+    'miércoles',
+    'jueves',
+    'viernes',
+    'sábados',
+    'domingos',
+  ];
+
+  /// Asks whether the order is a one-off for today or the driver's pile for
+  /// the coming routes of the same weekday; null when dismissed.
+  Future<bool?> _askScope(List<RouteStop> stops) {
+    final routeDay = stops.isEmpty ? DateTime.now() : stops.first.scheduledAt;
+    final weekday = _weekdays[routeDay.weekday];
+    return showDialog<bool>(
+      context: context,
+      builder: (dialogContext) => SimpleDialog(
+        title: const Text('¿Para qué días es este orden?'),
+        children: [
+          SimpleDialogOption(
+            onPressed: () => Navigator.of(dialogContext).pop(false),
+            padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 14),
+            child: const Text('Solo hoy'),
+          ),
+          SimpleDialogOption(
+            onPressed: () => Navigator.of(dialogContext).pop(true),
+            padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 14),
+            child: Text('Hoy y los próximos $weekday'),
+          ),
+        ],
+      ),
+    );
+  }
+
   Future<void> _save() async {
     final pending = _pending;
     if (pending == null || _saving) return;
+    final applyToTemplate = await _askScope([...pending, ..._closed]);
+    if (applyToTemplate == null || !mounted) return;
     setState(() => _saving = true);
     final messenger = ScaffoldMessenger.of(context);
     final navigator = Navigator.of(context);
@@ -92,7 +130,7 @@ class _RouteReorderScreenState extends ConsumerState<RouteReorderScreen> {
       await ref.read(reorderDayStopsUseCaseProvider).execute([
         ...pending.map((s) => s.id),
         ..._closed.map((s) => s.id),
-      ]);
+      ], applyToTemplate: applyToTemplate);
     } catch (_) {
       if (!mounted) return;
       setState(() => _saving = false);

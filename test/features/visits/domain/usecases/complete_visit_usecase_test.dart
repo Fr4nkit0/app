@@ -70,8 +70,10 @@ class _FailingRescheduleRouteRepository implements RouteRepository {
   }
 
   @override
-  Future<void> reorderDayStops(List<String> orderedStopIds) =>
-      throw UnimplementedError();
+  Future<void> reorderDayStops(
+    List<String> orderedStopIds, {
+    bool applyToTemplate = false,
+  }) => throw UnimplementedError();
 }
 
 void main() {
