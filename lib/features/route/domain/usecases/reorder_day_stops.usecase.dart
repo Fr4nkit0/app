@@ -15,7 +15,15 @@ class ReorderDayStopsUseCase {
   final TransactionRunner _transaction;
 
   /// [orderedStopIds] lists the stops in the driver's order; stops of the
-  /// route left out keep their place after them.
-  Future<void> execute(List<String> orderedStopIds) =>
-      _transaction(() => _routeRepo.reorderDayStops(orderedStopIds));
+  /// route left out keep their place after them. With [applyToTemplate] the
+  /// order also becomes the driver's pile for the coming same weekdays.
+  Future<void> execute(
+    List<String> orderedStopIds, {
+    bool applyToTemplate = false,
+  }) => _transaction(
+    () => _routeRepo.reorderDayStops(
+      orderedStopIds,
+      applyToTemplate: applyToTemplate,
+    ),
+  );
 }

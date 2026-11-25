@@ -405,7 +405,10 @@ class DriftRouteRepository implements RouteRepository {
   }
 
   @override
-  Future<void> reorderDayStops(List<String> orderedStopIds) async {
+  Future<void> reorderDayStops(
+    List<String> orderedStopIds, {
+    bool applyToTemplate = false,
+  }) async {
     final listed = await (_db.select(
       _db.routeStopTable,
     )..where((t) => t.routeStopId.isIn(orderedStopIds))).get();
@@ -445,6 +448,7 @@ class DriftRouteRepository implements RouteRepository {
         payload: {
           'uuid': uuid.v4(),
           'stops': [for (final s in stops) s.routeStopId],
+          'applyToTemplate': applyToTemplate,
         },
       );
     }

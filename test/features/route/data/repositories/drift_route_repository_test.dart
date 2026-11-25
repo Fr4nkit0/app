@@ -705,6 +705,28 @@ void main() {
       );
     });
 
+    test('queues whether the order also applies to the coming same '
+        'weekdays', () async {
+      await insertRoute('route-today', todayStr);
+      await insertStop(
+        stopId: 'stop-1',
+        routeId: 'route-today',
+        customerId: 'mock-customer-1',
+        scheduledAt: DateTime.now(),
+      );
+
+      await sut.reorderDayStops(['stop-1']);
+      await sut.reorderDayStops(['stop-1'], applyToTemplate: true);
+
+      final queued = await (db.select(
+        db.pendingChangeTable,
+      )..orderBy([(t) => drift.OrderingTerm.asc(t.pendingChangeId)])).get();
+      expect(queued.map((c) => c.payload), [
+        contains('"applyToTemplate":false'),
+        contains('"applyToTemplate":true'),
+      ]);
+    });
+
     test('an unknown stop changes nothing and queues nothing', () async {
       await insertRoute('route-today', todayStr);
       await insertStop(
