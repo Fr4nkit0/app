@@ -85,6 +85,16 @@ class _ContainerReturnDialogState extends State<ContainerReturnDialog> {
               style: TextStyle(color: context.marilin.textMuted, fontSize: 14),
             ),
             const SizedBox(height: 16),
+            // Empty containers first; the skeleton, lent both ways, apart.
+            for (final type in widget.containerTypes)
+              if (!_isSkeleton(type))
+                _ReturnRow(
+                  label: type.label,
+                  returned: _returns[type.code] ?? 0,
+                  max: widget.custody[type.code] ?? 0,
+                  onChanged: (value) =>
+                      setState(() => _returns[type.code] = value),
+                ),
             for (final type in widget.containerTypes)
               if (_isSkeleton(type))
                 _SkeletonBlock(
@@ -95,14 +105,6 @@ class _ContainerReturnDialogState extends State<ContainerReturnDialog> {
                   onDeliveredChanged: (value) =>
                       setState(() => _skeletonDelivered = value),
                   onReturnedChanged: (value) =>
-                      setState(() => _returns[type.code] = value),
-                )
-              else
-                _ReturnRow(
-                  label: type.label,
-                  returned: _returns[type.code] ?? 0,
-                  max: widget.custody[type.code] ?? 0,
-                  onChanged: (value) =>
                       setState(() => _returns[type.code] = value),
                 ),
           ],
@@ -152,8 +154,13 @@ class _SkeletonBlock extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return Padding(
-      padding: const EdgeInsets.symmetric(vertical: 8.0),
+    return Container(
+      margin: const EdgeInsets.only(top: 12),
+      padding: const EdgeInsets.fromLTRB(12, 10, 4, 4),
+      decoration: BoxDecoration(
+        border: Border.all(color: context.marilin.border),
+        borderRadius: BorderRadius.circular(12),
+      ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [

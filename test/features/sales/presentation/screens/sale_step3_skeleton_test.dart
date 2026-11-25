@@ -125,8 +125,8 @@ void main() {
 
     expect(find.text('Esqueleto'), findsOneWidget);
     expect(find.text('Saldo del cliente: 1'), findsOneWidget);
-    expect(find.text('Entregar'), findsNothing);
-    expect(find.text('Retirar'), findsNothing);
+    expect(find.text('Entregar al cliente'), findsNothing);
+    expect(find.text('Retirar del cliente'), findsNothing);
   });
 
   testWidgets('opening it shows Entregar and Retirar at 0', (tester) async {
@@ -135,8 +135,8 @@ void main() {
     await tester.tap(find.text('Esqueleto'));
     await tester.pumpAndSettle();
 
-    expect(find.text('Entregar'), findsOneWidget);
-    expect(find.text('Retirar'), findsOneWidget);
+    expect(find.text('Entregar al cliente'), findsOneWidget);
+    expect(find.text('Retirar del cliente'), findsOneWidget);
     expect(find.text('0'), findsNWidgets(2));
   });
 
@@ -147,11 +147,11 @@ void main() {
 
     await tester.tap(find.text('Esqueleto'));
     await tester.pumpAndSettle();
-    await tester.tap(stepper('Retirar', 'Sumar'));
+    await tester.tap(stepper('Retirar del cliente', 'Sumar'));
     await tester.pump();
-    await tester.tap(stepper('Retirar', 'Sumar'));
+    await tester.tap(stepper('Retirar del cliente', 'Sumar'));
     await tester.pump();
-    await tester.tap(stepper('Entregar', 'Sumar'));
+    await tester.tap(stepper('Entregar al cliente', 'Sumar'));
     await tester.pumpAndSettle();
 
     final draft = container.read(saleDraftProvider);
@@ -175,7 +175,7 @@ void main() {
 
     await tester.tap(find.text('Esqueleto'));
     await tester.pumpAndSettle();
-    await tester.tap(stepper('Entregar', 'Restar'), warnIfMissed: false);
+    await tester.tap(stepper('Entregar al cliente', 'Restar'), warnIfMissed: false);
     await tester.pumpAndSettle();
 
     expect(container.read(saleDraftProvider).skeletonDelivered, 0);
@@ -233,9 +233,9 @@ void main() {
 
       await tester.tap(find.text('Esqueleto'));
       await tester.pumpAndSettle();
-      await tester.tap(stepper('Entregar', 'Sumar'));
+      await tester.tap(stepper('Entregar al cliente', 'Sumar'));
       await tester.pump();
-      await tester.tap(stepper('Entregar', 'Sumar'));
+      await tester.tap(stepper('Entregar al cliente', 'Sumar'));
       await tester.pumpAndSettle();
 
       final tokens = Theme.of(

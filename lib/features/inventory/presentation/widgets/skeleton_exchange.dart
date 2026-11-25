@@ -28,12 +28,12 @@ class SkeletonExchange extends StatelessWidget {
       mainAxisSize: MainAxisSize.min,
       children: [
         SkeletonCountRow(
-          label: 'Entregar',
+          label: 'Entregar al cliente',
           value: delivered,
           onChanged: onDeliveredChanged,
         ),
         SkeletonCountRow(
-          label: 'Retirar',
+          label: 'Retirar del cliente',
           value: returned,
           onChanged: onReturnedChanged,
         ),

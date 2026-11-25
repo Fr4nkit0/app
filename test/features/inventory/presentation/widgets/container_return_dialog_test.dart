@@ -177,8 +177,8 @@ void main() {
 
       expect(find.text('Esqueleto'), findsOneWidget);
       expect(find.text('Saldo del cliente: 0'), findsOneWidget);
-      expect(find.text('Entregar'), findsOneWidget);
-      expect(find.text('Retirar'), findsOneWidget);
+      expect(find.text('Entregar al cliente'), findsOneWidget);
+      expect(find.text('Retirar del cliente'), findsOneWidget);
     });
 
     testWidgets('delivers and returns past the balance; others stay capped', (
@@ -186,11 +186,11 @@ void main() {
     ) async {
       await pumpWithSkeleton(tester);
 
-      await tester.tap(stepper('Entregar', 'Sumar'));
+      await tester.tap(stepper('Entregar al cliente', 'Sumar'));
       await tester.pump();
-      await tester.tap(stepper('Retirar', 'Sumar'));
+      await tester.tap(stepper('Retirar del cliente', 'Sumar'));
       await tester.pump();
-      await tester.tap(stepper('Retirar', 'Sumar'));
+      await tester.tap(stepper('Retirar del cliente', 'Sumar'));
       await tester.pump();
       await tester.tap(plus('Bidón 20L'));
       await tester.pump();
@@ -218,7 +218,7 @@ void main() {
         ),
       );
 
-      expect(find.text('Entregar'), findsNothing);
+      expect(find.text('Entregar al cliente'), findsNothing);
       await tester.tap(find.text('Guardar'));
       await tester.pump();
       expect(exchanges.single.deliveries, isEmpty);
@@ -278,14 +278,14 @@ void main() {
           ),
         );
 
-        await tester.tap(stepper('Entregar', 'Sumar'));
+        await tester.tap(stepper('Entregar al cliente', 'Sumar'));
         await tester.pump();
         expect(
           colorOf(tester, 'En el camión: 1'),
           MarilinTokens.light.textMuted,
         );
 
-        await tester.tap(stepper('Entregar', 'Sumar'));
+        await tester.tap(stepper('Entregar al cliente', 'Sumar'));
         await tester.pump();
         expect(
           colorOf(tester, 'En el camión: 1'),
@@ -293,14 +293,14 @@ void main() {
         );
 
         // What comes back goes onto the truck again.
-        await tester.tap(stepper('Retirar', 'Sumar'));
+        await tester.tap(stepper('Retirar del cliente', 'Sumar'));
         await tester.pump();
         expect(
           colorOf(tester, 'En el camión: 1'),
           MarilinTokens.light.textMuted,
         );
 
-        await tester.tap(stepper('Retirar', 'Restar'));
+        await tester.tap(stepper('Retirar del cliente', 'Restar'));
         await tester.pump();
         await tester.tap(find.text('Guardar'));
         await tester.pump();
