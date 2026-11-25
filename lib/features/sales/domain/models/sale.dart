@@ -35,9 +35,12 @@ class Sale {
   bool isCancellableOn(DateTime now) => !isCancelled && isSameDay(date, now);
 
   /// What the customer pays on the spot; nothing for credit and route sales.
+  /// A cash or transfer sale pays its [cashAmount] or [transferAmount] when
+  /// it holds one (a partial payment) and its whole [total] otherwise; what
+  /// is left unpaid stays on the customer's account.
   PaymentSplit get settlement => switch (paymentMethod) {
-    PaymentMethod.cash => PaymentSplit(cash: total),
-    PaymentMethod.transfer => PaymentSplit(transfer: total),
+    PaymentMethod.cash => PaymentSplit(cash: cashAmount ?? total),
+    PaymentMethod.transfer => PaymentSplit(transfer: transferAmount ?? total),
     PaymentMethod.mixed => PaymentSplit(
       cash: cashAmount ?? 0,
       transfer: transferAmount ?? 0,

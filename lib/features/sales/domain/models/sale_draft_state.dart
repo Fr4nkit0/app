@@ -12,7 +12,13 @@ class SaleDraftState {
   final String? visitId;
   final List<SaleItem> items;
   final PaymentMethod? paymentMethod;
+
+  /// The cash part of a mixed payment, or what a cash sale collects; null
+  /// on a cash sale means its whole [total] (see [collectedAmount]).
   final double? cashAmount;
+
+  /// The transfer part of a mixed payment, or what a transfer sale
+  /// collects; null on a transfer sale means its whole [total].
   final double? transferAmount;
   final Map<String, int> returnedContainers;
 
@@ -108,9 +114,19 @@ class SaleDraftState {
 
   double get mixedTotal => (cashAmount ?? 0) + (transferAmount ?? 0);
 
-  /// Whether previous debt is collected with this sale: switched on and
-  /// paid by one of the [debtMethods].
-  bool get collectsDebt => collectDebt && debtMethods.contains(paymentMethod);
+  /// Whether previous debt is collected with this sale: switched on, paid
+  /// by one of the [debtMethods] and, for cash or transfer, with the whole
+  /// sale collected (S3: a partial payment collects no previous debt).
+  bool get collectsDebt =>
+      collectDebt &&
+      debtMethods.contains(paymentMethod) &&
+      !_lowersSingleMethodAmount;
+
+  /// A cash or transfer amount below the [total].
+  bool get _lowersSingleMethodAmount =>
+      (paymentMethod == PaymentMethod.cash ||
+          paymentMethod == PaymentMethod.transfer) &&
+      collectedAmount < total - tolerance;
 
   /// The previous debt collected with this sale; 0 when none is.
   double get debtToCollect => collectsDebt ? (debtAmount ?? 0) : 0;
@@ -126,18 +142,50 @@ class SaleDraftState {
     return amount != null && amount > 0 && amount <= currentDebt + tolerance;
   }
 
+  /// What the customer hands over for the sale itself: a cash or transfer
+  /// sale's amount (the whole [total] until the driver lowers it), the sum
+  /// of a mixed payment's parts; 0 for credit and route.
+  double get collectedAmount => switch (paymentMethod) {
+    PaymentMethod.cash => cashAmount ?? total,
+    PaymentMethod.transfer => transferAmount ?? total,
+    PaymentMethod.mixed => mixedTotal,
+    PaymentMethod.credit || PaymentMethod.route || null => 0,
+  };
+
+  /// What the customer is left owing from this sale paid on the spot
+  /// ([total] − [collectedAmount]); 0 for credit and route, which are not
+  /// paid on the spot, and while previous debt is collected, which needs
+  /// the sale paid in full.
+  double get unpaidAmount {
+    if (!debtMethods.contains(paymentMethod) || collectsDebt) return 0;
+    final unpaid = total - collectedAmount;
+    return unpaid > 0 ? unpaid : 0;
+  }
+
+  /// Whether the customer pays part of the sale on the spot and owes the
+  /// rest; a mixed payment with nothing typed yet is not partial.
+  bool get isPartialPayment => collectedAmount > 0 && unpaidAmount > tolerance;
+
+  /// A sale paid on the spot without previous debt collects more than 0
+  /// and at most its [total].
+  bool get _isValidCollectedAmount =>
+      collectedAmount > 0 && collectedAmount <= total + tolerance;
+
   bool get isValidPayment {
     if (paymentMethod == null) return false;
     switch (paymentMethod!) {
       case PaymentMethod.mixed:
         // With debt, the allocation's tolerance decides: a split it would
         // reject must not reach the confirm button.
-        final limit = collectsDebt ? SaleDebtAllocation.tolerance : tolerance;
-        return (mixedTotal - operationTotal).abs() <= limit;
-      case PaymentMethod.credit:
-        return true;
+        if (collectsDebt) {
+          return (mixedTotal - operationTotal).abs() <=
+              SaleDebtAllocation.tolerance;
+        }
+        return _isValidCollectedAmount;
       case PaymentMethod.cash:
       case PaymentMethod.transfer:
+        return collectsDebt || _isValidCollectedAmount;
+      case PaymentMethod.credit:
       case PaymentMethod.route:
         return true;
     }
