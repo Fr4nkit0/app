@@ -365,6 +365,52 @@ void main() {
   );
 
   test(
+    'S5: a partial sale travels with its whole total, is_credit_sale false '
+    'and no new field; its payments carry what was collected',
+    () async {
+      await sell(id: 'sale-cash', method: PaymentMethod.cash, cash: 2000);
+      await sell(
+        id: 'sale-mixed',
+        method: PaymentMethod.mixed,
+        cash: 1000,
+        transfer: 1000,
+      );
+
+      await engine.push();
+
+      final sales = sent('sales');
+      expect(sales.map((s) => (s['uuid'], s['total'], s['is_credit_sale'])), [
+        ('sale-cash', 2400.0, false),
+        ('sale-mixed', 2400.0, false),
+      ]);
+      for (final s in sales) {
+        expect(s.keys.toSet(), {
+          'uuid',
+          'customer_id',
+          'date',
+          'total',
+          'is_credit_sale',
+          'notes',
+          'details',
+        });
+      }
+      final settled = sent('payments');
+      expect(
+        settled.map(
+          (p) => (p['sale_uuid'], p['payment_method_id'], p['amount']),
+        ),
+        [
+          ('sale-cash', 5, 2000.0),
+          ('sale-mixed', 5, 1000.0),
+          ('sale-mixed', 6, 1000.0),
+        ],
+      );
+      // 1000 owed before, plus 400 and 400 left unpaid.
+      expect(await displayedBalance(), 1800);
+    },
+  );
+
+  test(
     'S9: a sale paid together with the previous debt pushes both payments '
     'with one transaction uuid; payments outside it carry none',
     () async {

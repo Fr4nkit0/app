@@ -71,8 +71,16 @@ class SaleDraft extends Notifier<SaleDraftState> {
     }
 
     // Custody rule: by default the customer returns as many containers of
-    // each type as the sale delivers.
-    final next = state.copyWith(items: newItems);
+    // each type as the sale delivers. A cash or transfer amount starts
+    // again at the new total.
+    final singleMethod =
+        state.paymentMethod == PaymentMethod.cash ||
+        state.paymentMethod == PaymentMethod.transfer;
+    final next = state.copyWith(
+      items: newItems,
+      clearCashAmount: singleMethod,
+      clearTransferAmount: singleMethod,
+    );
     state = next.copyWith(
       returnedContainers: deliveredByContainerType(next.containerDeliveries),
     );
@@ -114,10 +122,12 @@ class SaleDraft extends Notifier<SaleDraftState> {
   /// starts at the whole [currentDebt] the customer owes; it stays off for
   /// a customer without debt or a method that cannot collect it.
   void setCollectDebt(bool on, {required double currentDebt}) {
+    // S3: previous debt is only collected with the sale paid in full.
     final canCollect =
         on &&
         currentDebt > 0 &&
-        SaleDraftState.debtMethods.contains(state.paymentMethod);
+        SaleDraftState.debtMethods.contains(state.paymentMethod) &&
+        !state.isPartialPayment;
     state = canCollect
         ? state.copyWith(
             collectDebt: true,
@@ -134,6 +144,23 @@ class SaleDraft extends Notifier<SaleDraftState> {
         : state.copyWith(debtAmount: amount);
   }
 
+  /// What a cash or transfer sale collects; below the total the rest stays
+  /// as the customer's debt and previous debt is no longer collected (S3).
+  /// Null (an empty or invalid amount) counts as 0, which cannot confirm.
+  void setCollectedAmount(double? amount) {
+    final collected = amount ?? 0;
+    final next = switch (state.paymentMethod) {
+      PaymentMethod.cash => state.copyWith(cashAmount: collected),
+      PaymentMethod.transfer => state.copyWith(transferAmount: collected),
+      _ => null,
+    };
+    if (next == null) return;
+    final partial = collected < next.total - SaleDraftState.tolerance;
+    state = partial
+        ? next.copyWith(collectDebt: false, clearDebtAmount: true)
+        : next;
+  }
+
   void setMixedAmounts({double? cash, double? transfer}) {
     state = state.copyWith(cashAmount: cash, transferAmount: transfer);
   }
@@ -142,17 +169,25 @@ class SaleDraft extends Notifier<SaleDraftState> {
     final draft = state;
     if (!draft.canConfirm) return;
 
-    final isMixed = draft.paymentMethod == PaymentMethod.mixed;
+    final method = draft.paymentMethod!;
+    final isMixed = method == PaymentMethod.mixed;
+    // A cash or transfer sale carries its amount only when partial; paid in
+    // full it is saved as before.
+    final partial = draft.isPartialPayment;
 
     final sale = Sale(
       id: const Uuid().v4(),
       customer: draft.customer!,
       items: draft.items,
       total: draft.total,
-      paymentMethod: draft.paymentMethod!,
+      paymentMethod: method,
       date: DateTime.now(),
-      cashAmount: isMixed ? draft.cashAmount : null,
-      transferAmount: isMixed ? draft.transferAmount : null,
+      cashAmount: isMixed || (partial && method == PaymentMethod.cash)
+          ? draft.cashAmount
+          : null,
+      transferAmount: isMixed || (partial && method == PaymentMethod.transfer)
+          ? draft.transferAmount
+          : null,
       visitId: draft.visitId,
     );
 
