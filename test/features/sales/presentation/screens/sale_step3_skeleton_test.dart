@@ -129,7 +129,7 @@ void main() {
     expect(find.text('Retirar del cliente'), findsNothing);
   });
 
-  testWidgets('opening it shows Entregar and Retirar at 0', (tester) async {
+  testWidgets('opening it shows both skeleton rows at 0', (tester) async {
     await pumpScreen(tester);
 
     await tester.tap(find.text('Esqueleto'));
@@ -175,7 +175,10 @@ void main() {
 
     await tester.tap(find.text('Esqueleto'));
     await tester.pumpAndSettle();
-    await tester.tap(stepper('Entregar al cliente', 'Restar'), warnIfMissed: false);
+    await tester.tap(
+      stepper('Entregar al cliente', 'Restar'),
+      warnIfMissed: false,
+    );
     await tester.pumpAndSettle();
 
     expect(container.read(saleDraftProvider).skeletonDelivered, 0);
