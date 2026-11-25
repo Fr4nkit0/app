@@ -24,7 +24,13 @@ class RouteStopTable extends Table with Timestamps {
     #addressId,
     onDelete: KeyAction.setNull,
   )();
+  /// Local tie-break: the order the stops were downloaded or created in.
   late final sequence = integer()();
+
+  /// The stop's place in the route, set by the server (the admin's order or
+  /// the driver's reorder of the day). Null on stops older than route order;
+  /// those go after the positioned ones.
+  late final position = integer().nullable()();
   late final status = text().withDefault(const Constant('pending'))();
   late final scheduledAt = dateTime()();
   late final visitedAt = dateTime().nullable()();

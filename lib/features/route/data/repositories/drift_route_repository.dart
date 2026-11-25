@@ -84,6 +84,9 @@ class DriftRouteRepository implements RouteRepository {
       final sequenceById = {
         for (final stop in stopRows) stop.routeStopId: stop.sequence,
       };
+      final positionById = {
+        for (final stop in stopRows) stop.routeStopId: stop.position,
+      };
       final rescheduledToById = {
         for (final stop in stopRows)
           if (stop.rescheduledFromStopId != null)
@@ -172,15 +175,23 @@ class DriftRouteRepository implements RouteRepository {
         );
       }
 
-      // Pending-first, then scheduledAt, then route sequence, then id. The
-      // order must be total: List.sort is not stable and the query has no
-      // ORDER BY, so stops sharing a time (a route without scheduled times)
-      // would otherwise reshuffle on every emission, and the paginated list
-      // would repeat some stops and skip others while the user scrolls.
+      // Pending-first, then the route position (stops without one last),
+      // then scheduledAt, then the local sequence, then id: the driver walks
+      // the route order and the time is only informative. The order must be
+      // total: List.sort is not stable and the query has no ORDER BY, so
+      // stops sharing a time would otherwise reshuffle on every emission, and
+      // the paginated list would repeat some stops and skip others.
       stops.sort((a, b) {
         final aPending = a.status == StopStatus.pending;
         final bPending = b.status == StopStatus.pending;
         if (aPending != bPending) return aPending ? -1 : 1;
+        final aPosition = positionById[a.id];
+        final bPosition = positionById[b.id];
+        if (aPosition != bPosition) {
+          if (aPosition == null) return 1;
+          if (bPosition == null) return -1;
+          return aPosition.compareTo(bPosition);
+        }
         final byTime = a.scheduledAt.compareTo(b.scheduledAt);
         if (byTime != 0) return byTime;
         final bySequence = sequenceById[a.id]!.compareTo(sequenceById[b.id]!);

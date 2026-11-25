@@ -61,9 +61,9 @@ class AppDatabase extends _$AppDatabase {
 
   /// 18 is the development baseline. 19 adds `balance_corrections` with its
   /// own upgrade step, so devices on 18 keep their unsent changes; anything
-  /// older is still rebuilt empty.
+  /// older is still rebuilt empty. 20 adds `route_stops.position`.
   @override
-  int get schemaVersion => 19;
+  int get schemaVersion => 20;
 
   @override
   MigrationStrategy get migration => MigrationStrategy(
@@ -73,8 +73,9 @@ class AppDatabase extends _$AppDatabase {
     // Any older development schema is rebuilt empty; unsent local data is
     // lost, the same as reinstalling the app.
     onUpgrade: (m, from, to) async {
-      if (from == 18) {
-        await m.createTable(balanceCorrectionTable);
+      if (from == 18 || from == 19) {
+        if (from == 18) await m.createTable(balanceCorrectionTable);
+        await m.addColumn(routeStopTable, routeStopTable.position);
         return;
       }
       // Reverse declaration order drops dependents before what they reference.

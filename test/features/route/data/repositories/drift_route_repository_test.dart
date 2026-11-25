@@ -49,6 +49,7 @@ void main() {
     required String routeId,
     required String customerId,
     int sequence = 1,
+    int? position,
     String status = 'pending',
     required DateTime scheduledAt,
     String? addressId,
@@ -61,6 +62,7 @@ void main() {
             routeId: routeId,
             customerId: customerId,
             sequence: sequence,
+            position: drift.Value(position),
             status: drift.Value(status),
             scheduledAt: scheduledAt,
             customerAddressId: drift.Value(addressId),
@@ -407,6 +409,98 @@ void main() {
       final stops = await sut.watchDayStops().first;
       expect(stops.first.id, 'stop-early');
       expect(stops.last.id, 'stop-late');
+    });
+
+    test('the route position wins over the scheduled time', () async {
+      await insertRoute('route-today', todayStr);
+      final now = DateTime.now();
+      await insertStop(
+        stopId: 'stop-early',
+        routeId: 'route-today',
+        customerId: 'mock-customer-1',
+        sequence: 1,
+        position: 2,
+        scheduledAt: DateTime(now.year, now.month, now.day, 9, 0),
+      );
+      await insertStop(
+        stopId: 'stop-late',
+        routeId: 'route-today',
+        customerId: 'mock-customer-2',
+        sequence: 2,
+        position: 1,
+        scheduledAt: DateTime(now.year, now.month, now.day, 11, 0),
+      );
+
+      final stops = await sut.watchDayStops().first;
+      expect(stops.map((s) => s.id), ['stop-late', 'stop-early']);
+    });
+
+    test('stops without position go after the positioned ones, by time '
+        'and then download order', () async {
+      await insertRoute('route-today', todayStr);
+      final now = DateTime.now();
+      await insertStop(
+        stopId: 'stop-b',
+        routeId: 'route-today',
+        customerId: 'mock-customer-1',
+        sequence: 1,
+        scheduledAt: DateTime(now.year, now.month, now.day, 8, 0),
+      );
+      await insertStop(
+        stopId: 'stop-a',
+        routeId: 'route-today',
+        customerId: 'mock-customer-2',
+        sequence: 2,
+        scheduledAt: DateTime(now.year, now.month, now.day, 8, 0),
+      );
+      await insertStop(
+        stopId: 'stop-early',
+        routeId: 'route-today',
+        customerId: 'mock-customer-3',
+        sequence: 3,
+        scheduledAt: DateTime(now.year, now.month, now.day, 7, 0),
+      );
+      await insertStop(
+        stopId: 'stop-positioned',
+        routeId: 'route-today',
+        customerId: 'mock-customer-4',
+        sequence: 4,
+        position: 5,
+        scheduledAt: DateTime(now.year, now.month, now.day, 12, 0),
+      );
+
+      final stops = await sut.watchDayStops().first;
+      expect(stops.map((s) => s.id), [
+        'stop-positioned',
+        'stop-early',
+        'stop-b',
+        'stop-a',
+      ]);
+    });
+
+    test('a done stop stays after the pending ones even with a lower '
+        'position', () async {
+      await insertRoute('route-today', todayStr);
+      final now = DateTime.now();
+      await insertStop(
+        stopId: 'stop-done',
+        routeId: 'route-today',
+        customerId: 'mock-customer-1',
+        position: 1,
+        status: 'done',
+        scheduledAt: DateTime(now.year, now.month, now.day, 8, 0),
+      );
+      await insertStop(
+        stopId: 'stop-pending',
+        routeId: 'route-today',
+        customerId: 'mock-customer-2',
+        sequence: 2,
+        position: 2,
+        scheduledAt: DateTime(now.year, now.month, now.day, 8, 0),
+      );
+
+      final stops = await sut.watchDayStops().first;
+      expect(stops.map((s) => s.id), ['stop-pending', 'stop-done']);
     });
   });
 
