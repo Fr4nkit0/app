@@ -193,6 +193,11 @@ class DriftRouteRepository implements RouteRepository {
           if (bPosition == null) return -1;
           return aPosition.compareTo(bPosition);
         }
+        // A stop without a time is scheduled at the start of the day; it
+        // goes after the timed ones, as the server orders it.
+        if (a.hasScheduledTime != b.hasScheduledTime) {
+          return a.hasScheduledTime ? -1 : 1;
+        }
         final byTime = a.scheduledAt.compareTo(b.scheduledAt);
         if (byTime != 0) return byTime;
         final bySequence = sequenceById[a.id]!.compareTo(sequenceById[b.id]!);
@@ -446,7 +451,8 @@ class DriftRouteRepository implements RouteRepository {
   }
 
   /// The route order without the pending-first rule: position (stops
-  /// without one last), then time, then download order, then id.
+  /// without one last), then time (stops without one last), then download
+  /// order, then id.
   static int _routeOrder(RouteStopTableData a, RouteStopTableData b) {
     final aPosition = a.position;
     final bPosition = b.position;
@@ -455,6 +461,8 @@ class DriftRouteRepository implements RouteRepository {
       if (bPosition == null) return -1;
       return aPosition.compareTo(bPosition);
     }
+    final aTimed = a.scheduledTime != null;
+    if (aTimed != (b.scheduledTime != null)) return aTimed ? -1 : 1;
     final byTime = a.scheduledAt.compareTo(b.scheduledAt);
     if (byTime != 0) return byTime;
     final bySequence = a.sequence.compareTo(b.sequence);

@@ -52,6 +52,7 @@ void main() {
     int? position,
     String status = 'pending',
     required DateTime scheduledAt,
+    String? scheduledTime,
     String? addressId,
   }) async {
     await db
@@ -63,6 +64,7 @@ void main() {
             customerId: customerId,
             sequence: sequence,
             position: drift.Value(position),
+            scheduledTime: drift.Value(scheduledTime),
             status: drift.Value(status),
             scheduledAt: scheduledAt,
             customerAddressId: drift.Value(addressId),
@@ -475,6 +477,71 @@ void main() {
         'stop-early',
         'stop-b',
         'stop-a',
+      ]);
+    });
+
+    test(
+      'a stop without position nor time goes after the timed ones',
+      () async {
+        await insertRoute('route-today', todayStr);
+        final now = DateTime.now();
+        // Without a time, the stop is scheduled at the start of the day.
+        await insertStop(
+          stopId: 'stop-untimed',
+          routeId: 'route-today',
+          customerId: 'mock-customer-1',
+          sequence: 1,
+          scheduledAt: DateTime(now.year, now.month, now.day),
+        );
+        await insertStop(
+          stopId: 'stop-timed',
+          routeId: 'route-today',
+          customerId: 'mock-customer-2',
+          sequence: 2,
+          scheduledAt: DateTime(now.year, now.month, now.day, 10, 0),
+          scheduledTime: '10:00:00',
+        );
+
+        final stops = await sut.watchDayStops().first;
+        expect(stops.map((s) => s.id), ['stop-timed', 'stop-untimed']);
+      },
+    );
+
+    test('a reorder leaves the unlisted stops without time after the timed '
+        'ones', () async {
+      await insertRoute('route-today', todayStr);
+      final now = DateTime.now();
+      await insertStop(
+        stopId: 'stop-listed',
+        routeId: 'route-today',
+        customerId: 'mock-customer-1',
+        sequence: 1,
+        scheduledAt: DateTime(now.year, now.month, now.day, 12, 0),
+        scheduledTime: '12:00:00',
+      );
+      await insertStop(
+        stopId: 'stop-untimed',
+        routeId: 'route-today',
+        customerId: 'mock-customer-2',
+        sequence: 2,
+        scheduledAt: DateTime(now.year, now.month, now.day),
+      );
+      await insertStop(
+        stopId: 'stop-timed',
+        routeId: 'route-today',
+        customerId: 'mock-customer-3',
+        sequence: 3,
+        scheduledAt: DateTime(now.year, now.month, now.day, 10, 0),
+        scheduledTime: '10:00:00',
+      );
+
+      await sut.reorderDayStops(['stop-listed']);
+
+      final stops = await sut.watchDayStops().first;
+      expect(stops.map((s) => s.id), [
+        'stop-listed',
+        'stop-timed',
+        'stop-untimed',
       ]);
     });
 
