@@ -83,9 +83,7 @@ class SaleDraft extends Notifier<SaleDraftState> {
 
   /// Skeletons lent with this sale, from 0 to [maxQuantity].
   void setSkeletonDelivered(int quantity) {
-    state = state.copyWith(
-      skeletonDelivered: quantity.clamp(0, maxQuantity),
-    );
+    state = state.copyWith(skeletonDelivered: quantity.clamp(0, maxQuantity));
   }
 
   /// Skeletons taken back with this sale, from 0 to [maxQuantity]; the

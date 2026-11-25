@@ -88,10 +88,7 @@ void main() {
           .read(saleDraftProvider)
           .toContainerMovements('c-1', 'v-1');
 
-      expect(movements.map((m) => m.containerType), [
-        'SIFON_2L',
-        'ESQUELETO',
-      ]);
+      expect(movements.map((m) => m.containerType), ['SIFON_2L', 'ESQUELETO']);
       final skeleton = movements.last;
       expect(skeleton.deliveredQuantity, 1);
       expect(skeleton.returnedQuantity, 2);

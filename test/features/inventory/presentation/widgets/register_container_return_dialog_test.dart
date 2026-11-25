@@ -16,16 +16,29 @@ class _FakeRegisterContainerReturn implements RegisterContainerReturnUseCase {
 
   final Object? failure;
   final calls =
-      <({String customerId, String? visitId, Map<String, int> returns})>[];
+      <
+        ({
+          String customerId,
+          String? visitId,
+          Map<String, int> returns,
+          Map<String, int> deliveries,
+        })
+      >[];
 
   @override
   Future<void> execute({
     required String customerId,
     required Map<String, int> returns,
+    Map<String, int> deliveries = const {},
     String? visitId,
     String? routeId,
   }) async {
-    calls.add((customerId: customerId, visitId: visitId, returns: returns));
+    calls.add((
+      customerId: customerId,
+      visitId: visitId,
+      returns: returns,
+      deliveries: deliveries,
+    ));
     if (failure case final failure?) throw failure;
   }
 }
@@ -95,6 +108,7 @@ void main() {
       expect(fake.calls.single.customerId, 'c-1');
       expect(fake.calls.single.visitId, 's-1');
       expect(fake.calls.single.returns, {'JUG': 0, 'SIPHON': 1});
+      expect(fake.calls.single.deliveries, isEmpty);
       expect(find.byType(RegisterContainerReturnDialog), findsNothing);
       expect(find.text('Retorno de envases registrado'), findsOneWidget);
 

@@ -1,6 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:app/core/theme/marilin_tokens.dart';
+import 'package:app/features/inventory/domain/models/container_exchange.dart';
 import 'package:app/features/inventory/domain/models/container_type.dart';
+import 'package:app/features/inventory/presentation/widgets/skeleton_exchange.dart';
 
 /// The catalog carries no icon: types alternate the jug and bottle icons in
 /// catalog order.
@@ -8,7 +10,9 @@ IconData containerTypeIcon(int position) =>
     position.isEven ? Icons.water_drop_outlined : Icons.local_drink_outlined;
 
 /// Asks how many containers of each type the customer hands back; each type
-/// goes from 0 up to the customer's [custody] of it.
+/// goes from 0 up to the customer's [custody] of it. The skeleton
+/// ([ContainerType.skeletonCode]) is also delivered, and its return is not
+/// capped: the office corrects a balance below zero.
 class ContainerReturnDialog extends StatefulWidget {
   const ContainerReturnDialog({
     super.key,
@@ -31,8 +35,9 @@ class ContainerReturnDialog extends StatefulWidget {
   /// the customer's [custody] start at the custody.
   final Map<String, int> initialReturns;
 
-  /// Receives the returns of every shown type, by container code.
-  final ValueChanged<Map<String, int>> onConfirm;
+  /// Receives the returns of every shown type and the skeletons delivered,
+  /// by container code.
+  final ValueChanged<ContainerExchange> onConfirm;
 
   final String title;
   final String message;
@@ -43,13 +48,19 @@ class ContainerReturnDialog extends StatefulWidget {
 }
 
 class _ContainerReturnDialogState extends State<ContainerReturnDialog> {
+  static bool _isSkeleton(ContainerType type) =>
+      type.code == ContainerType.skeletonCode;
+
   late final Map<String, int> _returns = {
     for (final type in widget.containerTypes)
       type.code: (widget.initialReturns[type.code] ?? 0).clamp(
         0,
-        widget.custody[type.code] ?? 0,
+        _isSkeleton(type) ? maxSkeletons : widget.custody[type.code] ?? 0,
       ),
   };
+
+  late final bool _lendsSkeleton = widget.containerTypes.any(_isSkeleton);
+  int _skeletonDelivered = 0;
 
   @override
   Widget build(BuildContext context) {
@@ -69,13 +80,24 @@ class _ContainerReturnDialogState extends State<ContainerReturnDialog> {
             ),
             const SizedBox(height: 16),
             for (final type in widget.containerTypes)
-              _ReturnRow(
-                label: type.label,
-                returned: _returns[type.code] ?? 0,
-                max: widget.custody[type.code] ?? 0,
-                onChanged: (value) =>
-                    setState(() => _returns[type.code] = value),
-              ),
+              if (_isSkeleton(type))
+                _SkeletonBlock(
+                  balance: widget.custody[type.code] ?? 0,
+                  delivered: _skeletonDelivered,
+                  returned: _returns[type.code] ?? 0,
+                  onDeliveredChanged: (value) =>
+                      setState(() => _skeletonDelivered = value),
+                  onReturnedChanged: (value) =>
+                      setState(() => _returns[type.code] = value),
+                )
+              else
+                _ReturnRow(
+                  label: type.label,
+                  returned: _returns[type.code] ?? 0,
+                  max: widget.custody[type.code] ?? 0,
+                  onChanged: (value) =>
+                      setState(() => _returns[type.code] = value),
+                ),
           ],
         ),
       ),
@@ -85,13 +107,62 @@ class _ContainerReturnDialogState extends State<ContainerReturnDialog> {
           child: const Text('Cancelar'),
         ),
         FilledButton(
-          onPressed: () => widget.onConfirm(Map.unmodifiable(_returns)),
+          onPressed: () => widget.onConfirm((
+            returns: Map.unmodifiable(_returns),
+            deliveries: Map.unmodifiable({
+              if (_lendsSkeleton && _skeletonDelivered > 0)
+                ContainerType.skeletonCode: _skeletonDelivered,
+            }),
+          )),
           style: FilledButton.styleFrom(
             backgroundColor: MarilinColors.brandBlue,
           ),
           child: Text(widget.confirmLabel),
         ),
       ],
+    );
+  }
+}
+
+/// The skeleton: delivered and taken back, with the customer's balance.
+class _SkeletonBlock extends StatelessWidget {
+  const _SkeletonBlock({
+    required this.balance,
+    required this.delivered,
+    required this.returned,
+    required this.onDeliveredChanged,
+    required this.onReturnedChanged,
+  });
+
+  final int balance;
+  final int delivered;
+  final int returned;
+  final ValueChanged<int> onDeliveredChanged;
+  final ValueChanged<int> onReturnedChanged;
+
+  @override
+  Widget build(BuildContext context) {
+    return Padding(
+      padding: const EdgeInsets.symmetric(vertical: 8.0),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          const Text(
+            'Esqueleto',
+            style: TextStyle(fontWeight: FontWeight.bold, fontSize: 16),
+          ),
+          Text(
+            skeletonBalanceLabel(balance),
+            style: TextStyle(color: context.marilin.textMuted, fontSize: 13),
+          ),
+          SkeletonExchange(
+            delivered: delivered,
+            returned: returned,
+            onDeliveredChanged: onDeliveredChanged,
+            onReturnedChanged: onReturnedChanged,
+          ),
+        ],
+      ),
     );
   }
 }

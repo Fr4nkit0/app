@@ -83,6 +83,40 @@ void main() {
     expect(movement.saleId, isNull);
   });
 
+  test('records a skeleton delivered and returned as one movement', () async {
+    await useCase(DriftInventoryRepository(db)).execute(
+      customerId: 'cust-1',
+      visitId: 'visit-1',
+      returns: {'ESQUELETO': 1, 'JUG': 0},
+      deliveries: {'ESQUELETO': 3},
+    );
+
+    final movement = await db.select(db.containerMovementTable).getSingle();
+    expect(movement.containerType, 'ESQUELETO');
+    expect(movement.deliveredQuantity, 3);
+    expect(movement.returnedQuantity, 1);
+    expect(movement.visitId, 'visit-1');
+    expect(movement.saleId, isNull);
+    final custody = await db.select(db.customerContainerBalanceTable).get();
+    expect(
+      {for (final b in custody) b.containerType: b.quantity},
+      {'ESQUELETO': 2},
+    );
+    expect((await db.select(db.pendingChangeTable).get()).length, 1);
+  });
+
+  test('records a delivery without a return', () async {
+    await useCase(DriftInventoryRepository(db)).execute(
+      customerId: 'cust-1',
+      returns: const {},
+      deliveries: {'ESQUELETO': 1},
+    );
+
+    final movement = await db.select(db.containerMovementTable).getSingle();
+    expect(movement.deliveredQuantity, 1);
+    expect(movement.returnedQuantity, 0);
+  });
+
   test('records nothing when every return is zero', () async {
     await useCase(
       DriftInventoryRepository(db),

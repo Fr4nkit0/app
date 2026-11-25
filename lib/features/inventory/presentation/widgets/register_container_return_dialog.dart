@@ -4,14 +4,15 @@ import 'package:app/core/presentation/failure_message.dart';
 import 'package:app/core/theme/marilin_tokens.dart';
 import 'package:app/core/widgets/top_toast.dart';
 import 'package:app/features/inventory/domain/custody.dart';
+import 'package:app/features/inventory/domain/models/container_exchange.dart';
 import 'package:app/features/inventory/domain/models/container_type.dart';
 import 'package:app/features/inventory/domain/models/customer_container_balance.dart';
 import 'package:app/features/inventory/presentation/providers/inventory_repository_provider.dart';
 import 'package:app/features/inventory/presentation/providers/register_container_return_usecase_provider.dart';
 import 'package:app/features/inventory/presentation/widgets/container_return_dialog.dart';
 
-/// Records the containers a customer hands back without a sale, from the
-/// visit or the customer profile.
+/// Records the containers a customer hands back without a sale, and the
+/// skeletons lent without one, from the visit or the customer profile.
 class RegisterContainerReturnDialog extends ConsumerWidget {
   const RegisterContainerReturnDialog({
     super.key,
@@ -37,20 +38,25 @@ class RegisterContainerReturnDialog extends ConsumerWidget {
     return ContainerReturnDialog(
       containerTypes: containerTypes,
       custody: custodyByContainerType(balances),
-      onConfirm: (returns) => _save(context, ref, returns),
+      onConfirm: (exchange) => _save(context, ref, exchange),
     );
   }
 
   Future<void> _save(
     BuildContext context,
     WidgetRef ref,
-    Map<String, int> returns,
+    ContainerExchange exchange,
   ) async {
     final visitId = this.visitId;
     try {
       await ref
           .read(registerContainerReturnUseCaseProvider)
-          .execute(customerId: customerId, visitId: visitId, returns: returns);
+          .execute(
+            customerId: customerId,
+            visitId: visitId,
+            returns: exchange.returns,
+            deliveries: exchange.deliveries,
+          );
     } catch (e) {
       // A failed return keeps the dialog open so the driver can retry.
       if (context.mounted) {

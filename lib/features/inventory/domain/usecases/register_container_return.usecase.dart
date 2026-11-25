@@ -6,7 +6,8 @@ import 'package:app/features/inventory/domain/models/container_movement.dart';
 
 String _uuidV4() => const Uuid().v4();
 
-/// Containers a customer hands back without a sale.
+/// Containers a customer hands back without a sale, and skeletons the
+/// driver lends without one.
 class RegisterContainerReturnUseCase {
   const RegisterContainerReturnUseCase({
     required InventoryRepository inventoryRepo,
@@ -23,30 +24,33 @@ class RegisterContainerReturnUseCase {
   final DateTime Function() _now;
   final String Function() _newId;
 
-  /// Records one movement per container code in [returns] with a returned
-  /// quantity above zero, all of them or none; all zeros record nothing.
+  /// Records one movement per container code with a returned quantity in
+  /// [returns] or a delivered one in [deliveries] above zero, all of them or
+  /// none; all zeros record nothing.
   Future<void> execute({
     required String customerId,
     required Map<String, int> returns,
+    Map<String, int> deliveries = const {},
     String? visitId,
     String? routeId,
   }) async {
-    final returned = {
-      for (final entry in returns.entries)
-        if (entry.value > 0) entry.key: entry.value,
-    };
-    if (returned.isEmpty) return;
+    int positive(int? quantity) => (quantity ?? 0) > 0 ? quantity! : 0;
+    final codes = [
+      for (final code in {...returns.keys, ...deliveries.keys})
+        if (positive(returns[code]) > 0 || positive(deliveries[code]) > 0) code,
+    ];
+    if (codes.isEmpty) return;
 
     final at = _now();
     await _transaction(() async {
-      for (final entry in returned.entries) {
+      for (final code in codes) {
         await _inventoryRepo.recordContainerMovement(
           ContainerMovement(
             id: _newId(),
             customerId: customerId,
-            containerType: entry.key,
-            deliveredQuantity: 0,
-            returnedQuantity: entry.value,
+            containerType: code,
+            deliveredQuantity: positive(deliveries[code]),
+            returnedQuantity: positive(returns[code]),
             createdAt: at,
             visitId: visitId,
             routeId: routeId,
