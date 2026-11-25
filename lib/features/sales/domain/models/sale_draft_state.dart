@@ -4,6 +4,7 @@ import 'package:app/features/sales/domain/models/payment_method.dart';
 import 'package:app/features/sales/domain/models/sale_item.dart';
 import 'package:app/features/inventory/domain/custody.dart';
 import 'package:app/features/inventory/domain/models/container_movement.dart';
+import 'package:app/features/inventory/domain/models/container_type.dart';
 import 'package:uuid/uuid.dart';
 
 class SaleDraftState {
@@ -14,6 +15,14 @@ class SaleDraftState {
   final double? cashAmount;
   final double? transferAmount;
   final Map<String, int> returnedContainers;
+
+  /// Skeletons ([ContainerType.skeletonCode]) lent with this sale. No sale
+  /// line carries them: the driver sets them by hand.
+  final int skeletonDelivered;
+
+  /// Skeletons taken back with this sale; not capped by the customer's
+  /// custody, the office corrects a balance below zero.
+  final int skeletonReturned;
 
   /// Whether the driver also collects previous debt with this sale.
   final bool collectDebt;
@@ -34,6 +43,8 @@ class SaleDraftState {
     this.cashAmount,
     this.transferAmount,
     this.returnedContainers = const {},
+    this.skeletonDelivered = 0,
+    this.skeletonReturned = 0,
     this.collectDebt = false,
     this.debtAmount,
     this.currentDebt = 0,
@@ -58,6 +69,8 @@ class SaleDraftState {
     double? cashAmount,
     double? transferAmount,
     Map<String, int>? returnedContainers,
+    int? skeletonDelivered,
+    int? skeletonReturned,
     bool? collectDebt,
     double? debtAmount,
     double? currentDebt,
@@ -80,6 +93,8 @@ class SaleDraftState {
           ? null
           : (transferAmount ?? this.transferAmount),
       returnedContainers: returnedContainers ?? this.returnedContainers,
+      skeletonDelivered: skeletonDelivered ?? this.skeletonDelivered,
+      skeletonReturned: skeletonReturned ?? this.skeletonReturned,
       collectDebt: collectDebt ?? this.collectDebt,
       debtAmount: clearDebtAmount ? null : (debtAmount ?? this.debtAmount),
       currentDebt: currentDebt ?? this.currentDebt,
@@ -154,10 +169,20 @@ class SaleDraftState {
     String? visitId,
   ) {
     final deliveredByType = deliveredByContainerType(containerDeliveries);
+    const skeleton = ContainerType.skeletonCode;
+    final returnedByType = {
+      ...returnedContainers,
+      if (skeletonReturned > 0)
+        skeleton: (returnedContainers[skeleton] ?? 0) + skeletonReturned,
+    };
+    if (skeletonDelivered > 0) {
+      deliveredByType[skeleton] =
+          (deliveredByType[skeleton] ?? 0) + skeletonDelivered;
+    }
     final movements = <ContainerMovement>[];
-    for (final type in {...deliveredByType.keys, ...returnedContainers.keys}) {
+    for (final type in {...deliveredByType.keys, ...returnedByType.keys}) {
       final delivered = deliveredByType[type] ?? 0;
-      final returned = returnedContainers[type] ?? 0;
+      final returned = returnedByType[type] ?? 0;
       if (delivered > 0 || returned > 0) {
         movements.add(
           ContainerMovement(
