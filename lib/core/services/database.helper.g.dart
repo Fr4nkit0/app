@@ -15183,6 +15183,461 @@ class BalanceCorrectionTableCompanion
   }
 }
 
+class $RouteContainerLoadTableTable extends RouteContainerLoadTable
+    with TableInfo<$RouteContainerLoadTableTable, RouteContainerLoadTableData> {
+  @override
+  final GeneratedDatabase attachedDatabase;
+  final String? _alias;
+  $RouteContainerLoadTableTable(this.attachedDatabase, [this._alias]);
+  static const VerificationMeta _idMeta = const VerificationMeta('id');
+  @override
+  late final GeneratedColumn<int> id = GeneratedColumn<int>(
+    'id',
+    aliasedName,
+    false,
+    type: DriftSqlType.int,
+    requiredDuringInsert: false,
+  );
+  static const VerificationMeta _routeIdMeta = const VerificationMeta(
+    'routeId',
+  );
+  @override
+  late final GeneratedColumn<String> routeId = GeneratedColumn<String>(
+    'route_id',
+    aliasedName,
+    false,
+    type: DriftSqlType.string,
+    requiredDuringInsert: true,
+    defaultConstraints: GeneratedColumn.constraintIsAlways(
+      'REFERENCES routes (route_id) ON DELETE CASCADE',
+    ),
+  );
+  static const VerificationMeta _containerTypeMeta = const VerificationMeta(
+    'containerType',
+  );
+  @override
+  late final GeneratedColumn<String> containerType = GeneratedColumn<String>(
+    'container_type',
+    aliasedName,
+    false,
+    type: DriftSqlType.string,
+    requiredDuringInsert: true,
+  );
+  static const VerificationMeta _quantityMeta = const VerificationMeta(
+    'quantity',
+  );
+  @override
+  late final GeneratedColumn<int> quantity = GeneratedColumn<int>(
+    'quantity',
+    aliasedName,
+    false,
+    type: DriftSqlType.int,
+    requiredDuringInsert: true,
+  );
+  static const VerificationMeta _typeMeta = const VerificationMeta('type');
+  @override
+  late final GeneratedColumn<String> type = GeneratedColumn<String>(
+    'type',
+    aliasedName,
+    false,
+    type: DriftSqlType.string,
+    requiredDuringInsert: true,
+  );
+  static const VerificationMeta _reasonMeta = const VerificationMeta('reason');
+  @override
+  late final GeneratedColumn<String> reason = GeneratedColumn<String>(
+    'reason',
+    aliasedName,
+    true,
+    type: DriftSqlType.string,
+    requiredDuringInsert: false,
+  );
+  static const VerificationMeta _loadedAtMeta = const VerificationMeta(
+    'loadedAt',
+  );
+  @override
+  late final GeneratedColumn<DateTime> loadedAt = GeneratedColumn<DateTime>(
+    'loaded_at',
+    aliasedName,
+    false,
+    type: DriftSqlType.dateTime,
+    requiredDuringInsert: true,
+  );
+  @override
+  List<GeneratedColumn> get $columns => [
+    id,
+    routeId,
+    containerType,
+    quantity,
+    type,
+    reason,
+    loadedAt,
+  ];
+  @override
+  String get aliasedName => _alias ?? actualTableName;
+  @override
+  String get actualTableName => $name;
+  static const String $name = 'route_container_loads';
+  @override
+  VerificationContext validateIntegrity(
+    Insertable<RouteContainerLoadTableData> instance, {
+    bool isInserting = false,
+  }) {
+    final context = VerificationContext();
+    final data = instance.toColumns(true);
+    if (data.containsKey('id')) {
+      context.handle(_idMeta, id.isAcceptableOrUnknown(data['id']!, _idMeta));
+    }
+    if (data.containsKey('route_id')) {
+      context.handle(
+        _routeIdMeta,
+        routeId.isAcceptableOrUnknown(data['route_id']!, _routeIdMeta),
+      );
+    } else if (isInserting) {
+      context.missing(_routeIdMeta);
+    }
+    if (data.containsKey('container_type')) {
+      context.handle(
+        _containerTypeMeta,
+        containerType.isAcceptableOrUnknown(
+          data['container_type']!,
+          _containerTypeMeta,
+        ),
+      );
+    } else if (isInserting) {
+      context.missing(_containerTypeMeta);
+    }
+    if (data.containsKey('quantity')) {
+      context.handle(
+        _quantityMeta,
+        quantity.isAcceptableOrUnknown(data['quantity']!, _quantityMeta),
+      );
+    } else if (isInserting) {
+      context.missing(_quantityMeta);
+    }
+    if (data.containsKey('type')) {
+      context.handle(
+        _typeMeta,
+        type.isAcceptableOrUnknown(data['type']!, _typeMeta),
+      );
+    } else if (isInserting) {
+      context.missing(_typeMeta);
+    }
+    if (data.containsKey('reason')) {
+      context.handle(
+        _reasonMeta,
+        reason.isAcceptableOrUnknown(data['reason']!, _reasonMeta),
+      );
+    }
+    if (data.containsKey('loaded_at')) {
+      context.handle(
+        _loadedAtMeta,
+        loadedAt.isAcceptableOrUnknown(data['loaded_at']!, _loadedAtMeta),
+      );
+    } else if (isInserting) {
+      context.missing(_loadedAtMeta);
+    }
+    return context;
+  }
+
+  @override
+  Set<GeneratedColumn> get $primaryKey => {id};
+  @override
+  RouteContainerLoadTableData map(
+    Map<String, dynamic> data, {
+    String? tablePrefix,
+  }) {
+    final effectivePrefix = tablePrefix != null ? '$tablePrefix.' : '';
+    return RouteContainerLoadTableData(
+      id: attachedDatabase.typeMapping.read(
+        DriftSqlType.int,
+        data['${effectivePrefix}id'],
+      )!,
+      routeId: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}route_id'],
+      )!,
+      containerType: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}container_type'],
+      )!,
+      quantity: attachedDatabase.typeMapping.read(
+        DriftSqlType.int,
+        data['${effectivePrefix}quantity'],
+      )!,
+      type: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}type'],
+      )!,
+      reason: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}reason'],
+      ),
+      loadedAt: attachedDatabase.typeMapping.read(
+        DriftSqlType.dateTime,
+        data['${effectivePrefix}loaded_at'],
+      )!,
+    );
+  }
+
+  @override
+  $RouteContainerLoadTableTable createAlias(String alias) {
+    return $RouteContainerLoadTableTable(attachedDatabase, alias);
+  }
+}
+
+class RouteContainerLoadTableData extends DataClass
+    implements Insertable<RouteContainerLoadTableData> {
+  final int id;
+  final String routeId;
+  final String containerType;
+  final int quantity;
+  final String type;
+  final String? reason;
+  final DateTime loadedAt;
+  const RouteContainerLoadTableData({
+    required this.id,
+    required this.routeId,
+    required this.containerType,
+    required this.quantity,
+    required this.type,
+    this.reason,
+    required this.loadedAt,
+  });
+  @override
+  Map<String, Expression> toColumns(bool nullToAbsent) {
+    final map = <String, Expression>{};
+    map['id'] = Variable<int>(id);
+    map['route_id'] = Variable<String>(routeId);
+    map['container_type'] = Variable<String>(containerType);
+    map['quantity'] = Variable<int>(quantity);
+    map['type'] = Variable<String>(type);
+    if (!nullToAbsent || reason != null) {
+      map['reason'] = Variable<String>(reason);
+    }
+    map['loaded_at'] = Variable<DateTime>(loadedAt);
+    return map;
+  }
+
+  RouteContainerLoadTableCompanion toCompanion(bool nullToAbsent) {
+    return RouteContainerLoadTableCompanion(
+      id: Value(id),
+      routeId: Value(routeId),
+      containerType: Value(containerType),
+      quantity: Value(quantity),
+      type: Value(type),
+      reason: reason == null && nullToAbsent
+          ? const Value.absent()
+          : Value(reason),
+      loadedAt: Value(loadedAt),
+    );
+  }
+
+  factory RouteContainerLoadTableData.fromJson(
+    Map<String, dynamic> json, {
+    ValueSerializer? serializer,
+  }) {
+    serializer ??= driftRuntimeOptions.defaultSerializer;
+    return RouteContainerLoadTableData(
+      id: serializer.fromJson<int>(json['id']),
+      routeId: serializer.fromJson<String>(json['routeId']),
+      containerType: serializer.fromJson<String>(json['containerType']),
+      quantity: serializer.fromJson<int>(json['quantity']),
+      type: serializer.fromJson<String>(json['type']),
+      reason: serializer.fromJson<String?>(json['reason']),
+      loadedAt: serializer.fromJson<DateTime>(json['loadedAt']),
+    );
+  }
+  @override
+  Map<String, dynamic> toJson({ValueSerializer? serializer}) {
+    serializer ??= driftRuntimeOptions.defaultSerializer;
+    return <String, dynamic>{
+      'id': serializer.toJson<int>(id),
+      'routeId': serializer.toJson<String>(routeId),
+      'containerType': serializer.toJson<String>(containerType),
+      'quantity': serializer.toJson<int>(quantity),
+      'type': serializer.toJson<String>(type),
+      'reason': serializer.toJson<String?>(reason),
+      'loadedAt': serializer.toJson<DateTime>(loadedAt),
+    };
+  }
+
+  RouteContainerLoadTableData copyWith({
+    int? id,
+    String? routeId,
+    String? containerType,
+    int? quantity,
+    String? type,
+    Value<String?> reason = const Value.absent(),
+    DateTime? loadedAt,
+  }) => RouteContainerLoadTableData(
+    id: id ?? this.id,
+    routeId: routeId ?? this.routeId,
+    containerType: containerType ?? this.containerType,
+    quantity: quantity ?? this.quantity,
+    type: type ?? this.type,
+    reason: reason.present ? reason.value : this.reason,
+    loadedAt: loadedAt ?? this.loadedAt,
+  );
+  RouteContainerLoadTableData copyWithCompanion(
+    RouteContainerLoadTableCompanion data,
+  ) {
+    return RouteContainerLoadTableData(
+      id: data.id.present ? data.id.value : this.id,
+      routeId: data.routeId.present ? data.routeId.value : this.routeId,
+      containerType: data.containerType.present
+          ? data.containerType.value
+          : this.containerType,
+      quantity: data.quantity.present ? data.quantity.value : this.quantity,
+      type: data.type.present ? data.type.value : this.type,
+      reason: data.reason.present ? data.reason.value : this.reason,
+      loadedAt: data.loadedAt.present ? data.loadedAt.value : this.loadedAt,
+    );
+  }
+
+  @override
+  String toString() {
+    return (StringBuffer('RouteContainerLoadTableData(')
+          ..write('id: $id, ')
+          ..write('routeId: $routeId, ')
+          ..write('containerType: $containerType, ')
+          ..write('quantity: $quantity, ')
+          ..write('type: $type, ')
+          ..write('reason: $reason, ')
+          ..write('loadedAt: $loadedAt')
+          ..write(')'))
+        .toString();
+  }
+
+  @override
+  int get hashCode =>
+      Object.hash(id, routeId, containerType, quantity, type, reason, loadedAt);
+  @override
+  bool operator ==(Object other) =>
+      identical(this, other) ||
+      (other is RouteContainerLoadTableData &&
+          other.id == this.id &&
+          other.routeId == this.routeId &&
+          other.containerType == this.containerType &&
+          other.quantity == this.quantity &&
+          other.type == this.type &&
+          other.reason == this.reason &&
+          other.loadedAt == this.loadedAt);
+}
+
+class RouteContainerLoadTableCompanion
+    extends UpdateCompanion<RouteContainerLoadTableData> {
+  final Value<int> id;
+  final Value<String> routeId;
+  final Value<String> containerType;
+  final Value<int> quantity;
+  final Value<String> type;
+  final Value<String?> reason;
+  final Value<DateTime> loadedAt;
+  const RouteContainerLoadTableCompanion({
+    this.id = const Value.absent(),
+    this.routeId = const Value.absent(),
+    this.containerType = const Value.absent(),
+    this.quantity = const Value.absent(),
+    this.type = const Value.absent(),
+    this.reason = const Value.absent(),
+    this.loadedAt = const Value.absent(),
+  });
+  RouteContainerLoadTableCompanion.insert({
+    this.id = const Value.absent(),
+    required String routeId,
+    required String containerType,
+    required int quantity,
+    required String type,
+    this.reason = const Value.absent(),
+    required DateTime loadedAt,
+  }) : routeId = Value(routeId),
+       containerType = Value(containerType),
+       quantity = Value(quantity),
+       type = Value(type),
+       loadedAt = Value(loadedAt);
+  static Insertable<RouteContainerLoadTableData> custom({
+    Expression<int>? id,
+    Expression<String>? routeId,
+    Expression<String>? containerType,
+    Expression<int>? quantity,
+    Expression<String>? type,
+    Expression<String>? reason,
+    Expression<DateTime>? loadedAt,
+  }) {
+    return RawValuesInsertable({
+      if (id != null) 'id': id,
+      if (routeId != null) 'route_id': routeId,
+      if (containerType != null) 'container_type': containerType,
+      if (quantity != null) 'quantity': quantity,
+      if (type != null) 'type': type,
+      if (reason != null) 'reason': reason,
+      if (loadedAt != null) 'loaded_at': loadedAt,
+    });
+  }
+
+  RouteContainerLoadTableCompanion copyWith({
+    Value<int>? id,
+    Value<String>? routeId,
+    Value<String>? containerType,
+    Value<int>? quantity,
+    Value<String>? type,
+    Value<String?>? reason,
+    Value<DateTime>? loadedAt,
+  }) {
+    return RouteContainerLoadTableCompanion(
+      id: id ?? this.id,
+      routeId: routeId ?? this.routeId,
+      containerType: containerType ?? this.containerType,
+      quantity: quantity ?? this.quantity,
+      type: type ?? this.type,
+      reason: reason ?? this.reason,
+      loadedAt: loadedAt ?? this.loadedAt,
+    );
+  }
+
+  @override
+  Map<String, Expression> toColumns(bool nullToAbsent) {
+    final map = <String, Expression>{};
+    if (id.present) {
+      map['id'] = Variable<int>(id.value);
+    }
+    if (routeId.present) {
+      map['route_id'] = Variable<String>(routeId.value);
+    }
+    if (containerType.present) {
+      map['container_type'] = Variable<String>(containerType.value);
+    }
+    if (quantity.present) {
+      map['quantity'] = Variable<int>(quantity.value);
+    }
+    if (type.present) {
+      map['type'] = Variable<String>(type.value);
+    }
+    if (reason.present) {
+      map['reason'] = Variable<String>(reason.value);
+    }
+    if (loadedAt.present) {
+      map['loaded_at'] = Variable<DateTime>(loadedAt.value);
+    }
+    return map;
+  }
+
+  @override
+  String toString() {
+    return (StringBuffer('RouteContainerLoadTableCompanion(')
+          ..write('id: $id, ')
+          ..write('routeId: $routeId, ')
+          ..write('containerType: $containerType, ')
+          ..write('quantity: $quantity, ')
+          ..write('type: $type, ')
+          ..write('reason: $reason, ')
+          ..write('loadedAt: $loadedAt')
+          ..write(')'))
+        .toString();
+  }
+}
+
 abstract class _$AppDatabase extends GeneratedDatabase {
   _$AppDatabase(QueryExecutor e) : super(e);
   $AppDatabaseManager get managers => $AppDatabaseManager(this);
@@ -15225,6 +15680,8 @@ abstract class _$AppDatabase extends GeneratedDatabase {
       $NeighborhoodTableTable(this);
   late final $BalanceCorrectionTableTable balanceCorrectionTable =
       $BalanceCorrectionTableTable(this);
+  late final $RouteContainerLoadTableTable routeContainerLoadTable =
+      $RouteContainerLoadTableTable(this);
   @override
   Iterable<TableInfo<Table, Object?>> get allTables =>
       allSchemaEntities.whereType<TableInfo<Table, Object?>>();
@@ -15254,6 +15711,7 @@ abstract class _$AppDatabase extends GeneratedDatabase {
     syncStateTable,
     neighborhoodTable,
     balanceCorrectionTable,
+    routeContainerLoadTable,
   ];
   @override
   StreamQueryUpdateRules get streamUpdateRules => const StreamQueryUpdateRules([
@@ -15358,6 +15816,13 @@ abstract class _$AppDatabase extends GeneratedDatabase {
         limitUpdateKind: UpdateKind.delete,
       ),
       result: [TableUpdate('customer_agreements', kind: UpdateKind.delete)],
+    ),
+    WritePropagation(
+      on: TableUpdateQuery.onTableName(
+        'routes',
+        limitUpdateKind: UpdateKind.delete,
+      ),
+      result: [TableUpdate('route_container_loads', kind: UpdateKind.delete)],
     ),
   ]);
 }
@@ -17636,6 +18101,37 @@ final class $$RouteTableTableReferences
       manager.$state.copyWith(prefetchedData: cache),
     );
   }
+
+  static MultiTypedResultKey<
+    $RouteContainerLoadTableTable,
+    List<RouteContainerLoadTableData>
+  >
+  _routeContainerLoadTableRefsTable(_$AppDatabase db) =>
+      MultiTypedResultKey.fromTable(
+        db.routeContainerLoadTable,
+        aliasName: $_aliasNameGenerator(
+          db.routeTable.routeId,
+          db.routeContainerLoadTable.routeId,
+        ),
+      );
+
+  $$RouteContainerLoadTableTableProcessedTableManager
+  get routeContainerLoadTableRefs {
+    final manager =
+        $$RouteContainerLoadTableTableTableManager(
+          $_db,
+          $_db.routeContainerLoadTable,
+        ).filter(
+          (f) => f.routeId.routeId.sqlEquals($_itemColumn<String>('route_id')!),
+        );
+
+    final cache = $_typedResult.readTableOrNull(
+      _routeContainerLoadTableRefsTable($_db),
+    );
+    return ProcessedTableManager(
+      manager.$state.copyWith(prefetchedData: cache),
+    );
+  }
 }
 
 class $$RouteTableTableFilterComposer
@@ -17775,6 +18271,32 @@ class $$RouteTableTableFilterComposer
               }) => $$RouteInventoryLoadTableTableFilterComposer(
                 $db: $db,
                 $table: $db.routeInventoryLoadTable,
+                $addJoinBuilderToRootComposer: $addJoinBuilderToRootComposer,
+                joinBuilder: joinBuilder,
+                $removeJoinBuilderFromRootComposer:
+                    $removeJoinBuilderFromRootComposer,
+              ),
+        );
+    return f(composer);
+  }
+
+  Expression<bool> routeContainerLoadTableRefs(
+    Expression<bool> Function($$RouteContainerLoadTableTableFilterComposer f) f,
+  ) {
+    final $$RouteContainerLoadTableTableFilterComposer composer =
+        $composerBuilder(
+          composer: this,
+          getCurrentColumn: (t) => t.routeId,
+          referencedTable: $db.routeContainerLoadTable,
+          getReferencedColumn: (t) => t.routeId,
+          builder:
+              (
+                joinBuilder, {
+                $addJoinBuilderToRootComposer,
+                $removeJoinBuilderFromRootComposer,
+              }) => $$RouteContainerLoadTableTableFilterComposer(
+                $db: $db,
+                $table: $db.routeContainerLoadTable,
                 $addJoinBuilderToRootComposer: $addJoinBuilderToRootComposer,
                 joinBuilder: joinBuilder,
                 $removeJoinBuilderFromRootComposer:
@@ -17989,6 +18511,33 @@ class $$RouteTableTableAnnotationComposer
         );
     return f(composer);
   }
+
+  Expression<T> routeContainerLoadTableRefs<T extends Object>(
+    Expression<T> Function($$RouteContainerLoadTableTableAnnotationComposer a)
+    f,
+  ) {
+    final $$RouteContainerLoadTableTableAnnotationComposer composer =
+        $composerBuilder(
+          composer: this,
+          getCurrentColumn: (t) => t.routeId,
+          referencedTable: $db.routeContainerLoadTable,
+          getReferencedColumn: (t) => t.routeId,
+          builder:
+              (
+                joinBuilder, {
+                $addJoinBuilderToRootComposer,
+                $removeJoinBuilderFromRootComposer,
+              }) => $$RouteContainerLoadTableTableAnnotationComposer(
+                $db: $db,
+                $table: $db.routeContainerLoadTable,
+                $addJoinBuilderToRootComposer: $addJoinBuilderToRootComposer,
+                joinBuilder: joinBuilder,
+                $removeJoinBuilderFromRootComposer:
+                    $removeJoinBuilderFromRootComposer,
+              ),
+        );
+    return f(composer);
+  }
 }
 
 class $$RouteTableTableTableManager
@@ -18008,6 +18557,7 @@ class $$RouteTableTableTableManager
             bool routeStopTableRefs,
             bool containerMovementTableRefs,
             bool routeInventoryLoadTableRefs,
+            bool routeContainerLoadTableRefs,
           })
         > {
   $$RouteTableTableTableManager(_$AppDatabase db, $RouteTableTable table)
@@ -18094,6 +18644,7 @@ class $$RouteTableTableTableManager
                 routeStopTableRefs = false,
                 containerMovementTableRefs = false,
                 routeInventoryLoadTableRefs = false,
+                routeContainerLoadTableRefs = false,
               }) {
                 return PrefetchHooks(
                   db: db,
@@ -18101,6 +18652,7 @@ class $$RouteTableTableTableManager
                     if (routeStopTableRefs) db.routeStopTable,
                     if (containerMovementTableRefs) db.containerMovementTable,
                     if (routeInventoryLoadTableRefs) db.routeInventoryLoadTable,
+                    if (routeContainerLoadTableRefs) db.routeContainerLoadTable,
                   ],
                   addJoins: null,
                   getPrefetchedDataCallback: (items) async {
@@ -18168,6 +18720,27 @@ class $$RouteTableTableTableManager
                               ),
                           typedResults: items,
                         ),
+                      if (routeContainerLoadTableRefs)
+                        await $_getPrefetchedData<
+                          RouteTableData,
+                          $RouteTableTable,
+                          RouteContainerLoadTableData
+                        >(
+                          currentTable: table,
+                          referencedTable: $$RouteTableTableReferences
+                              ._routeContainerLoadTableRefsTable(db),
+                          managerFromTypedResult: (p0) =>
+                              $$RouteTableTableReferences(
+                                db,
+                                table,
+                                p0,
+                              ).routeContainerLoadTableRefs,
+                          referencedItemsForCurrentItem:
+                              (item, referencedItems) => referencedItems.where(
+                                (e) => e.routeId == item.routeId,
+                              ),
+                          typedResults: items,
+                        ),
                     ];
                   },
                 );
@@ -18192,6 +18765,7 @@ typedef $$RouteTableTableProcessedTableManager =
         bool routeStopTableRefs,
         bool containerMovementTableRefs,
         bool routeInventoryLoadTableRefs,
+        bool routeContainerLoadTableRefs,
       })
     >;
 typedef $$RouteStopTableTableCreateCompanionBuilder =
@@ -28730,6 +29304,387 @@ typedef $$BalanceCorrectionTableTableProcessedTableManager =
       BalanceCorrectionTableData,
       PrefetchHooks Function({bool customerId})
     >;
+typedef $$RouteContainerLoadTableTableCreateCompanionBuilder =
+    RouteContainerLoadTableCompanion Function({
+      Value<int> id,
+      required String routeId,
+      required String containerType,
+      required int quantity,
+      required String type,
+      Value<String?> reason,
+      required DateTime loadedAt,
+    });
+typedef $$RouteContainerLoadTableTableUpdateCompanionBuilder =
+    RouteContainerLoadTableCompanion Function({
+      Value<int> id,
+      Value<String> routeId,
+      Value<String> containerType,
+      Value<int> quantity,
+      Value<String> type,
+      Value<String?> reason,
+      Value<DateTime> loadedAt,
+    });
+
+final class $$RouteContainerLoadTableTableReferences
+    extends
+        BaseReferences<
+          _$AppDatabase,
+          $RouteContainerLoadTableTable,
+          RouteContainerLoadTableData
+        > {
+  $$RouteContainerLoadTableTableReferences(
+    super.$_db,
+    super.$_table,
+    super.$_typedResult,
+  );
+
+  static $RouteTableTable _routeIdTable(_$AppDatabase db) =>
+      db.routeTable.createAlias(
+        $_aliasNameGenerator(
+          db.routeContainerLoadTable.routeId,
+          db.routeTable.routeId,
+        ),
+      );
+
+  $$RouteTableTableProcessedTableManager get routeId {
+    final $_column = $_itemColumn<String>('route_id')!;
+
+    final manager = $$RouteTableTableTableManager(
+      $_db,
+      $_db.routeTable,
+    ).filter((f) => f.routeId.sqlEquals($_column));
+    final item = $_typedResult.readTableOrNull(_routeIdTable($_db));
+    if (item == null) return manager;
+    return ProcessedTableManager(
+      manager.$state.copyWith(prefetchedData: [item]),
+    );
+  }
+}
+
+class $$RouteContainerLoadTableTableFilterComposer
+    extends Composer<_$AppDatabase, $RouteContainerLoadTableTable> {
+  $$RouteContainerLoadTableTableFilterComposer({
+    required super.$db,
+    required super.$table,
+    super.joinBuilder,
+    super.$addJoinBuilderToRootComposer,
+    super.$removeJoinBuilderFromRootComposer,
+  });
+  ColumnFilters<int> get id => $composableBuilder(
+    column: $table.id,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get containerType => $composableBuilder(
+    column: $table.containerType,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<int> get quantity => $composableBuilder(
+    column: $table.quantity,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get type => $composableBuilder(
+    column: $table.type,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get reason => $composableBuilder(
+    column: $table.reason,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<DateTime> get loadedAt => $composableBuilder(
+    column: $table.loadedAt,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  $$RouteTableTableFilterComposer get routeId {
+    final $$RouteTableTableFilterComposer composer = $composerBuilder(
+      composer: this,
+      getCurrentColumn: (t) => t.routeId,
+      referencedTable: $db.routeTable,
+      getReferencedColumn: (t) => t.routeId,
+      builder:
+          (
+            joinBuilder, {
+            $addJoinBuilderToRootComposer,
+            $removeJoinBuilderFromRootComposer,
+          }) => $$RouteTableTableFilterComposer(
+            $db: $db,
+            $table: $db.routeTable,
+            $addJoinBuilderToRootComposer: $addJoinBuilderToRootComposer,
+            joinBuilder: joinBuilder,
+            $removeJoinBuilderFromRootComposer:
+                $removeJoinBuilderFromRootComposer,
+          ),
+    );
+    return composer;
+  }
+}
+
+class $$RouteContainerLoadTableTableOrderingComposer
+    extends Composer<_$AppDatabase, $RouteContainerLoadTableTable> {
+  $$RouteContainerLoadTableTableOrderingComposer({
+    required super.$db,
+    required super.$table,
+    super.joinBuilder,
+    super.$addJoinBuilderToRootComposer,
+    super.$removeJoinBuilderFromRootComposer,
+  });
+  ColumnOrderings<int> get id => $composableBuilder(
+    column: $table.id,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<String> get containerType => $composableBuilder(
+    column: $table.containerType,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<int> get quantity => $composableBuilder(
+    column: $table.quantity,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<String> get type => $composableBuilder(
+    column: $table.type,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<String> get reason => $composableBuilder(
+    column: $table.reason,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<DateTime> get loadedAt => $composableBuilder(
+    column: $table.loadedAt,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  $$RouteTableTableOrderingComposer get routeId {
+    final $$RouteTableTableOrderingComposer composer = $composerBuilder(
+      composer: this,
+      getCurrentColumn: (t) => t.routeId,
+      referencedTable: $db.routeTable,
+      getReferencedColumn: (t) => t.routeId,
+      builder:
+          (
+            joinBuilder, {
+            $addJoinBuilderToRootComposer,
+            $removeJoinBuilderFromRootComposer,
+          }) => $$RouteTableTableOrderingComposer(
+            $db: $db,
+            $table: $db.routeTable,
+            $addJoinBuilderToRootComposer: $addJoinBuilderToRootComposer,
+            joinBuilder: joinBuilder,
+            $removeJoinBuilderFromRootComposer:
+                $removeJoinBuilderFromRootComposer,
+          ),
+    );
+    return composer;
+  }
+}
+
+class $$RouteContainerLoadTableTableAnnotationComposer
+    extends Composer<_$AppDatabase, $RouteContainerLoadTableTable> {
+  $$RouteContainerLoadTableTableAnnotationComposer({
+    required super.$db,
+    required super.$table,
+    super.joinBuilder,
+    super.$addJoinBuilderToRootComposer,
+    super.$removeJoinBuilderFromRootComposer,
+  });
+  GeneratedColumn<int> get id =>
+      $composableBuilder(column: $table.id, builder: (column) => column);
+
+  GeneratedColumn<String> get containerType => $composableBuilder(
+    column: $table.containerType,
+    builder: (column) => column,
+  );
+
+  GeneratedColumn<int> get quantity =>
+      $composableBuilder(column: $table.quantity, builder: (column) => column);
+
+  GeneratedColumn<String> get type =>
+      $composableBuilder(column: $table.type, builder: (column) => column);
+
+  GeneratedColumn<String> get reason =>
+      $composableBuilder(column: $table.reason, builder: (column) => column);
+
+  GeneratedColumn<DateTime> get loadedAt =>
+      $composableBuilder(column: $table.loadedAt, builder: (column) => column);
+
+  $$RouteTableTableAnnotationComposer get routeId {
+    final $$RouteTableTableAnnotationComposer composer = $composerBuilder(
+      composer: this,
+      getCurrentColumn: (t) => t.routeId,
+      referencedTable: $db.routeTable,
+      getReferencedColumn: (t) => t.routeId,
+      builder:
+          (
+            joinBuilder, {
+            $addJoinBuilderToRootComposer,
+            $removeJoinBuilderFromRootComposer,
+          }) => $$RouteTableTableAnnotationComposer(
+            $db: $db,
+            $table: $db.routeTable,
+            $addJoinBuilderToRootComposer: $addJoinBuilderToRootComposer,
+            joinBuilder: joinBuilder,
+            $removeJoinBuilderFromRootComposer:
+                $removeJoinBuilderFromRootComposer,
+          ),
+    );
+    return composer;
+  }
+}
+
+class $$RouteContainerLoadTableTableTableManager
+    extends
+        RootTableManager<
+          _$AppDatabase,
+          $RouteContainerLoadTableTable,
+          RouteContainerLoadTableData,
+          $$RouteContainerLoadTableTableFilterComposer,
+          $$RouteContainerLoadTableTableOrderingComposer,
+          $$RouteContainerLoadTableTableAnnotationComposer,
+          $$RouteContainerLoadTableTableCreateCompanionBuilder,
+          $$RouteContainerLoadTableTableUpdateCompanionBuilder,
+          (
+            RouteContainerLoadTableData,
+            $$RouteContainerLoadTableTableReferences,
+          ),
+          RouteContainerLoadTableData,
+          PrefetchHooks Function({bool routeId})
+        > {
+  $$RouteContainerLoadTableTableTableManager(
+    _$AppDatabase db,
+    $RouteContainerLoadTableTable table,
+  ) : super(
+        TableManagerState(
+          db: db,
+          table: table,
+          createFilteringComposer: () =>
+              $$RouteContainerLoadTableTableFilterComposer(
+                $db: db,
+                $table: table,
+              ),
+          createOrderingComposer: () =>
+              $$RouteContainerLoadTableTableOrderingComposer(
+                $db: db,
+                $table: table,
+              ),
+          createComputedFieldComposer: () =>
+              $$RouteContainerLoadTableTableAnnotationComposer(
+                $db: db,
+                $table: table,
+              ),
+          updateCompanionCallback:
+              ({
+                Value<int> id = const Value.absent(),
+                Value<String> routeId = const Value.absent(),
+                Value<String> containerType = const Value.absent(),
+                Value<int> quantity = const Value.absent(),
+                Value<String> type = const Value.absent(),
+                Value<String?> reason = const Value.absent(),
+                Value<DateTime> loadedAt = const Value.absent(),
+              }) => RouteContainerLoadTableCompanion(
+                id: id,
+                routeId: routeId,
+                containerType: containerType,
+                quantity: quantity,
+                type: type,
+                reason: reason,
+                loadedAt: loadedAt,
+              ),
+          createCompanionCallback:
+              ({
+                Value<int> id = const Value.absent(),
+                required String routeId,
+                required String containerType,
+                required int quantity,
+                required String type,
+                Value<String?> reason = const Value.absent(),
+                required DateTime loadedAt,
+              }) => RouteContainerLoadTableCompanion.insert(
+                id: id,
+                routeId: routeId,
+                containerType: containerType,
+                quantity: quantity,
+                type: type,
+                reason: reason,
+                loadedAt: loadedAt,
+              ),
+          withReferenceMapper: (p0) => p0
+              .map(
+                (e) => (
+                  e.readTable(table),
+                  $$RouteContainerLoadTableTableReferences(db, table, e),
+                ),
+              )
+              .toList(),
+          prefetchHooksCallback: ({routeId = false}) {
+            return PrefetchHooks(
+              db: db,
+              explicitlyWatchedTables: [],
+              addJoins:
+                  <
+                    T extends TableManagerState<
+                      dynamic,
+                      dynamic,
+                      dynamic,
+                      dynamic,
+                      dynamic,
+                      dynamic,
+                      dynamic,
+                      dynamic,
+                      dynamic,
+                      dynamic,
+                      dynamic
+                    >
+                  >(state) {
+                    if (routeId) {
+                      state =
+                          state.withJoin(
+                                currentTable: table,
+                                currentColumn: table.routeId,
+                                referencedTable:
+                                    $$RouteContainerLoadTableTableReferences
+                                        ._routeIdTable(db),
+                                referencedColumn:
+                                    $$RouteContainerLoadTableTableReferences
+                                        ._routeIdTable(db)
+                                        .routeId,
+                              )
+                              as T;
+                    }
+
+                    return state;
+                  },
+              getPrefetchedDataCallback: (items) async {
+                return [];
+              },
+            );
+          },
+        ),
+      );
+}
+
+typedef $$RouteContainerLoadTableTableProcessedTableManager =
+    ProcessedTableManager<
+      _$AppDatabase,
+      $RouteContainerLoadTableTable,
+      RouteContainerLoadTableData,
+      $$RouteContainerLoadTableTableFilterComposer,
+      $$RouteContainerLoadTableTableOrderingComposer,
+      $$RouteContainerLoadTableTableAnnotationComposer,
+      $$RouteContainerLoadTableTableCreateCompanionBuilder,
+      $$RouteContainerLoadTableTableUpdateCompanionBuilder,
+      (RouteContainerLoadTableData, $$RouteContainerLoadTableTableReferences),
+      RouteContainerLoadTableData,
+      PrefetchHooks Function({bool routeId})
+    >;
 
 class $AppDatabaseManager {
   final _$AppDatabase _db;
@@ -28803,5 +29758,10 @@ class $AppDatabaseManager {
       $$BalanceCorrectionTableTableTableManager(
         _db,
         _db.balanceCorrectionTable,
+      );
+  $$RouteContainerLoadTableTableTableManager get routeContainerLoadTable =>
+      $$RouteContainerLoadTableTableTableManager(
+        _db,
+        _db.routeContainerLoadTable,
       );
 }

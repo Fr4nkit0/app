@@ -26,6 +26,10 @@ class ContainerType {
     return ContainerType(id: id, code: code, label: text.isEmpty ? code : text);
   }
 
+  /// The soda crate lent with the siphons. No product carries it: the
+  /// driver delivers or takes it back by hand.
+  static const skeletonCode = 'ESQUELETO';
+
   final int id;
   final String code;
   final String label;

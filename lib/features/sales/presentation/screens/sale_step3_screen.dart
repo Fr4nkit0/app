@@ -15,6 +15,7 @@ import 'package:app/features/inventory/domain/custody.dart';
 import 'package:app/features/inventory/domain/models/container_type.dart';
 import 'package:app/features/inventory/domain/models/customer_container_balance.dart';
 import 'package:app/features/inventory/presentation/widgets/container_return_dialog.dart';
+import 'package:app/features/inventory/presentation/widgets/skeleton_exchange.dart';
 
 import 'package:app/core/theme/marilin_tokens.dart';
 import 'package:app/features/payments/presentation/providers/payment_repository_provider.dart';
@@ -107,6 +108,7 @@ class SaleStep3Screen extends ConsumerWidget {
                           ),
                           // Order detail
                           SaleStep3ClientCard(draft: draft),
+                          _SkeletonSection(draft: draft),
                         ],
                       ),
                     ),
@@ -118,6 +120,80 @@ class SaleStep3Screen extends ConsumerWidget {
           _Footer(draft: draft),
           SizedBox(height: bottomInset),
         ],
+      ),
+    );
+  }
+}
+
+// ─── Skeleton ─────────────────────────────────────────────────────────────────
+
+/// The soda crate lent or taken back with the sale; closed by default, since
+/// most sales move none. Hidden while the catalog has no skeleton type.
+/// Shows what is left on the truck of today's route, warning when the
+/// delivery goes past it without blocking the sale.
+class _SkeletonSection extends ConsumerWidget {
+  const _SkeletonSection({required this.draft});
+
+  final SaleDraftState draft;
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final hasSkeleton =
+        ref
+            .watch(containerTypesProvider)
+            .value
+            ?.any((t) => t.code == ContainerType.skeletonCode) ??
+        false;
+    final customerId = draft.customer?.id;
+    if (!hasSkeleton || customerId == null) return const SizedBox.shrink();
+
+    final balance =
+        ref
+            .watch(customerContainerBalancesProvider(customerId))
+            .value
+            ?.where((b) => b.containerType == ContainerType.skeletonCode)
+            .fold<int>(0, (sum, b) => sum + b.quantity) ??
+        0;
+    final truck = ref.watch(truckSkeletonsProvider).value;
+    final notifier = ref.read(saleDraftProvider.notifier);
+
+    return Padding(
+      padding: const EdgeInsets.fromLTRB(16, 12, 16, 0),
+      child: DecoratedBox(
+        decoration: BoxDecoration(
+          border: Border.all(color: context.marilin.border),
+          borderRadius: BorderRadius.circular(12),
+        ),
+        child: ExpansionTile(
+          initiallyExpanded:
+              draft.skeletonDelivered > 0 || draft.skeletonReturned > 0,
+          shape: const Border(),
+          collapsedShape: const Border(),
+          leading: const Icon(Icons.add_circle_outline),
+          title: const Text(
+            'Esqueleto',
+            style: TextStyle(fontWeight: FontWeight.w700),
+          ),
+          subtitle: Text(skeletonBalanceLabel(balance)),
+          childrenPadding: const EdgeInsets.fromLTRB(16, 0, 8, 8),
+          children: [
+            if (truck != null)
+              Align(
+                alignment: Alignment.centerLeft,
+                child: SkeletonTruckLabel(
+                  truck: truck,
+                  delivered: draft.skeletonDelivered,
+                  returned: draft.skeletonReturned,
+                ),
+              ),
+            SkeletonExchange(
+              delivered: draft.skeletonDelivered,
+              returned: draft.skeletonReturned,
+              onDeliveredChanged: notifier.setSkeletonDelivered,
+              onReturnedChanged: notifier.setSkeletonReturned,
+            ),
+          ],
+        ),
       ),
     );
   }

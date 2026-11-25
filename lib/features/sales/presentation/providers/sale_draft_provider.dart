@@ -32,6 +32,8 @@ class SaleDraft extends Notifier<SaleDraftState> {
       clearRouteStopId: true,
       items: const [],
       returnedContainers: const {},
+      skeletonDelivered: 0,
+      skeletonReturned: 0,
       collectDebt: false,
       clearDebtAmount: true,
       currentDebt: 0,
@@ -77,6 +79,17 @@ class SaleDraft extends Notifier<SaleDraftState> {
     final updated = Map<String, int>.from(state.returnedContainers);
     updated[type] = quantity;
     state = state.copyWith(returnedContainers: updated);
+  }
+
+  /// Skeletons lent with this sale, from 0 to [maxQuantity].
+  void setSkeletonDelivered(int quantity) {
+    state = state.copyWith(skeletonDelivered: quantity.clamp(0, maxQuantity));
+  }
+
+  /// Skeletons taken back with this sale, from 0 to [maxQuantity]; the
+  /// customer's custody does not cap it.
+  void setSkeletonReturned(int quantity) {
+    state = state.copyWith(skeletonReturned: quantity.clamp(0, maxQuantity));
   }
 
   void setPaymentMethod(PaymentMethod method) {

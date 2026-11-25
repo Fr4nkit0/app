@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:app/core/theme/marilin_tokens.dart';
 import 'package:app/features/inventory/domain/models/container_type.dart';
+import 'package:app/features/inventory/presentation/widgets/skeleton_exchange.dart';
 
 /// The catalog carries no icon: types alternate the jug and bottle icons in
 /// catalog order.
@@ -8,7 +9,10 @@ IconData containerTypeIcon(int position) =>
     position.isEven ? Icons.water_drop_outlined : Icons.local_drink_outlined;
 
 /// Asks how many containers of each type the customer hands back; each type
-/// goes from 0 up to the customer's [custody] of it.
+/// goes from 0 up to the customer's [custody] of it. The skeleton
+/// ([ContainerType.skeletonCode]) goes up to [maxSkeletons] instead: the
+/// office corrects a balance below zero. Nothing is delivered here; only a
+/// sale lends skeletons.
 class ContainerReturnDialog extends StatefulWidget {
   const ContainerReturnDialog({
     super.key,
@@ -43,11 +47,16 @@ class ContainerReturnDialog extends StatefulWidget {
 }
 
 class _ContainerReturnDialogState extends State<ContainerReturnDialog> {
+  /// The skeleton's return is not capped by the custody.
+  int _maxReturn(ContainerType type) => type.code == ContainerType.skeletonCode
+      ? maxSkeletons
+      : widget.custody[type.code] ?? 0;
+
   late final Map<String, int> _returns = {
     for (final type in widget.containerTypes)
       type.code: (widget.initialReturns[type.code] ?? 0).clamp(
         0,
-        widget.custody[type.code] ?? 0,
+        _maxReturn(type),
       ),
   };
 
@@ -72,7 +81,7 @@ class _ContainerReturnDialogState extends State<ContainerReturnDialog> {
               _ReturnRow(
                 label: type.label,
                 returned: _returns[type.code] ?? 0,
-                max: widget.custody[type.code] ?? 0,
+                max: _maxReturn(type),
                 onChanged: (value) =>
                     setState(() => _returns[type.code] = value),
               ),
