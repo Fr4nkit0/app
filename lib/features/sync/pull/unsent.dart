@@ -21,6 +21,7 @@ class Unsent {
     this.movements = const {},
     this.rejectedAddresses = const {},
     this.rejectedPreferences = const {},
+    this.orderedRoutes = const {},
   });
 
   final Set<String> customers;
@@ -48,6 +49,10 @@ class Unsent {
 
   /// Container movements with their own unsent change.
   final Set<String> movements;
+
+  /// Routes with an unsent (or rejected) reorder of the driver: their stops
+  /// keep the local order until the server has it.
+  final Set<String> orderedRoutes;
 
   bool get hasSales => sales.isNotEmpty;
 
@@ -102,6 +107,7 @@ class Unsent {
       rejectedPreferences: rejected(PendingEntity.customerPreference),
       movements: ids(PendingEntity.containerMovement),
       stops: stops,
+      orderedRoutes: ids(PendingEntity.routeStopOrder),
       visits: visitIds,
       // A cancellation moved the truck stock back, like a sale moved it out.
       sales: {

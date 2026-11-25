@@ -25,7 +25,11 @@ enum PendingEntity {
   paymentCancellation('payment_cancellation'),
 
   /// A debt or container custody the driver counted and corrected.
-  balanceCorrection('balance_correction');
+  balanceCorrection('balance_correction'),
+
+  /// The driver's order of the stops of a route for the day; its entity id
+  /// is the route's id and its payload holds the snapshot.
+  routeStopOrder('route_stop_order');
 
   const PendingEntity(this.wireName);
 

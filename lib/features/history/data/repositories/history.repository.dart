@@ -46,6 +46,7 @@ class DriftHistoryRepository implements HistoryRepository {
   final AdminCancellations _admin;
 
   static const _unknownCustomer = 'Cliente desconocido';
+  static const _dayRoute = 'Ruta del día';
 
   /// How many queue rows a search reads at a time while it fills a page.
   static const _searchBatch = 100;
@@ -406,7 +407,10 @@ class DriftHistoryRepository implements HistoryRepository {
         id: row.pendingChangeId,
         type: _typeOf(entity),
         customerId: customerId,
-        customerName: names[customerId] ?? _unknownCustomer,
+        // A reorder belongs to the route, not to a customer.
+        customerName: entity == PendingEntity.routeStopOrder
+            ? _dayRoute
+            : names[customerId] ?? _unknownCustomer,
         date: row.createdAt,
         amount: detail.amount,
         description: switch (entity) {
@@ -447,6 +451,7 @@ class DriftHistoryRepository implements HistoryRepository {
         PendingEntity.customerAddress => await _addresses(ids),
         PendingEntity.customerPreference => await _preferences(ids),
         PendingEntity.balanceCorrection => await _balanceCorrections(ids),
+        PendingEntity.routeStopOrder => const <String, _Detail>{},
       };
       for (final MapEntry(:key, :value) in found.entries) {
         details[_key(entity, key)] = value;
@@ -613,7 +618,8 @@ class DriftHistoryRepository implements HistoryRepository {
 
   static HistoryEntryType _typeOf(PendingEntity entity) => switch (entity) {
     PendingEntity.customer => HistoryEntryType.customer,
-    PendingEntity.routeStop => HistoryEntryType.routeStop,
+    PendingEntity.routeStop ||
+    PendingEntity.routeStopOrder => HistoryEntryType.routeStop,
     PendingEntity.visit => HistoryEntryType.visit,
     PendingEntity.containerMovement => HistoryEntryType.delivery,
     PendingEntity.sale ||
@@ -648,6 +654,7 @@ class DriftHistoryRepository implements HistoryRepository {
           'Preferencia agregada',
         (PendingEntity.customerPreference, _) => 'Preferencia actualizada',
         (PendingEntity.balanceCorrection, _) => 'Saldo corregido',
+        (PendingEntity.routeStopOrder, _) => 'Orden de paradas cambiado',
       };
 }
 

@@ -24,6 +24,7 @@ void main() {
     int customerId = 11,
     String status = 'PENDING',
     int? rescheduledFrom,
+    int? position,
   }) => {
     'id': id,
     'client_uuid': clientUuid,
@@ -33,9 +34,15 @@ void main() {
     'scheduled_time': '09:30:00',
     'is_rescheduled_from': rescheduledFrom,
     'status': status,
+    'position': position,
   };
 
-  Future<void> seedStop(String id, {int? serverId, int sequence = 1}) => db
+  Future<void> seedStop(
+    String id, {
+    int? serverId,
+    int sequence = 1,
+    int? position,
+  }) => db
       .into(db.routeStopTable)
       .insert(
         RouteStopTableCompanion.insert(
@@ -43,6 +50,7 @@ void main() {
           routeId: 'route-1',
           customerId: 'cust-1',
           sequence: sequence,
+          position: Value(position),
           scheduledAt: DateTime(2026, 10, 19),
           serverId: Value(serverId),
         ),
@@ -73,6 +81,37 @@ void main() {
         expect((await stopWithServerId(73)).sequence, 3);
       },
     );
+
+    test('stores the route position of a new stop and updates the one of a '
+        'stored stop', () async {
+      await seedStop('stop-1', serverId: 71, position: 1);
+
+      await StopApplier(db).applyChanges({
+        'route_stops': [stop(id: 71, position: 3), stop(id: 73, position: 1)],
+      }, await pullContext(db));
+
+      expect((await stopWithServerId(71)).position, 3);
+      expect((await stopWithServerId(73)).position, 1);
+    });
+
+    test('keeps the local route order while the route has an unsent reorder, '
+        'and still applies the other fields', () async {
+      await seedStop('stop-1', serverId: 71, position: 2);
+      await enqueueUnsent(db, PendingEntity.routeStopOrder, 'route-1');
+
+      await StopApplier(db).applyChanges({
+        'route_stops': [
+          stop(id: 71, position: 5, status: 'FINISHED'),
+          stop(id: 73, position: 1),
+        ],
+      }, await pullContext(db));
+
+      final kept = await stopWithServerId(71);
+      expect(kept.position, 2);
+      expect(kept.status, 'done');
+      // Not in the driver's order yet: it goes after the positioned stops.
+      expect((await stopWithServerId(73)).position, isNull);
+    });
 
     test('keeps a stop with an unsent change', () async {
       await seedStop('stop-1', serverId: 71);
@@ -236,6 +275,33 @@ void main() {
         expect(await context.ids.stop(71), second.routeStopId);
       },
     );
+
+    test('stores the downloaded route position', () async {
+      final context = await bootstrapContext(db);
+      context.ids.recordCustomer(11, 'cust-1');
+
+      await StopApplier(db).replaceRoute('route-1', [
+        stop(id: 72, position: 1),
+        stop(id: 71),
+      ], context);
+
+      expect((await stopWithServerId(72)).position, 1);
+      expect((await stopWithServerId(71)).position, isNull);
+    });
+
+    test('keeps the local route order of a stored stop while the route has '
+        'an unsent reorder', () async {
+      await seedStop('stop-1', serverId: 71, position: 2);
+      await enqueueUnsent(db, PendingEntity.routeStopOrder, 'route-1');
+      final context = await bootstrapContext(db);
+      context.ids.recordCustomer(11, 'cust-1');
+
+      await StopApplier(
+        db,
+      ).replaceRoute('route-1', [stop(id: 71, position: 9)], context);
+
+      expect((await stopWithServerId(71)).position, 2);
+    });
 
     test('stores the requested visit mark and its note', () async {
       final context = await bootstrapContext(db);
