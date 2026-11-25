@@ -20,6 +20,7 @@ import 'package:app/features/sync/data/database/pending_change.table.dart';
 import 'package:app/features/sync/data/database/sync_state.table.dart';
 import 'package:app/features/customers/data/database/customer.agreement.table.dart';
 import 'package:app/features/inventory/data/database/container_type.table.dart';
+import 'package:app/features/inventory/data/database/route_container_load.table.dart';
 import 'package:app/features/payments/data/database/payment_method.table.dart';
 import 'package:app/features/visits/data/database/visit_outcome.table.dart';
 import 'package:app/features/balance_corrections/data/database/balance_correction.table.dart';
@@ -54,6 +55,7 @@ part 'database.helper.g.dart';
     SyncStateTable,
     NeighborhoodTable,
     BalanceCorrectionTable,
+    RouteContainerLoadTable,
   ],
 )
 class AppDatabase extends _$AppDatabase {
@@ -61,9 +63,10 @@ class AppDatabase extends _$AppDatabase {
 
   /// 18 is the development baseline. 19 adds `balance_corrections` with its
   /// own upgrade step, so devices on 18 keep their unsent changes; anything
-  /// older is still rebuilt empty. 20 adds `route_stops.position`.
+  /// older is still rebuilt empty. 20 adds `route_stops.position`, 21 adds
+  /// `route_container_loads`.
   @override
-  int get schemaVersion => 20;
+  int get schemaVersion => 21;
 
   @override
   MigrationStrategy get migration => MigrationStrategy(
@@ -73,9 +76,12 @@ class AppDatabase extends _$AppDatabase {
     // Any older development schema is rebuilt empty; unsent local data is
     // lost, the same as reinstalling the app.
     onUpgrade: (m, from, to) async {
-      if (from == 18 || from == 19) {
+      if (from >= 18 && from <= 20) {
         if (from == 18) await m.createTable(balanceCorrectionTable);
-        await m.addColumn(routeStopTable, routeStopTable.position);
+        if (from <= 19) {
+          await m.addColumn(routeStopTable, routeStopTable.position);
+        }
+        await m.createTable(routeContainerLoadTable);
         return;
       }
       // Reverse declaration order drops dependents before what they reference.

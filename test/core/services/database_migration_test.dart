@@ -66,18 +66,19 @@ void main() {
 
   tearDown(() => dir.deleteSync(recursive: true));
 
-  test('the schema version is 20', () {
+  test('the schema version is 21', () {
     final db = AppDatabase(NativeDatabase.memory());
     addTearDown(db.close);
 
-    expect(db.schemaVersion, 20);
+    expect(db.schemaVersion, 21);
   });
 
   test('a version 18 database gains balance_corrections and keeps its '
       'data and unsent changes', () async {
-    // A v18 database: the current schema without balance_corrections and
-    // without route_stops.position.
+    // A v18 database: the current schema without balance_corrections,
+    // route_stops.position and route_container_loads.
     final v18 = AppDatabase(NativeDatabase(file));
+    await v18.customStatement('DROP TABLE route_container_loads');
     await v18.customStatement('DROP TABLE balance_corrections');
     await v18.customStatement('ALTER TABLE route_stops DROP COLUMN position');
     await v18.customStatement(
@@ -100,7 +101,7 @@ void main() {
     final db = AppDatabase(NativeDatabase(file));
     addTearDown(db.close);
 
-    expect(await _userVersion(db), 20);
+    expect(await _userVersion(db), 21);
     expect((await db.select(db.customerTable).get()).map((c) => c.customerId), [
       'c-1',
     ]);
@@ -122,8 +123,10 @@ void main() {
 
   test('a version 19 database gains route_stops.position and keeps its '
       'stops and unsent changes', () async {
-    // A v19 database: the current schema without route_stops.position.
+    // A v19 database: the current schema without route_stops.position and
+    // route_container_loads.
     final v19 = AppDatabase(NativeDatabase(file));
+    await v19.customStatement('DROP TABLE route_container_loads');
     await v19.customStatement('ALTER TABLE route_stops DROP COLUMN position');
     await v19.customStatement(
       "INSERT INTO customers (customer_id, name) VALUES ('c-1', 'Ana')",
@@ -145,7 +148,7 @@ void main() {
     final db = AppDatabase(NativeDatabase(file));
     addTearDown(db.close);
 
-    expect(await _userVersion(db), 20);
+    expect(await _userVersion(db), 21);
     final stops = await db.select(db.routeStopTable).get();
     expect(stops.map((s) => (s.routeStopId, s.sequence, s.position)), [
       ('s-1', 3, null),
@@ -159,13 +162,55 @@ void main() {
     });
   });
 
+  test('a version 20 database gains route_container_loads and keeps its '
+      'data and unsent changes', () async {
+    // A v20 database: the current schema without route_container_loads.
+    final v20 = AppDatabase(NativeDatabase(file));
+    await v20.customStatement('DROP TABLE route_container_loads');
+    await v20.customStatement(
+      "INSERT INTO customers (customer_id, name) VALUES ('c-1', 'Ana')",
+    );
+    await v20.customStatement(
+      "INSERT INTO routes (route_id, route_date) VALUES ('r-1', '2026-11-25')",
+    );
+    await v20.customStatement(
+      'INSERT INTO route_stops (route_stop_id, route_id, customer_id, '
+      "sequence, scheduled_at, position) VALUES ('s-1', 'r-1', 'c-1', 3, 0, 2)",
+    );
+    await v20.customStatement(
+      'INSERT INTO pending_changes (entity, entity_id, action) '
+      "VALUES ('route_stop', 's-1', 'update')",
+    );
+    await v20.customStatement('PRAGMA user_version = 20');
+    await v20.close();
+
+    final db = AppDatabase(NativeDatabase(file));
+    addTearDown(db.close);
+
+    expect(await _userVersion(db), 21);
+    expect(
+      (await db.select(db.routeStopTable).get()).map(
+        (s) => (s.routeStopId, s.sequence, s.position),
+      ),
+      [('s-1', 3, 2)],
+    );
+    expect(
+      (await db.select(db.pendingChangeTable).get()).map((c) => c.entityId),
+      ['s-1'],
+    );
+    expect(await _columns(db, 'route_container_loads'), {
+      for (final c in db.routeContainerLoadTable.$columns) c.name,
+    });
+    expect(await db.select(db.routeContainerLoadTable).get(), isEmpty);
+  });
+
   test(
     'a fresh install creates every table with the current columns',
     () async {
       final db = AppDatabase(NativeDatabase(file));
       addTearDown(db.close);
 
-      expect(await _userVersion(db), 20);
+      expect(await _userVersion(db), 21);
       for (final table in db.allTables) {
         expect(await _columns(db, table.actualTableName), {
           for (final c in table.$columns) c.name,
@@ -196,7 +241,7 @@ void main() {
         for (final c in table.$columns) c.name,
       }, reason: table.actualTableName);
     }
-    expect(await _userVersion(db), 20);
+    expect(await _userVersion(db), 21);
   });
 
   test('reopening a rebuilt database keeps the data written after the '
@@ -214,6 +259,6 @@ void main() {
 
     final customers = await second.select(second.customerTable).get();
     expect(customers.map((c) => c.customerId), ['c-2']);
-    expect(await _userVersion(second), 20);
+    expect(await _userVersion(second), 21);
   });
 }
