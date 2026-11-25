@@ -113,6 +113,20 @@ void main() {
       expect((await stopWithServerId(73)).position, isNull);
     });
 
+    test('a rejected reorder no longer keeps the local route order', () async {
+      await seedStop('stop-1', serverId: 71, position: 2);
+      await enqueueUnsent(db, PendingEntity.routeStopOrder, 'route-1');
+      await db
+          .update(db.pendingChangeTable)
+          .write(const PendingChangeTableCompanion(status: Value('rejected')));
+
+      await StopApplier(db).applyChanges({
+        'route_stops': [stop(id: 71, position: 5)],
+      }, await pullContext(db));
+
+      expect((await stopWithServerId(71)).position, 5);
+    });
+
     test('keeps a stop with an unsent change', () async {
       await seedStop('stop-1', serverId: 71);
       await enqueueUnsent(db, PendingEntity.routeStop, 'stop-1');

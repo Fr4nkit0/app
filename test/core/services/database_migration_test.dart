@@ -87,6 +87,13 @@ void main() {
       'INSERT INTO pending_changes (entity, entity_id, action) '
       "VALUES ('customer', 'c-1', 'insert')",
     );
+    await v18.customStatement(
+      "INSERT INTO routes (route_id, route_date) VALUES ('r-1', '2026-11-25')",
+    );
+    await v18.customStatement(
+      'INSERT INTO route_stops (route_stop_id, route_id, customer_id, '
+      "sequence, scheduled_at) VALUES ('s-1', 'r-1', 'c-1', 3, 0)",
+    );
     await v18.customStatement('PRAGMA user_version = 18');
     await v18.close();
 
@@ -104,6 +111,12 @@ void main() {
     expect(await _columns(db, 'balance_corrections'), {
       for (final c in db.balanceCorrectionTable.$columns) c.name,
     });
+    expect(
+      (await db.select(db.routeStopTable).get()).map(
+        (s) => (s.routeStopId, s.sequence, s.position),
+      ),
+      [('s-1', 3, null)],
+    );
     expect(await _columns(db, 'route_stops'), contains('position'));
   });
 
