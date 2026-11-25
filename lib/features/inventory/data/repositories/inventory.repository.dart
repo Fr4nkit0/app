@@ -7,6 +7,7 @@ import 'package:app/features/inventory/domain/models/container_movement.dart';
 import 'package:app/features/inventory/domain/models/container_type.dart';
 import 'package:app/features/inventory/domain/models/customer_container_balance.dart';
 import 'package:app/features/inventory/domain/models/route_inventory_load.dart';
+import 'package:app/features/inventory/domain/models/truck_skeletons.dart';
 import 'package:app/features/sync/data/repositories/pending_change.repository.dart';
 import 'package:app/features/sync/domain/models/pending_change.dart';
 
@@ -34,6 +35,10 @@ abstract class InventoryRepository {
 
   /// Enabled container types of the catalog, ordered by id.
   Stream<List<ContainerType>> watchContainerTypes();
+
+  /// The skeletons on the truck of the route of [today]'s date; null while
+  /// there is no route that day. Re-emits when a load or a movement changes.
+  Stream<TruckSkeletons?> watchTruckSkeletons(DateTime today);
 }
 
 class DriftInventoryRepository implements InventoryRepository {
@@ -256,6 +261,84 @@ class DriftInventoryRepository implements InventoryRepository {
       ];
     });
   }
+
+  /// Loads count as they come (a correction may be negative); every
+  /// skeleton movement of a visit of the route takes out what it delivered
+  /// and puts back what it took back, so a cancelled sale's reversal nets
+  /// out its delivery.
+  @override
+  Stream<TruckSkeletons?> watchTruckSkeletons(DateTime today) {
+    const skeleton = ContainerType.skeletonCode;
+    final day = _dateOnly(today);
+    final changes = _db
+        .customSelect(
+          'SELECT 1',
+          readsFrom: {
+            _db.routeTable,
+            _db.routeStopTable,
+            _db.visitTable,
+            _db.routeContainerLoadTable,
+            _db.containerMovementTable,
+          },
+        )
+        .watch();
+    return changes.asyncMap((_) async {
+      final routeIds = [
+        for (final r
+            in await (_db.select(_db.routeTable)..where(
+                  (t) => t.route_date.equals(day) & t.enabled.equals(true),
+                ))
+                .get())
+          r.routeId,
+      ];
+      if (routeIds.isEmpty) return null;
+
+      final loads =
+          await (_db.select(_db.routeContainerLoadTable)..where(
+                (t) =>
+                    t.routeId.isIn(routeIds) & t.containerType.equals(skeleton),
+              ))
+              .get();
+      // Movements carry the stop as their visit; a visit row's id is also
+      // accepted.
+      final stopIds = [
+        for (final s in await (_db.select(
+          _db.routeStopTable,
+        )..where((t) => t.routeId.isIn(routeIds))).get())
+          s.routeStopId,
+      ];
+      final visitIds = [
+        ...stopIds,
+        for (final v in await (_db.select(
+          _db.visitTable,
+        )..where((t) => t.routeStopId.isIn(stopIds))).get())
+          v.visitId,
+      ];
+      final movements =
+          await (_db.select(_db.containerMovementTable)..where(
+                (t) =>
+                    t.containerType.equals(skeleton) &
+                    (t.visitId.isIn(visitIds) | t.routeId.isIn(routeIds)),
+              ))
+              .get();
+
+      final loaded = loads.fold<int>(0, (sum, l) => sum + l.quantity);
+      final remaining = movements.fold<int>(
+        loaded,
+        (sum, m) => sum - m.deliveredQuantity + m.returnedQuantity,
+      );
+      return TruckSkeletons(
+        loaded: loaded,
+        remaining: remaining,
+        hasActivity: loads.isNotEmpty || movements.isNotEmpty,
+      );
+    });
+  }
+
+  static String _dateOnly(DateTime d) =>
+      '${d.year.toString().padLeft(4, '0')}-'
+      '${d.month.toString().padLeft(2, '0')}-'
+      '${d.day.toString().padLeft(2, '0')}';
 
   /// The name of the only enabled product that uses a type; null when no
   /// product or several products share it.

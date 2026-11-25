@@ -129,6 +129,8 @@ class SaleStep3Screen extends ConsumerWidget {
 
 /// The soda crate lent or taken back with the sale; closed by default, since
 /// most sales move none. Hidden while the catalog has no skeleton type.
+/// Shows what is left on the truck of today's route, warning when the
+/// delivery goes past it without blocking the sale.
 class _SkeletonSection extends ConsumerWidget {
   const _SkeletonSection({required this.draft});
 
@@ -152,6 +154,7 @@ class _SkeletonSection extends ConsumerWidget {
             ?.where((b) => b.containerType == ContainerType.skeletonCode)
             .fold<int>(0, (sum, b) => sum + b.quantity) ??
         0;
+    final truck = ref.watch(truckSkeletonsProvider).value;
     final notifier = ref.read(saleDraftProvider.notifier);
 
     return Padding(
@@ -174,6 +177,15 @@ class _SkeletonSection extends ConsumerWidget {
           subtitle: Text(skeletonBalanceLabel(balance)),
           childrenPadding: const EdgeInsets.fromLTRB(16, 0, 8, 8),
           children: [
+            if (truck != null)
+              Align(
+                alignment: Alignment.centerLeft,
+                child: SkeletonTruckLabel(
+                  truck: truck,
+                  delivered: draft.skeletonDelivered,
+                  returned: draft.skeletonReturned,
+                ),
+              ),
             SkeletonExchange(
               delivered: draft.skeletonDelivered,
               returned: draft.skeletonReturned,

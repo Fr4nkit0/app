@@ -35,9 +35,17 @@ class RegisterContainerReturnDialog extends ConsumerWidget {
           orElse: () => <CustomerContainerBalance>[],
         );
 
+    final lendsSkeleton = containerTypes.any(
+      (t) => t.code == ContainerType.skeletonCode,
+    );
+    final truckSkeletons = lendsSkeleton
+        ? ref.watch(truckSkeletonsProvider).value
+        : null;
+
     return ContainerReturnDialog(
       containerTypes: containerTypes,
       custody: custodyByContainerType(balances),
+      truckSkeletons: truckSkeletons,
       onConfirm: (exchange) => _save(context, ref, exchange),
     );
   }

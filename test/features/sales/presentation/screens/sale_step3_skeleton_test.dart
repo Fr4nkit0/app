@@ -1,8 +1,10 @@
 import 'package:app/core/theme/app.theme.dart';
+import 'package:app/core/theme/marilin_tokens.dart';
 import 'package:app/features/customers/domain/models/customer.dart';
 import 'package:app/features/inventory/domain/models/container_movement.dart';
 import 'package:app/features/inventory/domain/models/container_type.dart';
 import 'package:app/features/inventory/domain/models/customer_container_balance.dart';
+import 'package:app/features/inventory/domain/models/truck_skeletons.dart';
 import 'package:app/features/inventory/presentation/providers/inventory_repository_provider.dart';
 import 'package:app/features/payments/domain/models/payment.dart';
 import 'package:app/features/products/domain/models/product.dart';
@@ -76,6 +78,7 @@ void main() {
     WidgetTester tester, {
     List<ContainerType> catalog = const [...catalogContainerTypes, _skeleton],
     int skeletonBalance = 1,
+    TruckSkeletons? truck,
   }) async {
     fake = _FakeRegisterSale();
     await tester.binding.setSurfaceSize(const Size(360, 1400));
@@ -94,6 +97,7 @@ void main() {
           ]),
         ),
         containerTypesProvider.overrideWith((ref) => Stream.value(catalog)),
+        truckSkeletonsProvider.overrideWith((ref) => Stream.value(truck)),
       ],
     );
     addTearDown(container.dispose);
@@ -198,5 +202,69 @@ void main() {
       (fake.movements ?? const []).where((m) => m.containerType == 'ESQUELETO'),
       isEmpty,
     );
+  });
+
+  group('on the truck', () {
+    Color? colorOf(WidgetTester tester, String text) =>
+        tester.widget<Text>(find.text(text)).style?.color;
+
+    testWidgets('shows what is left on the truck when opened', (tester) async {
+      await pumpScreen(
+        tester,
+        truck: const TruckSkeletons(loaded: 6, remaining: 1, hasActivity: true),
+      );
+
+      await tester.tap(find.text('Esqueleto'));
+      await tester.pumpAndSettle();
+
+      expect(find.text('En el camión: 1'), findsOneWidget);
+      final tokens = Theme.of(
+        tester.element(find.text('En el camión: 1')),
+      ).extension<MarilinTokens>()!;
+      expect(colorOf(tester, 'En el camión: 1'), tokens.textMuted);
+    });
+
+    testWidgets('delivering past it warns and the sale still goes '
+        'through', (tester) async {
+      await pumpScreen(
+        tester,
+        truck: const TruckSkeletons(loaded: 6, remaining: 1, hasActivity: true),
+      );
+
+      await tester.tap(find.text('Esqueleto'));
+      await tester.pumpAndSettle();
+      await tester.tap(stepper('Entregar', 'Sumar'));
+      await tester.pump();
+      await tester.tap(stepper('Entregar', 'Sumar'));
+      await tester.pumpAndSettle();
+
+      final tokens = Theme.of(
+        tester.element(find.text('En el camión: 1')),
+      ).extension<MarilinTokens>()!;
+      expect(colorOf(tester, 'En el camión: 1'), tokens.destructive);
+
+      await tester.tap(find.widgetWithText(FilledButton, 'Confirmar'));
+      // The success toast keeps animating: flush it instead of settling.
+      await tester.pump();
+      await tester.pump(const Duration(seconds: 10));
+
+      expect(
+        fake.movements!
+            .singleWhere((m) => m.containerType == 'ESQUELETO')
+            .deliveredQuantity,
+        2,
+      );
+    });
+
+    testWidgets('nothing about the truck without a route today', (
+      tester,
+    ) async {
+      await pumpScreen(tester);
+
+      await tester.tap(find.text('Esqueleto'));
+      await tester.pumpAndSettle();
+
+      expect(find.textContaining('En el camión'), findsNothing);
+    });
   });
 }

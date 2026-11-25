@@ -6,6 +6,7 @@ import 'package:app/core/errors/domain_failure.dart';
 import 'package:app/core/theme/marilin_tokens.dart';
 import 'package:app/features/inventory/domain/models/container_type.dart';
 import 'package:app/features/inventory/domain/models/customer_container_balance.dart';
+import 'package:app/features/inventory/domain/models/truck_skeletons.dart';
 import 'package:app/features/inventory/domain/usecases/register_container_return.usecase.dart';
 import 'package:app/features/inventory/presentation/providers/inventory_repository_provider.dart';
 import 'package:app/features/inventory/presentation/providers/register_container_return_usecase_provider.dart';
@@ -45,18 +46,19 @@ class _FakeRegisterContainerReturn implements RegisterContainerReturnUseCase {
 
 Future<void> _openDialog(
   WidgetTester tester,
-  _FakeRegisterContainerReturn fake,
-) async {
+  _FakeRegisterContainerReturn fake, {
+  List<ContainerType> catalog = const [
+    ContainerType(id: 1, code: 'JUG', label: 'Bidón 20L'),
+    ContainerType(id: 2, code: 'SIPHON', label: 'Sifón 1.5L'),
+  ],
+  TruckSkeletons? truck,
+}) async {
   await tester.pumpWidget(
     ProviderScope(
       overrides: [
         registerContainerReturnUseCaseProvider.overrideWithValue(fake),
-        containerTypesProvider.overrideWith(
-          (_) => Stream.value(const [
-            ContainerType(id: 1, code: 'JUG', label: 'Bidón 20L'),
-            ContainerType(id: 2, code: 'SIPHON', label: 'Sifón 1.5L'),
-          ]),
-        ),
+        containerTypesProvider.overrideWith((_) => Stream.value(catalog)),
+        truckSkeletonsProvider.overrideWith((_) => Stream.value(truck)),
         customerContainerBalancesProvider('c-1').overrideWith(
           (_) => Stream.value(const [
             CustomerContainerBalance(
@@ -141,4 +143,20 @@ void main() {
       await tester.pumpAndSettle(const Duration(seconds: 4));
     },
   );
+
+  testWidgets('shows the skeletons left on the truck of today\'s route', (
+    tester,
+  ) async {
+    await _openDialog(
+      tester,
+      _FakeRegisterContainerReturn(),
+      catalog: const [
+        ContainerType(id: 1, code: 'JUG', label: 'Bidón 20L'),
+        ContainerType(id: 3, code: 'ESQUELETO', label: 'Esqueleto'),
+      ],
+      truck: const TruckSkeletons(loaded: 6, remaining: 4, hasActivity: true),
+    );
+
+    expect(find.text('En el camión: 4'), findsOneWidget);
+  });
 }

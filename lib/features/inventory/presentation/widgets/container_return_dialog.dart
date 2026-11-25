@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:app/core/theme/marilin_tokens.dart';
 import 'package:app/features/inventory/domain/models/container_exchange.dart';
 import 'package:app/features/inventory/domain/models/container_type.dart';
+import 'package:app/features/inventory/domain/models/truck_skeletons.dart';
 import 'package:app/features/inventory/presentation/widgets/skeleton_exchange.dart';
 
 /// The catalog carries no icon: types alternate the jug and bottle icons in
@@ -20,6 +21,7 @@ class ContainerReturnDialog extends StatefulWidget {
     required this.custody,
     required this.onConfirm,
     this.initialReturns = const {},
+    this.truckSkeletons,
     this.title = 'Registrar Retorno de Envases',
     this.message =
         'Ajustá la cantidad de envases vacíos que devuelve el cliente.',
@@ -34,6 +36,10 @@ class ContainerReturnDialog extends StatefulWidget {
   /// Returns per container code to start from; 0 when absent. Values above
   /// the customer's [custody] start at the custody.
   final Map<String, int> initialReturns;
+
+  /// The skeletons left on the truck of today's route, shown with the
+  /// skeleton; null hides them.
+  final TruckSkeletons? truckSkeletons;
 
   /// Receives the returns of every shown type and the skeletons delivered,
   /// by container code.
@@ -83,6 +89,7 @@ class _ContainerReturnDialogState extends State<ContainerReturnDialog> {
               if (_isSkeleton(type))
                 _SkeletonBlock(
                   balance: widget.custody[type.code] ?? 0,
+                  truck: widget.truckSkeletons,
                   delivered: _skeletonDelivered,
                   returned: _returns[type.code] ?? 0,
                   onDeliveredChanged: (value) =>
@@ -124,10 +131,12 @@ class _ContainerReturnDialogState extends State<ContainerReturnDialog> {
   }
 }
 
-/// The skeleton: delivered and taken back, with the customer's balance.
+/// The skeleton: delivered and taken back, with the customer's balance and
+/// what is left on the truck.
 class _SkeletonBlock extends StatelessWidget {
   const _SkeletonBlock({
     required this.balance,
+    required this.truck,
     required this.delivered,
     required this.returned,
     required this.onDeliveredChanged,
@@ -135,6 +144,7 @@ class _SkeletonBlock extends StatelessWidget {
   });
 
   final int balance;
+  final TruckSkeletons? truck;
   final int delivered;
   final int returned;
   final ValueChanged<int> onDeliveredChanged;
@@ -155,6 +165,12 @@ class _SkeletonBlock extends StatelessWidget {
             skeletonBalanceLabel(balance),
             style: TextStyle(color: context.marilin.textMuted, fontSize: 13),
           ),
+          if (truck case final truck?)
+            SkeletonTruckLabel(
+              truck: truck,
+              delivered: delivered,
+              returned: returned,
+            ),
           SkeletonExchange(
             delivered: delivered,
             returned: returned,

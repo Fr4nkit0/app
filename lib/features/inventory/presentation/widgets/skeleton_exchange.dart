@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:app/core/theme/marilin_tokens.dart';
+import 'package:app/features/inventory/domain/models/truck_skeletons.dart';
 
 /// Most skeletons the driver can deliver or take back at once.
 const maxSkeletons = 999;
@@ -43,6 +44,36 @@ class SkeletonExchange extends StatelessWidget {
 
 /// The customer's skeleton balance, as the section shows it.
 String skeletonBalanceLabel(int balance) => 'Saldo del cliente: $balance';
+
+/// What is left on the truck before this exchange. Turns the destructive
+/// color when [delivered] (less what is [returned]) goes past it; it only
+/// warns, the delivery is never blocked.
+class SkeletonTruckLabel extends StatelessWidget {
+  const SkeletonTruckLabel({
+    super.key,
+    required this.truck,
+    required this.delivered,
+    required this.returned,
+  });
+
+  final TruckSkeletons truck;
+  final int delivered;
+  final int returned;
+
+  @override
+  Widget build(BuildContext context) {
+    final tokens = context.marilin;
+    final short = truck.runsShort(delivered: delivered, returned: returned);
+    return Text(
+      'En el camión: ${truck.remaining}',
+      style: TextStyle(
+        color: short ? tokens.destructive : tokens.textMuted,
+        fontSize: 13,
+        fontWeight: short ? FontWeight.w700 : FontWeight.w400,
+      ),
+    );
+  }
+}
 
 /// One labelled count with Restar and Sumar buttons.
 class SkeletonCountRow extends StatelessWidget {
