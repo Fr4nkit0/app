@@ -17,29 +17,16 @@ class _FakeRegisterContainerReturn implements RegisterContainerReturnUseCase {
 
   final Object? failure;
   final calls =
-      <
-        ({
-          String customerId,
-          String? visitId,
-          Map<String, int> returns,
-          Map<String, int> deliveries,
-        })
-      >[];
+      <({String customerId, String? visitId, Map<String, int> returns})>[];
 
   @override
   Future<void> execute({
     required String customerId,
     required Map<String, int> returns,
-    Map<String, int> deliveries = const {},
     String? visitId,
     String? routeId,
   }) async {
-    calls.add((
-      customerId: customerId,
-      visitId: visitId,
-      returns: returns,
-      deliveries: deliveries,
-    ));
+    calls.add((customerId: customerId, visitId: visitId, returns: returns));
     if (failure case final failure?) throw failure;
   }
 }
@@ -110,7 +97,6 @@ void main() {
       expect(fake.calls.single.customerId, 'c-1');
       expect(fake.calls.single.visitId, 's-1');
       expect(fake.calls.single.returns, {'JUG': 0, 'SIPHON': 1});
-      expect(fake.calls.single.deliveries, isEmpty);
       expect(find.byType(RegisterContainerReturnDialog), findsNothing);
       expect(find.text('Retorno de envases registrado'), findsOneWidget);
 
@@ -144,12 +130,13 @@ void main() {
     },
   );
 
-  testWidgets('shows the skeletons left on the truck of today\'s route', (
+  testWidgets('the skeleton is only returned: no delivery, no truck', (
     tester,
   ) async {
+    final fake = _FakeRegisterContainerReturn();
     await _openDialog(
       tester,
-      _FakeRegisterContainerReturn(),
+      fake,
       catalog: const [
         ContainerType(id: 1, code: 'JUG', label: 'Bidón 20L'),
         ContainerType(id: 3, code: 'ESQUELETO', label: 'Esqueleto'),
@@ -157,6 +144,20 @@ void main() {
       truck: const TruckSkeletons(loaded: 6, remaining: 4, hasActivity: true),
     );
 
-    expect(find.text('En el camión: 4'), findsOneWidget);
+    expect(find.text('Entregar al cliente'), findsNothing);
+    expect(find.textContaining('En el camión'), findsNothing);
+
+    // The customer holds no skeleton and still hands back two.
+    await tester.tap(find.byTooltip('Sumar').last);
+    await tester.pump();
+    await tester.tap(find.byTooltip('Sumar').last);
+    await tester.pump();
+    await tester.tap(find.text('Guardar'));
+    await tester.pump();
+    await tester.pump(const Duration(milliseconds: 400));
+
+    expect(fake.calls.single.returns, {'JUG': 0, 'ESQUELETO': 2});
+
+    await tester.pumpAndSettle(const Duration(seconds: 4));
   });
 }

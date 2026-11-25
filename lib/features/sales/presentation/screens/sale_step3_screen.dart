@@ -811,10 +811,10 @@ class _FooterState extends ConsumerState<_Footer> {
                                     message:
                                         'Confirmá o ajustá la cantidad de envases retornados por el cliente.',
                                     confirmLabel: 'Confirmar',
-                                    onConfirm: (exchange) async {
+                                    onConfirm: (adjustedReturns) async {
                                       Navigator.of(dialogContext).pop();
                                       for (final entry
-                                          in exchange.returns.entries) {
+                                          in adjustedReturns.entries) {
                                         ref
                                             .read(saleDraftProvider.notifier)
                                             .setReturnedQuantity(

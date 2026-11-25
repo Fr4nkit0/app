@@ -4,15 +4,14 @@ import 'package:app/core/presentation/failure_message.dart';
 import 'package:app/core/theme/marilin_tokens.dart';
 import 'package:app/core/widgets/top_toast.dart';
 import 'package:app/features/inventory/domain/custody.dart';
-import 'package:app/features/inventory/domain/models/container_exchange.dart';
 import 'package:app/features/inventory/domain/models/container_type.dart';
 import 'package:app/features/inventory/domain/models/customer_container_balance.dart';
 import 'package:app/features/inventory/presentation/providers/inventory_repository_provider.dart';
 import 'package:app/features/inventory/presentation/providers/register_container_return_usecase_provider.dart';
 import 'package:app/features/inventory/presentation/widgets/container_return_dialog.dart';
 
-/// Records the containers a customer hands back without a sale, and the
-/// skeletons lent without one, from the visit or the customer profile.
+/// Records the containers a customer hands back without a sale, from the
+/// visit or the customer profile.
 class RegisterContainerReturnDialog extends ConsumerWidget {
   const RegisterContainerReturnDialog({
     super.key,
@@ -35,36 +34,23 @@ class RegisterContainerReturnDialog extends ConsumerWidget {
           orElse: () => <CustomerContainerBalance>[],
         );
 
-    final lendsSkeleton = containerTypes.any(
-      (t) => t.code == ContainerType.skeletonCode,
-    );
-    final truckSkeletons = lendsSkeleton
-        ? ref.watch(truckSkeletonsProvider).value
-        : null;
-
     return ContainerReturnDialog(
       containerTypes: containerTypes,
       custody: custodyByContainerType(balances),
-      truckSkeletons: truckSkeletons,
-      onConfirm: (exchange) => _save(context, ref, exchange),
+      onConfirm: (returns) => _save(context, ref, returns),
     );
   }
 
   Future<void> _save(
     BuildContext context,
     WidgetRef ref,
-    ContainerExchange exchange,
+    Map<String, int> returns,
   ) async {
     final visitId = this.visitId;
     try {
       await ref
           .read(registerContainerReturnUseCaseProvider)
-          .execute(
-            customerId: customerId,
-            visitId: visitId,
-            returns: exchange.returns,
-            deliveries: exchange.deliveries,
-          );
+          .execute(customerId: customerId, visitId: visitId, returns: returns);
     } catch (e) {
       // A failed return keeps the dialog open so the driver can retry.
       if (context.mounted) {

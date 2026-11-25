@@ -1,8 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:app/core/theme/marilin_tokens.dart';
-import 'package:app/features/inventory/domain/models/container_exchange.dart';
 import 'package:app/features/inventory/domain/models/container_type.dart';
-import 'package:app/features/inventory/domain/models/truck_skeletons.dart';
 import 'package:app/features/inventory/presentation/widgets/skeleton_exchange.dart';
 
 /// The catalog carries no icon: types alternate the jug and bottle icons in
@@ -12,8 +10,9 @@ IconData containerTypeIcon(int position) =>
 
 /// Asks how many containers of each type the customer hands back; each type
 /// goes from 0 up to the customer's [custody] of it. The skeleton
-/// ([ContainerType.skeletonCode]) is also delivered, and its return is not
-/// capped: the office corrects a balance below zero.
+/// ([ContainerType.skeletonCode]) goes up to [maxSkeletons] instead: the
+/// office corrects a balance below zero. Nothing is delivered here; only a
+/// sale lends skeletons.
 class ContainerReturnDialog extends StatefulWidget {
   const ContainerReturnDialog({
     super.key,
@@ -21,7 +20,6 @@ class ContainerReturnDialog extends StatefulWidget {
     required this.custody,
     required this.onConfirm,
     this.initialReturns = const {},
-    this.truckSkeletons,
     this.title = 'Registrar Retorno de Envases',
     this.message =
         'Ajustá la cantidad de envases vacíos que devuelve el cliente.',
@@ -37,13 +35,8 @@ class ContainerReturnDialog extends StatefulWidget {
   /// the customer's [custody] start at the custody.
   final Map<String, int> initialReturns;
 
-  /// The skeletons left on the truck of today's route, shown with the
-  /// skeleton; null hides them.
-  final TruckSkeletons? truckSkeletons;
-
-  /// Receives the returns of every shown type and the skeletons delivered,
-  /// by container code.
-  final ValueChanged<ContainerExchange> onConfirm;
+  /// Receives the returns of every shown type, by container code.
+  final ValueChanged<Map<String, int>> onConfirm;
 
   final String title;
   final String message;
@@ -54,19 +47,18 @@ class ContainerReturnDialog extends StatefulWidget {
 }
 
 class _ContainerReturnDialogState extends State<ContainerReturnDialog> {
-  static bool _isSkeleton(ContainerType type) =>
-      type.code == ContainerType.skeletonCode;
+  /// The skeleton's return is not capped by the custody.
+  int _maxReturn(ContainerType type) => type.code == ContainerType.skeletonCode
+      ? maxSkeletons
+      : widget.custody[type.code] ?? 0;
 
   late final Map<String, int> _returns = {
     for (final type in widget.containerTypes)
       type.code: (widget.initialReturns[type.code] ?? 0).clamp(
         0,
-        _isSkeleton(type) ? maxSkeletons : widget.custody[type.code] ?? 0,
+        _maxReturn(type),
       ),
   };
-
-  late final bool _lendsSkeleton = widget.containerTypes.any(_isSkeleton);
-  int _skeletonDelivered = 0;
 
   @override
   Widget build(BuildContext context) {
@@ -85,28 +77,14 @@ class _ContainerReturnDialogState extends State<ContainerReturnDialog> {
               style: TextStyle(color: context.marilin.textMuted, fontSize: 14),
             ),
             const SizedBox(height: 16),
-            // Empty containers first; the skeleton, lent both ways, apart.
             for (final type in widget.containerTypes)
-              if (!_isSkeleton(type))
-                _ReturnRow(
-                  label: type.label,
-                  returned: _returns[type.code] ?? 0,
-                  max: widget.custody[type.code] ?? 0,
-                  onChanged: (value) =>
-                      setState(() => _returns[type.code] = value),
-                ),
-            for (final type in widget.containerTypes)
-              if (_isSkeleton(type))
-                _SkeletonBlock(
-                  balance: widget.custody[type.code] ?? 0,
-                  truck: widget.truckSkeletons,
-                  delivered: _skeletonDelivered,
-                  returned: _returns[type.code] ?? 0,
-                  onDeliveredChanged: (value) =>
-                      setState(() => _skeletonDelivered = value),
-                  onReturnedChanged: (value) =>
-                      setState(() => _returns[type.code] = value),
-                ),
+              _ReturnRow(
+                label: type.label,
+                returned: _returns[type.code] ?? 0,
+                max: _maxReturn(type),
+                onChanged: (value) =>
+                    setState(() => _returns[type.code] = value),
+              ),
           ],
         ),
       ),
@@ -116,76 +94,13 @@ class _ContainerReturnDialogState extends State<ContainerReturnDialog> {
           child: const Text('Cancelar'),
         ),
         FilledButton(
-          onPressed: () => widget.onConfirm((
-            returns: Map.unmodifiable(_returns),
-            deliveries: Map.unmodifiable({
-              if (_lendsSkeleton && _skeletonDelivered > 0)
-                ContainerType.skeletonCode: _skeletonDelivered,
-            }),
-          )),
+          onPressed: () => widget.onConfirm(Map.unmodifiable(_returns)),
           style: FilledButton.styleFrom(
             backgroundColor: MarilinColors.brandBlue,
           ),
           child: Text(widget.confirmLabel),
         ),
       ],
-    );
-  }
-}
-
-/// The skeleton: delivered and taken back, with the customer's balance and
-/// what is left on the truck.
-class _SkeletonBlock extends StatelessWidget {
-  const _SkeletonBlock({
-    required this.balance,
-    required this.truck,
-    required this.delivered,
-    required this.returned,
-    required this.onDeliveredChanged,
-    required this.onReturnedChanged,
-  });
-
-  final int balance;
-  final TruckSkeletons? truck;
-  final int delivered;
-  final int returned;
-  final ValueChanged<int> onDeliveredChanged;
-  final ValueChanged<int> onReturnedChanged;
-
-  @override
-  Widget build(BuildContext context) {
-    return Container(
-      margin: const EdgeInsets.only(top: 12),
-      padding: const EdgeInsets.fromLTRB(12, 10, 4, 4),
-      decoration: BoxDecoration(
-        border: Border.all(color: context.marilin.border),
-        borderRadius: BorderRadius.circular(12),
-      ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          const Text(
-            'Esqueleto',
-            style: TextStyle(fontWeight: FontWeight.bold, fontSize: 16),
-          ),
-          Text(
-            skeletonBalanceLabel(balance),
-            style: TextStyle(color: context.marilin.textMuted, fontSize: 13),
-          ),
-          if (truck case final truck?)
-            SkeletonTruckLabel(
-              truck: truck,
-              delivered: delivered,
-              returned: returned,
-            ),
-          SkeletonExchange(
-            delivered: delivered,
-            returned: returned,
-            onDeliveredChanged: onDeliveredChanged,
-            onReturnedChanged: onReturnedChanged,
-          ),
-        ],
-      ),
     );
   }
 }

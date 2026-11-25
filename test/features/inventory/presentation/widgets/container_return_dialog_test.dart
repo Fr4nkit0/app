@@ -2,9 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 
 import 'package:app/core/theme/marilin_tokens.dart';
-import 'package:app/features/inventory/domain/models/container_exchange.dart';
 import 'package:app/features/inventory/domain/models/container_type.dart';
-import 'package:app/features/inventory/domain/models/truck_skeletons.dart';
 import 'package:app/features/inventory/presentation/widgets/container_return_dialog.dart';
 
 const _jug = ContainerType(id: 1, code: 'JUG', label: 'Bidón 20L');
@@ -28,7 +26,7 @@ void main() {
             containerTypes: const [_jug, _siphon],
             custody: custody,
             initialReturns: initialReturns,
-            onConfirm: (exchange) => confirmed.add(exchange.returns),
+            onConfirm: confirmed.add,
           ),
         ),
       ),
@@ -129,7 +127,7 @@ void main() {
             title: 'Retorno de Envases',
             message: 'Confirmá o ajustá.',
             confirmLabel: 'Confirmar',
-            onConfirm: (exchange) => confirmed.add(exchange.returns),
+            onConfirm: confirmed.add,
           ),
         ),
       ),
@@ -149,10 +147,8 @@ void main() {
   });
 
   group('skeleton', () {
-    late List<ContainerExchange> exchanges;
-
     Future<void> pumpWithSkeleton(WidgetTester tester) async {
-      exchanges = [];
+      confirmed = [];
       await tester.pumpWidget(
         MaterialApp(
           theme: ThemeData(extensions: [MarilinTokens.light]),
@@ -160,38 +156,34 @@ void main() {
             body: ContainerReturnDialog(
               containerTypes: const [_jug, _skeleton],
               custody: const {'JUG': 1, 'ESQUELETO': 0},
-              onConfirm: exchanges.add,
+              onConfirm: confirmed.add,
             ),
           ),
         ),
       );
     }
 
-    Finder stepper(String label, String tooltip) => find.descendant(
-      of: find.ancestor(of: find.text(label), matching: find.byType(Row)).first,
-      matching: find.byTooltip(tooltip),
-    );
-
-    testWidgets('shows Entregar and Retirar with the balance', (tester) async {
-      await pumpWithSkeleton(tester);
-
-      expect(find.text('Esqueleto'), findsOneWidget);
-      expect(find.text('Saldo del cliente: 0'), findsOneWidget);
-      expect(find.text('Entregar al cliente'), findsOneWidget);
-      expect(find.text('Retirar del cliente'), findsOneWidget);
-    });
-
-    testWidgets('delivers and returns past the balance; others stay capped', (
+    testWidgets('is a plain return row: nothing is delivered on a visit', (
       tester,
     ) async {
       await pumpWithSkeleton(tester);
 
-      await tester.tap(stepper('Entregar al cliente', 'Sumar'));
+      expect(find.text('Esqueleto'), findsOneWidget);
+      expect(find.text('Entregar al cliente'), findsNothing);
+      expect(find.textContaining('En el camión'), findsNothing);
+      expect(find.byTooltip('Sumar'), findsNWidgets(2));
+    });
+
+    testWidgets('its return goes past the custody; others stay capped', (
+      tester,
+    ) async {
+      await pumpWithSkeleton(tester);
+
+      await tester.tap(plus('Esqueleto'));
       await tester.pump();
-      await tester.tap(stepper('Retirar del cliente', 'Sumar'));
+      await tester.tap(plus('Esqueleto'));
       await tester.pump();
-      await tester.tap(stepper('Retirar del cliente', 'Sumar'));
-      await tester.pump();
+      expect(tester.widget<IconButton>(plus('Esqueleto')).onPressed, isNotNull);
       await tester.tap(plus('Bidón 20L'));
       await tester.pump();
       expect(tester.widget<IconButton>(plus('Bidón 20L')).onPressed, isNull);
@@ -199,121 +191,9 @@ void main() {
       await tester.tap(find.text('Guardar'));
       await tester.pump();
 
-      expect(exchanges.single.returns, {'JUG': 1, 'ESQUELETO': 2});
-      expect(exchanges.single.deliveries, {'ESQUELETO': 1});
-    });
-
-    testWidgets('without the skeleton nothing is delivered', (tester) async {
-      exchanges = [];
-      await tester.pumpWidget(
-        MaterialApp(
-          theme: ThemeData(extensions: [MarilinTokens.light]),
-          home: Scaffold(
-            body: ContainerReturnDialog(
-              containerTypes: const [_jug],
-              custody: const {'JUG': 1},
-              onConfirm: exchanges.add,
-            ),
-          ),
-        ),
-      );
-
-      expect(find.text('Entregar al cliente'), findsNothing);
-      await tester.tap(find.text('Guardar'));
-      await tester.pump();
-      expect(exchanges.single.deliveries, isEmpty);
-    });
-
-    group('on the truck', () {
-      Future<void> pumpWithTruck(
-        WidgetTester tester, {
-        TruckSkeletons? truck,
-      }) async {
-        exchanges = [];
-        await tester.pumpWidget(
-          MaterialApp(
-            theme: ThemeData(extensions: [MarilinTokens.light]),
-            home: Scaffold(
-              body: ContainerReturnDialog(
-                containerTypes: const [_jug, _skeleton],
-                custody: const {'JUG': 1, 'ESQUELETO': 0},
-                truckSkeletons: truck,
-                onConfirm: exchanges.add,
-              ),
-            ),
-          ),
-        );
-      }
-
-      Color? colorOf(WidgetTester tester, String text) =>
-          tester.widget<Text>(find.text(text)).style?.color;
-
-      testWidgets('shows what is left on the truck in the muted color', (
-        tester,
-      ) async {
-        await pumpWithTruck(
-          tester,
-          truck: const TruckSkeletons(
-            loaded: 6,
-            remaining: 2,
-            hasActivity: true,
-          ),
-        );
-
-        expect(find.text('En el camión: 2'), findsOneWidget);
-        expect(
-          colorOf(tester, 'En el camión: 2'),
-          MarilinTokens.light.textMuted,
-        );
-      });
-
-      testWidgets('delivering past it turns the warning color and still '
-          'saves', (tester) async {
-        await pumpWithTruck(
-          tester,
-          truck: const TruckSkeletons(
-            loaded: 1,
-            remaining: 1,
-            hasActivity: true,
-          ),
-        );
-
-        await tester.tap(stepper('Entregar al cliente', 'Sumar'));
-        await tester.pump();
-        expect(
-          colorOf(tester, 'En el camión: 1'),
-          MarilinTokens.light.textMuted,
-        );
-
-        await tester.tap(stepper('Entregar al cliente', 'Sumar'));
-        await tester.pump();
-        expect(
-          colorOf(tester, 'En el camión: 1'),
-          MarilinTokens.light.destructive,
-        );
-
-        // What comes back goes onto the truck again.
-        await tester.tap(stepper('Retirar del cliente', 'Sumar'));
-        await tester.pump();
-        expect(
-          colorOf(tester, 'En el camión: 1'),
-          MarilinTokens.light.textMuted,
-        );
-
-        await tester.tap(stepper('Retirar del cliente', 'Restar'));
-        await tester.pump();
-        await tester.tap(find.text('Guardar'));
-        await tester.pump();
-        expect(exchanges.single.deliveries, {'ESQUELETO': 2});
-      });
-
-      testWidgets('nothing about the truck without its skeletons', (
-        tester,
-      ) async {
-        await pumpWithTruck(tester);
-
-        expect(find.textContaining('En el camión'), findsNothing);
-      });
+      expect(confirmed, [
+        {'JUG': 1, 'ESQUELETO': 2},
+      ]);
     });
   });
 }
