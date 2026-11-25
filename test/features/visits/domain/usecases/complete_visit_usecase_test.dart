@@ -68,6 +68,10 @@ class _FailingRescheduleRouteRepository implements RouteRepository {
   Future<String> rescheduleStop(String stopId, DateTime at) async {
     throw Exception('Simulated reschedule failure');
   }
+
+  @override
+  Future<void> reorderDayStops(List<String> orderedStopIds) =>
+      throw UnimplementedError();
 }
 
 void main() {

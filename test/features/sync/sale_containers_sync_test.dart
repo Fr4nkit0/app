@@ -307,6 +307,7 @@ void main() {
           'customer_preferences',
           'customer_agreements',
           'route_stops',
+          'route_stop_orders',
           'visits',
           'sales',
           'container_movements',

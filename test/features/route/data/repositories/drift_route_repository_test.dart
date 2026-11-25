@@ -591,6 +591,70 @@ void main() {
     });
   });
 
+  group('reorderDayStops', () {
+    test('numbers the stops of the route in the given order, the unlisted '
+        'ones after them, and queues one snapshot of the route', () async {
+      await insertRoute('route-today', todayStr);
+      final now = DateTime.now();
+      for (final (id, customer, sequence) in [
+        ('stop-1', 'mock-customer-1', 1),
+        ('stop-2', 'mock-customer-2', 2),
+        ('stop-3', 'mock-customer-3', 3),
+      ]) {
+        await insertStop(
+          stopId: id,
+          routeId: 'route-today',
+          customerId: customer,
+          sequence: sequence,
+          position: sequence,
+          scheduledAt: DateTime(now.year, now.month, now.day, 8, 0),
+        );
+      }
+
+      await sut.reorderDayStops(['stop-3', 'stop-1']);
+
+      final rows = await (db.select(
+        db.routeStopTable,
+      )..orderBy([(t) => drift.OrderingTerm.asc(t.position)])).get();
+      expect(rows.map((r) => (r.routeStopId, r.position)), [
+        ('stop-3', 1),
+        ('stop-1', 2),
+        ('stop-2', 3),
+      ]);
+      final stops = await sut.watchDayStops().first;
+      expect(stops.map((s) => s.id), ['stop-3', 'stop-1', 'stop-2']);
+
+      final queued = await db.select(db.pendingChangeTable).get();
+      expect(queued, hasLength(1));
+      expect(queued.single.entity, 'route_stop_order');
+      expect(queued.single.entityId, 'route-today');
+      expect(queued.single.action, 'update');
+      expect(
+        queued.single.payload,
+        allOf(
+          contains('"stops":["stop-3","stop-1","stop-2"]'),
+          contains('"uuid":"'),
+        ),
+      );
+    });
+
+    test('an unknown stop changes nothing and queues nothing', () async {
+      await insertRoute('route-today', todayStr);
+      await insertStop(
+        stopId: 'stop-1',
+        routeId: 'route-today',
+        customerId: 'mock-customer-1',
+        position: 1,
+        scheduledAt: DateTime.now(),
+      );
+
+      await sut.reorderDayStops(['missing']);
+
+      expect((await db.select(db.routeStopTable).getSingle()).position, 1);
+      expect(await db.select(db.pendingChangeTable).get(), isEmpty);
+    });
+  });
+
   group('rescheduleStop', () {
     test(
       'adds a stop of the same customer to today\'s route at the chosen time, linked to the original, which shows as rescheduled',

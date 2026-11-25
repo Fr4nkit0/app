@@ -1,6 +1,7 @@
 import 'package:drift/drift.dart';
 
 import 'package:app/core/services/database.helper.dart';
+import 'package:app/core/services/database_mixins.dart' show uuid;
 import 'package:app/features/customers/domain/models/customer.dart';
 import 'package:app/features/customers/domain/models/customer.address.dart';
 import 'package:app/features/payments/data/repositories/customer_account.dart';
@@ -396,6 +397,69 @@ class DriftRouteRepository implements RouteRepository {
       },
     );
     return created.routeStopId;
+  }
+
+  @override
+  Future<void> reorderDayStops(List<String> orderedStopIds) async {
+    final listed = await (_db.select(
+      _db.routeStopTable,
+    )..where((t) => t.routeStopId.isIn(orderedStopIds))).get();
+    final rank = {
+      for (var i = 0; i < orderedStopIds.length; i++) orderedStopIds[i]: i,
+    };
+    final routeIds = {for (final s in listed) s.routeId};
+    for (final routeId in routeIds) {
+      final stops =
+          await (_db.select(_db.routeStopTable)..where(
+                (t) => t.routeId.equals(routeId) & t.enabled.equals(true),
+              ))
+              .get();
+      // The listed stops first, in the driver's order; the rest keep
+      // their current place after them.
+      stops.sort((a, b) {
+        final aRank = rank[a.routeStopId];
+        final bRank = rank[b.routeStopId];
+        if (aRank != null || bRank != null) {
+          if (aRank == null) return 1;
+          if (bRank == null) return -1;
+          return aRank.compareTo(bRank);
+        }
+        return _routeOrder(a, b);
+      });
+      for (var i = 0; i < stops.length; i++) {
+        await (_db.update(_db.routeStopTable)
+              ..where((t) => t.routeStopId.equals(stops[i].routeStopId)))
+            .write(RouteStopTableCompanion(position: Value(i + 1)));
+      }
+      await _queue.enqueue(
+        entity: PendingEntity.routeStopOrder,
+        entityId: routeId,
+        action: PendingAction.update,
+        // The snapshot keeps its uuid, so a retry is the same record
+        // for the server.
+        payload: {
+          'uuid': uuid.v4(),
+          'stops': [for (final s in stops) s.routeStopId],
+        },
+      );
+    }
+  }
+
+  /// The route order without the pending-first rule: position (stops
+  /// without one last), then time, then download order, then id.
+  static int _routeOrder(RouteStopTableData a, RouteStopTableData b) {
+    final aPosition = a.position;
+    final bPosition = b.position;
+    if (aPosition != bPosition) {
+      if (aPosition == null) return 1;
+      if (bPosition == null) return -1;
+      return aPosition.compareTo(bPosition);
+    }
+    final byTime = a.scheduledAt.compareTo(b.scheduledAt);
+    if (byTime != 0) return byTime;
+    final bySequence = a.sequence.compareTo(b.sequence);
+    if (bySequence != 0) return bySequence;
+    return a.routeStopId.compareTo(b.routeStopId);
   }
 
   static String _dateOnly(DateTime d) =>
