@@ -13,8 +13,12 @@ class SaleDraft extends Notifier<SaleDraftState> {
   SaleDraftState build() => const SaleDraftState();
 
   /// The debt being collected belonged to the previous customer, so it
-  /// goes with it.
+  /// goes with it; so do the lines when the customer changes, since they
+  /// were priced with the previous customer's agreements.
   void selectCustomer(Customer customer, {String? visitId}) {
+    if (state.customer case final previous? when previous.id != customer.id) {
+      clearCustomer();
+    }
     state = state.copyWith(
       customer: customer,
       visitId: visitId,
