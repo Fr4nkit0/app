@@ -31,7 +31,10 @@ class AddressFormatter {
     if (apartment != null && apartment.trim().isNotEmpty) {
       final apt = apartment.trim();
       final singleOrShort = apt.length <= 2;
-      if (singleOrShort) {
+      if (_isManzana(street)) {
+        // On a manzana the depto field holds the lot number.
+        floorAndDept.add('Lote ${apt.replaceFirst(_lotPrefix, '').trim()}');
+      } else if (singleOrShort) {
         floorAndDept.add('Depto $apt');
       } else {
         floorAndDept.add(_capitalize(apt));
@@ -49,13 +52,23 @@ class AddressFormatter {
     return parts.isEmpty ? 'Sin dirección' : parts.join(' - ');
   }
 
+  static final _manzana = RegExp(
+    r'\b(mnza|mza|manzana)\b\.?',
+    caseSensitive: false,
+  );
+  static final _lotPrefix = RegExp(r'^(lte|lote)\b\.?', caseSensitive: false);
+
+  /// Whether [street] starts with a manzana (Mza, Mnza or Manzana).
+  static bool _isManzana(String? street) {
+    final value = street?.trim() ?? '';
+    final match = _manzana.matchAsPrefix(value);
+    return match != null;
+  }
+
   static String _normalizeStreet(String street) {
     String value = street;
 
-    value = value.replaceAllMapped(
-      RegExp(r'\b(mza|manzana)\b\.?', caseSensitive: false),
-      (_) => 'Mza.',
-    );
+    value = value.replaceAllMapped(_manzana, (_) => 'Mza.');
 
     value = value.replaceAllMapped(
       RegExp(r'\b(lte|lote)\b\.?', caseSensitive: false),

@@ -15,11 +15,13 @@ import 'package:app/features/inventory/domain/custody.dart';
 import 'package:app/features/inventory/domain/models/container_type.dart';
 import 'package:app/features/inventory/domain/models/customer_container_balance.dart';
 import 'package:app/features/inventory/presentation/widgets/container_return_dialog.dart';
+import 'package:app/features/inventory/presentation/widgets/skeleton_exchange.dart';
 
 import 'package:app/core/theme/marilin_tokens.dart';
 import 'package:app/features/payments/presentation/providers/payment_repository_provider.dart';
 import 'package:app/features/payments/presentation/widgets/amount_field.dart';
 import 'package:app/features/sales/presentation/widgets/collect_debt_card.dart';
+import 'package:app/features/sales/presentation/widgets/partial_payment.dart';
 
 class SaleStep3Screen extends ConsumerWidget {
   const SaleStep3Screen({super.key});
@@ -35,9 +37,11 @@ class SaleStep3Screen extends ConsumerWidget {
         : ref.watch(customerBalanceProvider(customer.id)).value ??
               customer.debtAmount;
     final currentDebt = balance > 0 ? balance : 0.0;
+    // S3: previous debt is only collected with the sale paid in full.
     final offersDebt =
         currentDebt > 0 &&
-        SaleDraftState.debtMethods.contains(draft.paymentMethod);
+        SaleDraftState.debtMethods.contains(draft.paymentMethod) &&
+        !draft.isPartialPayment;
 
     final bottomInset = MediaQuery.of(context).viewPadding.bottom;
 
@@ -87,6 +91,7 @@ class SaleStep3Screen extends ConsumerWidget {
                                 const SizedBox(height: 10),
                                 _PaymentGrid(draft: draft),
                                 const SizedBox(height: 12),
+                                _CollectedAmountSection(draft: draft),
                                 if (offersDebt) ...[
                                   _CollectDebtSection(
                                     draft: draft,
@@ -107,6 +112,7 @@ class SaleStep3Screen extends ConsumerWidget {
                           ),
                           // Order detail
                           SaleStep3ClientCard(draft: draft),
+                          _SkeletonSection(draft: draft),
                         ],
                       ),
                     ),
@@ -118,6 +124,80 @@ class SaleStep3Screen extends ConsumerWidget {
           _Footer(draft: draft),
           SizedBox(height: bottomInset),
         ],
+      ),
+    );
+  }
+}
+
+// ─── Skeleton ─────────────────────────────────────────────────────────────────
+
+/// The soda crate lent or taken back with the sale; closed by default, since
+/// most sales move none. Hidden while the catalog has no skeleton type.
+/// Shows what is left on the truck of today's route, warning when the
+/// delivery goes past it without blocking the sale.
+class _SkeletonSection extends ConsumerWidget {
+  const _SkeletonSection({required this.draft});
+
+  final SaleDraftState draft;
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final hasSkeleton =
+        ref
+            .watch(containerTypesProvider)
+            .value
+            ?.any((t) => t.code == ContainerType.skeletonCode) ??
+        false;
+    final customerId = draft.customer?.id;
+    if (!hasSkeleton || customerId == null) return const SizedBox.shrink();
+
+    final balance =
+        ref
+            .watch(customerContainerBalancesProvider(customerId))
+            .value
+            ?.where((b) => b.containerType == ContainerType.skeletonCode)
+            .fold<int>(0, (sum, b) => sum + b.quantity) ??
+        0;
+    final truck = ref.watch(truckSkeletonsProvider).value;
+    final notifier = ref.read(saleDraftProvider.notifier);
+
+    return Padding(
+      padding: const EdgeInsets.fromLTRB(16, 12, 16, 0),
+      child: DecoratedBox(
+        decoration: BoxDecoration(
+          border: Border.all(color: context.marilin.border),
+          borderRadius: BorderRadius.circular(12),
+        ),
+        child: ExpansionTile(
+          initiallyExpanded:
+              draft.skeletonDelivered > 0 || draft.skeletonReturned > 0,
+          shape: const Border(),
+          collapsedShape: const Border(),
+          leading: const Icon(Icons.add_circle_outline),
+          title: const Text(
+            'Esqueleto',
+            style: TextStyle(fontWeight: FontWeight.w700),
+          ),
+          subtitle: Text(skeletonBalanceLabel(balance)),
+          childrenPadding: const EdgeInsets.fromLTRB(16, 0, 8, 8),
+          children: [
+            if (truck != null)
+              Align(
+                alignment: Alignment.centerLeft,
+                child: SkeletonTruckLabel(
+                  truck: truck,
+                  delivered: draft.skeletonDelivered,
+                  returned: draft.skeletonReturned,
+                ),
+              ),
+            SkeletonExchange(
+              delivered: draft.skeletonDelivered,
+              returned: draft.skeletonReturned,
+              onDeliveredChanged: notifier.setSkeletonDelivered,
+              onReturnedChanged: notifier.setSkeletonReturned,
+            ),
+          ],
+        ),
       ),
     );
   }
@@ -233,6 +313,43 @@ class _CollectDebtSection extends ConsumerWidget {
       errorText: _error,
       onToggle: (on) => notifier.setCollectDebt(on, currentDebt: currentDebt),
       onAmountChanged: notifier.setDebtAmount,
+    );
+  }
+}
+
+// ─── "Monto cobrado" for cash and transfer (S2) ───────────────────────────────
+
+class _CollectedAmountSection extends ConsumerWidget {
+  const _CollectedAmountSection({required this.draft});
+
+  final SaleDraftState draft;
+
+  String? get _error {
+    final amount = draft.collectedAmount;
+    if (amount <= 0) return 'Ingresá un monto mayor a \$0';
+    if (amount > draft.total + SaleDraftState.tolerance) {
+      return 'No puede superar el total de ${formatMoney(draft.total)}';
+    }
+    return null;
+  }
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final method = draft.paymentMethod;
+    final collects =
+        method == PaymentMethod.cash || method == PaymentMethod.transfer;
+    // Collecting previous debt takes the whole sale (S3).
+    if (!collects || draft.collectsDebt) return const SizedBox.shrink();
+    return Padding(
+      padding: const EdgeInsets.only(bottom: 12),
+      child: CollectedAmountField(
+        // A new method starts again at the total.
+        key: ValueKey(method),
+        initialAmount: draft.collectedAmount,
+        unpaid: draft.unpaidAmount,
+        errorText: _error,
+        onChanged: ref.read(saleDraftProvider.notifier).setCollectedAmount,
+      ),
     );
   }
 }
@@ -504,6 +621,10 @@ class _RemainingIndicator extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    // Below the total without previous debt the rest stays as debt (S2).
+    if (draft.isPartialPayment) {
+      return UnpaidAmountNote(unpaid: draft.unpaidAmount);
+    }
     final tokens = Theme.of(context).extension<SalesTokens>()!;
     final remaining = draft.remaining;
     final isCovered = remaining.abs() <= 0.01;
@@ -649,6 +770,15 @@ class _FooterState extends ConsumerState<_Footer> {
                     return FilledButton(
                       onPressed: draft.canConfirm && !_busy
                           ? () async {
+                              // S4: a partial sale asks first; cancelling
+                              // stays on this step and saves nothing.
+                              if (draft.isPartialPayment) {
+                                final confirmed = await confirmPartialPayment(
+                                  context,
+                                  draft.unpaidAmount,
+                                );
+                                if (!confirmed || !context.mounted) return;
+                              }
                               final delivered = deliveredByContainerType(
                                 draft.containerDeliveries,
                               );

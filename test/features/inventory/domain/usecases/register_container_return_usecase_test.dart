@@ -83,6 +83,25 @@ void main() {
     expect(movement.saleId, isNull);
   });
 
+  test('records a skeleton return past the custody, below zero', () async {
+    await useCase(DriftInventoryRepository(db)).execute(
+      customerId: 'cust-1',
+      visitId: 'visit-1',
+      returns: {'ESQUELETO': 2, 'JUG': 0},
+    );
+
+    final movement = await db.select(db.containerMovementTable).getSingle();
+    expect(movement.containerType, 'ESQUELETO');
+    expect(movement.deliveredQuantity, 0);
+    expect(movement.returnedQuantity, 2);
+    expect(movement.saleId, isNull);
+    final custody = await db.select(db.customerContainerBalanceTable).get();
+    expect(
+      {for (final b in custody) b.containerType: b.quantity},
+      {'ESQUELETO': -2},
+    );
+  });
+
   test('records nothing when every return is zero', () async {
     await useCase(
       DriftInventoryRepository(db),

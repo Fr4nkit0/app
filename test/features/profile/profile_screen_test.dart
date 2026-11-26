@@ -8,6 +8,8 @@ import 'package:app/core/theme/app.theme.dart';
 import 'package:app/core/theme/theme_mode_controller.dart';
 import 'package:app/features/auth/auth_controller.dart';
 import 'package:app/features/history/presentation/widgets/history_sync_status_card.dart';
+import 'package:app/features/inventory/domain/models/truck_skeletons.dart';
+import 'package:app/features/inventory/presentation/providers/inventory_repository_provider.dart';
 import 'package:app/features/products/domain/models/product.dart';
 import 'package:app/features/products/presentation/providers/product_list_provider.dart';
 import 'package:app/features/profile/profile_screen.dart';
@@ -32,10 +34,12 @@ void main() {
   ProviderContainer makeContainer({
     SyncStatus status = const SyncStatus(),
     List<Product> products = const [],
+    TruckSkeletons? skeletons,
   }) {
     final container = ProviderContainer(
       overrides: [
         productListProvider.overrideWith((ref) => Stream.value(products)),
+        truckSkeletonsProvider.overrideWith((ref) => Stream.value(skeletons)),
         authControllerProvider.overrideWith(_SignedIn.new),
         syncStatusProvider.overrideWith((ref) => Stream.value(status)),
         syncRunningProvider.overrideWith((ref) => Stream.value(false)),
@@ -56,8 +60,13 @@ void main() {
     WidgetTester tester, {
     SyncStatus status = const SyncStatus(),
     List<Product> products = const [],
+    TruckSkeletons? skeletons,
   }) async {
-    final container = makeContainer(status: status, products: products);
+    final container = makeContainer(
+      status: status,
+      products: products,
+      skeletons: skeletons,
+    );
     await tester.pumpWidget(
       UncontrolledProviderScope(
         container: container,
@@ -135,6 +144,86 @@ void main() {
       findsOneWidget,
     );
   });
+
+  testWidgets('shows the skeletons loaded and left on the truck', (
+    tester,
+  ) async {
+    await pumpProfile(
+      tester,
+      products: const [
+        Product(
+          id: 'p1',
+          name: 'Bidón 20L',
+          unitLabel: 'Retornable',
+          price: 3500,
+          available: 12,
+        ),
+      ],
+      skeletons: const TruckSkeletons(
+        loaded: 6,
+        remaining: -1,
+        hasActivity: true,
+      ),
+    );
+
+    final row = find.byKey(const ValueKey('truck-load-skeletons'));
+    expect(row, findsOneWidget);
+    expect(
+      find.descendant(of: row, matching: find.text('Esqueleto')),
+      findsOneWidget,
+    );
+    expect(
+      find.descendant(of: row, matching: find.text('Cargados: 6')),
+      findsOneWidget,
+    );
+    expect(find.descendant(of: row, matching: find.text('-1')), findsOneWidget);
+  });
+
+  testWidgets('shows the skeletons even before the products arrive', (
+    tester,
+  ) async {
+    await pumpProfile(
+      tester,
+      skeletons: const TruckSkeletons(
+        loaded: 6,
+        remaining: 6,
+        hasActivity: true,
+      ),
+    );
+
+    expect(find.byKey(const ValueKey('truck-load-skeletons')), findsOneWidget);
+    expect(
+      find.text('Todavía no hay carga. Sincronizá para traerla.'),
+      findsNothing,
+    );
+  });
+
+  for (final (name, skeletons) in [
+    ('no route today', null),
+    (
+      'a route without skeleton loads or movements',
+      const TruckSkeletons(loaded: 0, remaining: 0, hasActivity: false),
+    ),
+  ]) {
+    testWidgets('no skeleton row with $name', (tester) async {
+      await pumpProfile(
+        tester,
+        products: const [
+          Product(
+            id: 'p1',
+            name: 'Bidón 20L',
+            unitLabel: 'Retornable',
+            price: 3500,
+            available: 12,
+          ),
+        ],
+        skeletons: skeletons,
+      );
+
+      expect(find.byKey(const ValueKey('truck-load-skeletons')), findsNothing);
+      expect(find.byKey(const ValueKey('truck-load-p1')), findsOneWidget);
+    });
+  }
 
   testWidgets('says the truck has no load yet when there are no products', (
     tester,

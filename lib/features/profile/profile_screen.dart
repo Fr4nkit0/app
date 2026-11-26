@@ -7,6 +7,7 @@ import 'package:app/core/widgets/screen_header.dart';
 import 'package:app/features/auth/auth_controller.dart';
 import 'package:app/features/auth/logout_button.dart';
 import 'package:app/features/history/presentation/widgets/history_sync_status_card.dart';
+import 'package:app/features/inventory/presentation/providers/inventory_repository_provider.dart';
 import 'package:app/features/products/presentation/providers/product_list_provider.dart';
 import 'package:app/features/profile/widgets/profile_avatar.dart';
 import 'package:app/features/profile/widgets/truck_load_card.dart';
@@ -28,6 +29,7 @@ class ProfileScreen extends ConsumerWidget {
     final isSyncRunning = ref.watch(syncRunningProvider).value ?? false;
     final version = ref.watch(appVersionProvider).value;
     final truckLoad = ref.watch(productListProvider);
+    final truckSkeletons = ref.watch(truckSkeletonsProvider).value;
     final tokens = context.marilin;
 
     return Scaffold(
@@ -49,7 +51,10 @@ class ProfileScreen extends ConsumerWidget {
                   const _SectionTitle('Carga en la camioneta'),
                   const SizedBox(height: 10),
                   switch (truckLoad) {
-                    AsyncData(:final value) => TruckLoadCard(products: value),
+                    AsyncData(:final value) => TruckLoadCard(
+                      products: value,
+                      skeletons: truckSkeletons,
+                    ),
                     AsyncError() => Text(
                       'No se pudo leer la carga.',
                       style: tokens.subtitle.copyWith(fontSize: 13),

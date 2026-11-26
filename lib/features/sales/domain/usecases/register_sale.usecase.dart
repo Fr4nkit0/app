@@ -36,6 +36,12 @@ class RegisterSaleUseCase {
   /// to the sale) in one unit of work. Throws [ValidationFailure] for a sale
   /// without items or whose total does not match its items.
   ///
+  /// Without previous debt, a cash or transfer sale is settled by its
+  /// [Sale.cashAmount] or [Sale.transferAmount] when it holds one and by its
+  /// total otherwise, and a mixed sale by both amounts; together they must be
+  /// above 0 and not above the total, and the rest stays on the customer's
+  /// account (a partial payment). Throws [ValidationFailure] otherwise.
+  ///
   /// A [debtAmount] above 0 means the customer also pays that much of their
   /// previous debt in the same operation: a cash or transfer sale takes the
   /// total plus [debtAmount] by its method, and the [Sale.cashAmount] and
@@ -46,7 +52,8 @@ class RegisterSaleUseCase {
   /// one transaction uuid. Throws [ValidationFailure] for a negative
   /// [debtAmount], debt with a credit or route sale, a mixed split that
   /// does not cover the sale plus the debt, or a [debtAmount] above what
-  /// the customer owes before this sale (read in the same unit of work).
+  /// the customer owes before this sale (read in the same unit of work), or
+  /// a partial cash or transfer sale.
   Future<void> execute(
     Sale sale, {
     Payment? payment,
@@ -65,6 +72,7 @@ class RegisterSaleUseCase {
     if (debtAmount < 0) {
       throw const ValidationFailure('La deuda a cobrar no puede ser negativa.');
     }
+    if (debtAmount == 0) _checkCollected(sale);
     final (saved, operationPayments) = debtAmount == 0
         ? (sale, settlingPayments(sale))
         : _withDebt(sale, debtAmount);
@@ -94,9 +102,48 @@ class RegisterSaleUseCase {
     });
   }
 
+  /// Largest amount a sale paid on the spot may collect above its total,
+  /// like the draft's.
+  static const collectedTolerance = 0.01;
+
+  /// Without previous debt, a sale paid on the spot collects more than 0 and
+  /// at most its total; what it leaves unpaid stays on the customer's
+  /// account (a partial payment). Throws [ValidationFailure] otherwise.
+  static void _checkCollected(Sale sale) {
+    if (!_paidOnTheSpot(sale.paymentMethod)) return;
+    final collected = sale.settlement;
+    if (collected.cash < 0 || collected.transfer < 0) {
+      throw const ValidationFailure('Ingresá montos mayores o iguales a 0.');
+    }
+    if (collected.total <= 0) {
+      throw const ValidationFailure('Ingresá un monto cobrado mayor a \$0.');
+    }
+    if (collected.total > sale.total + collectedTolerance) {
+      throw const ValidationFailure(
+        'Lo cobrado no puede superar el total de la venta.',
+      );
+    }
+  }
+
+  static bool _paidOnTheSpot(PaymentMethod method) => switch (method) {
+    PaymentMethod.cash || PaymentMethod.transfer || PaymentMethod.mixed => true,
+    PaymentMethod.credit || PaymentMethod.route => false,
+  };
+
   /// [sale] with only its own part of the money, and the payments of the
-  /// sale and of [debtAmount] of previous debt.
+  /// sale and of [debtAmount] of previous debt. Previous debt is only
+  /// collected with a sale paid in full: a partial cash or transfer sale
+  /// throws [ValidationFailure].
   static (Sale, List<Payment>) _withDebt(Sale sale, double debtAmount) {
+    final isPartial =
+        (sale.paymentMethod == PaymentMethod.cash ||
+            sale.paymentMethod == PaymentMethod.transfer) &&
+        sale.settlement.total < sale.total - totalTolerance;
+    if (isPartial) {
+      throw const ValidationFailure(
+        'Para cobrar deuda anterior, cobrá la venta completa.',
+      );
+    }
     final operationTotal = sale.total + debtAmount;
     final received = switch (sale.paymentMethod) {
       PaymentMethod.cash => PaymentSplit(cash: operationTotal),

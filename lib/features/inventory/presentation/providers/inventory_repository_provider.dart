@@ -1,9 +1,11 @@
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:app/core/providers/clock_provider.dart';
 import 'package:app/core/services/database.helper.dart';
 import 'package:app/features/inventory/data/repositories/inventory.repository.dart';
 import 'package:app/features/inventory/domain/models/customer_container_balance.dart';
 import 'package:app/features/inventory/domain/models/container_movement.dart';
 import 'package:app/features/inventory/domain/models/container_type.dart';
+import 'package:app/features/inventory/domain/models/truck_skeletons.dart';
 
 final inventoryRepositoryProvider = Provider<InventoryRepository>(
   (ref) => DriftInventoryRepository(ref.watch(databaseProvider)),
@@ -27,4 +29,11 @@ final visitMovementsProvider =
 /// Container types of the catalog, the ones custody and returns show.
 final containerTypesProvider = StreamProvider<List<ContainerType>>(
   (ref) => ref.watch(inventoryRepositoryProvider).watchContainerTypes(),
+);
+
+/// The skeletons on the truck of today's route; null without a route today.
+final truckSkeletonsProvider = StreamProvider<TruckSkeletons?>(
+  (ref) => ref
+      .watch(inventoryRepositoryProvider)
+      .watchTruckSkeletons(ref.watch(clockProvider)()),
 );

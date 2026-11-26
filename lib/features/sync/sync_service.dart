@@ -19,6 +19,7 @@ import 'pull/route_applier.dart';
 import 'pull/sale_applier.dart';
 import 'pull/server_ids.dart';
 import 'pull/stop_applier.dart';
+import 'pull/truck_container_load_applier.dart';
 import 'pull/truck_inventory_applier.dart';
 import 'pull/unsent.dart';
 import 'pull/visit_applier.dart';
@@ -51,7 +52,8 @@ class SyncService {
       _truckInventory = TruckInventoryApplier(
         _db,
         today: today ?? DateTime.now,
-      );
+      ),
+      _containerLoads = TruckContainerLoadApplier(_db);
 
   static const pullCursorKey = 'pull_cursor';
 
@@ -73,6 +75,7 @@ class SyncService {
   final PaymentApplier _payments;
   final ContainerMovementApplier _movements;
   final TruckInventoryApplier _truckInventory;
+  final TruckContainerLoadApplier _containerLoads;
 
   /// Appliers of the incremental pull in dependency order: a row is applied
   /// after the rows it references. Cancellations go before the balances and
@@ -90,6 +93,7 @@ class SyncService {
     _routes,
     _stops,
     _truckInventory,
+    _containerLoads,
   ];
 
   /// True on the first run (no cursor) or when no stored route is today's.
@@ -152,6 +156,10 @@ class SyncService {
         await _truckInventory.replaceRoute(
           routeId,
           jsonList(data['truck_inventory']),
+          context,
+        );
+        await _containerLoads.store(
+          jsonList(data['truck_container_loads']),
           context,
         );
       }

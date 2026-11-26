@@ -7,6 +7,7 @@ import 'package:app/features/inventory/presentation/widgets/container_return_dia
 
 const _jug = ContainerType(id: 1, code: 'JUG', label: 'Bidón 20L');
 const _siphon = ContainerType(id: 2, code: 'SIPHON', label: 'Sifón 1.5L');
+const _skeleton = ContainerType(id: 3, code: 'ESQUELETO', label: 'Esqueleto');
 
 void main() {
   late List<Map<String, int>> confirmed;
@@ -143,5 +144,56 @@ void main() {
     expect(confirmed, [
       {'JUG': 2},
     ]);
+  });
+
+  group('skeleton', () {
+    Future<void> pumpWithSkeleton(WidgetTester tester) async {
+      confirmed = [];
+      await tester.pumpWidget(
+        MaterialApp(
+          theme: ThemeData(extensions: [MarilinTokens.light]),
+          home: Scaffold(
+            body: ContainerReturnDialog(
+              containerTypes: const [_jug, _skeleton],
+              custody: const {'JUG': 1, 'ESQUELETO': 0},
+              onConfirm: confirmed.add,
+            ),
+          ),
+        ),
+      );
+    }
+
+    testWidgets('is a plain return row: nothing is delivered on a visit', (
+      tester,
+    ) async {
+      await pumpWithSkeleton(tester);
+
+      expect(find.text('Esqueleto'), findsOneWidget);
+      expect(find.text('Entregar al cliente'), findsNothing);
+      expect(find.textContaining('En el camión'), findsNothing);
+      expect(find.byTooltip('Sumar'), findsNWidgets(2));
+    });
+
+    testWidgets('its return goes past the custody; others stay capped', (
+      tester,
+    ) async {
+      await pumpWithSkeleton(tester);
+
+      await tester.tap(plus('Esqueleto'));
+      await tester.pump();
+      await tester.tap(plus('Esqueleto'));
+      await tester.pump();
+      expect(tester.widget<IconButton>(plus('Esqueleto')).onPressed, isNotNull);
+      await tester.tap(plus('Bidón 20L'));
+      await tester.pump();
+      expect(tester.widget<IconButton>(plus('Bidón 20L')).onPressed, isNull);
+
+      await tester.tap(find.text('Guardar'));
+      await tester.pump();
+
+      expect(confirmed, [
+        {'JUG': 1, 'ESQUELETO': 2},
+      ]);
+    });
   });
 }

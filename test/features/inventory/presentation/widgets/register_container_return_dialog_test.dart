@@ -6,6 +6,7 @@ import 'package:app/core/errors/domain_failure.dart';
 import 'package:app/core/theme/marilin_tokens.dart';
 import 'package:app/features/inventory/domain/models/container_type.dart';
 import 'package:app/features/inventory/domain/models/customer_container_balance.dart';
+import 'package:app/features/inventory/domain/models/truck_skeletons.dart';
 import 'package:app/features/inventory/domain/usecases/register_container_return.usecase.dart';
 import 'package:app/features/inventory/presentation/providers/inventory_repository_provider.dart';
 import 'package:app/features/inventory/presentation/providers/register_container_return_usecase_provider.dart';
@@ -32,18 +33,19 @@ class _FakeRegisterContainerReturn implements RegisterContainerReturnUseCase {
 
 Future<void> _openDialog(
   WidgetTester tester,
-  _FakeRegisterContainerReturn fake,
-) async {
+  _FakeRegisterContainerReturn fake, {
+  List<ContainerType> catalog = const [
+    ContainerType(id: 1, code: 'JUG', label: 'Bidón 20L'),
+    ContainerType(id: 2, code: 'SIPHON', label: 'Sifón 1.5L'),
+  ],
+  TruckSkeletons? truck,
+}) async {
   await tester.pumpWidget(
     ProviderScope(
       overrides: [
         registerContainerReturnUseCaseProvider.overrideWithValue(fake),
-        containerTypesProvider.overrideWith(
-          (_) => Stream.value(const [
-            ContainerType(id: 1, code: 'JUG', label: 'Bidón 20L'),
-            ContainerType(id: 2, code: 'SIPHON', label: 'Sifón 1.5L'),
-          ]),
-        ),
+        containerTypesProvider.overrideWith((_) => Stream.value(catalog)),
+        truckSkeletonsProvider.overrideWith((_) => Stream.value(truck)),
         customerContainerBalancesProvider('c-1').overrideWith(
           (_) => Stream.value(const [
             CustomerContainerBalance(
@@ -127,4 +129,35 @@ void main() {
       await tester.pumpAndSettle(const Duration(seconds: 4));
     },
   );
+
+  testWidgets('the skeleton is only returned: no delivery, no truck', (
+    tester,
+  ) async {
+    final fake = _FakeRegisterContainerReturn();
+    await _openDialog(
+      tester,
+      fake,
+      catalog: const [
+        ContainerType(id: 1, code: 'JUG', label: 'Bidón 20L'),
+        ContainerType(id: 3, code: 'ESQUELETO', label: 'Esqueleto'),
+      ],
+      truck: const TruckSkeletons(loaded: 6, remaining: 4, hasActivity: true),
+    );
+
+    expect(find.text('Entregar al cliente'), findsNothing);
+    expect(find.textContaining('En el camión'), findsNothing);
+
+    // The customer holds no skeleton and still hands back two.
+    await tester.tap(find.byTooltip('Sumar').last);
+    await tester.pump();
+    await tester.tap(find.byTooltip('Sumar').last);
+    await tester.pump();
+    await tester.tap(find.text('Guardar'));
+    await tester.pump();
+    await tester.pump(const Duration(milliseconds: 400));
+
+    expect(fake.calls.single.returns, {'JUG': 0, 'ESQUELETO': 2});
+
+    await tester.pumpAndSettle(const Duration(seconds: 4));
+  });
 }
