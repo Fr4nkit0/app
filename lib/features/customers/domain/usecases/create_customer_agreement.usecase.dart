@@ -1,6 +1,7 @@
 import 'package:app/core/errors/domain_failure.dart';
 import 'package:app/core/usecases/transaction_runner.dart';
 import 'package:app/features/customers/data/repositories/customer_agreement.repository.dart';
+import 'package:app/features/customers/domain/models/agreement_terms.dart';
 
 /// A customer gets a special price for a product from [validFrom] on.
 class CreateCustomerAgreementUseCase {
@@ -25,35 +26,20 @@ class CreateCustomerAgreementUseCase {
     String? validTo,
     String? reason,
   }) async {
-    final trimmed = reason?.trim();
-    final cleanReason = trimmed == null || trimmed.isEmpty ? null : trimmed;
-    if (unitPrice <= 0) {
-      throw const ValidationFailure('El precio debe ser mayor a 0.');
-    }
-    // The server keeps two decimals and rejects more, which would strand the
-    // agreement in the queue while it already prices sales here.
-    if ((unitPrice * 100).roundToDouble() / 100 != unitPrice) {
-      throw const ValidationFailure('El precio admite hasta 2 decimales.');
-    }
-    if (validTo != null && validTo.compareTo(validFrom) < 0) {
-      throw const ValidationFailure(
-        'La fecha de fin no puede ser anterior al inicio.',
-      );
-    }
-    if (cleanReason != null &&
-        cleanReason.length > CustomerAgreementRepository.maxReasonLength) {
-      throw const ValidationFailure(
-        'El motivo admite hasta ${CustomerAgreementRepository.maxReasonLength} caracteres.',
-      );
-    }
+    final terms = AgreementTerms(
+      unitPrice: unitPrice,
+      validFrom: validFrom,
+      validTo: validTo,
+      reason: reason,
+    ).normalized()..validate();
     return _transaction(
       () => _agreementRepo.create(
         customerId: customerId,
         productId: productId,
-        unitPrice: unitPrice,
-        validFrom: validFrom,
-        validTo: validTo,
-        reason: cleanReason,
+        unitPrice: terms.unitPrice,
+        validFrom: terms.validFrom,
+        validTo: terms.validTo,
+        reason: terms.reason,
       ),
     );
   }

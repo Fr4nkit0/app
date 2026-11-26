@@ -1,27 +1,35 @@
 import 'package:app/core/presentation/failure_message.dart';
 import 'package:app/core/widgets/top_toast.dart';
 import 'package:app/features/customers/data/repositories/customer_agreement.repository.dart';
+import 'package:app/features/customers/domain/models/customer_agreement.dart';
 import 'package:app/features/customers/presentation/providers/customer_usecase_providers.dart';
 import 'package:app/features/customers/presentation/widgets/customer_agreements_tab.dart';
 import 'package:app/features/products/presentation/providers/product_list_provider.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
-Future<void> showNewAgreementSheet(BuildContext context, String customerId) {
+/// Opens the agreement form: a new agreement, or [initial] to edit.
+Future<void> showNewAgreementSheet(
+  BuildContext context,
+  String customerId, {
+  CustomerAgreement? initial,
+}) {
   return showModalBottomSheet<void>(
     context: context,
     isScrollControlled: true,
     useSafeArea: true,
-    builder: (_) => NewAgreementSheet(customerId: customerId),
+    builder: (_) => NewAgreementSheet(customerId: customerId, initial: initial),
   );
 }
 
 /// Form to create a price agreement for [customerId] from the enabled
-/// product catalog.
+/// product catalog, or to edit [initial]: prefilled, with its product
+/// locked because an agreement's product never changes.
 class NewAgreementSheet extends ConsumerStatefulWidget {
-  const NewAgreementSheet({super.key, required this.customerId});
+  const NewAgreementSheet({super.key, required this.customerId, this.initial});
 
   final String customerId;
+  final CustomerAgreement? initial;
 
   @override
   ConsumerState<NewAgreementSheet> createState() => _NewAgreementSheetState();
@@ -35,6 +43,26 @@ class _NewAgreementSheetState extends ConsumerState<NewAgreementSheet> {
   DateTime _validFrom = DateTime.now();
   DateTime? _validTo;
   bool _saving = false;
+
+  bool get _editing => widget.initial != null;
+
+  @override
+  void initState() {
+    super.initState();
+    final initial = widget.initial;
+    if (initial == null) return;
+    _productId = initial.productId;
+    _price.text = _priceText(initial.unitPrice);
+    _reason.text = initial.reason ?? '';
+    _validFrom = DateTime.parse(initial.validFrom);
+    _validTo = initial.validTo == null
+        ? null
+        : DateTime.parse(initial.validTo!);
+  }
+
+  static String _priceText(double price) => price == price.roundToDouble()
+      ? price.toInt().toString()
+      : price.toStringAsFixed(2);
 
   @override
   void dispose() {
@@ -54,7 +82,9 @@ class _NewAgreementSheetState extends ConsumerState<NewAgreementSheet> {
     final picked = await showDatePicker(
       context: context,
       initialDate: _validFrom,
-      firstDate: DateTime(2020),
+      firstDate: _validFrom.isBefore(DateTime(2020))
+          ? _validFrom
+          : DateTime(2020),
       lastDate: DateTime(2100),
     );
     if (picked == null) return;
@@ -79,17 +109,33 @@ class _NewAgreementSheetState extends ConsumerState<NewAgreementSheet> {
   Future<void> _save() async {
     if (!_formKey.currentState!.validate()) return;
     setState(() => _saving = true);
+    final unitPrice = _parsePrice(_price.text)!;
+    final validFrom = _iso(_validFrom);
+    final validTo = _validTo == null ? null : _iso(_validTo!);
     try {
-      await ref
-          .read(createCustomerAgreementUseCaseProvider)
-          .execute(
-            customerId: widget.customerId,
-            productId: _productId!,
-            unitPrice: _parsePrice(_price.text)!,
-            validFrom: _iso(_validFrom),
-            validTo: _validTo == null ? null : _iso(_validTo!),
-            reason: _reason.text,
-          );
+      final initial = widget.initial;
+      if (initial == null) {
+        await ref
+            .read(createCustomerAgreementUseCaseProvider)
+            .execute(
+              customerId: widget.customerId,
+              productId: _productId!,
+              unitPrice: unitPrice,
+              validFrom: validFrom,
+              validTo: validTo,
+              reason: _reason.text,
+            );
+      } else {
+        await ref
+            .read(editCustomerAgreementUseCaseProvider)
+            .execute(
+              agreementId: initial.id,
+              unitPrice: unitPrice,
+              validFrom: validFrom,
+              validTo: validTo,
+              reason: _reason.text,
+            );
+      }
     } catch (e) {
       if (!mounted) return;
       setState(() => _saving = false);
@@ -101,7 +147,10 @@ class _NewAgreementSheetState extends ConsumerState<NewAgreementSheet> {
     }
     if (!mounted) return;
     Navigator.of(context).pop();
-    TopToast.showSuccess(context, 'Acuerdo creado');
+    TopToast.showSuccess(
+      context,
+      _editing ? 'Acuerdo actualizado' : 'Acuerdo creado',
+    );
   }
 
   static double? _parsePrice(String text) =>
@@ -110,6 +159,7 @@ class _NewAgreementSheetState extends ConsumerState<NewAgreementSheet> {
   @override
   Widget build(BuildContext context) {
     final products = ref.watch(productListProvider).value ?? const [];
+    final initial = widget.initial;
 
     return Padding(
       padding: EdgeInsets.fromLTRB(
@@ -125,8 +175,8 @@ class _NewAgreementSheetState extends ConsumerState<NewAgreementSheet> {
             crossAxisAlignment: CrossAxisAlignment.stretch,
             mainAxisSize: MainAxisSize.min,
             children: [
-              const Text(
-                'Nuevo acuerdo',
+              Text(
+                _editing ? 'Editar acuerdo' : 'Nuevo acuerdo',
                 style: TextStyle(fontSize: 18, fontWeight: FontWeight.w800),
               ),
               const SizedBox(height: 16),
@@ -134,11 +184,22 @@ class _NewAgreementSheetState extends ConsumerState<NewAgreementSheet> {
                 key: const Key('agreement_product'),
                 initialValue: _productId,
                 decoration: const InputDecoration(labelText: 'Producto'),
-                items: [
-                  for (final p in products)
-                    DropdownMenuItem(value: p.id, child: Text(p.name)),
-                ],
-                onChanged: (v) => setState(() => _productId = v),
+                // Editing shows only the agreement's product, which may have
+                // left the catalog since.
+                items: initial != null
+                    ? [
+                        DropdownMenuItem(
+                          value: initial.productId,
+                          child: Text(initial.productName),
+                        ),
+                      ]
+                    : [
+                        for (final p in products)
+                          DropdownMenuItem(value: p.id, child: Text(p.name)),
+                      ],
+                onChanged: _editing
+                    ? null
+                    : (v) => setState(() => _productId = v),
                 validator: (v) => v == null ? 'Elegí un producto' : null,
               ),
               const SizedBox(height: 12),

@@ -1,18 +1,59 @@
+import 'package:app/core/presentation/failure_message.dart';
 import 'package:app/core/utils/money_formatter.dart';
 import 'package:app/core/theme/marilin_tokens.dart';
 import 'package:app/core/widgets/error_state.dart';
+import 'package:app/core/widgets/top_toast.dart';
 import 'package:app/features/customers/domain/models/customer_agreement.dart';
 import 'package:app/features/customers/presentation/providers/customer_agreements_provider.dart';
+import 'package:app/features/customers/presentation/providers/customer_usecase_providers.dart';
 import 'package:app/features/customers/presentation/widgets/new_agreement_sheet.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 /// Acuerdos tab of the customer profile: the customer's price agreements
-/// and the entry point to create one.
+/// and the entry points to create, edit and delete them.
 class CustomerAgreementsTab extends ConsumerWidget {
   const CustomerAgreementsTab({super.key, required this.customerId});
 
   final String customerId;
+
+  Future<void> _onAction(
+    BuildContext context,
+    WidgetRef ref,
+    CustomerAgreement agreement,
+    AgreementAction action,
+  ) async {
+    switch (action) {
+      case AgreementAction.edit:
+        await showNewAgreementSheet(context, customerId, initial: agreement);
+      case AgreementAction.delete:
+        await _delete(context, ref, agreement);
+    }
+  }
+
+  Future<void> _delete(
+    BuildContext context,
+    WidgetRef ref,
+    CustomerAgreement agreement,
+  ) async {
+    final confirmed = await confirmDeleteAgreement(
+      context,
+      productName: agreement.productName,
+    );
+    if (!confirmed || !context.mounted) return;
+    try {
+      await ref.read(deleteAgreementUseCaseProvider).execute(agreement.id);
+    } catch (e) {
+      if (!context.mounted) return;
+      TopToast.showError(
+        context,
+        failureMessage(e, fallback: 'No se eliminó el acuerdo. Reintentá.'),
+      );
+      return;
+    }
+    if (!context.mounted) return;
+    TopToast.showSuccess(context, 'Acuerdo eliminado');
+  }
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
@@ -40,7 +81,15 @@ class CustomerAgreementsTab extends ConsumerWidget {
                       for (final a in list)
                         Padding(
                           padding: const EdgeInsets.only(bottom: 12),
-                          child: AgreementCard(agreement: a),
+                          child: AgreementCard(
+                            agreement: a,
+                            // An ended agreement is history: it is not
+                            // changed any more.
+                            onAction: a.status == AgreementStatus.ended
+                                ? null
+                                : (action) =>
+                                      _onAction(context, ref, a, action),
+                          ),
                         ),
                     ],
                   ),
@@ -100,11 +149,48 @@ class _EmptyAgreements extends StatelessWidget {
   }
 }
 
-/// Presentational card of one agreement.
+/// Asks before deleting the agreement for [productName]. Returns true when
+/// the driver confirms.
+Future<bool> confirmDeleteAgreement(
+  BuildContext context, {
+  required String productName,
+}) async {
+  final delete = await showDialog<bool>(
+    context: context,
+    builder: (dialogContext) => AlertDialog(
+      title: const Text('¿Eliminar acuerdo?'),
+      content: Text(
+        '$productName\n\nDeja de aplicarse en las ventas y no se puede '
+        'reactivar.',
+      ),
+      actions: [
+        TextButton(
+          onPressed: () => Navigator.of(dialogContext).pop(false),
+          child: const Text('Cancelar'),
+        ),
+        FilledButton(
+          style: FilledButton.styleFrom(
+            backgroundColor: Theme.of(dialogContext).colorScheme.error,
+            foregroundColor: Theme.of(dialogContext).colorScheme.onError,
+          ),
+          onPressed: () => Navigator.of(dialogContext).pop(true),
+          child: const Text('Eliminar'),
+        ),
+      ],
+    ),
+  );
+  return delete ?? false;
+}
+
+enum AgreementAction { edit, delete }
+
+/// Presentational card of one agreement. Offers its actions when
+/// [onAction] is given.
 class AgreementCard extends StatelessWidget {
-  const AgreementCard({super.key, required this.agreement});
+  const AgreementCard({super.key, required this.agreement, this.onAction});
 
   final CustomerAgreement agreement;
+  final ValueChanged<AgreementAction>? onAction;
 
   static String formatDate(String day) {
     final p = day.split('-');
@@ -164,6 +250,21 @@ class AgreementCard extends StatelessWidget {
                   ),
                 ),
               ),
+              if (onAction != null)
+                PopupMenuButton<AgreementAction>(
+                  tooltip: 'Opciones de acuerdo',
+                  onSelected: onAction,
+                  itemBuilder: (_) => const [
+                    PopupMenuItem(
+                      value: AgreementAction.edit,
+                      child: Text('Editar'),
+                    ),
+                    PopupMenuItem(
+                      value: AgreementAction.delete,
+                      child: Text('Eliminar'),
+                    ),
+                  ],
+                ),
             ],
           ),
           const SizedBox(height: 6),
