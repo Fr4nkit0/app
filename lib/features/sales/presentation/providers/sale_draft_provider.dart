@@ -211,7 +211,10 @@ class SaleDraft extends Notifier<SaleDraftState> {
     state = const SaleDraftState();
   }
 
+  /// Safe after the provider is gone: a pushed sale screen resets the draft
+  /// a microtask after it is disposed, maybe with the whole app torn down.
   void reset() {
+    if (!ref.mounted) return;
     state = const SaleDraftState();
   }
 }

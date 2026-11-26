@@ -110,6 +110,10 @@ class SaleDraftState {
   /// Nothing the driver would miss: no customer and no lines.
   bool get isEmpty => customer == null && items.isEmpty;
 
+  /// Leaving the sale asks first only when products were loaded; a chosen
+  /// customer alone is not worth a prompt.
+  bool get needsDiscardConfirmation => items.isNotEmpty;
+
   double get total => items.fold(0.0, (sum, item) => sum + item.subtotal);
 
   double get mixedTotal => (cashAmount ?? 0) + (transferAmount ?? 0);
