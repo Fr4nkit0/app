@@ -44,6 +44,9 @@ import 'package:app/features/visits/presentation/providers/visit_session.dart';
 import 'package:app/features/visits/presentation/providers/edit_visit_usecase_provider.dart';
 import 'package:app/features/visits/presentation/widgets/visit_edit_sheet.dart';
 import 'package:app/features/visits/domain/models/visit_summary.dart';
+import 'package:app/features/customers/presentation/providers/customer_count_provider.dart';
+import 'package:app/features/customers/presentation/screens/edit_customer_screen.dart';
+import 'package:app/features/customers/domain/models/customer.dart';
 
 class VisitScreen extends ConsumerStatefulWidget {
   const VisitScreen({super.key, required this.stopId});
@@ -81,6 +84,11 @@ class _VisitScreenState extends ConsumerState<VisitScreen> {
     // for a customer without one.
     final balance =
         ref.watch(customerBalanceProvider(stop.customer.id)).value ?? 0.0;
+    // The stop carries only part of the customer; the edit needs all of it,
+    // so the edit button waits until it loads.
+    final editableCustomer = ref
+        .watch(customerByIdProvider(stop.customer.id))
+        .value;
 
     final isDone = stop.status != StopStatus.pending;
     final salesAsync = ref.watch(stopSalesProvider(widget.stopId));
@@ -219,6 +227,10 @@ class _VisitScreenState extends ConsumerState<VisitScreen> {
                           customerName: stop.customer.name,
                           formattedAddress: _formatStopAddress(stop),
                           phone: stop.customer.phone,
+                          onEdit: switch (editableCustomer) {
+                            final customer? => () => _editCustomer(customer),
+                            null => null,
+                          },
                           onWhatsAppLongPress: stop.customer.phone != null
                               ? () => _openWhatsApp(stop.customer.phone!)
                               : null,
@@ -359,6 +371,14 @@ class _VisitScreenState extends ConsumerState<VisitScreen> {
       floor: addr.floor,
       apartment: addr.apartment,
       visualReference: addr.visualReference,
+    );
+  }
+
+  /// Opens the edit of the stop's customer; saving pops back here and the
+  /// stop stream shows the new data.
+  void _editCustomer(Customer customer) {
+    Navigator.of(context).push(
+      MaterialPageRoute(builder: (_) => EditCustomerScreen(customer: customer)),
     );
   }
 

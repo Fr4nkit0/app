@@ -3,6 +3,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
 
 import 'package:app/core/theme/marilin_tokens.dart';
+import 'package:app/features/customers/presentation/providers/customer_count_provider.dart';
 import 'package:app/features/customers/domain/models/customer.dart';
 import 'package:app/features/inventory/presentation/providers/inventory_repository_provider.dart';
 import 'package:app/features/payments/presentation/providers/payment_repository_provider.dart';
@@ -39,6 +40,7 @@ void main() {
         overrides: [
           routeStopByIdProvider('s-1').overrideWithValue(_stop),
           customerBalanceProvider('c-1').overrideWith((_) => balance),
+          customerByIdProvider('c-1').overrideWith((_) => Stream.value(null)),
           stopSalesProvider('s-1').overrideWith((_) => Stream.value([])),
           visitPaymentsProvider('s-1').overrideWith((_) => Stream.value([])),
           visitMovementsProvider('s-1').overrideWith((_) async => []),
