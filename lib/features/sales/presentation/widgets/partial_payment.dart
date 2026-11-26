@@ -4,7 +4,11 @@ import 'package:app/core/theme/marilin_tokens.dart';
 import 'package:app/core/theme/sales_tokens.dart';
 import 'package:app/core/utils/money_formatter.dart';
 import 'package:app/features/payments/presentation/widgets/amount_field.dart';
-import 'package:app/features/sales/presentation/widgets/collect_debt_card.dart';
+
+/// [amount] as the driver would type it: no decimals when whole.
+String editableAmount(double amount) => amount == amount.roundToDouble()
+    ? amount.toStringAsFixed(0)
+    : amount.toStringAsFixed(2);
 
 /// "Queda debiendo $X": what the customer is left owing from a sale paid
 /// in part on the spot.
@@ -40,10 +44,10 @@ class UnpaidAmountNote extends StatelessWidget {
   }
 }
 
-/// "Monto cobrado": what a cash or transfer sale collects, starting at
-/// [initialAmount] (the sale total). Below it shows why the amount cannot
-/// be collected ([errorText]) or, when [unpaid] is above 0, what the
-/// customer is left owing.
+/// "Monto recibido": what the customer hands over on a cash or transfer
+/// sale, starting at [initialAmount] (the sale total). Below it shows why
+/// the amount cannot be received ([errorText]) or, when [unpaid] is above
+/// 0, what the customer is left owing.
 ///
 /// Presentational: the caller owns the draft and the validation. Give it a
 /// new key to start again from [initialAmount].
@@ -61,7 +65,7 @@ class CollectedAmountField extends StatefulWidget {
   /// What the customer is left owing; nothing is shown while it is 0.
   final double unpaid;
 
-  /// Why the typed amount cannot be collected; null when it can.
+  /// Why the typed amount cannot be received; null when it can.
   final String? errorText;
 
   /// The typed amount; null when it is not a valid number.
@@ -101,7 +105,7 @@ class _CollectedAmountFieldState extends State<CollectedAmountField> {
       children: [
         AmountField(
           focusColor: tokens.primary,
-          label: 'Monto cobrado',
+          label: 'Monto recibido',
           controller: _controller,
           onChanged: _onChanged,
         ),

@@ -40,7 +40,7 @@ class _PreparedDraft extends SaleDraft {
 
   final PaymentMethod _method;
 
-  // Two of 6500: a sale of 13000.
+  // One of 6500: a sale of 6500.
   @override
   SaleDraftState build() => SaleDraftState(
     customer: Customer(
@@ -57,7 +57,7 @@ class _PreparedDraft extends SaleDraft {
           unitLabel: 'bidón',
           price: 6500,
         ),
-        quantity: 2,
+        quantity: 1,
       ),
     ],
     paymentMethod: _method,
@@ -78,7 +78,7 @@ void main() {
   Future<void> pumpScreen(
     WidgetTester tester, {
     required PaymentMethod method,
-    required double debt,
+    required double balance,
   }) async {
     useCase = _RecordingRegisterSale();
     // A fresh tree for every pump, also within one test.
@@ -90,7 +90,9 @@ void main() {
         overrides: [
           saleDraftProvider.overrideWith(() => _PreparedDraft(method)),
           registerSaleUseCaseProvider.overrideWithValue(useCase),
-          customerBalanceProvider.overrideWith((ref, id) => Stream.value(debt)),
+          customerBalanceProvider.overrideWith(
+            (ref, id) => Stream.value(balance),
+          ),
           customerContainerBalancesProvider.overrideWith(
             (ref, id) => Stream.value(const <CustomerContainerBalance>[]),
           ),
@@ -119,205 +121,163 @@ void main() {
     await tester.pumpAndSettle();
   }
 
-  final collectDebt = find.text('Cobrar también la deuda');
+  final receivedField = find.widgetWithText(TextField, 'Monto recibido');
   final confirmButton = find.widgetWithText(FilledButton, 'Confirmar');
-  final debtField = find.widgetWithText(TextField, 'Deuda a cobrar');
 
   bool confirmEnabled(WidgetTester tester) =>
       tester.widget<FilledButton>(confirmButton).onPressed != null;
 
-  String textOf(WidgetTester tester, String label) => tester
-      .widget<TextField>(find.widgetWithText(TextField, label))
-      .controller!
-      .text;
+  String textOf(WidgetTester tester, Finder field) =>
+      tester.widget<TextField>(field).controller!.text;
 
-  Future<void> switchOn(WidgetTester tester) async {
-    await tester.ensureVisible(collectDebt);
-    await tester.tap(collectDebt);
-    await tester.pumpAndSettle();
+  Future<void> receive(WidgetTester tester, String text) async {
+    await tester.enterText(receivedField, text);
+    await tester.pump();
   }
 
-  group('S4: when the switch is offered', () {
-    testWidgets('hidden for a customer without debt', (tester) async {
-      await pumpScreen(tester, method: PaymentMethod.cash, debt: 0);
+  Future<void> tapConfirm(WidgetTester tester) async {
+    await tester.ensureVisible(confirmButton);
+    await tester.tap(confirmButton);
+    await tester.pumpAndSettle(const Duration(seconds: 4));
+  }
 
-      expect(collectDebt, findsNothing);
-      expect(find.textContaining('Total a cobrar'), findsNothing);
-    });
+  group('S2: the received amount replaces the debt switch', () {
+    testWidgets('cash and transfer start at the sale total with no '
+        'breakdown and no debt switch', (tester) async {
+      for (final method in [PaymentMethod.cash, PaymentMethod.transfer]) {
+        await pumpScreen(tester, method: method, balance: 32500);
 
-    testWidgets('hidden for a credit sale even with debt', (tester) async {
-      await pumpScreen(tester, method: PaymentMethod.credit, debt: 7200);
-
-      expect(collectDebt, findsNothing);
-    });
-
-    testWidgets('offered for cash, transfer and mixed with the current '
-        'debt visible', (tester) async {
-      for (final method in [
-        PaymentMethod.cash,
-        PaymentMethod.transfer,
-        PaymentMethod.mixed,
-      ]) {
-        await pumpScreen(tester, method: method, debt: 7200);
-
-        expect(collectDebt, findsOneWidget, reason: method.name);
-        expect(
-          find.text('Deuda actual \$7.200'),
-          findsOneWidget,
-          reason: method.name,
-        );
-        expect(debtField, findsNothing, reason: 'off by default');
+        expect(find.text('Cobrar también la deuda'), findsNothing);
+        expect(find.widgetWithText(TextField, 'Deuda a cobrar'), findsNothing);
+        expect(textOf(tester, receivedField), '6500', reason: method.name);
+        expect(find.text('Debe \$32.500 de antes'), findsOneWidget);
+        expect(find.textContaining('Recibido'), findsNothing);
+        expect(confirmEnabled(tester), isTrue, reason: method.name);
       }
     });
 
-    testWidgets('choosing credit turns it off and hides it', (tester) async {
-      await pumpScreen(tester, method: PaymentMethod.transfer, debt: 7200);
-      await switchOn(tester);
+    testWidgets(r'$8.000 on $6.500 with $32.500 of debt shows the breakdown '
+        'and confirms with debtAmount 1500', (tester) async {
+      await pumpScreen(tester, method: PaymentMethod.transfer, balance: 32500);
 
-      await tester.tap(find.text(PaymentMethod.credit.label));
-      await tester.pumpAndSettle();
+      await receive(tester, '8000');
 
-      expect(collectDebt, findsNothing);
-      expect(debtField, findsNothing);
-      expect(find.textContaining('Total a cobrar'), findsNothing);
-      await tester.tap(confirmButton);
-      await tester.pumpAndSettle();
+      expect(find.text('Recibido \$8.000'), findsOneWidget);
+      expect(find.text('Venta \$6.500 · Deuda \$1.500'), findsOneWidget);
+      expect(find.text('Deuda restante \$31.000'), findsOneWidget);
+      expect(find.textContaining('Queda debiendo'), findsNothing);
+      expect(confirmEnabled(tester), isTrue);
+      expect(tester.takeException(), isNull);
+
+      await tapConfirm(tester);
+
+      expect(find.byType(AlertDialog), findsNothing);
+      final call = useCase.calls.single;
+      expect(call.debtAmount, 1500);
+      expect(call.sale.total, 6500);
+      expect(call.sale.paymentMethod, PaymentMethod.transfer);
+    });
+
+    testWidgets(r'$30.000 on $6.500 pays $23.500 of debt', (tester) async {
+      await pumpScreen(tester, method: PaymentMethod.cash, balance: 32500);
+
+      await receive(tester, '30000');
+
+      expect(find.text('Recibido \$30.000'), findsOneWidget);
+      expect(find.text('Venta \$6.500 · Deuda \$23.500'), findsOneWidget);
+      expect(find.text('Deuda restante \$9.000'), findsOneWidget);
+      await tapConfirm(tester);
+      expect(useCase.calls.single.debtAmount, 23500);
+    });
+
+    testWidgets('above the sale plus the whole debt shows the customer '
+        'credit', (tester) async {
+      await pumpScreen(tester, method: PaymentMethod.cash, balance: 1500);
+
+      await receive(tester, '10000');
+
+      expect(find.text('Venta \$6.500 · Deuda \$1.500'), findsOneWidget);
+      expect(find.text('Saldo a favor \$2.000'), findsOneWidget);
+      expect(find.textContaining('Deuda restante'), findsNothing);
+      expect(confirmEnabled(tester), isTrue);
+      await tapConfirm(tester);
+      expect(useCase.calls.single.debtAmount, 3500);
+    });
+
+    testWidgets('a customer without debt keeps the surplus as credit', (
+      tester,
+    ) async {
+      await pumpScreen(tester, method: PaymentMethod.transfer, balance: 0);
+
+      await receive(tester, '7000');
+
+      expect(find.text('Venta \$6.500'), findsOneWidget);
+      expect(find.text('Saldo a favor \$500'), findsOneWidget);
+    });
+
+    testWidgets('below the sale total keeps the partial payment', (
+      tester,
+    ) async {
+      await pumpScreen(tester, method: PaymentMethod.cash, balance: 32500);
+
+      await receive(tester, '6000');
+
+      expect(find.text('Queda debiendo \$500'), findsOneWidget);
+      expect(find.textContaining('Recibido'), findsNothing);
+    });
+
+    testWidgets('0 shows why and blocks confirm', (tester) async {
+      await pumpScreen(tester, method: PaymentMethod.cash, balance: 32500);
+
+      await receive(tester, '0');
+
+      expect(find.text('Ingresá un monto mayor a \$0'), findsOneWidget);
+      expect(confirmEnabled(tester), isFalse);
+    });
+
+    testWidgets('credit shows no received amount and sends no debt', (
+      tester,
+    ) async {
+      await pumpScreen(tester, method: PaymentMethod.credit, balance: 32500);
+
+      expect(receivedField, findsNothing);
+      expect(find.textContaining('Recibido'), findsNothing);
+      await tapConfirm(tester);
       expect(useCase.calls.single.debtAmount, 0);
     });
   });
 
-  testWidgets('S9: a 13000 transfer sale with 7200 of debt shows the whole '
-      'debt and the 20200 total, and confirms with debtAmount 7200', (
+  testWidgets(r'S2: mixed $5.000 + $3.000 on $6.500 splits the same way', (
     tester,
   ) async {
-    await pumpScreen(tester, method: PaymentMethod.transfer, debt: 7200);
+    await pumpScreen(tester, method: PaymentMethod.mixed, balance: 32500);
 
-    await switchOn(tester);
+    await tester.enterText(find.widgetWithText(TextField, 'Efectivo'), '5000');
+    await tester.enterText(
+      find.widgetWithText(TextField, 'Transferencia'),
+      '3000',
+    );
+    await tester.pump();
 
-    expect(textOf(tester, 'Deuda a cobrar'), '7200');
-    expect(find.text('Total a cobrar \$20.200'), findsOneWidget);
+    expect(find.text('Cubierto'), findsOneWidget);
+    expect(find.text('Recibido \$8.000'), findsOneWidget);
+    expect(find.text('Venta \$6.500 · Deuda \$1.500'), findsOneWidget);
+    expect(find.text('Deuda restante \$31.000'), findsOneWidget);
     expect(confirmEnabled(tester), isTrue);
 
-    await tester.tap(confirmButton);
-    await tester.pumpAndSettle();
+    await tapConfirm(tester);
 
     final call = useCase.calls.single;
-    expect(call.debtAmount, 7200);
-    expect(call.sale.total, 13000);
-    expect(call.sale.paymentMethod, PaymentMethod.transfer);
+    expect(call.debtAmount, 1500);
+    expect((call.sale.cashAmount, call.sale.transferAmount), (5000, 3000));
   });
 
-  group('S5: editable debt amount', () {
-    testWidgets('a lower amount updates the total', (tester) async {
-      await pumpScreen(tester, method: PaymentMethod.cash, debt: 7200);
-      await switchOn(tester);
+  testWidgets('a customer in credit shows "Saldo a favor", never a negative '
+      'debt', (tester) async {
+    await pumpScreen(tester, method: PaymentMethod.cash, balance: -200);
 
-      await tester.enterText(debtField, '3000');
-      await tester.pump();
-
-      expect(find.text('Total a cobrar \$16.000'), findsOneWidget);
-      expect(confirmEnabled(tester), isTrue);
-      await tester.tap(confirmButton);
-      await tester.pumpAndSettle();
-      expect(useCase.calls.single.debtAmount, 3000);
-    });
-
-    testWidgets('an amount above the debt shows why and blocks confirm', (
-      tester,
-    ) async {
-      await pumpScreen(tester, method: PaymentMethod.transfer, debt: 7200);
-      await switchOn(tester);
-
-      await tester.enterText(debtField, '8000');
-      await tester.pump();
-
-      expect(find.text('No puede superar la deuda de \$7.200'), findsOneWidget);
-      expect(confirmEnabled(tester), isFalse);
-    });
-
-    testWidgets('0 or an empty amount shows why and blocks confirm', (
-      tester,
-    ) async {
-      await pumpScreen(tester, method: PaymentMethod.transfer, debt: 7200);
-      await switchOn(tester);
-
-      for (final text in ['0', '']) {
-        await tester.enterText(debtField, text);
-        await tester.pump();
-
-        expect(
-          find.text('Ingresá un monto mayor a \$0'),
-          findsOneWidget,
-          reason: '"$text"',
-        );
-        expect(confirmEnabled(tester), isFalse, reason: '"$text"');
-      }
-    });
-
-    testWidgets('switching off drops the debt from the operation', (
-      tester,
-    ) async {
-      await pumpScreen(tester, method: PaymentMethod.cash, debt: 7200);
-      await switchOn(tester);
-      await switchOn(tester);
-
-      expect(debtField, findsNothing);
-      expect(find.textContaining('Total a cobrar'), findsNothing);
-      await tester.tap(confirmButton);
-      await tester.pumpAndSettle();
-      expect(useCase.calls.single.debtAmount, 0);
-    });
-  });
-
-  group('S6: mixed with debt', () {
-    testWidgets('cash + transfer must equal the sale plus the debt', (
-      tester,
-    ) async {
-      await pumpScreen(tester, method: PaymentMethod.mixed, debt: 7200);
-      await switchOn(tester);
-
-      await tester.enterText(
-        find.widgetWithText(TextField, 'Efectivo'),
-        '5000',
-      );
-      await tester.enterText(
-        find.widgetWithText(TextField, 'Transferencia'),
-        '8000',
-      );
-      await tester.pump();
-
-      expect(find.text('Falta: \$7.200'), findsOneWidget);
-      expect(confirmEnabled(tester), isFalse);
-
-      await tester.enterText(
-        find.widgetWithText(TextField, 'Transferencia'),
-        '15200',
-      );
-      await tester.pump();
-
-      expect(find.text('Cubierto'), findsOneWidget);
-      expect(confirmEnabled(tester), isTrue);
-      await tester.ensureVisible(confirmButton);
-      await tester.tap(confirmButton);
-      await tester.pumpAndSettle();
-      final call = useCase.calls.single;
-      expect(call.debtAmount, 7200);
-      expect((call.sale.cashAmount, call.sale.transferAmount), (5000, 15200));
-    });
-
-    testWidgets('quick chips fill against the sale plus the debt', (
-      tester,
-    ) async {
-      await pumpScreen(tester, method: PaymentMethod.mixed, debt: 7200);
-      await switchOn(tester);
-
-      await tester.ensureVisible(find.text('Todo por transferencia'));
-      await tester.tap(find.text('Todo por transferencia'));
-      await tester.pump();
-
-      expect(textOf(tester, 'Efectivo'), '0');
-      expect(textOf(tester, 'Transferencia'), '20200');
-      expect(confirmEnabled(tester), isTrue);
-    });
+    expect(find.text('Saldo a favor \$200'), findsOneWidget);
+    expect(find.textContaining('Debe'), findsNothing);
+    expect(find.textContaining('-\$'), findsNothing);
   });
 }

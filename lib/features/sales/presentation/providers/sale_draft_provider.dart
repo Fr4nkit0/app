@@ -12,20 +12,13 @@ class SaleDraft extends Notifier<SaleDraftState> {
   @override
   SaleDraftState build() => const SaleDraftState();
 
-  /// The debt being collected belonged to the previous customer, so it
-  /// goes with it; so do the lines when the customer changes, since they
-  /// were priced with the previous customer's agreements.
+  /// The lines go when the customer changes, since they were priced with
+  /// the previous customer's agreements.
   void selectCustomer(Customer customer, {String? visitId}) {
     if (state.customer case final previous? when previous.id != customer.id) {
       clearCustomer();
     }
-    state = state.copyWith(
-      customer: customer,
-      visitId: visitId,
-      collectDebt: false,
-      clearDebtAmount: true,
-      currentDebt: 0,
-    );
+    state = state.copyWith(customer: customer, visitId: visitId);
   }
 
   /// Lines were priced for the previous customer's agreements, so they go
@@ -38,9 +31,6 @@ class SaleDraft extends Notifier<SaleDraftState> {
       returnedContainers: const {},
       skeletonDelivered: 0,
       skeletonReturned: 0,
-      collectDebt: false,
-      clearDebtAmount: true,
-      currentDebt: 0,
     );
   }
 
@@ -107,58 +97,27 @@ class SaleDraft extends Notifier<SaleDraftState> {
   void setPaymentMethod(PaymentMethod method) {
     // Always clear split amounts when changing method.
     // If the new method is mixed, the user will fill them in; if not, they are stale.
-    // A credit or route sale collects no debt (S4).
-    final keepsDebt = SaleDraftState.debtMethods.contains(method);
     state = state.copyWith(
       paymentMethod: method,
       clearCashAmount: true,
       clearTransferAmount: true,
-      collectDebt: keepsDebt ? null : false,
-      clearDebtAmount: !keepsDebt,
     );
   }
 
-  /// Switches collecting previous debt with this sale on or off. On, it
-  /// starts at the whole [currentDebt] the customer owes; it stays off for
-  /// a customer without debt or a method that cannot collect it.
-  void setCollectDebt(bool on, {required double currentDebt}) {
-    // S3: previous debt is only collected with the sale paid in full.
-    final canCollect =
-        on &&
-        currentDebt > 0 &&
-        SaleDraftState.debtMethods.contains(state.paymentMethod) &&
-        !state.isPartialPayment;
-    state = canCollect
-        ? state.copyWith(
-            collectDebt: true,
-            debtAmount: currentDebt,
-            currentDebt: currentDebt,
-          )
-        : state.copyWith(collectDebt: false, clearDebtAmount: true);
-  }
-
-  /// The previous debt to collect; null while the typed amount is invalid.
-  void setDebtAmount(double? amount) {
-    state = amount == null
-        ? state.copyWith(clearDebtAmount: true)
-        : state.copyWith(debtAmount: amount);
-  }
-
-  /// What a cash or transfer sale collects; below the total the rest stays
-  /// as the customer's debt and previous debt is no longer collected (S3).
-  /// Null (an empty or invalid amount) counts as 0, which cannot confirm.
+  /// What the customer hands over on a cash or transfer sale: below the
+  /// total the rest stays as their debt, above it the rest pays previous
+  /// debt and then stays as credit (S2). Null (an empty or invalid amount)
+  /// counts as 0, which cannot confirm.
   void setCollectedAmount(double? amount) {
     final collected = amount ?? 0;
-    final next = switch (state.paymentMethod) {
-      PaymentMethod.cash => state.copyWith(cashAmount: collected),
-      PaymentMethod.transfer => state.copyWith(transferAmount: collected),
-      _ => null,
-    };
-    if (next == null) return;
-    final partial = collected < next.total - SaleDraftState.tolerance;
-    state = partial
-        ? next.copyWith(collectDebt: false, clearDebtAmount: true)
-        : next;
+    switch (state.paymentMethod) {
+      case PaymentMethod.cash:
+        state = state.copyWith(cashAmount: collected);
+      case PaymentMethod.transfer:
+        state = state.copyWith(transferAmount: collected);
+      case _:
+        return;
+    }
   }
 
   void setMixedAmounts({double? cash, double? transfer}) {
@@ -172,7 +131,8 @@ class SaleDraft extends Notifier<SaleDraftState> {
     final method = draft.paymentMethod!;
     final isMixed = method == PaymentMethod.mixed;
     // A cash or transfer sale carries its amount only when partial; paid in
-    // full it is saved as before.
+    // full, with or without money beyond it, it is saved as before and the
+    // use case books the extra on the customer's account.
     final partial = draft.isPartialPayment;
 
     final sale = Sale(
@@ -202,7 +162,7 @@ class SaleDraft extends Notifier<SaleDraftState> {
         .execute(
           sale,
           containerMovements: movements,
-          debtAmount: draft.debtToCollect,
+          debtAmount: draft.extraReceived,
         );
 
     // The customer balance moves with the sale and its settling payments
