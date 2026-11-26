@@ -18,6 +18,7 @@ import 'package:app/features/visits/presentation/providers/visit_repository_prov
 import 'package:app/features/visits/presentation/screens/visit_screen.dart';
 import 'package:app/features/customers/presentation/providers/customer_count_provider.dart';
 import 'package:app/features/customers/presentation/screens/edit_customer_screen.dart';
+import 'package:app/features/balance_corrections/presentation/widgets/balance_correction_sheet.dart';
 
 import '../../../support/container_types.dart';
 
@@ -67,11 +68,14 @@ RouteStop _stop({
 );
 
 void main() {
-  Future<void> pumpVisit(WidgetTester tester) async {
+  Future<void> pumpVisit(
+    WidgetTester tester, {
+    StopStatus status = StopStatus.pending,
+  }) async {
     tester.view.physicalSize = const Size(400, 1600);
     tester.view.devicePixelRatio = 1;
     addTearDown(tester.view.reset);
-    final stop = _stop(outcome: null, status: StopStatus.pending);
+    final stop = _stop(outcome: null, status: status);
     await tester.pumpWidget(
       ProviderScope(
         overrides: [
@@ -125,5 +129,28 @@ void main() {
     expect(find.byType(EditCustomerScreen), findsNothing);
     expect(find.byType(VisitScreen), findsOneWidget);
     expect(find.text('CLIENTE ACTUAL'), findsOneWidget);
+  });
+
+  final correctBalance = find.text('Corregir saldo');
+
+  testWidgets('a visit in progress opens the balance correction sheet', (
+    tester,
+  ) async {
+    await pumpVisit(tester);
+
+    expect(correctBalance, findsOneWidget);
+    await tester.tap(correctBalance);
+    await tester.pumpAndSettle();
+
+    expect(find.byType(BalanceCorrectionSheet), findsOneWidget);
+    expect(find.byType(VisitScreen), findsOneWidget);
+  });
+
+  testWidgets('a closed visit does not offer the balance correction', (
+    tester,
+  ) async {
+    await pumpVisit(tester, status: StopStatus.done);
+
+    expect(correctBalance, findsNothing);
   });
 }
