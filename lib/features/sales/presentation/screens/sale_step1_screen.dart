@@ -19,6 +19,7 @@ import 'package:app/features/sales/domain/models/sale_item.dart';
 import 'package:app/features/products/presentation/providers/product_list_provider.dart';
 import 'package:app/features/sales/presentation/providers/sale_draft_provider.dart';
 import 'package:app/features/sales/presentation/screens/sale_step3_screen.dart';
+import 'package:app/features/sales/presentation/widgets/discard_sale_dialog.dart';
 import 'package:app/features/sales/presentation/widgets/product_quantity_row.dart';
 import 'package:app/core/widgets/core_horizontal_stepper.dart';
 
@@ -33,10 +34,39 @@ class _SaleStep1ScreenState extends ConsumerState<SaleStep1Screen> {
   final _searchController = TextEditingController();
   String _query = '';
 
+  /// Opened above another screen (a visit or a customer profile), not as
+  /// the Venta tab. Its sale belongs to that screen and ends with it.
+  bool _pushed = false;
+
+  /// Kept for [dispose], where ref can no longer be read.
+  late final SaleDraft _draft;
+
+  @override
+  void initState() {
+    super.initState();
+    _draft = ref.read(saleDraftProvider.notifier);
+  }
+
+  @override
+  void didChangeDependencies() {
+    super.didChangeDependencies();
+    _pushed = !(ModalRoute.of(context)?.isFirst ?? true);
+  }
+
   @override
   void dispose() {
     _searchController.dispose();
+    // A pushed sale must not reach the Venta tab once its screen is gone.
+    // Deferred: providers cannot change while the tree is finalized.
+    if (_pushed) Future.microtask(_draft.reset);
     super.dispose();
+  }
+
+  /// A pushed sale with products asks before it is thrown away.
+  Future<void> _onPopBlocked() async {
+    final discard = await confirmDiscardSale(context);
+    if (!discard || !mounted) return;
+    Navigator.of(context).pop();
   }
 
   // ─── Habitual order apply ──────────────────────────────────────────────────
@@ -95,83 +125,95 @@ class _SaleStep1ScreenState extends ConsumerState<SaleStep1Screen> {
 
     final bottomInset = MediaQuery.of(context).viewPadding.bottom;
 
-    return Scaffold(
-      primary: false,
-      backgroundColor: context.marilin.scaffoldMuted,
-      body: Column(
-        children: [
-          Expanded(
-            child: SafeArea(
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  ScreenHeader(
-                    title: 'Nueva Venta',
-                    subtitle: inSelectedMode
-                        ? 'Elegí los productos de la venta'
-                        : 'Elegí el cliente para registrar la venta',
-                    onBackPressed: Navigator.canPop(context)
-                        ? () => Navigator.of(context).pop()
-                        : null,
-                  ),
-                  const Padding(
-                    padding: EdgeInsets.symmetric(horizontal: 16, vertical: 8),
-                    child: CoreHorizontalStepper(
-                      steps: ['Pedido', 'Cobro'],
-                      stepDescriptions: ['Elegir productos', 'Registrar pago'],
-                      layoutRow: true,
-                      currentStep: 0,
+    return PopScope(
+      canPop: !_pushed || !draft.needsDiscardConfirmation,
+      onPopInvokedWithResult: (didPop, _) {
+        if (!didPop) _onPopBlocked();
+      },
+      child: Scaffold(
+        primary: false,
+        backgroundColor: context.marilin.scaffoldMuted,
+        body: Column(
+          children: [
+            Expanded(
+              child: SafeArea(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    ScreenHeader(
+                      title: 'Nueva Venta',
+                      subtitle: inSelectedMode
+                          ? 'Elegí los productos de la venta'
+                          : 'Elegí el cliente para registrar la venta',
+                      onBackPressed: _pushed
+                          ? () => Navigator.of(context).maybePop()
+                          : null,
                     ),
-                  ),
-                  const SizedBox(height: 12),
-                  // ── Mode-based content ─────────────────────────────────────
-                  Expanded(
-                    child: inSelectedMode
-                        ? _SelectedMode(
-                            customer: customer,
-                            onChangeCustomer: () {
-                              ref
-                                  .read(saleDraftProvider.notifier)
-                                  .clearCustomer();
-                              setState(() {
-                                _query = '';
-                                _searchController.clear();
-                              });
-                            },
-                            onApplyHabitual: _onApplyHabitual,
-                          )
-                        : _SearchMode(
-                            controller: _searchController,
-                            query: _query,
-                            onQueryChanged: (q) => setState(() => _query = q),
-                            onSelectCustomer: (c) => ref
-                                .read(saleDraftProvider.notifier)
-                                .selectCustomer(c),
-                            onNewCustomer: () async {
-                              final created = await Navigator.of(context)
-                                  .push<Customer>(
-                                    MaterialPageRoute(
-                                      builder: (_) =>
-                                          const CreateCustomerScreen(),
-                                    ),
-                                  );
-                              // The new customer is selected so the sale goes
-                              // straight to picking products.
-                              if (created != null) {
+                    const Padding(
+                      padding: EdgeInsets.symmetric(
+                        horizontal: 16,
+                        vertical: 8,
+                      ),
+                      child: CoreHorizontalStepper(
+                        steps: ['Pedido', 'Cobro'],
+                        stepDescriptions: [
+                          'Elegir productos',
+                          'Registrar pago',
+                        ],
+                        layoutRow: true,
+                        currentStep: 0,
+                      ),
+                    ),
+                    const SizedBox(height: 12),
+                    // ── Mode-based content ─────────────────────────────────────
+                    Expanded(
+                      child: inSelectedMode
+                          ? _SelectedMode(
+                              customer: customer,
+                              onChangeCustomer: () {
                                 ref
                                     .read(saleDraftProvider.notifier)
-                                    .selectCustomer(created);
-                              }
-                            },
-                          ),
-                  ),
-                ],
+                                    .clearCustomer();
+                                setState(() {
+                                  _query = '';
+                                  _searchController.clear();
+                                });
+                              },
+                              onApplyHabitual: _onApplyHabitual,
+                            )
+                          : _SearchMode(
+                              controller: _searchController,
+                              query: _query,
+                              onQueryChanged: (q) => setState(() => _query = q),
+                              onSelectCustomer: (c) => ref
+                                  .read(saleDraftProvider.notifier)
+                                  .selectCustomer(c),
+                              onNewCustomer: () async {
+                                final created = await Navigator.of(context)
+                                    .push<Customer>(
+                                      MaterialPageRoute(
+                                        builder: (_) =>
+                                            const CreateCustomerScreen(),
+                                      ),
+                                    );
+                                // The new customer is selected so the sale goes
+                                // straight to picking products.
+                                if (created != null) {
+                                  ref
+                                      .read(saleDraftProvider.notifier)
+                                      .selectCustomer(created);
+                                }
+                              },
+                            ),
+                    ),
+                  ],
+                ),
               ),
             ),
-          ),
-          _StickyFooter(draft: draft, label: ctaLabel, onTap: ctaAction),
-          SizedBox(height: bottomInset),
-        ],
+            _StickyFooter(draft: draft, label: ctaLabel, onTap: ctaAction),
+            SizedBox(height: bottomInset),
+          ],
+        ),
       ),
     );
   }

@@ -1,6 +1,6 @@
-import 'package:app/features/payments/domain/models/sale_debt_allocation.dart';
 import 'package:app/features/customers/domain/models/customer.dart';
 import 'package:app/features/sales/domain/models/payment_method.dart';
+import 'package:app/features/sales/domain/models/received_breakdown.dart';
 import 'package:app/features/sales/domain/models/sale_item.dart';
 import 'package:app/features/inventory/domain/custody.dart';
 import 'package:app/features/inventory/domain/models/container_movement.dart';
@@ -13,12 +13,13 @@ class SaleDraftState {
   final List<SaleItem> items;
   final PaymentMethod? paymentMethod;
 
-  /// The cash part of a mixed payment, or what a cash sale collects; null
-  /// on a cash sale means its whole [total] (see [collectedAmount]).
+  /// The cash part of a mixed payment, or what the customer hands over on a
+  /// cash sale; null on a cash sale means its whole [total] (see
+  /// [collectedAmount]).
   final double? cashAmount;
 
-  /// The transfer part of a mixed payment, or what a transfer sale
-  /// collects; null on a transfer sale means its whole [total].
+  /// The transfer part of a mixed payment, or what the customer hands over
+  /// on a transfer sale; null on a transfer sale means its whole [total].
   final double? transferAmount;
   final Map<String, int> returnedContainers;
 
@@ -30,17 +31,6 @@ class SaleDraftState {
   /// custody, the office corrects a balance below zero.
   final int skeletonReturned;
 
-  /// Whether the driver also collects previous debt with this sale.
-  final bool collectDebt;
-
-  /// How much previous debt is collected while [collectDebt] is on; null
-  /// while the driver has not typed a valid amount.
-  final double? debtAmount;
-
-  /// What the customer owed when the driver switched [collectDebt] on; the
-  /// [debtAmount] cannot go above it.
-  final double currentDebt;
-
   const SaleDraftState({
     this.customer,
     this.visitId,
@@ -51,13 +41,10 @@ class SaleDraftState {
     this.returnedContainers = const {},
     this.skeletonDelivered = 0,
     this.skeletonReturned = 0,
-    this.collectDebt = false,
-    this.debtAmount,
-    this.currentDebt = 0,
   });
 
-  /// The methods that can also collect previous debt: the money is handed
-  /// over on the spot.
+  /// The methods paid on the spot: the money handed over pays the sale and,
+  /// beyond it, previous debt (S2).
   static const debtMethods = {
     PaymentMethod.cash,
     PaymentMethod.transfer,
@@ -77,15 +64,11 @@ class SaleDraftState {
     Map<String, int>? returnedContainers,
     int? skeletonDelivered,
     int? skeletonReturned,
-    bool? collectDebt,
-    double? debtAmount,
-    double? currentDebt,
     bool clearCustomer = false,
     bool clearRouteStopId = false,
     bool clearPaymentMethod = false,
     bool clearCashAmount = false,
     bool clearTransferAmount = false,
-    bool clearDebtAmount = false,
   }) {
     return SaleDraftState(
       customer: clearCustomer ? null : (customer ?? this.customer),
@@ -101,50 +84,23 @@ class SaleDraftState {
       returnedContainers: returnedContainers ?? this.returnedContainers,
       skeletonDelivered: skeletonDelivered ?? this.skeletonDelivered,
       skeletonReturned: skeletonReturned ?? this.skeletonReturned,
-      collectDebt: collectDebt ?? this.collectDebt,
-      debtAmount: clearDebtAmount ? null : (debtAmount ?? this.debtAmount),
-      currentDebt: currentDebt ?? this.currentDebt,
     );
   }
 
   /// Nothing the driver would miss: no customer and no lines.
   bool get isEmpty => customer == null && items.isEmpty;
 
+  /// Leaving the sale asks first only when products were loaded; a chosen
+  /// customer alone is not worth a prompt.
+  bool get needsDiscardConfirmation => items.isNotEmpty;
+
   double get total => items.fold(0.0, (sum, item) => sum + item.subtotal);
 
   double get mixedTotal => (cashAmount ?? 0) + (transferAmount ?? 0);
 
-  /// Whether previous debt is collected with this sale: switched on, paid
-  /// by one of the [debtMethods] and, for cash or transfer, with the whole
-  /// sale collected (S3: a partial payment collects no previous debt).
-  bool get collectsDebt =>
-      collectDebt &&
-      debtMethods.contains(paymentMethod) &&
-      !_lowersSingleMethodAmount;
-
-  /// A cash or transfer amount below the [total].
-  bool get _lowersSingleMethodAmount =>
-      (paymentMethod == PaymentMethod.cash ||
-          paymentMethod == PaymentMethod.transfer) &&
-      collectedAmount < total - tolerance;
-
-  /// The previous debt collected with this sale; 0 when none is.
-  double get debtToCollect => collectsDebt ? (debtAmount ?? 0) : 0;
-
-  /// What the driver collects: the sale plus the debt collected with it.
-  double get operationTotal => total + debtToCollect;
-
-  /// The debt amount is above 0 and not above [currentDebt]; always true
-  /// while no debt is collected.
-  bool get isValidDebtAmount {
-    if (!collectsDebt) return true;
-    final amount = debtAmount;
-    return amount != null && amount > 0 && amount <= currentDebt + tolerance;
-  }
-
-  /// What the customer hands over for the sale itself: a cash or transfer
-  /// sale's amount (the whole [total] until the driver lowers it), the sum
-  /// of a mixed payment's parts; 0 for credit and route.
+  /// What the customer hands over: a cash or transfer sale's amount (the
+  /// whole [total] until the driver changes it), the sum of a mixed
+  /// payment's parts; 0 for credit and route.
   double get collectedAmount => switch (paymentMethod) {
     PaymentMethod.cash => cashAmount ?? total,
     PaymentMethod.transfer => transferAmount ?? total,
@@ -152,12 +108,28 @@ class SaleDraftState {
     PaymentMethod.credit || PaymentMethod.route || null => 0,
   };
 
+  /// What the customer hands over beyond the sale [total]: it pays previous
+  /// debt and, past the whole debt, stays as credit in their favor (S2).
+  /// 0 for credit and route and for a partial payment.
+  double get extraReceived {
+    if (!debtMethods.contains(paymentMethod)) return 0;
+    final extra = collectedAmount - total;
+    return extra > tolerance ? extra : 0;
+  }
+
+  /// How [collectedAmount] splits between the sale, the previous debt and
+  /// credit for an account at [balance] before this sale.
+  ReceivedBreakdown receivedBreakdown(double balance) => ReceivedBreakdown.of(
+    received: collectedAmount,
+    saleTotal: total,
+    balance: balance,
+  );
+
   /// What the customer is left owing from this sale paid on the spot
   /// ([total] − [collectedAmount]); 0 for credit and route, which are not
-  /// paid on the spot, and while previous debt is collected, which needs
-  /// the sale paid in full.
+  /// paid on the spot.
   double get unpaidAmount {
-    if (!debtMethods.contains(paymentMethod) || collectsDebt) return 0;
+    if (!debtMethods.contains(paymentMethod)) return 0;
     final unpaid = total - collectedAmount;
     return unpaid > 0 ? unpaid : 0;
   }
@@ -166,33 +138,20 @@ class SaleDraftState {
   /// rest; a mixed payment with nothing typed yet is not partial.
   bool get isPartialPayment => collectedAmount > 0 && unpaidAmount > tolerance;
 
-  /// A sale paid on the spot without previous debt collects more than 0
-  /// and at most its [total].
-  bool get _isValidCollectedAmount =>
-      collectedAmount > 0 && collectedAmount <= total + tolerance;
+  /// A sale paid on the spot needs something handed over; any amount above
+  /// the [total] pays previous debt or stays as credit.
+  bool get isValidPayment => switch (paymentMethod) {
+    null => false,
+    PaymentMethod.cash ||
+    PaymentMethod.transfer ||
+    PaymentMethod.mixed => collectedAmount > 0,
+    PaymentMethod.credit || PaymentMethod.route => true,
+  };
 
-  bool get isValidPayment {
-    if (paymentMethod == null) return false;
-    switch (paymentMethod!) {
-      case PaymentMethod.mixed:
-        // With debt, the allocation's tolerance decides: a split it would
-        // reject must not reach the confirm button.
-        if (collectsDebt) {
-          return (mixedTotal - operationTotal).abs() <=
-              SaleDebtAllocation.tolerance;
-        }
-        return _isValidCollectedAmount;
-      case PaymentMethod.cash:
-      case PaymentMethod.transfer:
-        return collectsDebt || _isValidCollectedAmount;
-      case PaymentMethod.credit:
-      case PaymentMethod.route:
-        return true;
-    }
-  }
-
+  /// What a mixed payment still lacks to cover the sale [total]; negative
+  /// when it hands over more.
   double get remaining =>
-      paymentMethod == PaymentMethod.mixed ? (operationTotal - mixedTotal) : 0;
+      paymentMethod == PaymentMethod.mixed ? (total - mixedTotal) : 0;
 
   bool get canProceedToStep3 => customer != null && items.isNotEmpty;
 
@@ -200,8 +159,7 @@ class SaleDraftState {
       customer != null &&
       items.isNotEmpty &&
       paymentMethod != null &&
-      isValidPayment &&
-      isValidDebtAmount;
+      isValidPayment;
 
   /// The sale lines as container deliveries, for the custody rules.
   Iterable<({String? containerType, int quantity})> get containerDeliveries =>

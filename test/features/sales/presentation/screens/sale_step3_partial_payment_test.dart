@@ -129,9 +129,8 @@ void main() {
     await tester.pumpAndSettle();
   }
 
-  final collectedField = find.widgetWithText(TextField, 'Monto cobrado');
+  final collectedField = find.widgetWithText(TextField, 'Monto recibido');
   final confirmButton = find.widgetWithText(FilledButton, 'Confirmar');
-  final collectDebt = find.text('Cobrar también la deuda');
   const partialQuestion = 'El cliente queda debiendo \$500. ¿Confirmás?';
 
   Finder inDialog(Finder finder) =>
@@ -149,7 +148,7 @@ void main() {
     await tester.pumpAndSettle();
   }
 
-  group('S2: "Monto cobrado" for cash and transfer', () {
+  group('S2: "Monto recibido" for cash and transfer', () {
     testWidgets('starts at the total with nothing owed', (tester) async {
       for (final method in [PaymentMethod.cash, PaymentMethod.transfer]) {
         await pumpScreen(tester, method: method);
@@ -180,10 +179,10 @@ void main() {
       }
     });
 
-    testWidgets('above the total or 0 blocks Confirmar', (tester) async {
+    testWidgets('0 or empty blocks Confirmar', (tester) async {
       await pumpScreen(tester, method: PaymentMethod.cash);
 
-      for (final text in ['7000', '0', '']) {
+      for (final text in ['0', '']) {
         await tester.enterText(collectedField, text);
         await tester.pump();
         expect(confirmEnabled(tester), isFalse, reason: '"$text"');
@@ -215,49 +214,6 @@ void main() {
     expect(find.textContaining('Falta'), findsNothing);
     expect(confirmEnabled(tester), isTrue);
     expect(tester.takeException(), isNull);
-  });
-
-  group('S3: no previous debt while the sale is partial', () {
-    testWidgets('the debt switch hides while the amount is below the total '
-        'and comes back at the total', (tester) async {
-      await pumpScreen(tester, method: PaymentMethod.cash, debt: 7200);
-      expect(collectDebt, findsOneWidget);
-
-      await tester.enterText(collectedField, '6000');
-      await tester.pumpAndSettle();
-      expect(collectDebt, findsNothing);
-
-      await tester.enterText(collectedField, '6500');
-      await tester.pumpAndSettle();
-      expect(collectDebt, findsOneWidget);
-    });
-
-    testWidgets('mixed below the total hides it too', (tester) async {
-      await pumpScreen(tester, method: PaymentMethod.mixed, debt: 7200);
-      expect(collectDebt, findsOneWidget);
-
-      await tester.enterText(
-        find.widgetWithText(TextField, 'Efectivo'),
-        '4000',
-      );
-      await tester.pumpAndSettle();
-
-      expect(collectDebt, findsNothing);
-    });
-
-    testWidgets('collecting the debt hides "Monto cobrado"; the sale is paid '
-        'in full', (tester) async {
-      await pumpScreen(tester, method: PaymentMethod.cash, debt: 7200);
-
-      await tester.ensureVisible(collectDebt);
-      await tester.tap(collectDebt);
-      await tester.pumpAndSettle();
-
-      expect(collectedField, findsNothing);
-      await tapConfirm(tester);
-      expect(find.text(partialQuestion), findsNothing);
-      expect(useCase.calls.single.debtAmount, 7200);
-    });
   });
 
   group('S4: confirming a partial sale asks first', () {

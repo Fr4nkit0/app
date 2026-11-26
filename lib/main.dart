@@ -92,9 +92,9 @@ class _RootShellState extends ConsumerState<_RootShell> {
   static const _saleTabIndex = 2;
 
   Future<void> _onTabChanged(int index) async {
-    // Leaving the sale tab drops the draft; a started sale asks first.
+    // Leaving the sale tab drops the draft; a sale with products asks first.
     if (_selectedIndex == _saleTabIndex && index != _saleTabIndex) {
-      if (!ref.read(saleDraftProvider).isEmpty) {
+      if (ref.read(saleDraftProvider).needsDiscardConfirmation) {
         final discard = await confirmDiscardSale(context);
         if (!discard || !mounted) return;
       }

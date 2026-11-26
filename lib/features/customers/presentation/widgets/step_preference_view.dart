@@ -18,6 +18,9 @@ class StepPreferenceView extends StatelessWidget {
   onPreferenceChanged;
   final void Function(int day, String start, String end) onNewPreferenceSaved;
 
+  /// Shown below the preferences, e.g. the optional opening balance.
+  final Widget? footer;
+
   const StepPreferenceView({
     super.key,
     required this.preferences,
@@ -25,6 +28,7 @@ class StepPreferenceView extends StatelessWidget {
     required this.onRemovePreference,
     required this.onPreferenceChanged,
     required this.onNewPreferenceSaved,
+    this.footer,
   });
 
   /// Opens the dialog for a new preference, or to edit [existing]. A day
@@ -97,6 +101,10 @@ class StepPreferenceView extends StatelessWidget {
             ),
           const SizedBox(height: 16),
           _AddButton(onTap: () => _openPreferenceModal(context)),
+          if (footer case final footer?) ...[
+            const SizedBox(height: 24),
+            footer,
+          ],
         ],
       ),
     );

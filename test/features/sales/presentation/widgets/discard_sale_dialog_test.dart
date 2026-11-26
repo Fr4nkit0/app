@@ -37,6 +37,36 @@ void main() {
     });
   });
 
+  group('SaleDraftState.needsDiscardConfirmation', () {
+    const product = Product(
+      id: 'p1',
+      name: 'Agua 20L',
+      unitLabel: 'bidón',
+      price: 1500,
+    );
+    final customer = Customer(
+      id: 'c1',
+      name: 'Kiosco Norte',
+      addresses: const [],
+      preferences: const [],
+    );
+
+    test('is false with only a customer chosen', () {
+      expect(
+        SaleDraftState(customer: customer).needsDiscardConfirmation,
+        isFalse,
+      );
+    });
+
+    test('is true once a product is loaded', () {
+      final state = SaleDraftState(
+        customer: customer,
+        items: [SaleItem(product: product, quantity: 1)],
+      );
+      expect(state.needsDiscardConfirmation, isTrue);
+    });
+  });
+
   group('confirmDiscardSale', () {
     Future<Future<bool>> open(WidgetTester tester) async {
       late Future<bool> result;

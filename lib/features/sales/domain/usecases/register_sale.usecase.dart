@@ -42,18 +42,19 @@ class RegisterSaleUseCase {
   /// above 0 and not above the total, and the rest stays on the customer's
   /// account (a partial payment). Throws [ValidationFailure] otherwise.
   ///
-  /// A [debtAmount] above 0 means the customer also pays that much of their
-  /// previous debt in the same operation: a cash or transfer sale takes the
-  /// total plus [debtAmount] by its method, and the [Sale.cashAmount] and
-  /// [Sale.transferAmount] of a mixed sale are what the customer handed over
-  /// and must add up to the total plus [debtAmount]; see
-  /// [SaleDebtAllocation]. The sale keeps only its own part, the debt is
+  /// A [debtAmount] above 0 means the customer also hands over that much
+  /// beyond the sale in the same operation: a cash or transfer sale takes
+  /// the total plus [debtAmount] by its method, and the [Sale.cashAmount]
+  /// and [Sale.transferAmount] of a mixed sale are what the customer handed
+  /// over and must add up to the total plus [debtAmount]; see
+  /// [SaleDebtAllocation]. The sale keeps only its own part, the rest is
   /// paid by payments linked to no sale and every payment of a method shares
-  /// one transaction uuid. Throws [ValidationFailure] for a negative
-  /// [debtAmount], debt with a credit or route sale, a mixed split that
-  /// does not cover the sale plus the debt, or a [debtAmount] above what
-  /// the customer owes before this sale (read in the same unit of work), or
-  /// a partial cash or transfer sale.
+  /// one transaction uuid. Like the server's running account, [debtAmount]
+  /// may go beyond what the customer owes: the rest leaves their balance
+  /// negative, credit in their favor (S2). Throws [ValidationFailure] for a
+  /// negative [debtAmount], debt with a credit or route sale, a mixed split
+  /// that does not cover the sale plus the debt, or a partial cash or
+  /// transfer sale.
   Future<void> execute(
     Sale sale, {
     Payment? payment,
@@ -78,14 +79,6 @@ class RegisterSaleUseCase {
         : _withDebt(sale, debtAmount);
 
     await _transaction(() async {
-      if (debtAmount > 0) {
-        final owed = await _saleRepo.customerBalanceOf(sale.customer.id);
-        if (debtAmount > owed + SaleDebtAllocation.tolerance) {
-          throw const ValidationFailure(
-            'La deuda a cobrar supera lo que debe el cliente.',
-          );
-        }
-      }
       await _saleRepo.saveSale(saved);
 
       final payments = [?payment, ...operationPayments];

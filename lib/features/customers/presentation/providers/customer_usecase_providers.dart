@@ -1,6 +1,7 @@
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:app/core/providers/clock_provider.dart';
 import 'package:app/core/usecases/drift_transaction_runner.dart';
+import 'package:app/features/balance_corrections/presentation/providers/correct_balance_usecase_provider.dart';
 import 'package:app/features/customers/data/repositories/drift.customer_agreement.repository.dart';
 import 'package:app/features/customers/domain/usecases/add_address.usecase.dart';
 import 'package:app/features/customers/domain/usecases/add_preference.usecase.dart';
@@ -23,6 +24,8 @@ final createCustomerUseCaseProvider = Provider<CreateCustomerUseCase>(
   (ref) => CreateCustomerUseCase(
     customerRepository: ref.watch(customerRepositoryProvider),
     transaction: ref.watch(transactionRunnerProvider),
+    balanceCorrections: ref.watch(balanceCorrectionRepositoryProvider),
+    now: ref.watch(clockProvider),
   ),
 );
 
