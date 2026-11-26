@@ -84,10 +84,14 @@ void main() {
       }
     });
 
-    test('above the total, 0 or an invalid amount blocks confirm', () {
+    test('0 or an invalid amount blocks confirm; above the total confirms '
+        '(the rest pays previous debt, S2 of the received split)', () {
       for (final method in [PaymentMethod.cash, PaymentMethod.transfer]) {
-        notifier().setPaymentMethod(method);
-        for (final amount in [6500.02, 7000.0, 0.0, null]) {
+        notifier()
+          ..setPaymentMethod(method)
+          ..setCollectedAmount(7000);
+        expect(state().canConfirm, isTrue, reason: method.name);
+        for (final amount in [0.0, null]) {
           notifier().setCollectedAmount(amount);
           expect(state().isValidPayment, isFalse, reason: '$method $amount');
           expect(state().canConfirm, isFalse, reason: '$method $amount');
@@ -148,56 +152,13 @@ void main() {
       expect(state().canConfirm, isTrue);
     });
 
-    test('above the total or nothing typed blocks confirm', () {
+    test('nothing typed blocks confirm; above the total confirms', () {
       notifier().setMixedAmounts(cash: 5000, transfer: 2000);
-      expect(state().canConfirm, isFalse);
+      expect(state().canConfirm, isTrue);
 
       notifier().setMixedAmounts(cash: 0, transfer: 0);
       expect(state().canConfirm, isFalse);
       expect(state().isPartialPayment, isFalse, reason: 'nothing typed yet');
-    });
-  });
-
-  group('S3: collecting previous debt needs the sale paid in full', () {
-    test('cannot be switched on while the amount is partial', () {
-      notifier()
-        ..setPaymentMethod(PaymentMethod.cash)
-        ..setCollectedAmount(6000)
-        ..setCollectDebt(true, currentDebt: 7200);
-
-      expect(state().collectsDebt, isFalse);
-      expect(state().debtToCollect, 0);
-    });
-
-    test('mixed below the total cannot switch it on either', () {
-      notifier()
-        ..setPaymentMethod(PaymentMethod.mixed)
-        ..setMixedAmounts(cash: 4000, transfer: 2000)
-        ..setCollectDebt(true, currentDebt: 7200);
-
-      expect(state().collectsDebt, isFalse);
-    });
-
-    test('lowering the amount turns it off', () {
-      notifier()
-        ..setPaymentMethod(PaymentMethod.transfer)
-        ..setCollectDebt(true, currentDebt: 7200)
-        ..setCollectedAmount(6000);
-
-      expect(state().collectsDebt, isFalse);
-      expect(state().unpaidAmount, 500);
-    });
-
-    test('with the debt on, the operation keeps today\'s rules', () {
-      notifier()
-        ..setPaymentMethod(PaymentMethod.cash)
-        ..setCollectDebt(true, currentDebt: 7200);
-
-      expect(state().collectsDebt, isTrue);
-      expect(state().operationTotal, 13700);
-      expect(state().unpaidAmount, 0);
-      expect(state().isPartialPayment, isFalse);
-      expect(state().canConfirm, isTrue);
     });
   });
 

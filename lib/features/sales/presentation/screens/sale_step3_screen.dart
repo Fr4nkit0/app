@@ -20,8 +20,8 @@ import 'package:app/features/inventory/presentation/widgets/skeleton_exchange.da
 import 'package:app/core/theme/marilin_tokens.dart';
 import 'package:app/features/payments/presentation/providers/payment_repository_provider.dart';
 import 'package:app/features/payments/presentation/widgets/amount_field.dart';
-import 'package:app/features/sales/presentation/widgets/collect_debt_card.dart';
 import 'package:app/features/sales/presentation/widgets/partial_payment.dart';
+import 'package:app/features/sales/presentation/widgets/received_breakdown_note.dart';
 
 class SaleStep3Screen extends ConsumerWidget {
   const SaleStep3Screen({super.key});
@@ -29,19 +29,14 @@ class SaleStep3Screen extends ConsumerWidget {
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final draft = ref.watch(saleDraftProvider);
-    // The debt comes from the customer account; the customer's snapshot
-    // stands in until it loads.
+    // The balance comes from the customer account, unclamped (negative:
+    // credit in the customer's favor); the customer's snapshot stands in
+    // until it loads.
     final customer = draft.customer;
     final balance = customer == null
         ? 0.0
         : ref.watch(customerBalanceProvider(customer.id)).value ??
               customer.debtAmount;
-    final currentDebt = balance > 0 ? balance : 0.0;
-    // S3: previous debt is only collected with the sale paid in full.
-    final offersDebt =
-        currentDebt > 0 &&
-        SaleDraftState.debtMethods.contains(draft.paymentMethod) &&
-        !draft.isPartialPayment;
 
     final bottomInset = MediaQuery.of(context).viewPadding.bottom;
 
@@ -79,7 +74,7 @@ class SaleStep3Screen extends ConsumerWidget {
                             ),
                           ),
                           const SizedBox(height: 20),
-                          _TotalBlock(draft: draft, currentDebt: currentDebt),
+                          _TotalBlock(draft: draft, balance: balance),
                           const SizedBox(height: 24),
                           // Payment method grid + mixed fields
                           Padding(
@@ -91,16 +86,15 @@ class SaleStep3Screen extends ConsumerWidget {
                                 const SizedBox(height: 10),
                                 _PaymentGrid(draft: draft),
                                 const SizedBox(height: 12),
-                                _CollectedAmountSection(draft: draft),
-                                if (offersDebt) ...[
-                                  _CollectDebtSection(
-                                    draft: draft,
-                                    currentDebt: currentDebt,
-                                  ),
-                                  const SizedBox(height: 12),
-                                ],
+                                _CollectedAmountSection(
+                                  draft: draft,
+                                  balance: balance,
+                                ),
                                 // Progressive-disclosure mixed amounts
-                                _MixedAmountsSection(draft: draft),
+                                _MixedAmountsSection(
+                                  draft: draft,
+                                  balance: balance,
+                                ),
                                 // Live remaining indicator
                                 if (draft.paymentMethod == PaymentMethod.mixed)
                                   _RemainingIndicator(draft: draft),
@@ -121,7 +115,7 @@ class SaleStep3Screen extends ConsumerWidget {
               ),
             ),
           ),
-          _Footer(draft: draft),
+          _Footer(draft: draft, balance: balance),
           SizedBox(height: bottomInset),
         ],
       ),
@@ -223,16 +217,17 @@ class _Header extends StatelessWidget {
 // ─── Total block ──────────────────────────────────────────────────────────────
 
 class _TotalBlock extends StatelessWidget {
-  const _TotalBlock({required this.draft, required this.currentDebt});
+  const _TotalBlock({required this.draft, required this.balance});
 
   final SaleDraftState draft;
-  final double currentDebt;
+
+  /// The customer account before this sale; negative is credit.
+  final double balance;
 
   @override
   Widget build(BuildContext context) {
     final tokens = Theme.of(context).extension<SalesTokens>()!;
     final muted = context.marilin.textMuted;
-    final debt = currentDebt;
     return Padding(
       padding: const EdgeInsets.symmetric(horizontal: 20),
       child: Column(
@@ -247,7 +242,7 @@ class _TotalBlock extends StatelessWidget {
             ),
           ),
           Text(
-            formatMoney(draft.operationTotal),
+            formatMoney(draft.total),
             style: TextStyle(
               fontSize: 40,
               fontWeight: FontWeight.w900,
@@ -255,29 +250,21 @@ class _TotalBlock extends StatelessWidget {
               fontFeatures: tokens.tabularStyle.fontFeatures,
             ),
           ),
-          // Previous debt is context unless the driver collects it below.
-          if (draft.collectsDebt)
-            Text(
-              'Venta ${formatMoney(draft.total)} + deuda '
-              '${formatMoney(draft.debtToCollect)}',
-              style: TextStyle(
-                fontSize: 14,
-                fontWeight: FontWeight.w600,
-                color: muted,
-                fontFeatures: tokens.tabularStyle.fontFeatures,
-              ),
-            )
-          else if (debt > 0)
+          // The account before this sale, as context for the money received.
+          if (balance != 0)
             Row(
               children: [
                 Icon(Icons.history_rounded, size: 16, color: muted),
                 const SizedBox(width: 6),
                 Text(
-                  'Debe ${formatMoney(debt)} de antes',
+                  balance > 0
+                      ? 'Debe ${formatMoney(balance)} de antes'
+                      : 'Saldo a favor ${formatMoney(-balance)}',
                   style: TextStyle(
                     fontSize: 14,
                     fontWeight: FontWeight.w600,
                     color: muted,
+                    fontFeatures: tokens.tabularStyle.fontFeatures,
                   ),
                 ),
               ],
@@ -288,58 +275,29 @@ class _TotalBlock extends StatelessWidget {
   }
 }
 
-// ─── "Cobrar también la deuda" (S4, S5) ───────────────────────────────────────
+// ─── "Monto recibido" for cash and transfer (S2) ──────────────────────────────
 
-class _CollectDebtSection extends ConsumerWidget {
-  const _CollectDebtSection({required this.draft, required this.currentDebt});
-
-  final SaleDraftState draft;
-  final double currentDebt;
-
-  String? get _error {
-    if (!draft.collectsDebt || draft.isValidDebtAmount) return null;
-    final amount = draft.debtAmount;
-    if (amount == null || amount <= 0) return 'Ingresá un monto mayor a \$0';
-    return 'No puede superar la deuda de ${formatMoney(draft.currentDebt)}';
-  }
-
-  @override
-  Widget build(BuildContext context, WidgetRef ref) {
-    final notifier = ref.read(saleDraftProvider.notifier);
-    return CollectDebtCard(
-      currentDebt: currentDebt,
-      enabled: draft.collectsDebt,
-      amount: draft.debtAmount,
-      errorText: _error,
-      onToggle: (on) => notifier.setCollectDebt(on, currentDebt: currentDebt),
-      onAmountChanged: notifier.setDebtAmount,
-    );
-  }
-}
-
-// ─── "Monto cobrado" for cash and transfer (S2) ───────────────────────────────
-
+/// What the customer hands over: below the total the rest stays as debt,
+/// above it the rest pays previous debt and then stays as credit. A
+/// customer who owes sees the debt and can collect all of it (S6).
 class _CollectedAmountSection extends ConsumerWidget {
-  const _CollectedAmountSection({required this.draft});
+  const _CollectedAmountSection({required this.draft, required this.balance});
 
   final SaleDraftState draft;
 
-  String? get _error {
-    final amount = draft.collectedAmount;
-    if (amount <= 0) return 'Ingresá un monto mayor a \$0';
-    if (amount > draft.total + SaleDraftState.tolerance) {
-      return 'No puede superar el total de ${formatMoney(draft.total)}';
-    }
-    return null;
-  }
+  /// The customer account before this sale; negative is credit.
+  final double balance;
+
+  String? get _error =>
+      draft.collectedAmount <= 0 ? 'Ingresá un monto mayor a \$0' : null;
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final method = draft.paymentMethod;
     final collects =
         method == PaymentMethod.cash || method == PaymentMethod.transfer;
-    // Collecting previous debt takes the whole sale (S3).
-    if (!collects || draft.collectsDebt) return const SizedBox.shrink();
+    if (!collects) return const SizedBox.shrink();
+    final owed = balance > 0 ? balance : 0.0;
     return Padding(
       padding: const EdgeInsets.only(bottom: 12),
       child: CollectedAmountField(
@@ -348,6 +306,8 @@ class _CollectedAmountSection extends ConsumerWidget {
         initialAmount: draft.collectedAmount,
         unpaid: draft.unpaidAmount,
         errorText: _error,
+        owedDebt: owed,
+        payoffAmount: draft.total + owed,
         onChanged: ref.read(saleDraftProvider.notifier).setCollectedAmount,
       ),
     );
@@ -501,9 +461,12 @@ class _PaymentCard extends StatelessWidget {
 // ─── Progressive-disclosure mixed amounts (AnimatedSize ~200ms easeOut) ───────
 
 class _MixedAmountsSection extends ConsumerStatefulWidget {
-  const _MixedAmountsSection({required this.draft});
+  const _MixedAmountsSection({required this.draft, required this.balance});
 
   final SaleDraftState draft;
+
+  /// The customer account before this sale; negative is credit.
+  final double balance;
 
   @override
   ConsumerState<_MixedAmountsSection> createState() =>
@@ -548,9 +511,9 @@ class _MixedAmountsSectionState extends ConsumerState<_MixedAmountsSection> {
         .setMixedAmounts(cash: cash, transfer: transfer);
   }
 
-  /// Fills one field with everything collected: the sale plus any debt.
+  /// Fills one field with the whole sale total.
   void _fillAll({required bool cash}) {
-    final total = widget.draft.operationTotal;
+    final total = widget.draft.total;
     final text = editableAmount(total);
     _cashController.text = cash ? text : '0';
     _transferController.text = cash ? '0' : text;
@@ -574,6 +537,8 @@ class _MixedAmountsSectionState extends ConsumerState<_MixedAmountsSection> {
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
                   _SectionLabel('MONTOS MIXTOS'),
+                  // What beyond the sale pays (S6).
+                  if (widget.balance > 0) OwedDebtNote(owed: widget.balance),
                   const SizedBox(height: 10),
                   Wrap(
                     spacing: 8,
@@ -621,13 +586,14 @@ class _RemainingIndicator extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    // Below the total without previous debt the rest stays as debt (S2).
+    // Below the total the rest stays as debt (S2).
     if (draft.isPartialPayment) {
       return UnpaidAmountNote(unpaid: draft.unpaidAmount);
     }
     final tokens = Theme.of(context).extension<SalesTokens>()!;
     final remaining = draft.remaining;
-    final isCovered = remaining.abs() <= 0.01;
+    // Beyond the total is covered too: the rest pays previous debt.
+    final isCovered = remaining <= SaleDraftState.tolerance;
 
     return Padding(
       padding: const EdgeInsets.only(top: 4, bottom: 8),
@@ -677,9 +643,12 @@ class _SectionLabel extends StatelessWidget {
 // ─── Footer with "Confirmar" button ──────────────────────────────────────────
 
 class _Footer extends ConsumerStatefulWidget {
-  const _Footer({required this.draft});
+  const _Footer({required this.draft, required this.balance});
 
   final SaleDraftState draft;
+
+  /// The customer account before this sale; negative is credit.
+  final double balance;
 
   @override
   ConsumerState<_Footer> createState() => _FooterState();
@@ -708,20 +677,15 @@ class _FooterState extends ConsumerState<_Footer> {
       child: Column(
         mainAxisSize: MainAxisSize.min,
         children: [
-          // The whole operation, right before confirming it (S9).
-          if (draft.collectsDebt)
+          // Where the money beyond the sale goes, right before confirming
+          // it (S2).
+          if (draft.extraReceived > 0)
             Padding(
               padding: const EdgeInsets.only(bottom: 10),
               child: Align(
                 alignment: Alignment.centerLeft,
-                child: Text(
-                  'Total a cobrar ${formatMoney(draft.operationTotal)}',
-                  style: TextStyle(
-                    fontSize: 16,
-                    fontWeight: FontWeight.w800,
-                    color: context.marilin.ink,
-                    fontFeatures: tokens.tabularStyle.fontFeatures,
-                  ),
+                child: ReceivedBreakdownNote(
+                  breakdown: draft.receivedBreakdown(widget.balance),
                 ),
               ),
             ),
@@ -770,6 +734,25 @@ class _FooterState extends ConsumerState<_Footer> {
                     return FilledButton(
                       onPressed: draft.canConfirm && !_busy
                           ? () async {
+                              // S6: money beyond the sale and the whole
+                              // debt asks first, it may be a typing error;
+                              // correcting stays here and saves nothing.
+                              final breakdown = draft.receivedBreakdown(
+                                widget.balance,
+                              );
+                              if (breakdown.credit > SaleDraftState.tolerance) {
+                                final owed = widget.balance > 0
+                                    ? widget.balance
+                                    : 0.0;
+                                final keep = await confirmLeavingCredit(
+                                  context,
+                                  received: breakdown.received,
+                                  covered: draft.total + owed,
+                                  hasDebt: owed > 0,
+                                  credit: -breakdown.balanceAfter,
+                                );
+                                if (!keep || !context.mounted) return;
+                              }
                               // S4: a partial sale asks first; cancelling
                               // stays on this step and saves nothing.
                               if (draft.isPartialPayment) {

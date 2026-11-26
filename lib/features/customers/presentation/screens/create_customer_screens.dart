@@ -2,12 +2,15 @@ import 'package:flutter/material.dart';
 import 'package:app/core/theme/marilin_tokens.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:app/core/widgets/top_toast.dart';
+import 'package:app/features/inventory/domain/models/container_type.dart';
+import 'package:app/features/inventory/presentation/providers/inventory_repository_provider.dart';
 
 import '../providers/customer_form_provider.dart';
 import '../widgets/step_identity_view.dart';
 import '../widgets/step_address_view.dart';
 import '../widgets/step_preference_view.dart';
 import '../widgets/discard_customer_dialog.dart';
+import '../widgets/opening_balance_section.dart';
 import 'package:app/core/widgets/core_horizontal_stepper.dart';
 
 class CreateCustomerScreen extends ConsumerStatefulWidget {
@@ -37,6 +40,16 @@ class _CreateCustomerScreenState extends ConsumerState<CreateCustomerScreen> {
   Widget build(BuildContext context) {
     final formState = ref.watch(customerFormProvider);
     final formNotifier = ref.read(customerFormProvider.notifier);
+    // The catalog is read only once the driver opens the opening balance.
+    final List<ContainerType>? containerTypes = formState.isOpeningBalanceShown
+        ? ref
+              .watch(containerTypesProvider)
+              .maybeWhen(
+                data: (types) => types,
+                error: (_, _) => const <ContainerType>[],
+                orElse: () => null,
+              )
+        : null;
 
     // Listen to step changes to jump page view
     ref.listen(customerFormProvider.select((state) => state.currentStep), (
@@ -138,6 +151,17 @@ class _CreateCustomerScreenState extends ConsumerState<CreateCustomerScreen> {
                         timeWindowEnd: end,
                       );
                     },
+                    footer: OpeningBalanceSection(
+                      isShown: formState.isOpeningBalanceShown,
+                      debt: formState.openingDebt,
+                      containers: formState.openingContainers,
+                      containerTypes: containerTypes,
+                      containerErrors: formState.openingContainerErrors,
+                      onShow: formNotifier.showOpeningBalance,
+                      onRemove: formNotifier.clearOpeningBalance,
+                      onDebtChanged: formNotifier.updateOpeningDebt,
+                      onContainersChanged: formNotifier.updateOpeningContainers,
+                    ),
                   ),
                 ],
               ),

@@ -64,9 +64,9 @@ class AppDatabase extends _$AppDatabase {
   /// 18 is the development baseline. 19 adds `balance_corrections` with its
   /// own upgrade step, so devices on 18 keep their unsent changes; anything
   /// older is still rebuilt empty. 20 adds `route_stops.position`, 21 adds
-  /// `route_container_loads`.
+  /// `route_container_loads`, 22 drops the unique rule on `customers.phone`.
   @override
-  int get schemaVersion => 21;
+  int get schemaVersion => 22;
 
   @override
   MigrationStrategy get migration => MigrationStrategy(
@@ -76,12 +76,15 @@ class AppDatabase extends _$AppDatabase {
     // Any older development schema is rebuilt empty; unsent local data is
     // lost, the same as reinstalling the app.
     onUpgrade: (m, from, to) async {
-      if (from >= 18 && from <= 20) {
+      if (from >= 18 && from <= 21) {
         if (from == 18) await m.createTable(balanceCorrectionTable);
         if (from <= 19) {
           await m.addColumn(routeStopTable, routeStopTable.position);
         }
-        await m.createTable(routeContainerLoadTable);
+        if (from <= 20) await m.createTable(routeContainerLoadTable);
+        // Rebuilds the table without the unique phone rule, keeping its rows.
+        // Foreign keys are never enforced, so dependents are left untouched.
+        await m.alterTable(TableMigration(customerTable));
         return;
       }
       // Reverse declaration order drops dependents before what they reference.

@@ -6,6 +6,7 @@ import 'package:app/features/inventory/domain/models/container_movement.dart';
 import 'package:app/features/payments/domain/models/payment.dart';
 import 'package:app/features/products/domain/models/product.dart';
 import 'package:app/features/sales/domain/models/payment_method.dart';
+import 'package:app/features/sales/domain/models/received_breakdown.dart';
 import 'package:app/features/sales/domain/models/sale.dart';
 import 'package:app/features/sales/domain/models/sale_draft_state.dart';
 import 'package:app/features/sales/domain/models/sale_item.dart';
@@ -27,8 +28,10 @@ class _RecordingRegisterSale implements RegisterSaleUseCase {
   }
 }
 
+/// S2: the driver types what the customer handed over; it pays the sale
+/// first, then previous debt, and any surplus stays as customer credit.
 void main() {
-  // Two of 6500: a sale of 13000.
+  // One of 6500: a sale of 6500.
   const water = Product(
     id: 'p1',
     name: 'Agua 20L',
@@ -40,7 +43,7 @@ void main() {
     name: 'Kiosco Norte',
     addresses: const [],
     preferences: const [],
-    debtAmount: 7200,
+    debtAmount: 32500,
   );
 
   late ProviderContainer container;
@@ -52,202 +55,232 @@ void main() {
     );
     container.read(saleDraftProvider.notifier)
       ..selectCustomer(customer)
-      ..setQuantity(const SaleItem(product: water, quantity: 0), 2);
+      ..setQuantity(const SaleItem(product: water, quantity: 0), 1);
   });
   tearDown(() => container.dispose());
 
   SaleDraft notifier() => container.read(saleDraftProvider.notifier);
   SaleDraftState state() => container.read(saleDraftProvider);
 
-  group('S4: which methods also collect the debt', () {
-    test('cash, transfer and mixed take the whole current debt when '
-        'switched on', () {
-      for (final method in [
-        PaymentMethod.cash,
-        PaymentMethod.transfer,
-        PaymentMethod.mixed,
-      ]) {
+  ({double received, double sale, double debt, double credit, double after})
+  parts(ReceivedBreakdown b) => (
+    received: b.received,
+    sale: b.sale,
+    debt: b.debt,
+    credit: b.credit,
+    after: b.balanceAfter,
+  );
+
+  group('S2: cash and transfer split the received amount', () {
+    test(r'$30.000 on a $6.500 sale pays $23.500 of debt', () {
+      for (final method in [PaymentMethod.cash, PaymentMethod.transfer]) {
         notifier()
           ..setPaymentMethod(method)
-          ..setCollectDebt(true, currentDebt: 7200);
+          ..setCollectedAmount(30000);
 
-        final draft = container.read(saleDraftProvider);
-        expect(draft.collectsDebt, isTrue, reason: method.name);
-        expect(draft.debtAmount, 7200, reason: method.name);
-        expect(draft.debtToCollect, 7200, reason: method.name);
-        expect(draft.operationTotal, 20200, reason: method.name);
-        notifier().setCollectDebt(false, currentDebt: 7200);
+        expect(state().extraReceived, 23500, reason: method.name);
+        expect(state().isPartialPayment, isFalse, reason: method.name);
+        expect(state().unpaidAmount, 0, reason: method.name);
+        expect(state().canConfirm, isTrue, reason: method.name);
+        expect(parts(state().receivedBreakdown(32500)), (
+          received: 30000,
+          sale: 6500,
+          debt: 23500,
+          credit: 0,
+          after: 9000,
+        ), reason: method.name);
       }
     });
 
-    test('credit cannot switch it on and moving to credit or route turns '
-        'it off', () {
-      notifier()
-        ..setPaymentMethod(PaymentMethod.credit)
-        ..setCollectDebt(true, currentDebt: 7200);
-      expect(state().collectsDebt, isFalse);
-      expect(state().operationTotal, 13000);
-
-      for (final method in [PaymentMethod.credit, PaymentMethod.route]) {
-        notifier()
-          ..setPaymentMethod(PaymentMethod.transfer)
-          ..setCollectDebt(true, currentDebt: 7200)
-          ..setPaymentMethod(method);
-        expect(state().collectsDebt, isFalse, reason: method.name);
-        expect(state().debtToCollect, 0, reason: method.name);
-        expect(state().operationTotal, 13000, reason: method.name);
-      }
-    });
-
-    test('a customer without debt cannot switch it on', () {
-      notifier()
-        ..setPaymentMethod(PaymentMethod.cash)
-        ..setCollectDebt(true, currentDebt: 0);
-      expect(state().collectsDebt, isFalse);
-      expect(state().canConfirm, isTrue);
-    });
-
-    test('changing between cash, transfer and mixed keeps it on', () {
-      notifier()
-        ..setPaymentMethod(PaymentMethod.cash)
-        ..setCollectDebt(true, currentDebt: 7200)
-        ..setDebtAmount(5000)
-        ..setPaymentMethod(PaymentMethod.transfer);
-      expect(state().collectsDebt, isTrue);
-      expect(state().debtToCollect, 5000);
-    });
-
-    test('choosing another customer turns it off', () {
-      notifier()
-        ..setPaymentMethod(PaymentMethod.cash)
-        ..setCollectDebt(true, currentDebt: 7200)
-        ..clearCustomer()
-        ..selectCustomer(customer);
-      expect(state().collectsDebt, isFalse);
-      expect(state().debtToCollect, 0);
-    });
-  });
-
-  group('S5: editable debt amount', () {
-    setUp(() {
+    test(r'$8.000 on $6.500 with $32.500 of debt pays $1.500 and leaves '
+        r'$31.000', () {
       notifier()
         ..setPaymentMethod(PaymentMethod.transfer)
-        ..setCollectDebt(true, currentDebt: 7200);
+        ..setCollectedAmount(8000);
+
+      expect(state().extraReceived, 1500);
+      expect(parts(state().receivedBreakdown(32500)), (
+        received: 8000,
+        sale: 6500,
+        debt: 1500,
+        credit: 0,
+        after: 31000,
+      ));
     });
 
-    test('can be lowered', () {
-      notifier().setDebtAmount(3000);
-      expect(state().debtToCollect, 3000);
-      expect(state().operationTotal, 16000);
-      expect(state().isValidDebtAmount, isTrue);
+    test('above the sale plus the whole debt the rest is credit', () {
+      notifier()
+        ..setPaymentMethod(PaymentMethod.cash)
+        ..setCollectedAmount(40000);
+
+      expect(state().extraReceived, 33500);
       expect(state().canConfirm, isTrue);
+      expect(parts(state().receivedBreakdown(32500)), (
+        received: 40000,
+        sale: 6500,
+        debt: 32500,
+        credit: 1000,
+        after: -1000,
+      ));
     });
 
-    test('above the current debt, 0, negative or empty blocks confirm', () {
-      for (final amount in [7200.02, 0.0, -1.0, null]) {
-        notifier().setDebtAmount(amount);
-        expect(state().isValidDebtAmount, isFalse, reason: '$amount');
+    test('a customer already in credit keeps all the surplus as credit', () {
+      notifier()
+        ..setPaymentMethod(PaymentMethod.cash)
+        ..setCollectedAmount(7000);
+
+      expect(parts(state().receivedBreakdown(-200)), (
+        received: 7000,
+        sale: 6500,
+        debt: 0,
+        credit: 500,
+        after: -700,
+      ));
+    });
+
+    test('below the sale total it stays a partial payment', () {
+      notifier()
+        ..setPaymentMethod(PaymentMethod.cash)
+        ..setCollectedAmount(6000);
+
+      expect(state().extraReceived, 0);
+      expect(state().isPartialPayment, isTrue);
+      expect(state().unpaidAmount, 500);
+      expect(state().canConfirm, isTrue);
+      expect(parts(state().receivedBreakdown(32500)), (
+        received: 6000,
+        sale: 6000,
+        debt: 0,
+        credit: 0,
+        after: 33000,
+      ));
+    });
+
+    test('exactly the sale total pays nothing else', () {
+      notifier().setPaymentMethod(PaymentMethod.cash);
+
+      expect(state().collectedAmount, 6500);
+      expect(state().extraReceived, 0);
+      expect(state().isPartialPayment, isFalse);
+    });
+
+    test('0 or an invalid amount blocks confirm', () {
+      notifier().setPaymentMethod(PaymentMethod.transfer);
+      for (final amount in [0.0, null]) {
+        notifier().setCollectedAmount(amount);
         expect(state().canConfirm, isFalse, reason: '$amount');
       }
-      notifier().setDebtAmount(7200);
-      expect(state().canConfirm, isTrue);
-    });
-
-    test('switching off and on again starts at the whole debt', () {
-      notifier()
-        ..setDebtAmount(100)
-        ..setCollectDebt(false, currentDebt: 7200);
-      expect(state().debtToCollect, 0);
-      expect(state().canConfirm, isTrue);
-
-      notifier().setCollectDebt(true, currentDebt: 7200);
-      expect(state().debtToCollect, 7200);
     });
   });
 
-  group('S6: mixed covers the sale plus the debt', () {
-    setUp(() {
-      notifier()
-        ..setPaymentMethod(PaymentMethod.mixed)
-        ..setCollectDebt(true, currentDebt: 7200);
-    });
+  group('S2: mixed splits cash + transfer the same way', () {
+    setUp(() => notifier().setPaymentMethod(PaymentMethod.mixed));
 
-    test('cash + transfer equal to the sale total alone is not enough', () {
-      notifier().setMixedAmounts(cash: 5000, transfer: 8000);
-      expect(state().isValidPayment, isFalse);
-      expect(state().remaining, 7200);
-      expect(state().canConfirm, isFalse);
-    });
+    test(r'$5.000 + $3.000 on $6.500 pays $1.500 of debt', () {
+      notifier().setMixedAmounts(cash: 5000, transfer: 3000);
 
-    test('cash + transfer equal to the sale plus the debt confirms', () {
-      notifier().setMixedAmounts(cash: 5000, transfer: 15200);
-      expect(state().isValidPayment, isTrue);
-      expect(state().remaining, 0);
+      expect(state().collectedAmount, 8000);
+      expect(state().extraReceived, 1500);
+      expect(state().remaining, -1500);
       expect(state().canConfirm, isTrue);
-
-      notifier().setMixedAmounts(cash: 5000, transfer: 15200.004);
-      expect(state().canConfirm, isTrue, reason: 'within the tolerance');
-
-      notifier().setMixedAmounts(cash: 5000, transfer: 15300);
-      expect(state().remaining, -100);
-      expect(state().canConfirm, isFalse, reason: 'more than both');
+      expect(parts(state().receivedBreakdown(32500)), (
+        received: 8000,
+        sale: 6500,
+        debt: 1500,
+        credit: 0,
+        after: 31000,
+      ));
     });
 
-    test('without the debt the sale total alone confirms as before', () {
-      notifier()
-        ..setCollectDebt(false, currentDebt: 7200)
-        ..setMixedAmounts(cash: 5000, transfer: 8000);
+    test('above the sale plus the whole debt the rest is credit', () {
+      notifier().setMixedAmounts(cash: 5000, transfer: 5000);
+
+      expect(parts(state().receivedBreakdown(1500)), (
+        received: 10000,
+        sale: 6500,
+        debt: 1500,
+        credit: 2000,
+        after: -2000,
+      ));
       expect(state().canConfirm, isTrue);
-      expect(state().remaining, 0);
+    });
+
+    test('below the sale total it stays a partial payment', () {
+      notifier().setMixedAmounts(cash: 4000, transfer: 2000);
+
+      expect(state().extraReceived, 0);
+      expect(state().isPartialPayment, isTrue);
+      expect(state().unpaidAmount, 500);
     });
   });
 
-  group('S9: commit', () {
-    test('passes the debt amount to the use case and leaves the sale as '
-        'is', () async {
+  test('credit and route receive nothing on the spot', () {
+    for (final method in [PaymentMethod.credit, PaymentMethod.route]) {
+      notifier().setPaymentMethod(method);
+      expect(state().extraReceived, 0, reason: method.name);
+      expect(state().canConfirm, isTrue, reason: method.name);
+      expect(parts(state().receivedBreakdown(32500)), (
+        received: 0,
+        sale: 0,
+        debt: 0,
+        credit: 0,
+        after: 39000,
+      ), reason: method.name);
+    }
+  });
+
+  group('S2: commit', () {
+    test('a cash or transfer sale sends the surplus as debtAmount and the '
+        'sale as paid in full', () async {
       notifier()
-        ..setPaymentMethod(PaymentMethod.transfer)
-        ..setCollectDebt(true, currentDebt: 7200);
+        ..setPaymentMethod(PaymentMethod.cash)
+        ..setCollectedAmount(30000);
 
       await notifier().commit();
 
       final call = useCase.calls.single;
-      expect(call.debtAmount, 7200);
-      expect(call.sale.total, 13000);
-      expect(call.sale.paymentMethod, PaymentMethod.transfer);
-      expect(container.read(saleDraftProvider).collectsDebt, isFalse);
+      expect(call.debtAmount, 23500);
+      expect(call.sale.total, 6500);
+      expect(call.sale.paymentMethod, PaymentMethod.cash);
+      expect(call.sale.cashAmount, isNull);
+      expect(state().items, isEmpty);
+    });
+
+    test('a surplus above the whole debt is sent unchanged', () async {
+      notifier()
+        ..setPaymentMethod(PaymentMethod.transfer)
+        ..setCollectedAmount(40000);
+
+      await notifier().commit();
+
+      expect(useCase.calls.single.debtAmount, 33500);
     });
 
     test('a mixed sale sends what the customer handed over', () async {
       notifier()
         ..setPaymentMethod(PaymentMethod.mixed)
-        ..setCollectDebt(true, currentDebt: 7200)
-        ..setMixedAmounts(cash: 5000, transfer: 15200);
+        ..setMixedAmounts(cash: 5000, transfer: 3000);
 
       await notifier().commit();
 
       final call = useCase.calls.single;
-      expect(call.debtAmount, 7200);
-      expect((call.sale.cashAmount, call.sale.transferAmount), (5000, 15200));
+      expect(call.debtAmount, 1500);
+      expect((call.sale.cashAmount, call.sale.transferAmount), (5000, 3000));
     });
 
-    test('sends 0 when it is off', () async {
-      notifier().setPaymentMethod(PaymentMethod.cash);
-
-      await notifier().commit();
-
-      expect(useCase.calls.single.debtAmount, 0);
-    });
-
-    test('does nothing while the debt amount is invalid', () async {
+    test('a partial or credit sale sends 0', () async {
       notifier()
         ..setPaymentMethod(PaymentMethod.cash)
-        ..setCollectDebt(true, currentDebt: 7200)
-        ..setDebtAmount(9000);
-
+        ..setCollectedAmount(6000);
       await notifier().commit();
+      expect(useCase.calls.last.debtAmount, 0);
 
-      expect(useCase.calls, isEmpty);
+      notifier()
+        ..selectCustomer(customer)
+        ..setQuantity(const SaleItem(product: water, quantity: 0), 1)
+        ..setPaymentMethod(PaymentMethod.credit);
+      await notifier().commit();
+      expect(useCase.calls.last.debtAmount, 0);
     });
   });
 }

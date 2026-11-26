@@ -83,17 +83,70 @@ void main() {
           );
     }
 
-    Future<void> agreement(String id, double price, {int? serverId}) =>
+    Future<void> agreement(
+      String id,
+      double price, {
+      int? serverId,
+      String validFrom = '2026-10-01',
+      bool enabled = true,
+    }) =>
         db.into(db.customerAgreementTable).insert(
               CustomerAgreementTableCompanion.insert(
                 agreementId: drift.Value(id),
                 customerId: 'cust-1',
                 productId: 'prod-1',
                 unitPrice: price,
-                validFrom: '2026-10-01',
+                validFrom: validFrom,
                 serverId: drift.Value(serverId),
+                enabled: drift.Value(enabled),
               ),
             );
+
+    test('a disabled agreement does not price the product', () async {
+      await seed();
+      await agreement('a-off', 650.0, serverId: 3, enabled: false);
+
+      final products = await sut
+          .watchProductsFor('cust-1', day: DateTime(2026, 10, 20))
+          .first;
+
+      expect(products.single.price, 800.0);
+      expect(products.single.agreementUuid, isNull);
+    });
+
+    test('a disabled agreement does not win the tie-break, even with the '
+        'latest start or no server id', () async {
+      await seed();
+      await agreement('a-on', 700.0, serverId: 9);
+      await agreement(
+        'a-off-later',
+        600.0,
+        serverId: 12,
+        validFrom: '2026-10-15',
+        enabled: false,
+      );
+      await agreement('a-off-local', 500.0, enabled: false);
+
+      final products = await sut
+          .watchProductsFor('cust-1', day: DateTime(2026, 10, 20))
+          .first;
+
+      expect(products.single.price, 700.0);
+      expect(products.single.agreementUuid, 'a-on');
+    });
+
+    test('the latest start wins among enabled agreements', () async {
+      await seed();
+      await agreement('a-old', 700.0, serverId: 9);
+      await agreement('a-new', 750.0, serverId: 4, validFrom: '2026-10-15');
+
+      final products = await sut
+          .watchProductsFor('cust-1', day: DateTime(2026, 10, 20))
+          .first;
+
+      expect(products.single.price, 750.0);
+      expect(products.single.agreementUuid, 'a-new');
+    });
 
     test('the one with the highest server id wins, like the server', () async {
       await seed();

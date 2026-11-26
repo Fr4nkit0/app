@@ -36,10 +36,6 @@ class DriftSaleRepository implements SaleRepository {
     return row == null ? null : _toSale(row);
   }
 
-  @override
-  Future<double> customerBalanceOf(String customerId) =>
-      _account.balanceOf(customerId);
-
   JoinedSelectStatement<HasResultSet, dynamic> _salesQuery(
     Expression<bool> where,
   ) => _db.select(_db.saleTable).join([

@@ -127,8 +127,43 @@ class CustomerForm extends Notifier<CustomerFormState> {
     );
   }
 
+  /// Opens the optional opening balance section.
+  void showOpeningBalance() {
+    state = state.copyWith(isOpeningBalanceShown: true);
+  }
+
+  /// Folds the opening balance section and drops what was typed in it.
+  void clearOpeningBalance() {
+    state = state.copyWith(
+      isOpeningBalanceShown: false,
+      openingDebt: '',
+      openingContainers: const {},
+      errorMessage: null,
+    );
+  }
+
+  void updateOpeningDebt(String debt) {
+    state = state.copyWith(openingDebt: debt, errorMessage: null);
+  }
+
+  /// The containers of [containerType] the customer already holds.
+  void updateOpeningContainers(String containerType, String count) {
+    state = state.copyWith(
+      openingContainers: {...state.openingContainers, containerType: count},
+      errorMessage: null,
+    );
+  }
+
   Future<void> submit() async {
-    if (!state.isCurrentStepValid || state.currentStep != 2) return;
+    if (state.currentStep != 2) return;
+    if (!state.isOpeningBalanceValid) {
+      state = state.copyWith(
+        errorMessage:
+            state.openingDebtError ?? state.openingContainerErrors.values.first,
+      );
+      return;
+    }
+    if (!state.isCurrentStepValid) return;
 
     state = state.copyWith(isSubmitting: true, errorMessage: null);
 
@@ -163,7 +198,7 @@ class CustomerForm extends Notifier<CustomerFormState> {
 
       final stored = await ref
           .read(createCustomerUseCaseProvider)
-          .execute(customer);
+          .execute(customer, opening: state.openingBalance);
 
       state = state.copyWith(
         isSubmitting: false,

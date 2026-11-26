@@ -9,12 +9,18 @@ class VisitCustomerCard extends StatelessWidget {
     required this.formattedAddress,
     this.phone,
     this.onWhatsAppLongPress,
+    this.onEdit,
   });
 
   final String customerName;
   final String formattedAddress;
   final String? phone;
   final VoidCallback? onWhatsAppLongPress;
+
+  /// Opens the edit of this customer; no edit button when null.
+  final VoidCallback? onEdit;
+
+  static const _editButtonSize = 48.0;
 
   @override
   Widget build(BuildContext context) {
@@ -40,6 +46,8 @@ class VisitCustomerCard extends StatelessWidget {
           Row(
             crossAxisAlignment: CrossAxisAlignment.center,
             children: [
+              // Mirrors the edit button so the name stays centered.
+              if (onEdit != null) const SizedBox(width: _editButtonSize),
               Expanded(
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.center,
@@ -69,6 +77,15 @@ class VisitCustomerCard extends StatelessWidget {
                   ],
                 ),
               ),
+              if (onEdit != null)
+                SizedBox.square(
+                  dimension: _editButtonSize,
+                  child: IconButton.filledTonal(
+                    tooltip: 'Editar cliente',
+                    onPressed: onEdit,
+                    icon: const Icon(Icons.edit_outlined, size: 20),
+                  ),
+                ),
             ],
           ),
           const SizedBox(height: 16),

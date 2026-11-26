@@ -5,14 +5,15 @@ import 'package:drift/drift.dart';
 import '../../../../core/services/database.helper.dart';
 import '../../domain/models/pending_change.dart';
 import '../../pull/address_applier.dart';
+import '../../pull/agreement_applier.dart';
 import '../../pull/customer_applier.dart';
 import '../../pull/preference_applier.dart';
 import '../../push/customer_pusher.dart';
 import '../../push/entity_pusher.dart' show Json;
 import 'pending_change.repository.dart';
 
-/// The last values the server is known to hold for a customer, address or
-/// preference the driver edited, so a rejected or outdated answer can put
+/// The last values the server is known to hold for a customer, address,
+/// preference or price agreement the driver edited, so a rejected or outdated answer can put
 /// them back on the device.
 ///
 /// Kept in `sync_state` under `shadow:<entity>:<localId>` (`entity` is the
@@ -26,7 +27,8 @@ import 'pending_change.repository.dart';
 /// - customer: `name`, `phone_number`, `enabled` and, under `address`, the
 ///   `uuid` of the address its push carries with that address's fields;
 ///   only the `uuid` when the address had a change of its own pending, until
-///   the pull brings its server values.
+///   the pull brings its server values;
+/// - agreement: `unit_price`, `valid_from`, `valid_to`, `reason`, `enabled`.
 ///
 /// Captured from the row before its first queued edit (its values then are
 /// the server's as of the last download) and refreshed when the pull skips
@@ -61,6 +63,7 @@ class ServerShadow {
       PendingEntity.customer => await _customerValues(localId),
       PendingEntity.customerAddress => await _addressValues(localId),
       PendingEntity.customerPreference => await _preferenceValues(localId),
+      PendingEntity.customerAgreement => await _agreementValues(localId),
       _ => null,
     };
     if (values == null) {
@@ -113,6 +116,16 @@ class ServerShadow {
   ) => _merge(
     keyOf(PendingEntity.customerPreference, preferenceId),
     _preferenceJson(fields),
+  );
+
+  /// The server copy of a price agreement the pull did not apply because of
+  /// its unsent change.
+  Future<void> storePulledAgreement(
+    String agreementId,
+    CustomerAgreementTableCompanion fields,
+  ) => _merge(
+    keyOf(PendingEntity.customerAgreement, agreementId),
+    _agreementJson(fields),
   );
 
   /// Keeps the server row [current] (pull shape, as an `outdated` or
@@ -188,6 +201,17 @@ class ServerShadow {
             CustomerPreferenceTableCompanion(serverId: Value(serverId)),
           );
         }
+      case PendingEntity.customerAgreement:
+        final row = await (_db.select(
+          _db.customerAgreementTable,
+        )..where((t) => t.agreementId.equals(localId))).getSingleOrNull();
+        if (row == null || !owns(row.serverId)) return false;
+        await storePulledAgreement(localId, AgreementApplier.fieldsOf(current));
+        if (link && row.serverId == null) {
+          await (_db.update(_db.customerAgreementTable)
+                ..where((t) => t.agreementId.equals(localId)))
+              .write(CustomerAgreementTableCompanion(serverId: Value(serverId)));
+        }
       default:
         return false;
     }
@@ -261,6 +285,10 @@ class ServerShadow {
         await (_db.update(_db.customerPreferenceTable)
               ..where((t) => t.customerPreferenceId.equals(localId)))
             .write(_preferenceFields(values));
+      case PendingEntity.customerAgreement:
+        await (_db.update(_db.customerAgreementTable)
+              ..where((t) => t.agreementId.equals(localId)))
+            .write(_agreementFields(values));
       default:
         return false;
     }
@@ -387,6 +415,14 @@ class ServerShadow {
     return _preferenceJson(preference!.toCompanion(false));
   }
 
+  Future<Json?> _agreementValues(String agreementId) async {
+    final agreement = await (_db.select(
+      _db.customerAgreementTable,
+    )..where((t) => t.agreementId.equals(agreementId))).getSingleOrNull();
+    if (agreement?.serverId == null) return null;
+    return _agreementJson(agreement!.toCompanion(false));
+  }
+
   Future<void> _merge(String key, Json values) async {
     final row = await (_db.select(
       _db.syncStateTable,
@@ -467,6 +503,25 @@ class ServerShadow {
         dayOfWeek: _value(j, 'day_of_week'),
         timeWindowStart: _value(j, 'time_window_start'),
         timeWindowEnd: _value(j, 'time_window_end'),
+        enabled: _value(j, 'enabled'),
+      );
+
+  static Json _agreementJson(CustomerAgreementTableCompanion c) => {
+    if (c.unitPrice.present) 'unit_price': c.unitPrice.value,
+    if (c.validFrom.present) 'valid_from': c.validFrom.value,
+    if (c.validTo.present) 'valid_to': c.validTo.value,
+    if (c.reason.present) 'reason': c.reason.value,
+    if (c.enabled.present) 'enabled': c.enabled.value,
+  };
+
+  static CustomerAgreementTableCompanion _agreementFields(Json j) =>
+      CustomerAgreementTableCompanion(
+        unitPrice: j.containsKey('unit_price')
+            ? Value((j['unit_price'] as num).toDouble())
+            : const Value.absent(),
+        validFrom: _value(j, 'valid_from'),
+        validTo: _value(j, 'valid_to'),
+        reason: _value(j, 'reason'),
         enabled: _value(j, 'enabled'),
       );
 

@@ -450,58 +450,60 @@ void main() {
       );
     });
 
-    test('S5: rejects a debt above the current debt and writes '
-        'nothing', () async {
-      await owe(7200);
+    test('S2: a payment beyond the whole debt is kept unchanged and leaves '
+        'the account in favor of the customer', () async {
+      await owe(1500);
 
-      await expectLater(
-        sut.execute(saleBy(PaymentMethod.transfer), debtAmount: 7300),
-        throwsA(
-          isA<ValidationFailure>().having(
-            (f) => f.message,
-            'message',
-            'La deuda a cobrar supera lo que debe el cliente.',
-          ),
+      await sut.execute(saleBy(PaymentMethod.cash), debtAmount: 3500);
+
+      final queued = await queuedPayments();
+      expect(
+        queued.map(
+          (p) => (p['saleId'], p['paymentMethod'], p['amount'] as num),
         ),
+        [('sale-debt', 'EFECTIVO', 13000), (null, 'EFECTIVO', 3500)],
       );
-
-      expect(await db.select(db.saleTable).get(), isEmpty);
-      expect(await db.select(db.paymentTable).get(), isEmpty);
-      expect(await db.select(db.pendingChangeTable).get(), isEmpty);
+      // bookSale +13000, bookPayment -13000 and -3500: 1500 - 3500.
       expect(
         await paymentRepo.watchCustomerBalance(testCustomer.id).first,
-        7200,
+        -2000,
       );
     });
 
-    test('S5: a customer without debt cannot pay debt with a sale', () async {
-      await expectLater(
-        sut.execute(saleBy(PaymentMethod.cash), debtAmount: 100),
-        throwsA(isA<ValidationFailure>()),
-      );
+    test('S2: a customer without debt keeps the whole surplus as '
+        'credit', () async {
+      await sut.execute(saleBy(PaymentMethod.transfer), debtAmount: 100);
 
-      expect(await db.select(db.saleTable).get(), isEmpty);
-      expect(await db.select(db.paymentTable).get(), isEmpty);
+      expect(await db.select(db.saleTable).get(), hasLength(1));
+      expect(
+        await paymentRepo.watchCustomerBalance(testCustomer.id).first,
+        -100,
+      );
     });
 
-    test('S5: the cap is the debt before this sale, including earlier '
-        'sales on credit', () async {
+    test('S2: a mixed surplus beyond the debt books the transfer remainder '
+        'as one payment', () async {
       await owe(1000);
-      await sut.execute(saleBy(PaymentMethod.credit, id: 'sale-on-credit'));
 
       await sut.execute(
-        saleBy(PaymentMethod.cash, id: 'sale-paying-debt'),
-        debtAmount: 14000,
+        saleBy(PaymentMethod.mixed, cash: 10000, transfer: 5000),
+        debtAmount: 2000,
       );
 
-      expect(await paymentRepo.watchCustomerBalance(testCustomer.id).first, 0);
-      // This sale's own total is not debt it can pay.
-      await expectLater(
-        sut.execute(
-          saleBy(PaymentMethod.cash, id: 'sale-over-own-total'),
-          debtAmount: 1,
+      final queued = await queuedPayments();
+      expect(
+        queued.map(
+          (p) => (p['saleId'], p['paymentMethod'], p['amount'] as num),
         ),
-        throwsA(isA<ValidationFailure>()),
+        [
+          ('sale-debt', 'EFECTIVO', 10000),
+          ('sale-debt', 'TRANSFERENCIA', 3000),
+          (null, 'TRANSFERENCIA', 2000),
+        ],
+      );
+      expect(
+        await paymentRepo.watchCustomerBalance(testCustomer.id).first,
+        -1000,
       );
     });
 

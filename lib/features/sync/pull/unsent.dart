@@ -6,7 +6,7 @@ import '../domain/models/pending_change.dart';
 /// Local rows that still have unsent or rejected changes; the server copy
 /// must not overwrite them.
 ///
-/// Customers, addresses and preferences count only their unsent changes: a
+/// Customers, addresses, preferences and agreements count only their unsent changes: a
 /// rejected one was rolled back to the server's values (or deleted), so the
 /// server copy applies to it again.
 class Unsent {
@@ -18,6 +18,7 @@ class Unsent {
     this.addresses = const {},
     this.addressOwners = const {},
     this.preferences = const {},
+    this.agreements = const {},
     this.movements = const {},
     this.rejectedAddresses = const {},
     this.rejectedPreferences = const {},
@@ -46,6 +47,9 @@ class Unsent {
 
   /// Preferences with their own unsent change.
   final Set<String> preferences;
+
+  /// Price agreements with their own unsent change.
+  final Set<String> agreements;
 
   /// Container movements with their own unsent change.
   final Set<String> movements;
@@ -103,6 +107,7 @@ class Unsent {
       addresses: addressIds,
       addressOwners: addressOwners,
       preferences: ids(PendingEntity.customerPreference, unsentOnly: true),
+      agreements: ids(PendingEntity.customerAgreement, unsentOnly: true),
       rejectedAddresses: rejected(PendingEntity.customerAddress),
       rejectedPreferences: rejected(PendingEntity.customerPreference),
       movements: ids(PendingEntity.containerMovement),

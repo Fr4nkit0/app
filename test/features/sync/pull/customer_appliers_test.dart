@@ -43,6 +43,70 @@ void main() {
       expect(rows.single.name, 'Ana María');
     });
 
+    for (final (label, contextOf) in [
+      ('pull', pullContext),
+      ('bootstrap', bootstrapContext),
+    ]) {
+      test('$label stores two customers that share a phone', () async {
+        await seedCustomer(db, id: 'cust-1', serverId: 11, name: 'Ana');
+        await db.customStatement(
+          "UPDATE customers SET phone = '387555' WHERE customer_id = 'cust-1'",
+        );
+        final context = await contextOf(db);
+
+        final localId = await CustomerApplier(db).upsert({
+          'id': 12,
+          'client_uuid': null,
+          'name': 'Bea',
+          'phone_number': '387555',
+        }, context);
+
+        final rows = await (db.select(
+          db.customerTable,
+        )..where((t) => t.phone.equals('387555'))).get();
+        expect(
+          rows.map((c) => (c.serverId, c.name)),
+          unorderedEquals([(11, 'Ana'), (12, 'Bea')]),
+        );
+        expect(await context.ids.customer(12), localId);
+      });
+
+      test('$label stores an empty or blank phone as null', () async {
+        final context = await contextOf(db);
+
+        for (final (id, phone) in [(11, ''), (12, '   '), (13, null)]) {
+          await CustomerApplier(db).upsert({
+            'id': id,
+            'client_uuid': null,
+            'name': 'C$id',
+            'phone_number': phone,
+          }, context);
+        }
+
+        final rows = await db.select(db.customerTable).get();
+        expect(
+          rows.map((c) => (c.serverId, c.phone)),
+          unorderedEquals([(11, null), (12, null), (13, null)]),
+        );
+      });
+
+      test('$label keeps a real phone as sent', () async {
+        final context = await contextOf(db);
+
+        await CustomerApplier(db).upsert({
+          'id': 11,
+          'client_uuid': null,
+          'name': 'Ana',
+          'phone_number': '387 555-1234',
+        }, context);
+
+        expect(
+          (await db.select(db.customerTable).getSingle()).phone,
+          '387 555-1234',
+        );
+      });
+    }
+
     test(
       'keeps a customer with unsent changes and still maps its id',
       () async {
