@@ -141,15 +141,16 @@ class CoveredCustomerCleanup {
       _db.paymentTable.paymentId,
       _db.paymentTable.customerId,
     );
+    final agreements = await idsOf(
+      _db.customerAgreementTable,
+      _db.customerAgreementTable.agreementId,
+      _db.customerAgreementTable.customerId,
+    );
     final owned = <PendingEntity, List<String>>{
       PendingEntity.customer: [customerId],
       PendingEntity.customerAddress: addresses,
       PendingEntity.customerPreference: preferences,
-      PendingEntity.customerAgreement: await idsOf(
-        _db.customerAgreementTable,
-        _db.customerAgreementTable.agreementId,
-        _db.customerAgreementTable.customerId,
-      ),
+      PendingEntity.customerAgreement: agreements,
       PendingEntity.routeStop: await idsOf(
         _db.routeStopTable,
         _db.routeStopTable.routeStopId,
@@ -194,6 +195,8 @@ class CoveredCustomerCleanup {
               ServerShadow.keyOf(PendingEntity.customerAddress, id),
             for (final id in preferences)
               ServerShadow.keyOf(PendingEntity.customerPreference, id),
+            for (final id in agreements)
+              ServerShadow.keyOf(PendingEntity.customerAgreement, id),
           ]),
         ))
         .go();

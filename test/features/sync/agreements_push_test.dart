@@ -122,6 +122,27 @@ void main() {
         ..where((t) => t.customerId.equals('c-1')))
       .write(const CustomerTableCompanion(serverId: drift.Value(10)));
 
+  /// The queued agreement already reached the server: only then does a
+  /// download overwrite it.
+  Future<void> settleQueue() async {
+    final queue = DriftPendingChangeRepository(db);
+    await queue.markSent([for (final c in await queue.getPending()) c.id]);
+  }
+
+  test('a pulled agreement with an unsent change keeps its local values but '
+      'gets its server id', () async {
+    final id = await createAgreement();
+    pulledUuid = id;
+    await syncCustomer();
+
+    await sync.pull();
+
+    final row = await db.select(db.customerAgreementTable).getSingle();
+    expect(row.agreementId, id);
+    expect(row.serverId, 777);
+    expect(row.unitPrice, 1200);
+  });
+
   Future<void> sellWithAgreement() async {
     final products =
         await DriftProductRepository(db).watchProductsFor('c-1').first;
@@ -150,6 +171,13 @@ void main() {
 
   test('an agreement travels after customers and before sales', () async {
     final id = await createAgreement(validTo: '2026-12-31', reason: 'Mayorista');
+    await (db.update(db.customerAgreementTable)
+          ..where((t) => t.agreementId.equals(id)))
+        .write(
+          CustomerAgreementTableCompanion(
+            lastModifiedDate: drift.Value(DateTime.utc(2026, 10, 22, 9)),
+          ),
+        );
     await sellWithAgreement();
     await syncCustomer();
 
@@ -166,6 +194,8 @@ void main() {
         'valid_from': '2026-10-22',
         'valid_to': '2026-12-31',
         'reason': 'Mayorista',
+        'enabled': true,
+        'modified_at': '2026-10-22T09:00:00.000Z',
       },
     ]);
   });
@@ -177,6 +207,7 @@ void main() {
 
     final record = (bodies.single['customer_agreements'] as List).single as Map;
     expect(record['customer_uuid'], 'c-1');
+    expect(record.containsKey('server_id'), isFalse);
     expect(record.containsKey('customer_id'), isFalse);
     expect(record['uuid'], id);
     expect(record['valid_to'], isNull);
@@ -245,6 +276,7 @@ void main() {
     final id = await createAgreement();
     pulledUuid = id;
     await syncCustomer();
+    await settleQueue();
     await db.into(db.productTable).insert(
           ProductTableCompanion.insert(
             productId: const drift.Value('p-2'),
@@ -269,6 +301,7 @@ void main() {
     await (db.update(db.customerAgreementTable)
           ..where((t) => t.agreementId.equals(id)))
         .write(const CustomerAgreementTableCompanion(serverId: drift.Value(777)));
+    await settleQueue();
     final dio = Dio(BaseOptions(baseUrl: 'https://api.example.test'))
       ..httpClientAdapter = FakeHttpAdapter((_) async => FakeHttpAdapter.json(200, {
             'data': {

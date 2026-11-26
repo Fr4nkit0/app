@@ -12,13 +12,17 @@ void main() {
 
   setUp(() async {
     db = AppDatabase(NativeDatabase.memory());
-    await db.into(db.customerTable).insert(
+    await db
+        .into(db.customerTable)
+        .insert(
           CustomerTableCompanion.insert(
             customerId: const drift.Value('c-1'),
             name: 'Kiosco Norte',
           ),
         );
-    await db.into(db.productTable).insert(
+    await db
+        .into(db.productTable)
+        .insert(
           ProductTableCompanion.insert(
             productId: const drift.Value('p-1'),
             name: 'Agua 20L',
@@ -60,7 +64,9 @@ void main() {
     String? to,
     int? serverId,
     String? reason,
-  }) => db.into(db.customerAgreementTable).insert(
+  }) => db
+      .into(db.customerAgreementTable)
+      .insert(
         CustomerAgreementTableCompanion.insert(
           agreementId: drift.Value(id),
           customerId: 'c-1',
@@ -81,7 +87,9 @@ void main() {
     await unmount(tester);
   });
 
-  testWidgets('lists agreements with status and the unsynced hint', (tester) async {
+  testWidgets('lists agreements with status and the unsynced hint', (
+    tester,
+  ) async {
     await insert('a-old', 1000, '2020-01-01', to: '2020-02-01', serverId: 1);
     await insert('a-now', 1200, '2020-03-01', serverId: 2, reason: 'Mayorista');
     await insert('a-next', 1300, '2999-01-01');
@@ -150,12 +158,147 @@ void main() {
     await tester.pumpAndSettle();
     await tester.tap(find.text('Agua 20L').last);
     await tester.pumpAndSettle();
-    await tester.enterText(find.byKey(const Key('agreement_price')), '1200,555');
+    await tester.enterText(
+      find.byKey(const Key('agreement_price')),
+      '1200,555',
+    );
     await tester.tap(find.text('Guardar'));
     await tester.pumpAndSettle();
 
     expect(find.text('Usá hasta 2 decimales'), findsOneWidget);
     expect(await db.select(db.customerAgreementTable).get(), isEmpty);
+    await unmount(tester);
+  });
+
+  Future<void> openActions(WidgetTester tester, String action) async {
+    await tester.tap(find.byTooltip('Opciones de acuerdo'));
+    await tester.pumpAndSettle();
+    await tester.tap(find.text(action));
+    await tester.pumpAndSettle();
+  }
+
+  Future<CustomerAgreementTableData?> rowOf(String id) => (db.select(
+    db.customerAgreementTable,
+  )..where((t) => t.agreementId.equals(id))).getSingleOrNull();
+
+  testWidgets('an ended agreement offers no actions', (tester) async {
+    await insert('a-old', 1000, '2020-01-01', to: '2020-02-01', serverId: 1);
+
+    await pumpTab(tester);
+
+    expect(find.byTooltip('Opciones de acuerdo'), findsNothing);
+    await unmount(tester);
+  });
+
+  testWidgets('edit opens the form prefilled with the product locked and '
+      'saves in place', (tester) async {
+    await insert('a-next', 1200, '2999-01-01', reason: 'Mayorista');
+    await pumpTab(tester);
+
+    await openActions(tester, 'Editar');
+
+    expect(find.text('Editar acuerdo'), findsOneWidget);
+    final price = tester.widget<EditableText>(
+      find.descendant(
+        of: find.byKey(const Key('agreement_price')),
+        matching: find.byType(EditableText),
+      ),
+    );
+    expect(price.controller.text, '1200');
+    final reason = tester.widget<EditableText>(
+      find.descendant(
+        of: find.byKey(const Key('agreement_reason')),
+        matching: find.byType(EditableText),
+      ),
+    );
+    expect(reason.controller.text, 'Mayorista');
+    expect(find.text('01/01/2999'), findsWidgets);
+    final product = tester.widget<DropdownButton<String>>(
+      find.descendant(
+        of: find.byKey(const Key('agreement_product')),
+        matching: find.byType(DropdownButton<String>),
+      ),
+    );
+    expect(product.onChanged, isNull);
+    expect(product.value, 'p-1');
+
+    await tester.enterText(find.byKey(const Key('agreement_price')), '1350');
+    await tester.tap(find.text('Guardar'));
+    await tester.pumpAndSettle();
+
+    final rows = await db.select(db.customerAgreementTable).get();
+    expect(rows, hasLength(1));
+    expect(rows.single.unitPrice, 1350);
+    expect(rows.single.productId, 'p-1');
+    expect(rows.single.reason, 'Mayorista');
+    expect(find.text('Acuerdo actualizado'), findsOneWidget);
+    expect(find.text('Editar acuerdo'), findsNothing);
+    await unmount(tester);
+  });
+
+  testWidgets('delete asks first and keeps the agreement on cancel', (
+    tester,
+  ) async {
+    await insert('a-now', 1200, '2020-03-01', serverId: 2);
+    await pumpTab(tester);
+
+    await openActions(tester, 'Eliminar');
+
+    expect(find.text('¿Eliminar acuerdo?'), findsOneWidget);
+    expect(
+      find.descendant(
+        of: find.byType(AlertDialog),
+        matching: find.textContaining('Agua 20L'),
+      ),
+      findsOneWidget,
+    );
+    await tester.tap(find.text('Cancelar'));
+    await tester.pumpAndSettle();
+
+    expect((await rowOf('a-now'))!.enabled, isTrue);
+    expect(await db.select(db.pendingChangeTable).get(), isEmpty);
+    expect(find.text('Vigente'), findsOneWidget);
+    await unmount(tester);
+  });
+
+  testWidgets('delete on confirm disables a synced agreement and hides it', (
+    tester,
+  ) async {
+    await insert('a-now', 1200, '2020-03-01', serverId: 2);
+    await pumpTab(tester);
+
+    await openActions(tester, 'Eliminar');
+    await tester.tap(
+      find.descendant(
+        of: find.byType(AlertDialog),
+        matching: find.text('Eliminar'),
+      ),
+    );
+    await tester.pumpAndSettle();
+
+    expect((await rowOf('a-now'))!.enabled, isFalse);
+    expect(find.text('Acuerdo eliminado'), findsOneWidget);
+    expect(find.text('Sin acuerdos'), findsOneWidget);
+    await unmount(tester);
+  });
+
+  testWidgets('delete on confirm removes an unsynced agreement', (
+    tester,
+  ) async {
+    await insert('a-next', 1300, '2999-01-01');
+    await pumpTab(tester);
+
+    await openActions(tester, 'Eliminar');
+    await tester.tap(
+      find.descendant(
+        of: find.byType(AlertDialog),
+        matching: find.text('Eliminar'),
+      ),
+    );
+    await tester.pumpAndSettle();
+
+    expect(await rowOf('a-next'), isNull);
+    expect(find.text('Sin acuerdos'), findsOneWidget);
     await unmount(tester);
   });
 }

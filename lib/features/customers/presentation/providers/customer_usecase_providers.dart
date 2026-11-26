@@ -1,10 +1,13 @@
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:app/core/providers/clock_provider.dart';
 import 'package:app/core/usecases/drift_transaction_runner.dart';
 import 'package:app/features/customers/data/repositories/drift.customer_agreement.repository.dart';
 import 'package:app/features/customers/domain/usecases/add_address.usecase.dart';
 import 'package:app/features/customers/domain/usecases/add_preference.usecase.dart';
 import 'package:app/features/customers/domain/usecases/create.customer.usecase.dart';
 import 'package:app/features/customers/domain/usecases/create_customer_agreement.usecase.dart';
+import 'package:app/features/customers/domain/usecases/delete_customer_agreement.usecase.dart';
+import 'package:app/features/customers/domain/usecases/edit_customer_agreement.usecase.dart';
 import 'package:app/features/customers/domain/usecases/disable_address.usecase.dart';
 import 'package:app/features/customers/domain/usecases/disable_customer.usecase.dart';
 import 'package:app/features/customers/domain/usecases/disable_preference.usecase.dart';
@@ -44,6 +47,24 @@ final createCustomerAgreementUseCaseProvider =
         transaction: ref.watch(transactionRunnerProvider),
       ),
     );
+
+final editCustomerAgreementUseCaseProvider =
+    Provider<EditCustomerAgreementUseCase>(
+      (ref) => EditCustomerAgreementUseCase(
+        agreementRepo: ref.watch(driftCustomerAgreementRepositoryProvider),
+        transaction: ref.watch(transactionRunnerProvider),
+        now: ref.watch(clockProvider),
+      ),
+    );
+
+/// Named without "customer": the app never names a customer delete, which
+/// the server rejects (guarded by a test).
+final deleteAgreementUseCaseProvider = Provider<DeleteCustomerAgreementUseCase>(
+  (ref) => DeleteCustomerAgreementUseCase(
+    agreementRepo: ref.watch(driftCustomerAgreementRepositoryProvider),
+    transaction: ref.watch(transactionRunnerProvider),
+  ),
+);
 
 final addAddressUseCaseProvider = Provider<AddAddressUseCase>(
   (ref) => AddAddressUseCase(
