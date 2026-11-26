@@ -89,7 +89,6 @@ class $CustomerTableTable extends CustomerTable
     true,
     type: DriftSqlType.string,
     requiredDuringInsert: false,
-    defaultConstraints: GeneratedColumn.constraintIsAlways('UNIQUE'),
   );
   static const VerificationMeta _isCoverMeta = const VerificationMeta(
     'isCover',
@@ -240,6 +239,9 @@ class CustomerTableData extends DataClass
   final int? serverId;
   final String customerId;
   final String name;
+
+  /// Not unique: customers may share a phone (a family, a shop with two
+  /// branches) and the server accepts it, so the device must store it too.
   final String? phone;
 
   /// Set by the server when the driver only gets this customer through

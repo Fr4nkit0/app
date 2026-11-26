@@ -66,12 +66,201 @@ void main() {
 
   tearDown(() => dir.deleteSync(recursive: true));
 
-  test('the schema version is 21', () {
+  test('the schema version is 22', () {
     final db = AppDatabase(NativeDatabase.memory());
     addTearDown(db.close);
 
-    expect(db.schemaVersion, 21);
+    expect(db.schemaVersion, 22);
   });
+
+  test('a version 21 database drops the unique phone rule and keeps its '
+      'customers, their related rows and unsent changes', () async {
+    // A v21 database: the current schema with customers.phone UNIQUE.
+    final v21 = AppDatabase(NativeDatabase(file));
+    final createSql =
+        (await v21
+                .customSelect(
+                  "SELECT sql FROM sqlite_master WHERE name = 'customers'",
+                )
+                .getSingle())
+            .read<String>('sql');
+    final uniqueSql = createSql.replaceFirst(
+      '"phone" TEXT NULL',
+      '"phone" TEXT NULL UNIQUE',
+    );
+    expect(uniqueSql, isNot(createSql), reason: 'v21 phone rule not applied');
+    await v21.customStatement('DROP TABLE customers');
+    await v21.customStatement(uniqueSql);
+    await v21.customStatement(
+      'INSERT INTO customers (customer_id, name, phone, server_id, is_cover) '
+      "VALUES ('c-1', 'Ana', '387555', 11, 1), ('c-2', 'Bea', NULL, NULL, 0)",
+    );
+    await v21.customStatement(
+      'INSERT INTO customer_addresses (address_id, customer_id, street) '
+      "VALUES ('a-1', 'c-1', 'Belgrano 100')",
+    );
+    await v21.customStatement(
+      'INSERT INTO pending_changes (entity, entity_id, action) '
+      "VALUES ('customer', 'c-2', 'insert')",
+    );
+    await v21.customStatement('PRAGMA user_version = 21');
+    await v21.close();
+
+    final db = AppDatabase(NativeDatabase(file));
+    addTearDown(db.close);
+
+    expect(await _userVersion(db), 22);
+    expect(
+      (await db.select(db.customerTable).get()).map(
+        (c) => (c.customerId, c.name, c.phone, c.serverId, c.isCover),
+      ),
+      unorderedEquals([
+        ('c-1', 'Ana', '387555', 11, true),
+        ('c-2', 'Bea', null, null, false),
+      ]),
+    );
+    expect(
+      (await db.select(db.customerAddressTable).get()).map(
+        (a) => (a.addressId, a.customerId),
+      ),
+      [('a-1', 'c-1')],
+    );
+    expect(
+      (await db.select(db.pendingChangeTable).get()).map((c) => c.entityId),
+      ['c-2'],
+    );
+    expect(await _columns(db, 'customers'), {
+      for (final c in db.customerTable.$columns) c.name,
+    });
+
+    await db.customStatement(
+      'INSERT INTO customers (customer_id, name, phone) '
+      "VALUES ('c-3', 'Caro', '387555')",
+    );
+    expect(
+      (await (db.select(
+        db.customerTable,
+      )..where((t) => t.phone.equals('387555'))).get()).map(
+        (c) => c.customerId,
+      ),
+      unorderedEquals(['c-1', 'c-3']),
+    );
+  });
+
+  for (final from in [18, 19, 20, 21]) {
+    for (final foreignKeys in [false, true]) {
+      test('a version $from database (foreign_keys=$foreignKeys) drops the '
+          'unique phone rule and keeps customers and their dependents', () async {
+        final old = AppDatabase(NativeDatabase(file));
+        final createSql =
+            (await old
+                    .customSelect(
+                      "SELECT sql FROM sqlite_master WHERE name = 'customers'",
+                    )
+                    .getSingle())
+                .read<String>('sql');
+        await old.customStatement('DROP TABLE customers');
+        await old.customStatement(
+          createSql.replaceFirst(
+            '"phone" TEXT NULL',
+            '"phone" TEXT NULL UNIQUE',
+          ),
+        );
+        if (from <= 20) {
+          await old.customStatement('DROP TABLE route_container_loads');
+        }
+        if (from <= 19) {
+          await old.customStatement(
+            'ALTER TABLE route_stops DROP COLUMN position',
+          );
+        }
+        if (from == 18) {
+          await old.customStatement('DROP TABLE balance_corrections');
+        }
+        await old.customStatement(
+          'INSERT INTO customers (customer_id, name, phone, server_id, '
+          "is_cover) VALUES ('c-1', 'Ana', '387555', 11, 1), "
+          "('c-2', 'Bea', NULL, NULL, 0), ('c-3', 'Caro', '', 12, 0)",
+        );
+        await old.customStatement(
+          'INSERT INTO customer_addresses (address_id, customer_id, street) '
+          "VALUES ('a-1', 'c-1', 'X')",
+        );
+        await old.customStatement(
+          "INSERT INTO routes (route_id, route_date) VALUES ('r-1', '2026-11-25')",
+        );
+        await old.customStatement(
+          'INSERT INTO route_stops (route_stop_id, route_id, customer_id, '
+          "sequence, scheduled_at) VALUES ('s-1', 'r-1', 'c-1', 1, 0)",
+        );
+        await old.customStatement(
+          'INSERT INTO pending_changes (entity, entity_id, action) '
+          "VALUES ('customer', 'c-2', 'insert')",
+        );
+        await old.customStatement('PRAGMA user_version = $from');
+        Future<List<Map<String, Object?>>> customers(AppDatabase d) async => [
+          for (final r
+              in await d
+                  .customSelect('SELECT * FROM customers ORDER BY customer_id')
+                  .get())
+            r.data,
+        ];
+        final before = await customers(old);
+        await old.close();
+
+        final db = AppDatabase(
+          NativeDatabase(
+            file,
+            setup: foreignKeys
+                ? (raw) => raw.execute('PRAGMA foreign_keys = ON')
+                : null,
+          ),
+        );
+        addTearDown(db.close);
+
+        expect(await _userVersion(db), 22);
+        expect(await customers(db), before);
+        expect(
+          (await db
+                  .customSelect(
+                    "SELECT sql FROM sqlite_master WHERE name = 'customers'",
+                  )
+                  .getSingle())
+              .read<String>('sql'),
+          createSql,
+        );
+        expect(
+          await db
+              .customSelect(
+                "SELECT name FROM sqlite_master "
+                "WHERE sql LIKE '%tmp_for_copy%'",
+              )
+              .get(),
+          isEmpty,
+        );
+        expect(
+          await db.customSelect('PRAGMA foreign_key_check').get(),
+          isEmpty,
+        );
+        expect(
+          (await db.select(db.customerAddressTable).get()).single.customerId,
+          'c-1',
+        );
+        expect(
+          (await db.select(db.routeStopTable).get()).single.routeStopId,
+          's-1',
+        );
+        expect(
+          (await db.select(db.pendingChangeTable).get()).single.entityId,
+          'c-2',
+        );
+        await db.customStatement(
+          'INSERT INTO customers (customer_id, name, phone) '
+          "VALUES ('c-9', 'Zoe', '387555')",
+        );
+      });
+    }
+  }
 
   test('a version 18 database gains balance_corrections and keeps its '
       'data and unsent changes', () async {
@@ -101,7 +290,7 @@ void main() {
     final db = AppDatabase(NativeDatabase(file));
     addTearDown(db.close);
 
-    expect(await _userVersion(db), 21);
+    expect(await _userVersion(db), 22);
     expect((await db.select(db.customerTable).get()).map((c) => c.customerId), [
       'c-1',
     ]);
@@ -148,7 +337,7 @@ void main() {
     final db = AppDatabase(NativeDatabase(file));
     addTearDown(db.close);
 
-    expect(await _userVersion(db), 21);
+    expect(await _userVersion(db), 22);
     final stops = await db.select(db.routeStopTable).get();
     expect(stops.map((s) => (s.routeStopId, s.sequence, s.position)), [
       ('s-1', 3, null),
@@ -187,7 +376,7 @@ void main() {
     final db = AppDatabase(NativeDatabase(file));
     addTearDown(db.close);
 
-    expect(await _userVersion(db), 21);
+    expect(await _userVersion(db), 22);
     expect(
       (await db.select(db.routeStopTable).get()).map(
         (s) => (s.routeStopId, s.sequence, s.position),
@@ -210,7 +399,7 @@ void main() {
       final db = AppDatabase(NativeDatabase(file));
       addTearDown(db.close);
 
-      expect(await _userVersion(db), 21);
+      expect(await _userVersion(db), 22);
       for (final table in db.allTables) {
         expect(await _columns(db, table.actualTableName), {
           for (final c in table.$columns) c.name,
@@ -241,7 +430,7 @@ void main() {
         for (final c in table.$columns) c.name,
       }, reason: table.actualTableName);
     }
-    expect(await _userVersion(db), 21);
+    expect(await _userVersion(db), 22);
   });
 
   test('reopening a rebuilt database keeps the data written after the '
@@ -259,6 +448,6 @@ void main() {
 
     final customers = await second.select(second.customerTable).get();
     expect(customers.map((c) => c.customerId), ['c-2']);
-    expect(await _userVersion(second), 21);
+    expect(await _userVersion(second), 22);
   });
 }
