@@ -96,10 +96,15 @@ class CustomerApplier implements PullApplier {
       ? Value(c['is_cover'] == true)
       : const Value.absent();
 
+  /// A missing, empty or blank phone is stored as null; any other value is
+  /// kept as sent.
+  static String? phoneOf(String? phone) =>
+      phone == null || phone.trim().isEmpty ? null : phone;
+
   /// The local columns of the server customer row [c], server id included.
   static CustomerTableCompanion fieldsOf(Json c) => CustomerTableCompanion(
     name: Value(c['name'] as String),
-    phone: Value(c['phone_number'] as String?),
+    phone: Value(phoneOf(c['phone_number'] as String?)),
     enabled: enabledOf(c),
     serverId: Value(c['id'] as int),
   );
