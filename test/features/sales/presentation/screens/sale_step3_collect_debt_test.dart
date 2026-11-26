@@ -201,6 +201,9 @@ void main() {
       expect(find.textContaining('Deuda restante'), findsNothing);
       expect(confirmEnabled(tester), isTrue);
       await tapConfirm(tester);
+      // S6: leaving credit asks first; keep it on purpose.
+      await tester.tap(find.widgetWithText(FilledButton, 'Dejar a favor'));
+      await tester.pumpAndSettle(const Duration(seconds: 4));
       expect(useCase.calls.single.debtAmount, 3500);
     });
 

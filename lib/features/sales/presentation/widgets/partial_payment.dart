@@ -44,10 +44,48 @@ class UnpaidAmountNote extends StatelessWidget {
   }
 }
 
+/// "Debe $32.500 · si te da más, el resto va a la deuda": the customer's
+/// previous debt next to the money received (S6), so the driver sees what
+/// an amount above the sale pays.
+class OwedDebtNote extends StatelessWidget {
+  const OwedDebtNote({super.key, required this.owed});
+
+  /// The customer's previous debt; above 0.
+  final double owed;
+
+  @override
+  Widget build(BuildContext context) {
+    final tokens = Theme.of(context).extension<SalesTokens>()!;
+    final color = context.marilin.textMuted;
+    return Padding(
+      padding: const EdgeInsets.only(top: 6, bottom: 4),
+      child: Row(
+        children: [
+          Icon(Icons.account_balance_wallet_outlined, size: 16, color: color),
+          const SizedBox(width: 6),
+          Expanded(
+            child: Text(
+              'Debe ${formatMoney(owed)} · si te da más, el resto va a la deuda',
+              style: TextStyle(
+                fontWeight: FontWeight.w600,
+                fontSize: 13,
+                color: color,
+                fontFeatures: tokens.tabularStyle.fontFeatures,
+              ),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
 /// "Monto recibido": what the customer hands over on a cash or transfer
 /// sale, starting at [initialAmount] (the sale total). Below it shows why
 /// the amount cannot be received ([errorText]) or, when [unpaid] is above
-/// 0, what the customer is left owing.
+/// 0, what the customer is left owing. When the customer owes [owedDebt],
+/// it shows that debt and a «Cobrar toda la deuda» shortcut that fills
+/// [payoffAmount] (the sale plus the whole debt).
 ///
 /// Presentational: the caller owns the draft and the validation. Give it a
 /// new key to start again from [initialAmount].
@@ -58,9 +96,17 @@ class CollectedAmountField extends StatefulWidget {
     required this.unpaid,
     required this.onChanged,
     this.errorText,
+    this.owedDebt = 0,
+    this.payoffAmount = 0,
   });
 
   final double initialAmount;
+
+  /// The customer's previous debt; no debt line or shortcut while it is 0.
+  final double owedDebt;
+
+  /// What «Cobrar toda la deuda» fills: the sale plus [owedDebt].
+  final double payoffAmount;
 
   /// What the customer is left owing; nothing is shown while it is 0.
   final double unpaid;
@@ -88,6 +134,11 @@ class _CollectedAmountFieldState extends State<CollectedAmountField> {
         inProgress ? text.substring(0, text.length - 1) : text,
       ),
     );
+  }
+
+  void _collectAllDebt() {
+    _controller.text = editableAmount(widget.payoffAmount);
+    widget.onChanged(widget.payoffAmount);
   }
 
   @override
@@ -131,6 +182,14 @@ class _CollectedAmountFieldState extends State<CollectedAmountField> {
           )
         else if (widget.unpaid > 0)
           UnpaidAmountNote(unpaid: widget.unpaid),
+        if (widget.owedDebt > 0) ...[
+          OwedDebtNote(owed: widget.owedDebt),
+          ActionChip(
+            avatar: const Icon(Icons.price_check_rounded, size: 18),
+            label: const Text('Cobrar toda la deuda'),
+            onPressed: _collectAllDebt,
+          ),
+        ],
       ],
     );
   }
@@ -153,6 +212,43 @@ Future<bool> confirmPartialPayment(BuildContext context, double unpaid) async {
         FilledButton(
           onPressed: () => Navigator.of(dialogContext).pop(true),
           child: const Text('Confirmar'),
+        ),
+      ],
+    ),
+  );
+  return confirmed ?? false;
+}
+
+/// Asks before saving money that leaves the customer with credit in their
+/// favor (S6): [received] goes beyond [covered], the sale plus the whole
+/// previous debt ([hasDebt]), and the customer is left with [credit].
+/// Returns true when the driver keeps the credit on purpose.
+Future<bool> confirmLeavingCredit(
+  BuildContext context, {
+  required double received,
+  required double covered,
+  required bool hasDebt,
+  required double credit,
+}) async {
+  final target = hasDebt
+      ? 'la venta más la deuda suman ${formatMoney(covered)}'
+      : 'la venta suma ${formatMoney(covered)}';
+  final confirmed = await showDialog<bool>(
+    context: context,
+    builder: (dialogContext) => AlertDialog(
+      title: const Text('¿Dejar saldo a favor?'),
+      content: Text(
+        'Recibiste ${formatMoney(received)} y $target. '
+        'Le quedan ${formatMoney(credit)} a favor al cliente.',
+      ),
+      actions: [
+        TextButton(
+          onPressed: () => Navigator.of(dialogContext).pop(false),
+          child: const Text('Corregir monto'),
+        ),
+        FilledButton(
+          onPressed: () => Navigator.of(dialogContext).pop(true),
+          child: const Text('Dejar a favor'),
         ),
       ],
     ),

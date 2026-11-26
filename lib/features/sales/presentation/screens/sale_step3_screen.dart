@@ -86,9 +86,15 @@ class SaleStep3Screen extends ConsumerWidget {
                                 const SizedBox(height: 10),
                                 _PaymentGrid(draft: draft),
                                 const SizedBox(height: 12),
-                                _CollectedAmountSection(draft: draft),
+                                _CollectedAmountSection(
+                                  draft: draft,
+                                  balance: balance,
+                                ),
                                 // Progressive-disclosure mixed amounts
-                                _MixedAmountsSection(draft: draft),
+                                _MixedAmountsSection(
+                                  draft: draft,
+                                  balance: balance,
+                                ),
                                 // Live remaining indicator
                                 if (draft.paymentMethod == PaymentMethod.mixed)
                                   _RemainingIndicator(draft: draft),
@@ -272,11 +278,15 @@ class _TotalBlock extends StatelessWidget {
 // ─── "Monto recibido" for cash and transfer (S2) ──────────────────────────────
 
 /// What the customer hands over: below the total the rest stays as debt,
-/// above it the rest pays previous debt and then stays as credit.
+/// above it the rest pays previous debt and then stays as credit. A
+/// customer who owes sees the debt and can collect all of it (S6).
 class _CollectedAmountSection extends ConsumerWidget {
-  const _CollectedAmountSection({required this.draft});
+  const _CollectedAmountSection({required this.draft, required this.balance});
 
   final SaleDraftState draft;
+
+  /// The customer account before this sale; negative is credit.
+  final double balance;
 
   String? get _error =>
       draft.collectedAmount <= 0 ? 'Ingresá un monto mayor a \$0' : null;
@@ -287,6 +297,7 @@ class _CollectedAmountSection extends ConsumerWidget {
     final collects =
         method == PaymentMethod.cash || method == PaymentMethod.transfer;
     if (!collects) return const SizedBox.shrink();
+    final owed = balance > 0 ? balance : 0.0;
     return Padding(
       padding: const EdgeInsets.only(bottom: 12),
       child: CollectedAmountField(
@@ -295,6 +306,8 @@ class _CollectedAmountSection extends ConsumerWidget {
         initialAmount: draft.collectedAmount,
         unpaid: draft.unpaidAmount,
         errorText: _error,
+        owedDebt: owed,
+        payoffAmount: draft.total + owed,
         onChanged: ref.read(saleDraftProvider.notifier).setCollectedAmount,
       ),
     );
@@ -448,9 +461,12 @@ class _PaymentCard extends StatelessWidget {
 // ─── Progressive-disclosure mixed amounts (AnimatedSize ~200ms easeOut) ───────
 
 class _MixedAmountsSection extends ConsumerStatefulWidget {
-  const _MixedAmountsSection({required this.draft});
+  const _MixedAmountsSection({required this.draft, required this.balance});
 
   final SaleDraftState draft;
+
+  /// The customer account before this sale; negative is credit.
+  final double balance;
 
   @override
   ConsumerState<_MixedAmountsSection> createState() =>
@@ -521,6 +537,8 @@ class _MixedAmountsSectionState extends ConsumerState<_MixedAmountsSection> {
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
                   _SectionLabel('MONTOS MIXTOS'),
+                  // What beyond the sale pays (S6).
+                  if (widget.balance > 0) OwedDebtNote(owed: widget.balance),
                   const SizedBox(height: 10),
                   Wrap(
                     spacing: 8,
@@ -716,6 +734,25 @@ class _FooterState extends ConsumerState<_Footer> {
                     return FilledButton(
                       onPressed: draft.canConfirm && !_busy
                           ? () async {
+                              // S6: money beyond the sale and the whole
+                              // debt asks first, it may be a typing error;
+                              // correcting stays here and saves nothing.
+                              final breakdown = draft.receivedBreakdown(
+                                widget.balance,
+                              );
+                              if (breakdown.credit > SaleDraftState.tolerance) {
+                                final owed = widget.balance > 0
+                                    ? widget.balance
+                                    : 0.0;
+                                final keep = await confirmLeavingCredit(
+                                  context,
+                                  received: breakdown.received,
+                                  covered: draft.total + owed,
+                                  hasDebt: owed > 0,
+                                  credit: -breakdown.balanceAfter,
+                                );
+                                if (!keep || !context.mounted) return;
+                              }
                               // S4: a partial sale asks first; cancelling
                               // stays on this step and saves nothing.
                               if (draft.isPartialPayment) {

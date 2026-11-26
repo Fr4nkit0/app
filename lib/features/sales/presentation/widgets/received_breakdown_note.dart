@@ -56,7 +56,8 @@ class ReceivedBreakdownNote extends StatelessWidget {
           style: TextStyle(
             fontSize: 14,
             fontWeight: FontWeight.w700,
-            color: after < 0 ? tokens.primary : muted,
+            // Credit is worth a second look: it may be a typing error (S6).
+            color: after < 0 ? context.marilin.warning : muted,
             fontFeatures: figures,
           ),
         ),
