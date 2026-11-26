@@ -286,6 +286,7 @@ void main() {
       ServerShadow.keyOf(PendingEntity.customer, id),
       ServerShadow.keyOf(PendingEntity.customerAddress, 'addr-$id'),
       ServerShadow.keyOf(PendingEntity.customerPreference, 'pref-$id'),
+      ServerShadow.keyOf(PendingEntity.customerAgreement, 'agr-$id'),
     ]) {
       await db
           .into(db.syncStateTable)
@@ -349,7 +350,8 @@ void main() {
         'SELECT COUNT(*) AS n FROM sync_state WHERE '
         "key IN ('removed_customer:$id', 'shadow:customer:$id', "
         "'shadow:customer_address:addr-$id', "
-        "'shadow:customer_preference:pref-$id')",
+        "'shadow:customer_preference:pref-$id', "
+        "'shadow:customer_agreement:agr-$id')",
       ),
     };
   }
