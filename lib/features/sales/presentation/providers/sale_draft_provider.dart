@@ -2,6 +2,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:app/features/inventory/domain/custody.dart';
 import 'package:uuid/uuid.dart';
 import 'package:app/features/customers/domain/models/customer.dart';
+import 'package:app/features/products/domain/models/product.dart';
 import 'package:app/features/sales/domain/models/payment_method.dart';
 import 'package:app/features/sales/domain/models/sale.dart';
 import 'package:app/features/sales/domain/models/sale_draft_state.dart';
@@ -75,6 +76,52 @@ class SaleDraft extends Notifier<SaleDraftState> {
       returnedContainers: deliveredByContainerType(next.containerDeliveries),
     );
   }
+
+  /// Brings the lines to the customer's current prices: an agreement created
+  /// changed or deleted during the sale applies to what is already loaded.
+  /// A line left without a price (its agreement is gone and the product has
+  /// no list price) leaves the sale, since it cannot be sold; a line whose
+  /// product is not in [products] stays as it was.
+  void repriceItems(List<Product> products) {
+    final current = {for (final p in products) p.id: p};
+    final items = <SaleItem>[];
+    var repriced = false;
+    for (final item in state.items) {
+      final product = current[item.product.id];
+      if (product == null || !_pricedDifferently(item.product, product)) {
+        items.add(item);
+        continue;
+      }
+      repriced = true;
+      if (product.hasPrice) {
+        items.add(SaleItem(product: product, quantity: item.quantity));
+      }
+    }
+    if (!repriced) return;
+    final removed = items.length != state.items.length;
+    // A cash or transfer amount starts again at the new total.
+    final singleMethod =
+        state.paymentMethod == PaymentMethod.cash ||
+        state.paymentMethod == PaymentMethod.transfer;
+    final next = state.copyWith(
+      items: items,
+      clearCashAmount: singleMethod,
+      clearTransferAmount: singleMethod,
+    );
+    // Custody rule (see [setQuantity]) only when a delivery went away.
+    state = removed
+        ? next.copyWith(
+            returnedContainers: deliveredByContainerType(
+              next.containerDeliveries,
+            ),
+          )
+        : next;
+  }
+
+  static bool _pricedDifferently(Product a, Product b) =>
+      a.price != b.price ||
+      a.agreementId != b.agreementId ||
+      a.agreementUuid != b.agreementUuid;
 
   void setReturnedQuantity(String type, int quantity) {
     if (quantity < 0) return;

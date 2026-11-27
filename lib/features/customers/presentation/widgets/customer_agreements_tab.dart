@@ -27,32 +27,8 @@ class CustomerAgreementsTab extends ConsumerWidget {
       case AgreementAction.edit:
         await showNewAgreementSheet(context, customerId, initial: agreement);
       case AgreementAction.delete:
-        await _delete(context, ref, agreement);
+        await deleteAgreement(context, ref, agreement);
     }
-  }
-
-  Future<void> _delete(
-    BuildContext context,
-    WidgetRef ref,
-    CustomerAgreement agreement,
-  ) async {
-    final confirmed = await confirmDeleteAgreement(
-      context,
-      productName: agreement.productName,
-    );
-    if (!confirmed || !context.mounted) return;
-    try {
-      await ref.read(deleteAgreementUseCaseProvider).execute(agreement.id);
-    } catch (e) {
-      if (!context.mounted) return;
-      TopToast.showError(
-        context,
-        failureMessage(e, fallback: 'No se eliminó el acuerdo. Reintentá.'),
-      );
-      return;
-    }
-    if (!context.mounted) return;
-    TopToast.showSuccess(context, 'Acuerdo eliminado');
   }
 
   @override
@@ -147,6 +123,32 @@ class _EmptyAgreements extends StatelessWidget {
       ),
     );
   }
+}
+
+/// Deletes [agreement] once the driver confirms, and tells the outcome in a
+/// toast.
+Future<void> deleteAgreement(
+  BuildContext context,
+  WidgetRef ref,
+  CustomerAgreement agreement,
+) async {
+  final confirmed = await confirmDeleteAgreement(
+    context,
+    productName: agreement.productName,
+  );
+  if (!confirmed || !context.mounted) return;
+  try {
+    await ref.read(deleteAgreementUseCaseProvider).execute(agreement.id);
+  } catch (e) {
+    if (!context.mounted) return;
+    TopToast.showError(
+      context,
+      failureMessage(e, fallback: 'No se eliminó el acuerdo. Reintentá.'),
+    );
+    return;
+  }
+  if (!context.mounted) return;
+  TopToast.showSuccess(context, 'Acuerdo eliminado');
 }
 
 /// Asks before deleting the agreement for [productName]. Returns true when
