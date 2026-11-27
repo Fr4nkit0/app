@@ -22,7 +22,7 @@ import '../../../../support/container_types.dart';
 import '../../../../support/real_fonts.dart';
 
 class _RecordingRegisterSale implements RegisterSaleUseCase {
-  final calls = <({Sale sale, double debtAmount})>[];
+  final calls = <({Sale sale, int debtAmount})>[];
   List<ContainerMovement>? movements;
 
   @override
@@ -30,7 +30,7 @@ class _RecordingRegisterSale implements RegisterSaleUseCase {
     Sale sale, {
     Payment? payment,
     List<ContainerMovement>? containerMovements,
-    double debtAmount = 0,
+    int debtAmount = 0,
   }) async {
     movements = containerMovements;
     calls.add((sale: sale, debtAmount: debtAmount));
@@ -84,7 +84,7 @@ void main() {
   Future<void> pumpScreen(
     WidgetTester tester, {
     required PaymentMethod method,
-    double debt = 0,
+    int debt = 0,
     String? containerType,
     List<CustomerContainerBalance> custody = const [],
   }) async {
@@ -154,7 +154,7 @@ void main() {
         await pumpScreen(tester, method: method);
 
         expect(collectedField, findsOneWidget, reason: method.name);
-        expect(textOf(tester, collectedField), '6500', reason: method.name);
+        expect(textOf(tester, collectedField), '6.500', reason: method.name);
         expect(find.textContaining('Queda debiendo'), findsNothing);
         expect(confirmEnabled(tester), isTrue, reason: method.name);
         expect(tester.takeException(), isNull, reason: method.name);
@@ -246,7 +246,7 @@ void main() {
 
       expect(find.byType(AlertDialog), findsNothing);
       expect(find.byType(SaleStep3Screen), findsOneWidget);
-      expect(textOf(tester, collectedField), '6000');
+      expect(textOf(tester, collectedField), '6.000');
       expect(useCase.calls, isEmpty);
     });
 

@@ -24,7 +24,7 @@ class BalanceApplier implements PullApplier {
       if (customerId == null) continue;
       await _account.reconcile(
         customerId,
-        toDouble(b['current_balance']),
+        toPesos(b['current_balance']),
         serverId: b['id'] as int,
         enabled: enabledOf(b),
       );
@@ -49,10 +49,7 @@ class BalanceApplier implements PullApplier {
   Future<void> reconcileCustomer(String customerId, Json customer) async {
     final balance = customer['balance'] as Json?;
     if (balance != null) {
-      await _account.reconcile(
-        customerId,
-        toDouble(balance['current_balance']),
-      );
+      await _account.reconcile(customerId, toPesos(balance['current_balance']));
     }
     final containerBalances = jsonList(customer['container_balances']);
     if (containerBalances.isEmpty) return;

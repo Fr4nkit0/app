@@ -14,7 +14,7 @@ import 'package:app/core/theme/sales_tokens.dart';
 Product _product({
   String id = 'p1',
   String name = 'Agua 20L',
-  double price = 1500,
+  int price = 1500,
 }) {
   return Product(id: id, name: name, unitLabel: 'bidón', price: price);
 }

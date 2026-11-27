@@ -28,10 +28,6 @@ class RegisterSaleUseCase {
   final InventoryRepository _inventoryRepo;
   final TransactionRunner _transaction;
 
-  /// The server rejects a sale whose total differs from its items by more
-  /// than this; such a sale would stay stuck in the outbox.
-  static const totalTolerance = 0.005;
-
   /// Records [sale], its settling payments and [containerMovements] (linked
   /// to the sale) in one unit of work. Throws [ValidationFailure] for a sale
   /// without items or whose total does not match its items.
@@ -59,13 +55,14 @@ class RegisterSaleUseCase {
     Sale sale, {
     Payment? payment,
     List<ContainerMovement>? containerMovements,
-    double debtAmount = 0,
+    int debtAmount = 0,
   }) async {
     if (sale.items.isEmpty) {
       throw const ValidationFailure('La venta no tiene productos.');
     }
-    final itemsTotal = sale.items.fold<double>(0, (sum, i) => sum + i.subtotal);
-    if ((sale.total - itemsTotal).abs() > totalTolerance) {
+    final itemsTotal = sale.items.fold<int>(0, (sum, i) => sum + i.subtotal);
+    // The server rejects such a sale; it would stay stuck in the outbox.
+    if (sale.total != itemsTotal) {
       throw const ValidationFailure(
         'El total de la venta no coincide con sus productos.',
       );
@@ -95,10 +92,6 @@ class RegisterSaleUseCase {
     });
   }
 
-  /// Largest amount a sale paid on the spot may collect above its total,
-  /// like the draft's.
-  static const collectedTolerance = 0.01;
-
   /// Without previous debt, a sale paid on the spot collects more than 0 and
   /// at most its total; what it leaves unpaid stays on the customer's
   /// account (a partial payment). Throws [ValidationFailure] otherwise.
@@ -111,7 +104,7 @@ class RegisterSaleUseCase {
     if (collected.total <= 0) {
       throw const ValidationFailure('Ingresá un monto cobrado mayor a \$0.');
     }
-    if (collected.total > sale.total + collectedTolerance) {
+    if (collected.total > sale.total) {
       throw const ValidationFailure(
         'Lo cobrado no puede superar el total de la venta.',
       );
@@ -127,11 +120,11 @@ class RegisterSaleUseCase {
   /// sale and of [debtAmount] of previous debt. Previous debt is only
   /// collected with a sale paid in full: a partial cash or transfer sale
   /// throws [ValidationFailure].
-  static (Sale, List<Payment>) _withDebt(Sale sale, double debtAmount) {
+  static (Sale, List<Payment>) _withDebt(Sale sale, int debtAmount) {
     final isPartial =
         (sale.paymentMethod == PaymentMethod.cash ||
             sale.paymentMethod == PaymentMethod.transfer) &&
-        sale.settlement.total < sale.total - totalTolerance;
+        sale.settlement.total < sale.total;
     if (isPartial) {
       throw const ValidationFailure(
         'Para cobrar deuda anterior, cobrá la venta completa.',

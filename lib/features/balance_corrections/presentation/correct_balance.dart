@@ -87,7 +87,7 @@ class _BalanceCorrectionHost extends ConsumerWidget {
     WidgetRef ref, {
     required BalanceTarget target,
     required String? containerType,
-    required num counted,
+    required int counted,
     required String reason,
   }) async {
     try {

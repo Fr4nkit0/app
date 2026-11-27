@@ -12,8 +12,10 @@ void main() {
       expect(formatMoney(12500), '\$12.500');
       expect(formatMoney(1234567), '\$1.234.567');
     });
-    test('uses two decimals with a comma for non-whole amounts', () {
-      expect(formatMoney(12500.5), '\$12.500,50');
+    test('takes whole pesos and never prints decimals', () {
+      const String Function(int) format = formatMoney;
+      expect(format(12500), '\$12.500');
+      expect(format(1), '\$1');
     });
     test('keeps the sign before the symbol for negative amounts', () {
       expect(formatMoney(-1500), '-\$1.500');
@@ -28,7 +30,8 @@ void main() {
       expect(formatAccountBalance(0), 'Al día');
     });
     test('a credit reads "Saldo a favor" without a sign', () {
-      expect(formatAccountBalance(-200.5), r'Saldo a favor: $200,50');
+      const String Function(int) format = formatAccountBalance;
+      expect(format(-200), r'Saldo a favor: $200');
     });
   });
 }

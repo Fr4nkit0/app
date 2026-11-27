@@ -442,7 +442,7 @@ class DriftCustomerRepository implements CustomerRepository {
         name: row.name,
         number: row.serverId,
         phone: row.phone,
-        debtAmount: balanceMap[cid] ?? 0.0,
+        debtAmount: balanceMap[cid] ?? 0,
         addresses: (addrMap[cid] ?? [])
             .map(
               (a) => CustomerAddress(

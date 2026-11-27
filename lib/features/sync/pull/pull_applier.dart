@@ -42,5 +42,9 @@ double toDouble(Object? v) =>
 
 double? toNullableDouble(Object? v) => v == null ? null : toDouble(v);
 
+/// Money from the server (a number or a decimal string such as "1500.00")
+/// in whole pesos, rounded to the nearest one: the app keeps no cents.
+int toPesos(Object? v) => toDouble(v).round();
+
 String dateOnly(DateTime d) =>
     '${d.year.toString().padLeft(4, '0')}-${d.month.toString().padLeft(2, '0')}-${d.day.toString().padLeft(2, '0')}';

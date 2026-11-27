@@ -11,7 +11,7 @@ class HistoryEntry {
   final String? customerId;
   final String customerName;
   final DateTime date;
-  final double? amount;
+  final int? amount;
   final String description;
   final PendingStatus status;
 

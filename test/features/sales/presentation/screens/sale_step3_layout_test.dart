@@ -25,7 +25,7 @@ class _PreparedDraft extends SaleDraft {
   SaleDraftState build() => _initial;
 }
 
-SaleDraftState _draft({double debt = 0}) => SaleDraftState(
+SaleDraftState _draft({int debt = 0}) => SaleDraftState(
   customer: Customer(
     id: 'c-1',
     name: 'Kiosco Norte',
@@ -163,12 +163,12 @@ void main() {
 
     await tester.tap(find.text('Todo en efectivo'));
     await tester.pump();
-    expect(textOf('Efectivo'), '3000');
+    expect(textOf('Efectivo'), '3.000');
     expect(textOf('Transferencia'), '0');
 
     await tester.tap(find.text('Todo por transferencia'));
     await tester.pump();
     expect(textOf('Efectivo'), '0');
-    expect(textOf('Transferencia'), '3000');
+    expect(textOf('Transferencia'), '3.000');
   });
 }

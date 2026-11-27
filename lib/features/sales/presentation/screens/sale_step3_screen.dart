@@ -34,7 +34,7 @@ class SaleStep3Screen extends ConsumerWidget {
     // until it loads.
     final customer = draft.customer;
     final balance = customer == null
-        ? 0.0
+        ? 0
         : ref.watch(customerBalanceProvider(customer.id)).value ??
               customer.debtAmount;
 
@@ -222,7 +222,7 @@ class _TotalBlock extends StatelessWidget {
   final SaleDraftState draft;
 
   /// The customer account before this sale; negative is credit.
-  final double balance;
+  final int balance;
 
   @override
   Widget build(BuildContext context) {
@@ -286,7 +286,7 @@ class _CollectedAmountSection extends ConsumerWidget {
   final SaleDraftState draft;
 
   /// The customer account before this sale; negative is credit.
-  final double balance;
+  final int balance;
 
   String? get _error =>
       draft.collectedAmount <= 0 ? 'Ingresá un monto mayor a \$0' : null;
@@ -297,7 +297,7 @@ class _CollectedAmountSection extends ConsumerWidget {
     final collects =
         method == PaymentMethod.cash || method == PaymentMethod.transfer;
     if (!collects) return const SizedBox.shrink();
-    final owed = balance > 0 ? balance : 0.0;
+    final owed = balance > 0 ? balance : 0;
     return Padding(
       padding: const EdgeInsets.only(bottom: 12),
       child: CollectedAmountField(
@@ -466,7 +466,7 @@ class _MixedAmountsSection extends ConsumerStatefulWidget {
   final SaleDraftState draft;
 
   /// The customer account before this sale; negative is credit.
-  final double balance;
+  final int balance;
 
   @override
   ConsumerState<_MixedAmountsSection> createState() =>
@@ -593,7 +593,7 @@ class _RemainingIndicator extends StatelessWidget {
     final tokens = Theme.of(context).extension<SalesTokens>()!;
     final remaining = draft.remaining;
     // Beyond the total is covered too: the rest pays previous debt.
-    final isCovered = remaining <= SaleDraftState.tolerance;
+    final isCovered = remaining <= 0;
 
     return Padding(
       padding: const EdgeInsets.only(top: 4, bottom: 8),
@@ -648,7 +648,7 @@ class _Footer extends ConsumerStatefulWidget {
   final SaleDraftState draft;
 
   /// The customer account before this sale; negative is credit.
-  final double balance;
+  final int balance;
 
   @override
   ConsumerState<_Footer> createState() => _FooterState();
@@ -740,10 +740,10 @@ class _FooterState extends ConsumerState<_Footer> {
                               final breakdown = draft.receivedBreakdown(
                                 widget.balance,
                               );
-                              if (breakdown.credit > SaleDraftState.tolerance) {
+                              if (breakdown.credit > 0) {
                                 final owed = widget.balance > 0
                                     ? widget.balance
-                                    : 0.0;
+                                    : 0;
                                 final keep = await confirmLeavingCredit(
                                   context,
                                   received: breakdown.received,

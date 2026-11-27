@@ -216,7 +216,7 @@ void main() {
     await _settle(tester);
 
     expect(find.byKey(const Key('agreement_product')), findsOneWidget);
-    expect(find.widgetWithText(TextFormField, '5000'), findsOneWidget);
+    expect(find.widgetWithText(TextFormField, '5.000'), findsOneWidget);
     await unmount(tester);
   });
 

@@ -111,7 +111,7 @@ class CreateCustomerUseCase {
           CorrectBalanceUseCase.missingContainerType,
         );
       }
-      if (count < 0 || count != count.roundToDouble()) {
+      if (count < 0) {
         throw const ValidationFailure(CorrectBalanceUseCase.invalidContainers);
       }
     }
@@ -127,7 +127,7 @@ class CreateCustomerUseCase {
     final at = _now();
     BalanceCorrection correction(
       BalanceTarget target,
-      double counted, [
+      int counted, [
       String? containerType,
     ]) => BalanceCorrection(
       id: _newId(),
@@ -140,12 +140,10 @@ class CreateCustomerUseCase {
       correctedAt: at,
     );
     return [
-      if (opening.debt > 0)
-        correction(BalanceTarget.debt, (opening.debt * 100).round() / 100),
+      if (opening.debt > 0) correction(BalanceTarget.debt, opening.debt),
       for (final MapEntry(key: code, value: count)
           in opening.containers.entries)
-        if (count > 0)
-          correction(BalanceTarget.containers, count.toDouble(), code),
+        if (count > 0) correction(BalanceTarget.containers, count, code),
     ];
   }
 

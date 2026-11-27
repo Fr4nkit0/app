@@ -16,7 +16,7 @@ abstract class PaymentRepository {
   /// their pending changes; run it inside the use case's unit of work.
   Future<void> recordPayment(Payment payment);
   Future<void> recordPayments(List<Payment> payments);
-  Stream<double> watchCustomerBalance(String customerId);
+  Stream<int> watchCustomerBalance(String customerId);
   Future<List<Payment>> getVisitPayments(String visitId);
   Stream<List<Payment>> watchVisitPayments(String visitId);
   Future<List<CustomerAccountEntry>> getCustomerLedger(String customerId);
@@ -67,7 +67,7 @@ class DriftPaymentRepository implements PaymentRepository {
       final customerId = entry.key;
       final customerPayments = entry.value;
 
-      double totalAmount = 0.0;
+      int totalAmount = 0;
       String? lastEntryId;
 
       for (final payment in customerPayments) {
@@ -132,7 +132,7 @@ class DriftPaymentRepository implements PaymentRepository {
   }
 
   @override
-  Stream<double> watchCustomerBalance(String customerId) {
+  Stream<int> watchCustomerBalance(String customerId) {
     return _account.watchBalance(customerId);
   }
 

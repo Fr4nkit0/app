@@ -27,7 +27,9 @@ class VisitTable extends Table with Timestamps {
   )();
   late final arrived_at = dateTime()();
   late final observations = text().nullable()();
-  late final amountCollected = real().withDefault(const Constant(0))();
+
+  /// Whole pesos.
+  late final amountCollected = integer().withDefault(const Constant(0))();
 
   @override
   Set<Column<Object>> get primaryKey => {visitId};

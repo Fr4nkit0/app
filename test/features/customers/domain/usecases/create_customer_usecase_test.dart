@@ -228,7 +228,7 @@ void main() {
       await useCase().execute(
         customer(),
         opening: const OpeningBalance(
-          debt: 1500.5,
+          debt: 1500,
           containers: {'B20': 2, 'SODA': 1},
         ),
       );
@@ -249,7 +249,7 @@ void main() {
             ),
         ],
         [
-          ('corr-1', 'cust-1', 'debt', null, 1500.5),
+          ('corr-1', 'cust-1', 'debt', null, 1500),
           ('corr-2', 'cust-1', 'containers', 'B20', 2.0),
           ('corr-3', 'cust-1', 'containers', 'SODA', 1.0),
         ],
@@ -263,7 +263,7 @@ void main() {
       }
 
       final shown = DriftBalanceCorrectionRepository(db);
-      expect(await shown.shownBalance('cust-1', BalanceTarget.debt), 1500.5);
+      expect(await shown.shownBalance('cust-1', BalanceTarget.debt), 1500);
       expect(
         await shown.shownBalance(
           'cust-1',
@@ -299,7 +299,7 @@ void main() {
       final payload = jsonDecode(queued[2].payload!) as Map<String, dynamic>;
       expect(payload['customerId'], 'cust-1');
       expect(payload['seenBalance'], 0);
-      expect(payload['counted'], 1500.5);
+      expect(payload['counted'], 1500);
       expect(payload['reason'], 'Saldo inicial al dar de alta');
     });
 
@@ -348,11 +348,6 @@ void main() {
       (
         'negative containers',
         const OpeningBalance(containers: {'B20': -1}),
-        CorrectBalanceUseCase.invalidContainers,
-      ),
-      (
-        'a fraction of a container',
-        const OpeningBalance(containers: {'B20': 1.5}),
         CorrectBalanceUseCase.invalidContainers,
       ),
     ]) {

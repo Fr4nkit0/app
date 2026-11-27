@@ -3,19 +3,18 @@ import 'package:flutter/material.dart';
 import 'package:app/core/theme/marilin_tokens.dart';
 import 'package:app/core/theme/sales_tokens.dart';
 import 'package:app/core/utils/money_formatter.dart';
+import 'package:app/core/utils/money_input.dart';
 import 'package:app/features/payments/presentation/widgets/amount_field.dart';
 
-/// [amount] as the driver would type it: no decimals when whole.
-String editableAmount(double amount) => amount == amount.roundToDouble()
-    ? amount.toStringAsFixed(0)
-    : amount.toStringAsFixed(2);
+/// [amount] as the driver would type it: thousands grouped with dots.
+String editableAmount(int amount) => formatMoneyInput(amount);
 
 /// "Queda debiendo $X": what the customer is left owing from a sale paid
 /// in part on the spot.
 class UnpaidAmountNote extends StatelessWidget {
   const UnpaidAmountNote({super.key, required this.unpaid});
 
-  final double unpaid;
+  final int unpaid;
 
   @override
   Widget build(BuildContext context) {
@@ -51,7 +50,7 @@ class OwedDebtNote extends StatelessWidget {
   const OwedDebtNote({super.key, required this.owed});
 
   /// The customer's previous debt; above 0.
-  final double owed;
+  final int owed;
 
   @override
   Widget build(BuildContext context) {
@@ -100,22 +99,22 @@ class CollectedAmountField extends StatefulWidget {
     this.payoffAmount = 0,
   });
 
-  final double initialAmount;
+  final int initialAmount;
 
   /// The customer's previous debt; no debt line or shortcut while it is 0.
-  final double owedDebt;
+  final int owedDebt;
 
   /// What «Cobrar toda la deuda» fills: the sale plus [owedDebt].
-  final double payoffAmount;
+  final int payoffAmount;
 
   /// What the customer is left owing; nothing is shown while it is 0.
-  final double unpaid;
+  final int unpaid;
 
   /// Why the typed amount cannot be received; null when it can.
   final String? errorText;
 
   /// The typed amount; null when it is not a valid number.
-  final ValueChanged<double?> onChanged;
+  final ValueChanged<int?> onChanged;
 
   @override
   State<CollectedAmountField> createState() => _CollectedAmountFieldState();
@@ -126,15 +125,8 @@ class _CollectedAmountFieldState extends State<CollectedAmountField> {
     text: editableAmount(widget.initialAmount),
   );
 
-  void _onChanged(String text) {
-    // A trailing separator is a number still being typed: "60." is 60.
-    final inProgress = text.endsWith(',') || text.endsWith('.');
-    widget.onChanged(
-      AmountField.parseAmount(
-        inProgress ? text.substring(0, text.length - 1) : text,
-      ),
-    );
-  }
+  void _onChanged(String text) =>
+      widget.onChanged(AmountField.parseAmount(text));
 
   void _collectAllDebt() {
     _controller.text = editableAmount(widget.payoffAmount);
@@ -197,7 +189,7 @@ class _CollectedAmountFieldState extends State<CollectedAmountField> {
 
 /// Asks before saving a sale that leaves the customer owing [unpaid].
 /// Returns true when the driver confirms it.
-Future<bool> confirmPartialPayment(BuildContext context, double unpaid) async {
+Future<bool> confirmPartialPayment(BuildContext context, int unpaid) async {
   final confirmed = await showDialog<bool>(
     context: context,
     builder: (dialogContext) => AlertDialog(
@@ -225,10 +217,10 @@ Future<bool> confirmPartialPayment(BuildContext context, double unpaid) async {
 /// Returns true when the driver keeps the credit on purpose.
 Future<bool> confirmLeavingCredit(
   BuildContext context, {
-  required double received,
-  required double covered,
+  required int received,
+  required int covered,
   required bool hasDebt,
-  required double credit,
+  required int credit,
 }) async {
   final target = hasDebt
       ? 'la venta más la deuda suman ${formatMoney(covered)}'

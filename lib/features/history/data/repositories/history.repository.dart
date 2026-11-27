@@ -670,6 +670,6 @@ class _Detail {
 
   /// Stop a visit was made at; only set for visits.
   final String? routeStopId;
-  final double? amount;
+  final int? amount;
   final String? description;
 }

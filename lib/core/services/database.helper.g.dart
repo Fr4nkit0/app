@@ -3964,11 +3964,11 @@ class $ProductTableTable extends ProductTable
   );
   static const VerificationMeta _priceMeta = const VerificationMeta('price');
   @override
-  late final GeneratedColumn<double> price = GeneratedColumn<double>(
+  late final GeneratedColumn<int> price = GeneratedColumn<int>(
     'price',
     aliasedName,
     false,
-    type: DriftSqlType.double,
+    type: DriftSqlType.int,
     requiredDuringInsert: true,
   );
   static const VerificationMeta _stockMeta = const VerificationMeta('stock');
@@ -4128,7 +4128,7 @@ class $ProductTableTable extends ProductTable
         data['${effectivePrefix}description'],
       ),
       price: attachedDatabase.typeMapping.read(
-        DriftSqlType.double,
+        DriftSqlType.int,
         data['${effectivePrefix}price'],
       )!,
       stock: attachedDatabase.typeMapping.read(
@@ -4157,7 +4157,9 @@ class ProductTableData extends DataClass
   final String productId;
   final String name;
   final String? description;
-  final double price;
+
+  /// Whole pesos.
+  final int price;
   final int stock;
 
   /// Server id of the product's container type (catalog `container_types`);
@@ -4189,7 +4191,7 @@ class ProductTableData extends DataClass
     if (!nullToAbsent || description != null) {
       map['description'] = Variable<String>(description);
     }
-    map['price'] = Variable<double>(price);
+    map['price'] = Variable<int>(price);
     map['stock'] = Variable<int>(stock);
     if (!nullToAbsent || containerTypeId != null) {
       map['container_type_id'] = Variable<int>(containerTypeId);
@@ -4231,7 +4233,7 @@ class ProductTableData extends DataClass
       productId: serializer.fromJson<String>(json['productId']),
       name: serializer.fromJson<String>(json['name']),
       description: serializer.fromJson<String?>(json['description']),
-      price: serializer.fromJson<double>(json['price']),
+      price: serializer.fromJson<int>(json['price']),
       stock: serializer.fromJson<int>(json['stock']),
       containerTypeId: serializer.fromJson<int?>(json['containerTypeId']),
     );
@@ -4247,7 +4249,7 @@ class ProductTableData extends DataClass
       'productId': serializer.toJson<String>(productId),
       'name': serializer.toJson<String>(name),
       'description': serializer.toJson<String?>(description),
-      'price': serializer.toJson<double>(price),
+      'price': serializer.toJson<int>(price),
       'stock': serializer.toJson<int>(stock),
       'containerTypeId': serializer.toJson<int?>(containerTypeId),
     };
@@ -4261,7 +4263,7 @@ class ProductTableData extends DataClass
     String? productId,
     String? name,
     Value<String?> description = const Value.absent(),
-    double? price,
+    int? price,
     int? stock,
     Value<int?> containerTypeId = const Value.absent(),
   }) => ProductTableData(
@@ -4353,7 +4355,7 @@ class ProductTableCompanion extends UpdateCompanion<ProductTableData> {
   final Value<String> productId;
   final Value<String> name;
   final Value<String?> description;
-  final Value<double> price;
+  final Value<int> price;
   final Value<int> stock;
   final Value<int?> containerTypeId;
   final Value<int> rowid;
@@ -4378,7 +4380,7 @@ class ProductTableCompanion extends UpdateCompanion<ProductTableData> {
     this.productId = const Value.absent(),
     required String name,
     this.description = const Value.absent(),
-    required double price,
+    required int price,
     this.stock = const Value.absent(),
     this.containerTypeId = const Value.absent(),
     this.rowid = const Value.absent(),
@@ -4392,7 +4394,7 @@ class ProductTableCompanion extends UpdateCompanion<ProductTableData> {
     Expression<String>? productId,
     Expression<String>? name,
     Expression<String>? description,
-    Expression<double>? price,
+    Expression<int>? price,
     Expression<int>? stock,
     Expression<int>? containerTypeId,
     Expression<int>? rowid,
@@ -4420,7 +4422,7 @@ class ProductTableCompanion extends UpdateCompanion<ProductTableData> {
     Value<String>? productId,
     Value<String>? name,
     Value<String?>? description,
-    Value<double>? price,
+    Value<int>? price,
     Value<int>? stock,
     Value<int?>? containerTypeId,
     Value<int>? rowid,
@@ -4465,7 +4467,7 @@ class ProductTableCompanion extends UpdateCompanion<ProductTableData> {
       map['description'] = Variable<String>(description.value);
     }
     if (price.present) {
-      map['price'] = Variable<double>(price.value);
+      map['price'] = Variable<int>(price.value);
     }
     if (stock.present) {
       map['stock'] = Variable<int>(stock.value);
@@ -5685,11 +5687,11 @@ class $VisitTableTable extends VisitTable
     'amountCollected',
   );
   @override
-  late final GeneratedColumn<double> amountCollected = GeneratedColumn<double>(
+  late final GeneratedColumn<int> amountCollected = GeneratedColumn<int>(
     'amount_collected',
     aliasedName,
     false,
-    type: DriftSqlType.double,
+    type: DriftSqlType.int,
     requiredDuringInsert: false,
     defaultValue: const Constant(0),
   );
@@ -5866,7 +5868,7 @@ class $VisitTableTable extends VisitTable
         data['${effectivePrefix}observations'],
       ),
       amountCollected: attachedDatabase.typeMapping.read(
-        DriftSqlType.double,
+        DriftSqlType.int,
         data['${effectivePrefix}amount_collected'],
       )!,
     );
@@ -5890,7 +5892,9 @@ class VisitTableData extends DataClass implements Insertable<VisitTableData> {
   final int? outcomeId;
   final DateTime arrived_at;
   final String? observations;
-  final double amountCollected;
+
+  /// Whole pesos.
+  final int amountCollected;
   const VisitTableData({
     required this.createdAt,
     required this.lastModifiedDate,
@@ -5925,7 +5929,7 @@ class VisitTableData extends DataClass implements Insertable<VisitTableData> {
     if (!nullToAbsent || observations != null) {
       map['observations'] = Variable<String>(observations);
     }
-    map['amount_collected'] = Variable<double>(amountCollected);
+    map['amount_collected'] = Variable<int>(amountCollected);
     return map;
   }
 
@@ -5969,7 +5973,7 @@ class VisitTableData extends DataClass implements Insertable<VisitTableData> {
       outcomeId: serializer.fromJson<int?>(json['outcomeId']),
       arrived_at: serializer.fromJson<DateTime>(json['arrived_at']),
       observations: serializer.fromJson<String?>(json['observations']),
-      amountCollected: serializer.fromJson<double>(json['amountCollected']),
+      amountCollected: serializer.fromJson<int>(json['amountCollected']),
     );
   }
   @override
@@ -5987,7 +5991,7 @@ class VisitTableData extends DataClass implements Insertable<VisitTableData> {
       'outcomeId': serializer.toJson<int?>(outcomeId),
       'arrived_at': serializer.toJson<DateTime>(arrived_at),
       'observations': serializer.toJson<String?>(observations),
-      'amountCollected': serializer.toJson<double>(amountCollected),
+      'amountCollected': serializer.toJson<int>(amountCollected),
     };
   }
 
@@ -6003,7 +6007,7 @@ class VisitTableData extends DataClass implements Insertable<VisitTableData> {
     Value<int?> outcomeId = const Value.absent(),
     DateTime? arrived_at,
     Value<String?> observations = const Value.absent(),
-    double? amountCollected,
+    int? amountCollected,
   }) => VisitTableData(
     createdAt: createdAt ?? this.createdAt,
     lastModifiedDate: lastModifiedDate ?? this.lastModifiedDate,
@@ -6111,7 +6115,7 @@ class VisitTableCompanion extends UpdateCompanion<VisitTableData> {
   final Value<int?> outcomeId;
   final Value<DateTime> arrived_at;
   final Value<String?> observations;
-  final Value<double> amountCollected;
+  final Value<int> amountCollected;
   final Value<int> rowid;
   const VisitTableCompanion({
     this.createdAt = const Value.absent(),
@@ -6158,7 +6162,7 @@ class VisitTableCompanion extends UpdateCompanion<VisitTableData> {
     Expression<int>? outcomeId,
     Expression<DateTime>? arrived_at,
     Expression<String>? observations,
-    Expression<double>? amountCollected,
+    Expression<int>? amountCollected,
     Expression<int>? rowid,
   }) {
     return RawValuesInsertable({
@@ -6190,7 +6194,7 @@ class VisitTableCompanion extends UpdateCompanion<VisitTableData> {
     Value<int?>? outcomeId,
     Value<DateTime>? arrived_at,
     Value<String?>? observations,
-    Value<double>? amountCollected,
+    Value<int>? amountCollected,
     Value<int>? rowid,
   }) {
     return VisitTableCompanion(
@@ -6247,7 +6251,7 @@ class VisitTableCompanion extends UpdateCompanion<VisitTableData> {
       map['observations'] = Variable<String>(observations.value);
     }
     if (amountCollected.present) {
-      map['amount_collected'] = Variable<double>(amountCollected.value);
+      map['amount_collected'] = Variable<int>(amountCollected.value);
     }
     if (rowid.present) {
       map['rowid'] = Variable<int>(rowid.value);
@@ -6361,11 +6365,11 @@ class $SaleTableTable extends SaleTable
     'totalAmount',
   );
   @override
-  late final GeneratedColumn<double> totalAmount = GeneratedColumn<double>(
+  late final GeneratedColumn<int> totalAmount = GeneratedColumn<int>(
     'total_amount',
     aliasedName,
     false,
-    type: DriftSqlType.double,
+    type: DriftSqlType.int,
     requiredDuringInsert: true,
   );
   static const VerificationMeta _paymentMethodMeta = const VerificationMeta(
@@ -6406,11 +6410,11 @@ class $SaleTableTable extends SaleTable
     'shipping_amount',
   );
   @override
-  late final GeneratedColumn<double> shipping_amount = GeneratedColumn<double>(
+  late final GeneratedColumn<int> shipping_amount = GeneratedColumn<int>(
     'shipping_amount',
     aliasedName,
     false,
-    type: DriftSqlType.double,
+    type: DriftSqlType.int,
     requiredDuringInsert: true,
   );
   static const VerificationMeta _visitIdMeta = const VerificationMeta(
@@ -6428,22 +6432,22 @@ class $SaleTableTable extends SaleTable
     'cashAmount',
   );
   @override
-  late final GeneratedColumn<double> cashAmount = GeneratedColumn<double>(
+  late final GeneratedColumn<int> cashAmount = GeneratedColumn<int>(
     'cash_amount',
     aliasedName,
     true,
-    type: DriftSqlType.double,
+    type: DriftSqlType.int,
     requiredDuringInsert: false,
   );
   static const VerificationMeta _transferAmountMeta = const VerificationMeta(
     'transferAmount',
   );
   @override
-  late final GeneratedColumn<double> transferAmount = GeneratedColumn<double>(
+  late final GeneratedColumn<int> transferAmount = GeneratedColumn<int>(
     'transfer_amount',
     aliasedName,
     true,
-    type: DriftSqlType.double,
+    type: DriftSqlType.int,
     requiredDuringInsert: false,
   );
   static const VerificationMeta _statusMeta = const VerificationMeta('status');
@@ -6677,7 +6681,7 @@ class $SaleTableTable extends SaleTable
         data['${effectivePrefix}customer_id'],
       )!,
       totalAmount: attachedDatabase.typeMapping.read(
-        DriftSqlType.double,
+        DriftSqlType.int,
         data['${effectivePrefix}total_amount'],
       )!,
       paymentMethod: attachedDatabase.typeMapping.read(
@@ -6693,7 +6697,7 @@ class $SaleTableTable extends SaleTable
         data['${effectivePrefix}quantity'],
       )!,
       shipping_amount: attachedDatabase.typeMapping.read(
-        DriftSqlType.double,
+        DriftSqlType.int,
         data['${effectivePrefix}shipping_amount'],
       )!,
       visitId: attachedDatabase.typeMapping.read(
@@ -6701,11 +6705,11 @@ class $SaleTableTable extends SaleTable
         data['${effectivePrefix}visit_id'],
       ),
       cashAmount: attachedDatabase.typeMapping.read(
-        DriftSqlType.double,
+        DriftSqlType.int,
         data['${effectivePrefix}cash_amount'],
       ),
       transferAmount: attachedDatabase.typeMapping.read(
-        DriftSqlType.double,
+        DriftSqlType.int,
         data['${effectivePrefix}transfer_amount'],
       ),
       status: attachedDatabase.typeMapping.read(
@@ -6736,14 +6740,16 @@ class SaleTableData extends DataClass implements Insertable<SaleTableData> {
   final int? serverId;
   final String saleId;
   final String customerId;
-  final double totalAmount;
+
+  /// Money columns hold whole pesos.
+  final int totalAmount;
   final String paymentMethod;
   final DateTime saleDate;
   final int quantity;
-  final double shipping_amount;
+  final int shipping_amount;
   final String? visitId;
-  final double? cashAmount;
-  final double? transferAmount;
+  final int? cashAmount;
+  final int? transferAmount;
   final String status;
   final DateTime? cancelledAt;
   final String? cancellationReason;
@@ -6777,19 +6783,19 @@ class SaleTableData extends DataClass implements Insertable<SaleTableData> {
     }
     map['sale_id'] = Variable<String>(saleId);
     map['customer_id'] = Variable<String>(customerId);
-    map['total_amount'] = Variable<double>(totalAmount);
+    map['total_amount'] = Variable<int>(totalAmount);
     map['payment_method'] = Variable<String>(paymentMethod);
     map['sale_date'] = Variable<DateTime>(saleDate);
     map['quantity'] = Variable<int>(quantity);
-    map['shipping_amount'] = Variable<double>(shipping_amount);
+    map['shipping_amount'] = Variable<int>(shipping_amount);
     if (!nullToAbsent || visitId != null) {
       map['visit_id'] = Variable<String>(visitId);
     }
     if (!nullToAbsent || cashAmount != null) {
-      map['cash_amount'] = Variable<double>(cashAmount);
+      map['cash_amount'] = Variable<int>(cashAmount);
     }
     if (!nullToAbsent || transferAmount != null) {
-      map['transfer_amount'] = Variable<double>(transferAmount);
+      map['transfer_amount'] = Variable<int>(transferAmount);
     }
     map['status'] = Variable<String>(status);
     if (!nullToAbsent || cancelledAt != null) {
@@ -6847,14 +6853,14 @@ class SaleTableData extends DataClass implements Insertable<SaleTableData> {
       serverId: serializer.fromJson<int?>(json['serverId']),
       saleId: serializer.fromJson<String>(json['saleId']),
       customerId: serializer.fromJson<String>(json['customerId']),
-      totalAmount: serializer.fromJson<double>(json['totalAmount']),
+      totalAmount: serializer.fromJson<int>(json['totalAmount']),
       paymentMethod: serializer.fromJson<String>(json['paymentMethod']),
       saleDate: serializer.fromJson<DateTime>(json['saleDate']),
       quantity: serializer.fromJson<int>(json['quantity']),
-      shipping_amount: serializer.fromJson<double>(json['shipping_amount']),
+      shipping_amount: serializer.fromJson<int>(json['shipping_amount']),
       visitId: serializer.fromJson<String?>(json['visitId']),
-      cashAmount: serializer.fromJson<double?>(json['cashAmount']),
-      transferAmount: serializer.fromJson<double?>(json['transferAmount']),
+      cashAmount: serializer.fromJson<int?>(json['cashAmount']),
+      transferAmount: serializer.fromJson<int?>(json['transferAmount']),
       status: serializer.fromJson<String>(json['status']),
       cancelledAt: serializer.fromJson<DateTime?>(json['cancelledAt']),
       cancellationReason: serializer.fromJson<String?>(
@@ -6872,14 +6878,14 @@ class SaleTableData extends DataClass implements Insertable<SaleTableData> {
       'serverId': serializer.toJson<int?>(serverId),
       'saleId': serializer.toJson<String>(saleId),
       'customerId': serializer.toJson<String>(customerId),
-      'totalAmount': serializer.toJson<double>(totalAmount),
+      'totalAmount': serializer.toJson<int>(totalAmount),
       'paymentMethod': serializer.toJson<String>(paymentMethod),
       'saleDate': serializer.toJson<DateTime>(saleDate),
       'quantity': serializer.toJson<int>(quantity),
-      'shipping_amount': serializer.toJson<double>(shipping_amount),
+      'shipping_amount': serializer.toJson<int>(shipping_amount),
       'visitId': serializer.toJson<String?>(visitId),
-      'cashAmount': serializer.toJson<double?>(cashAmount),
-      'transferAmount': serializer.toJson<double?>(transferAmount),
+      'cashAmount': serializer.toJson<int?>(cashAmount),
+      'transferAmount': serializer.toJson<int?>(transferAmount),
       'status': serializer.toJson<String>(status),
       'cancelledAt': serializer.toJson<DateTime?>(cancelledAt),
       'cancellationReason': serializer.toJson<String?>(cancellationReason),
@@ -6893,14 +6899,14 @@ class SaleTableData extends DataClass implements Insertable<SaleTableData> {
     Value<int?> serverId = const Value.absent(),
     String? saleId,
     String? customerId,
-    double? totalAmount,
+    int? totalAmount,
     String? paymentMethod,
     DateTime? saleDate,
     int? quantity,
-    double? shipping_amount,
+    int? shipping_amount,
     Value<String?> visitId = const Value.absent(),
-    Value<double?> cashAmount = const Value.absent(),
-    Value<double?> transferAmount = const Value.absent(),
+    Value<int?> cashAmount = const Value.absent(),
+    Value<int?> transferAmount = const Value.absent(),
     String? status,
     Value<DateTime?> cancelledAt = const Value.absent(),
     Value<String?> cancellationReason = const Value.absent(),
@@ -7041,14 +7047,14 @@ class SaleTableCompanion extends UpdateCompanion<SaleTableData> {
   final Value<int?> serverId;
   final Value<String> saleId;
   final Value<String> customerId;
-  final Value<double> totalAmount;
+  final Value<int> totalAmount;
   final Value<String> paymentMethod;
   final Value<DateTime> saleDate;
   final Value<int> quantity;
-  final Value<double> shipping_amount;
+  final Value<int> shipping_amount;
   final Value<String?> visitId;
-  final Value<double?> cashAmount;
-  final Value<double?> transferAmount;
+  final Value<int?> cashAmount;
+  final Value<int?> transferAmount;
   final Value<String> status;
   final Value<DateTime?> cancelledAt;
   final Value<String?> cancellationReason;
@@ -7080,11 +7086,11 @@ class SaleTableCompanion extends UpdateCompanion<SaleTableData> {
     this.serverId = const Value.absent(),
     this.saleId = const Value.absent(),
     required String customerId,
-    required double totalAmount,
+    required int totalAmount,
     required String paymentMethod,
     this.saleDate = const Value.absent(),
     required int quantity,
-    required double shipping_amount,
+    required int shipping_amount,
     this.visitId = const Value.absent(),
     this.cashAmount = const Value.absent(),
     this.transferAmount = const Value.absent(),
@@ -7104,14 +7110,14 @@ class SaleTableCompanion extends UpdateCompanion<SaleTableData> {
     Expression<int>? serverId,
     Expression<String>? saleId,
     Expression<String>? customerId,
-    Expression<double>? totalAmount,
+    Expression<int>? totalAmount,
     Expression<String>? paymentMethod,
     Expression<DateTime>? saleDate,
     Expression<int>? quantity,
-    Expression<double>? shipping_amount,
+    Expression<int>? shipping_amount,
     Expression<String>? visitId,
-    Expression<double>? cashAmount,
-    Expression<double>? transferAmount,
+    Expression<int>? cashAmount,
+    Expression<int>? transferAmount,
     Expression<String>? status,
     Expression<DateTime>? cancelledAt,
     Expression<String>? cancellationReason,
@@ -7146,14 +7152,14 @@ class SaleTableCompanion extends UpdateCompanion<SaleTableData> {
     Value<int?>? serverId,
     Value<String>? saleId,
     Value<String>? customerId,
-    Value<double>? totalAmount,
+    Value<int>? totalAmount,
     Value<String>? paymentMethod,
     Value<DateTime>? saleDate,
     Value<int>? quantity,
-    Value<double>? shipping_amount,
+    Value<int>? shipping_amount,
     Value<String?>? visitId,
-    Value<double?>? cashAmount,
-    Value<double?>? transferAmount,
+    Value<int?>? cashAmount,
+    Value<int?>? transferAmount,
     Value<String>? status,
     Value<DateTime?>? cancelledAt,
     Value<String?>? cancellationReason,
@@ -7203,7 +7209,7 @@ class SaleTableCompanion extends UpdateCompanion<SaleTableData> {
       map['customer_id'] = Variable<String>(customerId.value);
     }
     if (totalAmount.present) {
-      map['total_amount'] = Variable<double>(totalAmount.value);
+      map['total_amount'] = Variable<int>(totalAmount.value);
     }
     if (paymentMethod.present) {
       map['payment_method'] = Variable<String>(paymentMethod.value);
@@ -7215,16 +7221,16 @@ class SaleTableCompanion extends UpdateCompanion<SaleTableData> {
       map['quantity'] = Variable<int>(quantity.value);
     }
     if (shipping_amount.present) {
-      map['shipping_amount'] = Variable<double>(shipping_amount.value);
+      map['shipping_amount'] = Variable<int>(shipping_amount.value);
     }
     if (visitId.present) {
       map['visit_id'] = Variable<String>(visitId.value);
     }
     if (cashAmount.present) {
-      map['cash_amount'] = Variable<double>(cashAmount.value);
+      map['cash_amount'] = Variable<int>(cashAmount.value);
     }
     if (transferAmount.present) {
-      map['transfer_amount'] = Variable<double>(transferAmount.value);
+      map['transfer_amount'] = Variable<int>(transferAmount.value);
     }
     if (status.present) {
       map['status'] = Variable<String>(status.value);
@@ -7377,22 +7383,22 @@ class $SaleItemTableTable extends SaleItemTable
     'unitPrice',
   );
   @override
-  late final GeneratedColumn<double> unitPrice = GeneratedColumn<double>(
+  late final GeneratedColumn<int> unitPrice = GeneratedColumn<int>(
     'unit_price',
     aliasedName,
     false,
-    type: DriftSqlType.double,
+    type: DriftSqlType.int,
     requiredDuringInsert: true,
   );
   static const VerificationMeta _subtotalMeta = const VerificationMeta(
     'subtotal',
   );
   @override
-  late final GeneratedColumn<double> subtotal = GeneratedColumn<double>(
+  late final GeneratedColumn<int> subtotal = GeneratedColumn<int>(
     'subtotal',
     aliasedName,
     false,
-    type: DriftSqlType.double,
+    type: DriftSqlType.int,
     requiredDuringInsert: true,
   );
   static const VerificationMeta _agreementServerIdMeta = const VerificationMeta(
@@ -7580,11 +7586,11 @@ class $SaleItemTableTable extends SaleItemTable
         data['${effectivePrefix}quantity'],
       )!,
       unitPrice: attachedDatabase.typeMapping.read(
-        DriftSqlType.double,
+        DriftSqlType.int,
         data['${effectivePrefix}unit_price'],
       )!,
       subtotal: attachedDatabase.typeMapping.read(
-        DriftSqlType.double,
+        DriftSqlType.int,
         data['${effectivePrefix}subtotal'],
       )!,
       agreementServerId: attachedDatabase.typeMapping.read(
@@ -7614,8 +7620,10 @@ class SaleItemTableData extends DataClass
   final String saleId;
   final String productId;
   final int quantity;
-  final double unitPrice;
-  final double subtotal;
+
+  /// Whole pesos.
+  final int unitPrice;
+  final int subtotal;
 
   /// Server id of the customer agreement that set [unitPrice]; null for
   /// the list price.
@@ -7651,8 +7659,8 @@ class SaleItemTableData extends DataClass
     map['sale_id'] = Variable<String>(saleId);
     map['product_id'] = Variable<String>(productId);
     map['quantity'] = Variable<int>(quantity);
-    map['unit_price'] = Variable<double>(unitPrice);
-    map['subtotal'] = Variable<double>(subtotal);
+    map['unit_price'] = Variable<int>(unitPrice);
+    map['subtotal'] = Variable<int>(subtotal);
     if (!nullToAbsent || agreementServerId != null) {
       map['agreement_server_id'] = Variable<int>(agreementServerId);
     }
@@ -7699,8 +7707,8 @@ class SaleItemTableData extends DataClass
       saleId: serializer.fromJson<String>(json['saleId']),
       productId: serializer.fromJson<String>(json['productId']),
       quantity: serializer.fromJson<int>(json['quantity']),
-      unitPrice: serializer.fromJson<double>(json['unitPrice']),
-      subtotal: serializer.fromJson<double>(json['subtotal']),
+      unitPrice: serializer.fromJson<int>(json['unitPrice']),
+      subtotal: serializer.fromJson<int>(json['subtotal']),
       agreementServerId: serializer.fromJson<int?>(json['agreementServerId']),
       agreementUuid: serializer.fromJson<String?>(json['agreementUuid']),
     );
@@ -7717,8 +7725,8 @@ class SaleItemTableData extends DataClass
       'saleId': serializer.toJson<String>(saleId),
       'productId': serializer.toJson<String>(productId),
       'quantity': serializer.toJson<int>(quantity),
-      'unitPrice': serializer.toJson<double>(unitPrice),
-      'subtotal': serializer.toJson<double>(subtotal),
+      'unitPrice': serializer.toJson<int>(unitPrice),
+      'subtotal': serializer.toJson<int>(subtotal),
       'agreementServerId': serializer.toJson<int?>(agreementServerId),
       'agreementUuid': serializer.toJson<String?>(agreementUuid),
     };
@@ -7733,8 +7741,8 @@ class SaleItemTableData extends DataClass
     String? saleId,
     String? productId,
     int? quantity,
-    double? unitPrice,
-    double? subtotal,
+    int? unitPrice,
+    int? subtotal,
     Value<int?> agreementServerId = const Value.absent(),
     Value<String?> agreementUuid = const Value.absent(),
   }) => SaleItemTableData(
@@ -7841,8 +7849,8 @@ class SaleItemTableCompanion extends UpdateCompanion<SaleItemTableData> {
   final Value<String> saleId;
   final Value<String> productId;
   final Value<int> quantity;
-  final Value<double> unitPrice;
-  final Value<double> subtotal;
+  final Value<int> unitPrice;
+  final Value<int> subtotal;
   final Value<int?> agreementServerId;
   final Value<String?> agreementUuid;
   final Value<int> rowid;
@@ -7870,8 +7878,8 @@ class SaleItemTableCompanion extends UpdateCompanion<SaleItemTableData> {
     required String saleId,
     required String productId,
     required int quantity,
-    required double unitPrice,
-    required double subtotal,
+    required int unitPrice,
+    required int subtotal,
     this.agreementServerId = const Value.absent(),
     this.agreementUuid = const Value.absent(),
     this.rowid = const Value.absent(),
@@ -7889,8 +7897,8 @@ class SaleItemTableCompanion extends UpdateCompanion<SaleItemTableData> {
     Expression<String>? saleId,
     Expression<String>? productId,
     Expression<int>? quantity,
-    Expression<double>? unitPrice,
-    Expression<double>? subtotal,
+    Expression<int>? unitPrice,
+    Expression<int>? subtotal,
     Expression<int>? agreementServerId,
     Expression<String>? agreementUuid,
     Expression<int>? rowid,
@@ -7921,8 +7929,8 @@ class SaleItemTableCompanion extends UpdateCompanion<SaleItemTableData> {
     Value<String>? saleId,
     Value<String>? productId,
     Value<int>? quantity,
-    Value<double>? unitPrice,
-    Value<double>? subtotal,
+    Value<int>? unitPrice,
+    Value<int>? subtotal,
     Value<int?>? agreementServerId,
     Value<String?>? agreementUuid,
     Value<int>? rowid,
@@ -7972,10 +7980,10 @@ class SaleItemTableCompanion extends UpdateCompanion<SaleItemTableData> {
       map['quantity'] = Variable<int>(quantity.value);
     }
     if (unitPrice.present) {
-      map['unit_price'] = Variable<double>(unitPrice.value);
+      map['unit_price'] = Variable<int>(unitPrice.value);
     }
     if (subtotal.present) {
-      map['subtotal'] = Variable<double>(subtotal.value);
+      map['subtotal'] = Variable<int>(subtotal.value);
     }
     if (agreementServerId.present) {
       map['agreement_server_id'] = Variable<int>(agreementServerId.value);
@@ -8095,11 +8103,11 @@ class $PaymentTableTable extends PaymentTable
   );
   static const VerificationMeta _amountMeta = const VerificationMeta('amount');
   @override
-  late final GeneratedColumn<double> amount = GeneratedColumn<double>(
+  late final GeneratedColumn<int> amount = GeneratedColumn<int>(
     'amount',
     aliasedName,
     false,
-    type: DriftSqlType.double,
+    type: DriftSqlType.int,
     requiredDuringInsert: true,
   );
   static const VerificationMeta _paymentMethodMeta = const VerificationMeta(
@@ -8345,7 +8353,7 @@ class $PaymentTableTable extends PaymentTable
         data['${effectivePrefix}customer_id'],
       )!,
       amount: attachedDatabase.typeMapping.read(
-        DriftSqlType.double,
+        DriftSqlType.int,
         data['${effectivePrefix}amount'],
       )!,
       paymentMethod: attachedDatabase.typeMapping.read(
@@ -8393,7 +8401,9 @@ class PaymentTableData extends DataClass
   final int? serverId;
   final String paymentId;
   final String customerId;
-  final double amount;
+
+  /// Whole pesos.
+  final int amount;
   final String paymentMethod;
   final String? visitId;
   final String? saleId;
@@ -8428,7 +8438,7 @@ class PaymentTableData extends DataClass
     }
     map['payment_id'] = Variable<String>(paymentId);
     map['customer_id'] = Variable<String>(customerId);
-    map['amount'] = Variable<double>(amount);
+    map['amount'] = Variable<int>(amount);
     map['payment_method'] = Variable<String>(paymentMethod);
     if (!nullToAbsent || visitId != null) {
       map['visit_id'] = Variable<String>(visitId);
@@ -8492,7 +8502,7 @@ class PaymentTableData extends DataClass
       serverId: serializer.fromJson<int?>(json['serverId']),
       paymentId: serializer.fromJson<String>(json['paymentId']),
       customerId: serializer.fromJson<String>(json['customerId']),
-      amount: serializer.fromJson<double>(json['amount']),
+      amount: serializer.fromJson<int>(json['amount']),
       paymentMethod: serializer.fromJson<String>(json['paymentMethod']),
       visitId: serializer.fromJson<String?>(json['visitId']),
       saleId: serializer.fromJson<String?>(json['saleId']),
@@ -8514,7 +8524,7 @@ class PaymentTableData extends DataClass
       'serverId': serializer.toJson<int?>(serverId),
       'paymentId': serializer.toJson<String>(paymentId),
       'customerId': serializer.toJson<String>(customerId),
-      'amount': serializer.toJson<double>(amount),
+      'amount': serializer.toJson<int>(amount),
       'paymentMethod': serializer.toJson<String>(paymentMethod),
       'visitId': serializer.toJson<String?>(visitId),
       'saleId': serializer.toJson<String?>(saleId),
@@ -8532,7 +8542,7 @@ class PaymentTableData extends DataClass
     Value<int?> serverId = const Value.absent(),
     String? paymentId,
     String? customerId,
-    double? amount,
+    int? amount,
     String? paymentMethod,
     Value<String?> visitId = const Value.absent(),
     Value<String?> saleId = const Value.absent(),
@@ -8652,7 +8662,7 @@ class PaymentTableCompanion extends UpdateCompanion<PaymentTableData> {
   final Value<int?> serverId;
   final Value<String> paymentId;
   final Value<String> customerId;
-  final Value<double> amount;
+  final Value<int> amount;
   final Value<String> paymentMethod;
   final Value<String?> visitId;
   final Value<String?> saleId;
@@ -8685,7 +8695,7 @@ class PaymentTableCompanion extends UpdateCompanion<PaymentTableData> {
     this.serverId = const Value.absent(),
     this.paymentId = const Value.absent(),
     required String customerId,
-    required double amount,
+    required int amount,
     required String paymentMethod,
     this.visitId = const Value.absent(),
     this.saleId = const Value.absent(),
@@ -8704,7 +8714,7 @@ class PaymentTableCompanion extends UpdateCompanion<PaymentTableData> {
     Expression<int>? serverId,
     Expression<String>? paymentId,
     Expression<String>? customerId,
-    Expression<double>? amount,
+    Expression<int>? amount,
     Expression<String>? paymentMethod,
     Expression<String>? visitId,
     Expression<String>? saleId,
@@ -8740,7 +8750,7 @@ class PaymentTableCompanion extends UpdateCompanion<PaymentTableData> {
     Value<int?>? serverId,
     Value<String>? paymentId,
     Value<String>? customerId,
-    Value<double>? amount,
+    Value<int>? amount,
     Value<String>? paymentMethod,
     Value<String?>? visitId,
     Value<String?>? saleId,
@@ -8791,7 +8801,7 @@ class PaymentTableCompanion extends UpdateCompanion<PaymentTableData> {
       map['customer_id'] = Variable<String>(customerId.value);
     }
     if (amount.present) {
-      map['amount'] = Variable<double>(amount.value);
+      map['amount'] = Variable<int>(amount.value);
     }
     if (paymentMethod.present) {
       map['payment_method'] = Variable<String>(paymentMethod.value);
@@ -8980,11 +8990,11 @@ class $CustomerAccountEntryTableTable extends CustomerAccountEntryTable
   );
   static const VerificationMeta _amountMeta = const VerificationMeta('amount');
   @override
-  late final GeneratedColumn<double> amount = GeneratedColumn<double>(
+  late final GeneratedColumn<int> amount = GeneratedColumn<int>(
     'amount',
     aliasedName,
     false,
-    type: DriftSqlType.double,
+    type: DriftSqlType.int,
     requiredDuringInsert: true,
   );
   static const VerificationMeta _directionMeta = const VerificationMeta(
@@ -9185,7 +9195,7 @@ class $CustomerAccountEntryTableTable extends CustomerAccountEntryTable
         data['${effectivePrefix}entry_type'],
       )!,
       amount: attachedDatabase.typeMapping.read(
-        DriftSqlType.double,
+        DriftSqlType.int,
         data['${effectivePrefix}amount'],
       )!,
       direction: attachedDatabase.typeMapping.read(
@@ -9217,7 +9227,9 @@ class CustomerAccountEntryTableData extends DataClass
   final String? paymentId;
   final String? createdBy;
   final String entryType;
-  final double amount;
+
+  /// Whole pesos.
+  final int amount;
   final int direction;
   final String? description;
   const CustomerAccountEntryTableData({
@@ -9256,7 +9268,7 @@ class CustomerAccountEntryTableData extends DataClass
       map['created_by'] = Variable<String>(createdBy);
     }
     map['entry_type'] = Variable<String>(entryType);
-    map['amount'] = Variable<double>(amount);
+    map['amount'] = Variable<int>(amount);
     map['direction'] = Variable<int>(direction);
     if (!nullToAbsent || description != null) {
       map['description'] = Variable<String>(description);
@@ -9310,7 +9322,7 @@ class CustomerAccountEntryTableData extends DataClass
       paymentId: serializer.fromJson<String?>(json['paymentId']),
       createdBy: serializer.fromJson<String?>(json['createdBy']),
       entryType: serializer.fromJson<String>(json['entryType']),
-      amount: serializer.fromJson<double>(json['amount']),
+      amount: serializer.fromJson<int>(json['amount']),
       direction: serializer.fromJson<int>(json['direction']),
       description: serializer.fromJson<String?>(json['description']),
     );
@@ -9331,7 +9343,7 @@ class CustomerAccountEntryTableData extends DataClass
       'paymentId': serializer.toJson<String?>(paymentId),
       'createdBy': serializer.toJson<String?>(createdBy),
       'entryType': serializer.toJson<String>(entryType),
-      'amount': serializer.toJson<double>(amount),
+      'amount': serializer.toJson<int>(amount),
       'direction': serializer.toJson<int>(direction),
       'description': serializer.toJson<String?>(description),
     };
@@ -9348,7 +9360,7 @@ class CustomerAccountEntryTableData extends DataClass
     Value<String?> paymentId = const Value.absent(),
     Value<String?> createdBy = const Value.absent(),
     String? entryType,
-    double? amount,
+    int? amount,
     int? direction,
     Value<String?> description = const Value.absent(),
   }) => CustomerAccountEntryTableData(
@@ -9462,7 +9474,7 @@ class CustomerAccountEntryTableCompanion
   final Value<String?> paymentId;
   final Value<String?> createdBy;
   final Value<String> entryType;
-  final Value<double> amount;
+  final Value<int> amount;
   final Value<int> direction;
   final Value<String?> description;
   final Value<int> rowid;
@@ -9493,7 +9505,7 @@ class CustomerAccountEntryTableCompanion
     this.paymentId = const Value.absent(),
     this.createdBy = const Value.absent(),
     required String entryType,
-    required double amount,
+    required int amount,
     required int direction,
     this.description = const Value.absent(),
     this.rowid = const Value.absent(),
@@ -9512,7 +9524,7 @@ class CustomerAccountEntryTableCompanion
     Expression<String>? paymentId,
     Expression<String>? createdBy,
     Expression<String>? entryType,
-    Expression<double>? amount,
+    Expression<int>? amount,
     Expression<int>? direction,
     Expression<String>? description,
     Expression<int>? rowid,
@@ -9547,7 +9559,7 @@ class CustomerAccountEntryTableCompanion
     Value<String?>? paymentId,
     Value<String?>? createdBy,
     Value<String>? entryType,
-    Value<double>? amount,
+    Value<int>? amount,
     Value<int>? direction,
     Value<String?>? description,
     Value<int>? rowid,
@@ -9607,7 +9619,7 @@ class CustomerAccountEntryTableCompanion
       map['entry_type'] = Variable<String>(entryType.value);
     }
     if (amount.present) {
-      map['amount'] = Variable<double>(amount.value);
+      map['amount'] = Variable<int>(amount.value);
     }
     if (direction.present) {
       map['direction'] = Variable<int>(direction.value);
@@ -9718,13 +9730,13 @@ class $CustomerBalanceTableTable extends CustomerBalanceTable
     'currentBalance',
   );
   @override
-  late final GeneratedColumn<double> currentBalance = GeneratedColumn<double>(
+  late final GeneratedColumn<int> currentBalance = GeneratedColumn<int>(
     'current_balance',
     aliasedName,
     false,
-    type: DriftSqlType.double,
+    type: DriftSqlType.int,
     requiredDuringInsert: false,
-    defaultValue: const Constant(0.0),
+    defaultValue: const Constant(0),
   );
   static const VerificationMeta _lastEntryIdMeta = const VerificationMeta(
     'lastEntryId',
@@ -9848,7 +9860,7 @@ class $CustomerBalanceTableTable extends CustomerBalanceTable
         data['${effectivePrefix}customer_id'],
       )!,
       currentBalance: attachedDatabase.typeMapping.read(
-        DriftSqlType.double,
+        DriftSqlType.int,
         data['${effectivePrefix}current_balance'],
       )!,
       lastEntryId: attachedDatabase.typeMapping.read(
@@ -9871,7 +9883,9 @@ class CustomerBalanceTableData extends DataClass
   final bool enabled;
   final int? serverId;
   final String customerId;
-  final double currentBalance;
+
+  /// Whole pesos.
+  final int currentBalance;
   final String? lastEntryId;
   const CustomerBalanceTableData({
     required this.createdAt,
@@ -9892,7 +9906,7 @@ class CustomerBalanceTableData extends DataClass
       map['server_id'] = Variable<int>(serverId);
     }
     map['customer_id'] = Variable<String>(customerId);
-    map['current_balance'] = Variable<double>(currentBalance);
+    map['current_balance'] = Variable<int>(currentBalance);
     if (!nullToAbsent || lastEntryId != null) {
       map['last_entry_id'] = Variable<String>(lastEntryId);
     }
@@ -9926,7 +9940,7 @@ class CustomerBalanceTableData extends DataClass
       enabled: serializer.fromJson<bool>(json['enabled']),
       serverId: serializer.fromJson<int?>(json['serverId']),
       customerId: serializer.fromJson<String>(json['customerId']),
-      currentBalance: serializer.fromJson<double>(json['currentBalance']),
+      currentBalance: serializer.fromJson<int>(json['currentBalance']),
       lastEntryId: serializer.fromJson<String?>(json['lastEntryId']),
     );
   }
@@ -9939,7 +9953,7 @@ class CustomerBalanceTableData extends DataClass
       'enabled': serializer.toJson<bool>(enabled),
       'serverId': serializer.toJson<int?>(serverId),
       'customerId': serializer.toJson<String>(customerId),
-      'currentBalance': serializer.toJson<double>(currentBalance),
+      'currentBalance': serializer.toJson<int>(currentBalance),
       'lastEntryId': serializer.toJson<String?>(lastEntryId),
     };
   }
@@ -9950,7 +9964,7 @@ class CustomerBalanceTableData extends DataClass
     bool? enabled,
     Value<int?> serverId = const Value.absent(),
     String? customerId,
-    double? currentBalance,
+    int? currentBalance,
     Value<String?> lastEntryId = const Value.absent(),
   }) => CustomerBalanceTableData(
     createdAt: createdAt ?? this.createdAt,
@@ -10027,7 +10041,7 @@ class CustomerBalanceTableCompanion
   final Value<bool> enabled;
   final Value<int?> serverId;
   final Value<String> customerId;
-  final Value<double> currentBalance;
+  final Value<int> currentBalance;
   final Value<String?> lastEntryId;
   final Value<int> rowid;
   const CustomerBalanceTableCompanion({
@@ -10056,7 +10070,7 @@ class CustomerBalanceTableCompanion
     Expression<bool>? enabled,
     Expression<int>? serverId,
     Expression<String>? customerId,
-    Expression<double>? currentBalance,
+    Expression<int>? currentBalance,
     Expression<String>? lastEntryId,
     Expression<int>? rowid,
   }) {
@@ -10078,7 +10092,7 @@ class CustomerBalanceTableCompanion
     Value<bool>? enabled,
     Value<int?>? serverId,
     Value<String>? customerId,
-    Value<double>? currentBalance,
+    Value<int>? currentBalance,
     Value<String?>? lastEntryId,
     Value<int>? rowid,
   }) {
@@ -10113,7 +10127,7 @@ class CustomerBalanceTableCompanion
       map['customer_id'] = Variable<String>(customerId.value);
     }
     if (currentBalance.present) {
-      map['current_balance'] = Variable<double>(currentBalance.value);
+      map['current_balance'] = Variable<int>(currentBalance.value);
     }
     if (lastEntryId.present) {
       map['last_entry_id'] = Variable<String>(lastEntryId.value);
@@ -13347,11 +13361,11 @@ class $CustomerAgreementTableTable extends CustomerAgreementTable
     'unitPrice',
   );
   @override
-  late final GeneratedColumn<double> unitPrice = GeneratedColumn<double>(
+  late final GeneratedColumn<int> unitPrice = GeneratedColumn<int>(
     'unit_price',
     aliasedName,
     false,
-    type: DriftSqlType.double,
+    type: DriftSqlType.int,
     requiredDuringInsert: true,
   );
   static const VerificationMeta _validFromMeta = const VerificationMeta(
@@ -13532,7 +13546,7 @@ class $CustomerAgreementTableTable extends CustomerAgreementTable
         data['${effectivePrefix}product_id'],
       )!,
       unitPrice: attachedDatabase.typeMapping.read(
-        DriftSqlType.double,
+        DriftSqlType.int,
         data['${effectivePrefix}unit_price'],
       )!,
       validFrom: attachedDatabase.typeMapping.read(
@@ -13565,7 +13579,9 @@ class CustomerAgreementTableData extends DataClass
   final String agreementId;
   final String customerId;
   final String productId;
-  final double unitPrice;
+
+  /// Whole pesos.
+  final int unitPrice;
   final String validFrom;
   final String? validTo;
   final String? reason;
@@ -13594,7 +13610,7 @@ class CustomerAgreementTableData extends DataClass
     map['agreement_id'] = Variable<String>(agreementId);
     map['customer_id'] = Variable<String>(customerId);
     map['product_id'] = Variable<String>(productId);
-    map['unit_price'] = Variable<double>(unitPrice);
+    map['unit_price'] = Variable<int>(unitPrice);
     map['valid_from'] = Variable<String>(validFrom);
     if (!nullToAbsent || validTo != null) {
       map['valid_to'] = Variable<String>(validTo);
@@ -13640,7 +13656,7 @@ class CustomerAgreementTableData extends DataClass
       agreementId: serializer.fromJson<String>(json['agreementId']),
       customerId: serializer.fromJson<String>(json['customerId']),
       productId: serializer.fromJson<String>(json['productId']),
-      unitPrice: serializer.fromJson<double>(json['unitPrice']),
+      unitPrice: serializer.fromJson<int>(json['unitPrice']),
       validFrom: serializer.fromJson<String>(json['validFrom']),
       validTo: serializer.fromJson<String?>(json['validTo']),
       reason: serializer.fromJson<String?>(json['reason']),
@@ -13657,7 +13673,7 @@ class CustomerAgreementTableData extends DataClass
       'agreementId': serializer.toJson<String>(agreementId),
       'customerId': serializer.toJson<String>(customerId),
       'productId': serializer.toJson<String>(productId),
-      'unitPrice': serializer.toJson<double>(unitPrice),
+      'unitPrice': serializer.toJson<int>(unitPrice),
       'validFrom': serializer.toJson<String>(validFrom),
       'validTo': serializer.toJson<String?>(validTo),
       'reason': serializer.toJson<String?>(reason),
@@ -13672,7 +13688,7 @@ class CustomerAgreementTableData extends DataClass
     String? agreementId,
     String? customerId,
     String? productId,
-    double? unitPrice,
+    int? unitPrice,
     String? validFrom,
     Value<String?> validTo = const Value.absent(),
     Value<String?> reason = const Value.absent(),
@@ -13771,7 +13787,7 @@ class CustomerAgreementTableCompanion
   final Value<String> agreementId;
   final Value<String> customerId;
   final Value<String> productId;
-  final Value<double> unitPrice;
+  final Value<int> unitPrice;
   final Value<String> validFrom;
   final Value<String?> validTo;
   final Value<String?> reason;
@@ -13798,7 +13814,7 @@ class CustomerAgreementTableCompanion
     this.agreementId = const Value.absent(),
     required String customerId,
     required String productId,
-    required double unitPrice,
+    required int unitPrice,
     required String validFrom,
     this.validTo = const Value.absent(),
     this.reason = const Value.absent(),
@@ -13815,7 +13831,7 @@ class CustomerAgreementTableCompanion
     Expression<String>? agreementId,
     Expression<String>? customerId,
     Expression<String>? productId,
-    Expression<double>? unitPrice,
+    Expression<int>? unitPrice,
     Expression<String>? validFrom,
     Expression<String>? validTo,
     Expression<String>? reason,
@@ -13845,7 +13861,7 @@ class CustomerAgreementTableCompanion
     Value<String>? agreementId,
     Value<String>? customerId,
     Value<String>? productId,
-    Value<double>? unitPrice,
+    Value<int>? unitPrice,
     Value<String>? validFrom,
     Value<String?>? validTo,
     Value<String?>? reason,
@@ -13892,7 +13908,7 @@ class CustomerAgreementTableCompanion
       map['product_id'] = Variable<String>(productId.value);
     }
     if (unitPrice.present) {
-      map['unit_price'] = Variable<double>(unitPrice.value);
+      map['unit_price'] = Variable<int>(unitPrice.value);
     }
     if (validFrom.present) {
       map['valid_from'] = Variable<String>(validFrom.value);
@@ -14504,22 +14520,22 @@ class $BalanceCorrectionTableTable extends BalanceCorrectionTable
     'counted',
   );
   @override
-  late final GeneratedColumn<double> counted = GeneratedColumn<double>(
+  late final GeneratedColumn<int> counted = GeneratedColumn<int>(
     'counted',
     aliasedName,
     false,
-    type: DriftSqlType.double,
+    type: DriftSqlType.int,
     requiredDuringInsert: true,
   );
   static const VerificationMeta _seenBalanceMeta = const VerificationMeta(
     'seenBalance',
   );
   @override
-  late final GeneratedColumn<double> seenBalance = GeneratedColumn<double>(
+  late final GeneratedColumn<int> seenBalance = GeneratedColumn<int>(
     'seen_balance',
     aliasedName,
     false,
-    type: DriftSqlType.double,
+    type: DriftSqlType.int,
     requiredDuringInsert: true,
   );
   static const VerificationMeta _reasonMeta = const VerificationMeta('reason');
@@ -14724,11 +14740,11 @@ class $BalanceCorrectionTableTable extends BalanceCorrectionTable
         data['${effectivePrefix}container_type'],
       ),
       counted: attachedDatabase.typeMapping.read(
-        DriftSqlType.double,
+        DriftSqlType.int,
         data['${effectivePrefix}counted'],
       )!,
       seenBalance: attachedDatabase.typeMapping.read(
-        DriftSqlType.double,
+        DriftSqlType.int,
         data['${effectivePrefix}seen_balance'],
       )!,
       reason: attachedDatabase.typeMapping.read(
@@ -14764,11 +14780,12 @@ class BalanceCorrectionTableData extends DataClass
   /// Catalog code (container_types.code); only for `containers`.
   final String? containerType;
 
-  /// The real balance the driver counted (debt: positive means owed).
-  final double counted;
+  /// The real balance the driver counted: whole pesos for `debt` (positive
+  /// means owed), a container count for `containers`.
+  final int counted;
 
   /// The local balance shown when the driver corrected it.
-  final double seenBalance;
+  final int seenBalance;
   final String reason;
   final DateTime correctedAt;
   const BalanceCorrectionTableData({
@@ -14804,8 +14821,8 @@ class BalanceCorrectionTableData extends DataClass
     if (!nullToAbsent || containerType != null) {
       map['container_type'] = Variable<String>(containerType);
     }
-    map['counted'] = Variable<double>(counted);
-    map['seen_balance'] = Variable<double>(seenBalance);
+    map['counted'] = Variable<int>(counted);
+    map['seen_balance'] = Variable<int>(seenBalance);
     map['reason'] = Variable<String>(reason);
     map['corrected_at'] = Variable<DateTime>(correctedAt);
     return map;
@@ -14850,8 +14867,8 @@ class BalanceCorrectionTableData extends DataClass
       visitId: serializer.fromJson<String?>(json['visitId']),
       target: serializer.fromJson<String>(json['target']),
       containerType: serializer.fromJson<String?>(json['containerType']),
-      counted: serializer.fromJson<double>(json['counted']),
-      seenBalance: serializer.fromJson<double>(json['seenBalance']),
+      counted: serializer.fromJson<int>(json['counted']),
+      seenBalance: serializer.fromJson<int>(json['seenBalance']),
       reason: serializer.fromJson<String>(json['reason']),
       correctedAt: serializer.fromJson<DateTime>(json['correctedAt']),
     );
@@ -14869,8 +14886,8 @@ class BalanceCorrectionTableData extends DataClass
       'visitId': serializer.toJson<String?>(visitId),
       'target': serializer.toJson<String>(target),
       'containerType': serializer.toJson<String?>(containerType),
-      'counted': serializer.toJson<double>(counted),
-      'seenBalance': serializer.toJson<double>(seenBalance),
+      'counted': serializer.toJson<int>(counted),
+      'seenBalance': serializer.toJson<int>(seenBalance),
       'reason': serializer.toJson<String>(reason),
       'correctedAt': serializer.toJson<DateTime>(correctedAt),
     };
@@ -14886,8 +14903,8 @@ class BalanceCorrectionTableData extends DataClass
     Value<String?> visitId = const Value.absent(),
     String? target,
     Value<String?> containerType = const Value.absent(),
-    double? counted,
-    double? seenBalance,
+    int? counted,
+    int? seenBalance,
     String? reason,
     DateTime? correctedAt,
   }) => BalanceCorrectionTableData(
@@ -15005,8 +15022,8 @@ class BalanceCorrectionTableCompanion
   final Value<String?> visitId;
   final Value<String> target;
   final Value<String?> containerType;
-  final Value<double> counted;
-  final Value<double> seenBalance;
+  final Value<int> counted;
+  final Value<int> seenBalance;
   final Value<String> reason;
   final Value<DateTime> correctedAt;
   final Value<int> rowid;
@@ -15036,8 +15053,8 @@ class BalanceCorrectionTableCompanion
     this.visitId = const Value.absent(),
     required String target,
     this.containerType = const Value.absent(),
-    required double counted,
-    required double seenBalance,
+    required int counted,
+    required int seenBalance,
     required String reason,
     required DateTime correctedAt,
     this.rowid = const Value.absent(),
@@ -15057,8 +15074,8 @@ class BalanceCorrectionTableCompanion
     Expression<String>? visitId,
     Expression<String>? target,
     Expression<String>? containerType,
-    Expression<double>? counted,
-    Expression<double>? seenBalance,
+    Expression<int>? counted,
+    Expression<int>? seenBalance,
     Expression<String>? reason,
     Expression<DateTime>? correctedAt,
     Expression<int>? rowid,
@@ -15091,8 +15108,8 @@ class BalanceCorrectionTableCompanion
     Value<String?>? visitId,
     Value<String>? target,
     Value<String?>? containerType,
-    Value<double>? counted,
-    Value<double>? seenBalance,
+    Value<int>? counted,
+    Value<int>? seenBalance,
     Value<String>? reason,
     Value<DateTime>? correctedAt,
     Value<int>? rowid,
@@ -15146,10 +15163,10 @@ class BalanceCorrectionTableCompanion
       map['container_type'] = Variable<String>(containerType.value);
     }
     if (counted.present) {
-      map['counted'] = Variable<double>(counted.value);
+      map['counted'] = Variable<int>(counted.value);
     }
     if (seenBalance.present) {
-      map['seen_balance'] = Variable<double>(seenBalance.value);
+      map['seen_balance'] = Variable<int>(seenBalance.value);
     }
     if (reason.present) {
       map['reason'] = Variable<String>(reason.value);
@@ -19710,7 +19727,7 @@ typedef $$ProductTableTableCreateCompanionBuilder =
       Value<String> productId,
       required String name,
       Value<String?> description,
-      required double price,
+      required int price,
       Value<int> stock,
       Value<int?> containerTypeId,
       Value<int> rowid,
@@ -19724,7 +19741,7 @@ typedef $$ProductTableTableUpdateCompanionBuilder =
       Value<String> productId,
       Value<String> name,
       Value<String?> description,
-      Value<double> price,
+      Value<int> price,
       Value<int> stock,
       Value<int?> containerTypeId,
       Value<int> rowid,
@@ -19901,7 +19918,7 @@ class $$ProductTableTableFilterComposer
     builder: (column) => ColumnFilters(column),
   );
 
-  ColumnFilters<double> get price => $composableBuilder(
+  ColumnFilters<int> get price => $composableBuilder(
     column: $table.price,
     builder: (column) => ColumnFilters(column),
   );
@@ -20063,7 +20080,7 @@ class $$ProductTableTableOrderingComposer
     builder: (column) => ColumnOrderings(column),
   );
 
-  ColumnOrderings<double> get price => $composableBuilder(
+  ColumnOrderings<int> get price => $composableBuilder(
     column: $table.price,
     builder: (column) => ColumnOrderings(column),
   );
@@ -20113,7 +20130,7 @@ class $$ProductTableTableAnnotationComposer
     builder: (column) => column,
   );
 
-  GeneratedColumn<double> get price =>
+  GeneratedColumn<int> get price =>
       $composableBuilder(column: $table.price, builder: (column) => column);
 
   GeneratedColumn<int> get stock =>
@@ -20269,7 +20286,7 @@ class $$ProductTableTableTableManager
                 Value<String> productId = const Value.absent(),
                 Value<String> name = const Value.absent(),
                 Value<String?> description = const Value.absent(),
-                Value<double> price = const Value.absent(),
+                Value<int> price = const Value.absent(),
                 Value<int> stock = const Value.absent(),
                 Value<int?> containerTypeId = const Value.absent(),
                 Value<int> rowid = const Value.absent(),
@@ -20295,7 +20312,7 @@ class $$ProductTableTableTableManager
                 Value<String> productId = const Value.absent(),
                 required String name,
                 Value<String?> description = const Value.absent(),
-                required double price,
+                required int price,
                 Value<int> stock = const Value.absent(),
                 Value<int?> containerTypeId = const Value.absent(),
                 Value<int> rowid = const Value.absent(),
@@ -21239,7 +21256,7 @@ typedef $$VisitTableTableCreateCompanionBuilder =
       Value<int?> outcomeId,
       required DateTime arrived_at,
       Value<String?> observations,
-      Value<double> amountCollected,
+      Value<int> amountCollected,
       Value<int> rowid,
     });
 typedef $$VisitTableTableUpdateCompanionBuilder =
@@ -21255,7 +21272,7 @@ typedef $$VisitTableTableUpdateCompanionBuilder =
       Value<int?> outcomeId,
       Value<DateTime> arrived_at,
       Value<String?> observations,
-      Value<double> amountCollected,
+      Value<int> amountCollected,
       Value<int> rowid,
     });
 
@@ -21428,7 +21445,7 @@ class $$VisitTableTableFilterComposer
     builder: (column) => ColumnFilters(column),
   );
 
-  ColumnFilters<double> get amountCollected => $composableBuilder(
+  ColumnFilters<int> get amountCollected => $composableBuilder(
     column: $table.amountCollected,
     builder: (column) => ColumnFilters(column),
   );
@@ -21603,7 +21620,7 @@ class $$VisitTableTableOrderingComposer
     builder: (column) => ColumnOrderings(column),
   );
 
-  ColumnOrderings<double> get amountCollected => $composableBuilder(
+  ColumnOrderings<int> get amountCollected => $composableBuilder(
     column: $table.amountCollected,
     builder: (column) => ColumnOrderings(column),
   );
@@ -21717,7 +21734,7 @@ class $$VisitTableTableAnnotationComposer
     builder: (column) => column,
   );
 
-  GeneratedColumn<double> get amountCollected => $composableBuilder(
+  GeneratedColumn<int> get amountCollected => $composableBuilder(
     column: $table.amountCollected,
     builder: (column) => column,
   );
@@ -21889,7 +21906,7 @@ class $$VisitTableTableTableManager
                 Value<int?> outcomeId = const Value.absent(),
                 Value<DateTime> arrived_at = const Value.absent(),
                 Value<String?> observations = const Value.absent(),
-                Value<double> amountCollected = const Value.absent(),
+                Value<int> amountCollected = const Value.absent(),
                 Value<int> rowid = const Value.absent(),
               }) => VisitTableCompanion(
                 createdAt: createdAt,
@@ -21919,7 +21936,7 @@ class $$VisitTableTableTableManager
                 Value<int?> outcomeId = const Value.absent(),
                 required DateTime arrived_at,
                 Value<String?> observations = const Value.absent(),
-                Value<double> amountCollected = const Value.absent(),
+                Value<int> amountCollected = const Value.absent(),
                 Value<int> rowid = const Value.absent(),
               }) => VisitTableCompanion.insert(
                 createdAt: createdAt,
@@ -22099,14 +22116,14 @@ typedef $$SaleTableTableCreateCompanionBuilder =
       Value<int?> serverId,
       Value<String> saleId,
       required String customerId,
-      required double totalAmount,
+      required int totalAmount,
       required String paymentMethod,
       Value<DateTime> saleDate,
       required int quantity,
-      required double shipping_amount,
+      required int shipping_amount,
       Value<String?> visitId,
-      Value<double?> cashAmount,
-      Value<double?> transferAmount,
+      Value<int?> cashAmount,
+      Value<int?> transferAmount,
       Value<String> status,
       Value<DateTime?> cancelledAt,
       Value<String?> cancellationReason,
@@ -22120,14 +22137,14 @@ typedef $$SaleTableTableUpdateCompanionBuilder =
       Value<int?> serverId,
       Value<String> saleId,
       Value<String> customerId,
-      Value<double> totalAmount,
+      Value<int> totalAmount,
       Value<String> paymentMethod,
       Value<DateTime> saleDate,
       Value<int> quantity,
-      Value<double> shipping_amount,
+      Value<int> shipping_amount,
       Value<String?> visitId,
-      Value<double?> cashAmount,
-      Value<double?> transferAmount,
+      Value<int?> cashAmount,
+      Value<int?> transferAmount,
       Value<String> status,
       Value<DateTime?> cancelledAt,
       Value<String?> cancellationReason,
@@ -22268,7 +22285,7 @@ class $$SaleTableTableFilterComposer
     builder: (column) => ColumnFilters(column),
   );
 
-  ColumnFilters<double> get totalAmount => $composableBuilder(
+  ColumnFilters<int> get totalAmount => $composableBuilder(
     column: $table.totalAmount,
     builder: (column) => ColumnFilters(column),
   );
@@ -22288,7 +22305,7 @@ class $$SaleTableTableFilterComposer
     builder: (column) => ColumnFilters(column),
   );
 
-  ColumnFilters<double> get shipping_amount => $composableBuilder(
+  ColumnFilters<int> get shipping_amount => $composableBuilder(
     column: $table.shipping_amount,
     builder: (column) => ColumnFilters(column),
   );
@@ -22298,12 +22315,12 @@ class $$SaleTableTableFilterComposer
     builder: (column) => ColumnFilters(column),
   );
 
-  ColumnFilters<double> get cashAmount => $composableBuilder(
+  ColumnFilters<int> get cashAmount => $composableBuilder(
     column: $table.cashAmount,
     builder: (column) => ColumnFilters(column),
   );
 
-  ColumnFilters<double> get transferAmount => $composableBuilder(
+  ColumnFilters<int> get transferAmount => $composableBuilder(
     column: $table.transferAmount,
     builder: (column) => ColumnFilters(column),
   );
@@ -22458,7 +22475,7 @@ class $$SaleTableTableOrderingComposer
     builder: (column) => ColumnOrderings(column),
   );
 
-  ColumnOrderings<double> get totalAmount => $composableBuilder(
+  ColumnOrderings<int> get totalAmount => $composableBuilder(
     column: $table.totalAmount,
     builder: (column) => ColumnOrderings(column),
   );
@@ -22478,7 +22495,7 @@ class $$SaleTableTableOrderingComposer
     builder: (column) => ColumnOrderings(column),
   );
 
-  ColumnOrderings<double> get shipping_amount => $composableBuilder(
+  ColumnOrderings<int> get shipping_amount => $composableBuilder(
     column: $table.shipping_amount,
     builder: (column) => ColumnOrderings(column),
   );
@@ -22488,12 +22505,12 @@ class $$SaleTableTableOrderingComposer
     builder: (column) => ColumnOrderings(column),
   );
 
-  ColumnOrderings<double> get cashAmount => $composableBuilder(
+  ColumnOrderings<int> get cashAmount => $composableBuilder(
     column: $table.cashAmount,
     builder: (column) => ColumnOrderings(column),
   );
 
-  ColumnOrderings<double> get transferAmount => $composableBuilder(
+  ColumnOrderings<int> get transferAmount => $composableBuilder(
     column: $table.transferAmount,
     builder: (column) => ColumnOrderings(column),
   );
@@ -22563,7 +22580,7 @@ class $$SaleTableTableAnnotationComposer
   GeneratedColumn<String> get saleId =>
       $composableBuilder(column: $table.saleId, builder: (column) => column);
 
-  GeneratedColumn<double> get totalAmount => $composableBuilder(
+  GeneratedColumn<int> get totalAmount => $composableBuilder(
     column: $table.totalAmount,
     builder: (column) => column,
   );
@@ -22579,7 +22596,7 @@ class $$SaleTableTableAnnotationComposer
   GeneratedColumn<int> get quantity =>
       $composableBuilder(column: $table.quantity, builder: (column) => column);
 
-  GeneratedColumn<double> get shipping_amount => $composableBuilder(
+  GeneratedColumn<int> get shipping_amount => $composableBuilder(
     column: $table.shipping_amount,
     builder: (column) => column,
   );
@@ -22587,12 +22604,12 @@ class $$SaleTableTableAnnotationComposer
   GeneratedColumn<String> get visitId =>
       $composableBuilder(column: $table.visitId, builder: (column) => column);
 
-  GeneratedColumn<double> get cashAmount => $composableBuilder(
+  GeneratedColumn<int> get cashAmount => $composableBuilder(
     column: $table.cashAmount,
     builder: (column) => column,
   );
 
-  GeneratedColumn<double> get transferAmount => $composableBuilder(
+  GeneratedColumn<int> get transferAmount => $composableBuilder(
     column: $table.transferAmount,
     builder: (column) => column,
   );
@@ -22750,14 +22767,14 @@ class $$SaleTableTableTableManager
                 Value<int?> serverId = const Value.absent(),
                 Value<String> saleId = const Value.absent(),
                 Value<String> customerId = const Value.absent(),
-                Value<double> totalAmount = const Value.absent(),
+                Value<int> totalAmount = const Value.absent(),
                 Value<String> paymentMethod = const Value.absent(),
                 Value<DateTime> saleDate = const Value.absent(),
                 Value<int> quantity = const Value.absent(),
-                Value<double> shipping_amount = const Value.absent(),
+                Value<int> shipping_amount = const Value.absent(),
                 Value<String?> visitId = const Value.absent(),
-                Value<double?> cashAmount = const Value.absent(),
-                Value<double?> transferAmount = const Value.absent(),
+                Value<int?> cashAmount = const Value.absent(),
+                Value<int?> transferAmount = const Value.absent(),
                 Value<String> status = const Value.absent(),
                 Value<DateTime?> cancelledAt = const Value.absent(),
                 Value<String?> cancellationReason = const Value.absent(),
@@ -22790,14 +22807,14 @@ class $$SaleTableTableTableManager
                 Value<int?> serverId = const Value.absent(),
                 Value<String> saleId = const Value.absent(),
                 required String customerId,
-                required double totalAmount,
+                required int totalAmount,
                 required String paymentMethod,
                 Value<DateTime> saleDate = const Value.absent(),
                 required int quantity,
-                required double shipping_amount,
+                required int shipping_amount,
                 Value<String?> visitId = const Value.absent(),
-                Value<double?> cashAmount = const Value.absent(),
-                Value<double?> transferAmount = const Value.absent(),
+                Value<int?> cashAmount = const Value.absent(),
+                Value<int?> transferAmount = const Value.absent(),
                 Value<String> status = const Value.absent(),
                 Value<DateTime?> cancelledAt = const Value.absent(),
                 Value<String?> cancellationReason = const Value.absent(),
@@ -22979,8 +22996,8 @@ typedef $$SaleItemTableTableCreateCompanionBuilder =
       required String saleId,
       required String productId,
       required int quantity,
-      required double unitPrice,
-      required double subtotal,
+      required int unitPrice,
+      required int subtotal,
       Value<int?> agreementServerId,
       Value<String?> agreementUuid,
       Value<int> rowid,
@@ -22995,8 +23012,8 @@ typedef $$SaleItemTableTableUpdateCompanionBuilder =
       Value<String> saleId,
       Value<String> productId,
       Value<int> quantity,
-      Value<double> unitPrice,
-      Value<double> subtotal,
+      Value<int> unitPrice,
+      Value<int> subtotal,
       Value<int?> agreementServerId,
       Value<String?> agreementUuid,
       Value<int> rowid,
@@ -23092,12 +23109,12 @@ class $$SaleItemTableTableFilterComposer
     builder: (column) => ColumnFilters(column),
   );
 
-  ColumnFilters<double> get unitPrice => $composableBuilder(
+  ColumnFilters<int> get unitPrice => $composableBuilder(
     column: $table.unitPrice,
     builder: (column) => ColumnFilters(column),
   );
 
-  ColumnFilters<double> get subtotal => $composableBuilder(
+  ColumnFilters<int> get subtotal => $composableBuilder(
     column: $table.subtotal,
     builder: (column) => ColumnFilters(column),
   );
@@ -23198,12 +23215,12 @@ class $$SaleItemTableTableOrderingComposer
     builder: (column) => ColumnOrderings(column),
   );
 
-  ColumnOrderings<double> get unitPrice => $composableBuilder(
+  ColumnOrderings<int> get unitPrice => $composableBuilder(
     column: $table.unitPrice,
     builder: (column) => ColumnOrderings(column),
   );
 
-  ColumnOrderings<double> get subtotal => $composableBuilder(
+  ColumnOrderings<int> get subtotal => $composableBuilder(
     column: $table.subtotal,
     builder: (column) => ColumnOrderings(column),
   );
@@ -23296,10 +23313,10 @@ class $$SaleItemTableTableAnnotationComposer
   GeneratedColumn<int> get quantity =>
       $composableBuilder(column: $table.quantity, builder: (column) => column);
 
-  GeneratedColumn<double> get unitPrice =>
+  GeneratedColumn<int> get unitPrice =>
       $composableBuilder(column: $table.unitPrice, builder: (column) => column);
 
-  GeneratedColumn<double> get subtotal =>
+  GeneratedColumn<int> get subtotal =>
       $composableBuilder(column: $table.subtotal, builder: (column) => column);
 
   GeneratedColumn<int> get agreementServerId => $composableBuilder(
@@ -23395,8 +23412,8 @@ class $$SaleItemTableTableTableManager
                 Value<String> saleId = const Value.absent(),
                 Value<String> productId = const Value.absent(),
                 Value<int> quantity = const Value.absent(),
-                Value<double> unitPrice = const Value.absent(),
-                Value<double> subtotal = const Value.absent(),
+                Value<int> unitPrice = const Value.absent(),
+                Value<int> subtotal = const Value.absent(),
                 Value<int?> agreementServerId = const Value.absent(),
                 Value<String?> agreementUuid = const Value.absent(),
                 Value<int> rowid = const Value.absent(),
@@ -23425,8 +23442,8 @@ class $$SaleItemTableTableTableManager
                 required String saleId,
                 required String productId,
                 required int quantity,
-                required double unitPrice,
-                required double subtotal,
+                required int unitPrice,
+                required int subtotal,
                 Value<int?> agreementServerId = const Value.absent(),
                 Value<String?> agreementUuid = const Value.absent(),
                 Value<int> rowid = const Value.absent(),
@@ -23533,7 +23550,7 @@ typedef $$PaymentTableTableCreateCompanionBuilder =
       Value<int?> serverId,
       Value<String> paymentId,
       required String customerId,
-      required double amount,
+      required int amount,
       required String paymentMethod,
       Value<String?> visitId,
       Value<String?> saleId,
@@ -23551,7 +23568,7 @@ typedef $$PaymentTableTableUpdateCompanionBuilder =
       Value<int?> serverId,
       Value<String> paymentId,
       Value<String> customerId,
-      Value<double> amount,
+      Value<int> amount,
       Value<String> paymentMethod,
       Value<String?> visitId,
       Value<String?> saleId,
@@ -23695,7 +23712,7 @@ class $$PaymentTableTableFilterComposer
     builder: (column) => ColumnFilters(column),
   );
 
-  ColumnFilters<double> get amount => $composableBuilder(
+  ColumnFilters<int> get amount => $composableBuilder(
     column: $table.amount,
     builder: (column) => ColumnFilters(column),
   );
@@ -23856,7 +23873,7 @@ class $$PaymentTableTableOrderingComposer
     builder: (column) => ColumnOrderings(column),
   );
 
-  ColumnOrderings<double> get amount => $composableBuilder(
+  ColumnOrderings<int> get amount => $composableBuilder(
     column: $table.amount,
     builder: (column) => ColumnOrderings(column),
   );
@@ -23982,7 +23999,7 @@ class $$PaymentTableTableAnnotationComposer
   GeneratedColumn<String> get paymentId =>
       $composableBuilder(column: $table.paymentId, builder: (column) => column);
 
-  GeneratedColumn<double> get amount =>
+  GeneratedColumn<int> get amount =>
       $composableBuilder(column: $table.amount, builder: (column) => column);
 
   GeneratedColumn<String> get paymentMethod => $composableBuilder(
@@ -24142,7 +24159,7 @@ class $$PaymentTableTableTableManager
                 Value<int?> serverId = const Value.absent(),
                 Value<String> paymentId = const Value.absent(),
                 Value<String> customerId = const Value.absent(),
-                Value<double> amount = const Value.absent(),
+                Value<int> amount = const Value.absent(),
                 Value<String> paymentMethod = const Value.absent(),
                 Value<String?> visitId = const Value.absent(),
                 Value<String?> saleId = const Value.absent(),
@@ -24176,7 +24193,7 @@ class $$PaymentTableTableTableManager
                 Value<int?> serverId = const Value.absent(),
                 Value<String> paymentId = const Value.absent(),
                 required String customerId,
-                required double amount,
+                required int amount,
                 required String paymentMethod,
                 Value<String?> visitId = const Value.absent(),
                 Value<String?> saleId = const Value.absent(),
@@ -24349,7 +24366,7 @@ typedef $$CustomerAccountEntryTableTableCreateCompanionBuilder =
       Value<String?> paymentId,
       Value<String?> createdBy,
       required String entryType,
-      required double amount,
+      required int amount,
       required int direction,
       Value<String?> description,
       Value<int> rowid,
@@ -24366,7 +24383,7 @@ typedef $$CustomerAccountEntryTableTableUpdateCompanionBuilder =
       Value<String?> paymentId,
       Value<String?> createdBy,
       Value<String> entryType,
-      Value<double> amount,
+      Value<int> amount,
       Value<int> direction,
       Value<String?> description,
       Value<int> rowid,
@@ -24529,7 +24546,7 @@ class $$CustomerAccountEntryTableTableFilterComposer
     builder: (column) => ColumnFilters(column),
   );
 
-  ColumnFilters<double> get amount => $composableBuilder(
+  ColumnFilters<int> get amount => $composableBuilder(
     column: $table.amount,
     builder: (column) => ColumnFilters(column),
   );
@@ -24683,7 +24700,7 @@ class $$CustomerAccountEntryTableTableOrderingComposer
     builder: (column) => ColumnOrderings(column),
   );
 
-  ColumnOrderings<double> get amount => $composableBuilder(
+  ColumnOrderings<int> get amount => $composableBuilder(
     column: $table.amount,
     builder: (column) => ColumnOrderings(column),
   );
@@ -24802,7 +24819,7 @@ class $$CustomerAccountEntryTableTableAnnotationComposer
   GeneratedColumn<String> get entryType =>
       $composableBuilder(column: $table.entryType, builder: (column) => column);
 
-  GeneratedColumn<double> get amount =>
+  GeneratedColumn<int> get amount =>
       $composableBuilder(column: $table.amount, builder: (column) => column);
 
   GeneratedColumn<int> get direction =>
@@ -24966,7 +24983,7 @@ class $$CustomerAccountEntryTableTableTableManager
                 Value<String?> paymentId = const Value.absent(),
                 Value<String?> createdBy = const Value.absent(),
                 Value<String> entryType = const Value.absent(),
-                Value<double> amount = const Value.absent(),
+                Value<int> amount = const Value.absent(),
                 Value<int> direction = const Value.absent(),
                 Value<String?> description = const Value.absent(),
                 Value<int> rowid = const Value.absent(),
@@ -24998,7 +25015,7 @@ class $$CustomerAccountEntryTableTableTableManager
                 Value<String?> paymentId = const Value.absent(),
                 Value<String?> createdBy = const Value.absent(),
                 required String entryType,
-                required double amount,
+                required int amount,
                 required int direction,
                 Value<String?> description = const Value.absent(),
                 Value<int> rowid = const Value.absent(),
@@ -25165,7 +25182,7 @@ typedef $$CustomerBalanceTableTableCreateCompanionBuilder =
       Value<bool> enabled,
       Value<int?> serverId,
       required String customerId,
-      Value<double> currentBalance,
+      Value<int> currentBalance,
       Value<String?> lastEntryId,
       Value<int> rowid,
     });
@@ -25176,7 +25193,7 @@ typedef $$CustomerBalanceTableTableUpdateCompanionBuilder =
       Value<bool> enabled,
       Value<int?> serverId,
       Value<String> customerId,
-      Value<double> currentBalance,
+      Value<int> currentBalance,
       Value<String?> lastEntryId,
       Value<int> rowid,
     });
@@ -25268,7 +25285,7 @@ class $$CustomerBalanceTableTableFilterComposer
     builder: (column) => ColumnFilters(column),
   );
 
-  ColumnFilters<double> get currentBalance => $composableBuilder(
+  ColumnFilters<int> get currentBalance => $composableBuilder(
     column: $table.currentBalance,
     builder: (column) => ColumnFilters(column),
   );
@@ -25350,7 +25367,7 @@ class $$CustomerBalanceTableTableOrderingComposer
     builder: (column) => ColumnOrderings(column),
   );
 
-  ColumnOrderings<double> get currentBalance => $composableBuilder(
+  ColumnOrderings<int> get currentBalance => $composableBuilder(
     column: $table.currentBalance,
     builder: (column) => ColumnOrderings(column),
   );
@@ -25426,7 +25443,7 @@ class $$CustomerBalanceTableTableAnnotationComposer
   GeneratedColumn<int> get serverId =>
       $composableBuilder(column: $table.serverId, builder: (column) => column);
 
-  GeneratedColumn<double> get currentBalance => $composableBuilder(
+  GeneratedColumn<int> get currentBalance => $composableBuilder(
     column: $table.currentBalance,
     builder: (column) => column,
   );
@@ -25520,7 +25537,7 @@ class $$CustomerBalanceTableTableTableManager
                 Value<bool> enabled = const Value.absent(),
                 Value<int?> serverId = const Value.absent(),
                 Value<String> customerId = const Value.absent(),
-                Value<double> currentBalance = const Value.absent(),
+                Value<int> currentBalance = const Value.absent(),
                 Value<String?> lastEntryId = const Value.absent(),
                 Value<int> rowid = const Value.absent(),
               }) => CustomerBalanceTableCompanion(
@@ -25540,7 +25557,7 @@ class $$CustomerBalanceTableTableTableManager
                 Value<bool> enabled = const Value.absent(),
                 Value<int?> serverId = const Value.absent(),
                 required String customerId,
-                Value<double> currentBalance = const Value.absent(),
+                Value<int> currentBalance = const Value.absent(),
                 Value<String?> lastEntryId = const Value.absent(),
                 Value<int> rowid = const Value.absent(),
               }) => CustomerBalanceTableCompanion.insert(
@@ -27939,7 +27956,7 @@ typedef $$CustomerAgreementTableTableCreateCompanionBuilder =
       Value<String> agreementId,
       required String customerId,
       required String productId,
-      required double unitPrice,
+      required int unitPrice,
       required String validFrom,
       Value<String?> validTo,
       Value<String?> reason,
@@ -27954,7 +27971,7 @@ typedef $$CustomerAgreementTableTableUpdateCompanionBuilder =
       Value<String> agreementId,
       Value<String> customerId,
       Value<String> productId,
-      Value<double> unitPrice,
+      Value<int> unitPrice,
       Value<String> validFrom,
       Value<String?> validTo,
       Value<String?> reason,
@@ -28053,7 +28070,7 @@ class $$CustomerAgreementTableTableFilterComposer
     builder: (column) => ColumnFilters(column),
   );
 
-  ColumnFilters<double> get unitPrice => $composableBuilder(
+  ColumnFilters<int> get unitPrice => $composableBuilder(
     column: $table.unitPrice,
     builder: (column) => ColumnFilters(column),
   );
@@ -28154,7 +28171,7 @@ class $$CustomerAgreementTableTableOrderingComposer
     builder: (column) => ColumnOrderings(column),
   );
 
-  ColumnOrderings<double> get unitPrice => $composableBuilder(
+  ColumnOrderings<int> get unitPrice => $composableBuilder(
     column: $table.unitPrice,
     builder: (column) => ColumnOrderings(column),
   );
@@ -28249,7 +28266,7 @@ class $$CustomerAgreementTableTableAnnotationComposer
     builder: (column) => column,
   );
 
-  GeneratedColumn<double> get unitPrice =>
+  GeneratedColumn<int> get unitPrice =>
       $composableBuilder(column: $table.unitPrice, builder: (column) => column);
 
   GeneratedColumn<String> get validFrom =>
@@ -28354,7 +28371,7 @@ class $$CustomerAgreementTableTableTableManager
                 Value<String> agreementId = const Value.absent(),
                 Value<String> customerId = const Value.absent(),
                 Value<String> productId = const Value.absent(),
-                Value<double> unitPrice = const Value.absent(),
+                Value<int> unitPrice = const Value.absent(),
                 Value<String> validFrom = const Value.absent(),
                 Value<String?> validTo = const Value.absent(),
                 Value<String?> reason = const Value.absent(),
@@ -28382,7 +28399,7 @@ class $$CustomerAgreementTableTableTableManager
                 Value<String> agreementId = const Value.absent(),
                 required String customerId,
                 required String productId,
-                required double unitPrice,
+                required int unitPrice,
                 required String validFrom,
                 Value<String?> validTo = const Value.absent(),
                 Value<String?> reason = const Value.absent(),
@@ -28811,8 +28828,8 @@ typedef $$BalanceCorrectionTableTableCreateCompanionBuilder =
       Value<String?> visitId,
       required String target,
       Value<String?> containerType,
-      required double counted,
-      required double seenBalance,
+      required int counted,
+      required int seenBalance,
       required String reason,
       required DateTime correctedAt,
       Value<int> rowid,
@@ -28828,8 +28845,8 @@ typedef $$BalanceCorrectionTableTableUpdateCompanionBuilder =
       Value<String?> visitId,
       Value<String> target,
       Value<String?> containerType,
-      Value<double> counted,
-      Value<double> seenBalance,
+      Value<int> counted,
+      Value<int> seenBalance,
       Value<String> reason,
       Value<DateTime> correctedAt,
       Value<int> rowid,
@@ -28920,12 +28937,12 @@ class $$BalanceCorrectionTableTableFilterComposer
     builder: (column) => ColumnFilters(column),
   );
 
-  ColumnFilters<double> get counted => $composableBuilder(
+  ColumnFilters<int> get counted => $composableBuilder(
     column: $table.counted,
     builder: (column) => ColumnFilters(column),
   );
 
-  ColumnFilters<double> get seenBalance => $composableBuilder(
+  ColumnFilters<int> get seenBalance => $composableBuilder(
     column: $table.seenBalance,
     builder: (column) => ColumnFilters(column),
   );
@@ -29013,12 +29030,12 @@ class $$BalanceCorrectionTableTableOrderingComposer
     builder: (column) => ColumnOrderings(column),
   );
 
-  ColumnOrderings<double> get counted => $composableBuilder(
+  ColumnOrderings<int> get counted => $composableBuilder(
     column: $table.counted,
     builder: (column) => ColumnOrderings(column),
   );
 
-  ColumnOrderings<double> get seenBalance => $composableBuilder(
+  ColumnOrderings<int> get seenBalance => $composableBuilder(
     column: $table.seenBalance,
     builder: (column) => ColumnOrderings(column),
   );
@@ -29096,10 +29113,10 @@ class $$BalanceCorrectionTableTableAnnotationComposer
     builder: (column) => column,
   );
 
-  GeneratedColumn<double> get counted =>
+  GeneratedColumn<int> get counted =>
       $composableBuilder(column: $table.counted, builder: (column) => column);
 
-  GeneratedColumn<double> get seenBalance => $composableBuilder(
+  GeneratedColumn<int> get seenBalance => $composableBuilder(
     column: $table.seenBalance,
     builder: (column) => column,
   );
@@ -29184,8 +29201,8 @@ class $$BalanceCorrectionTableTableTableManager
                 Value<String?> visitId = const Value.absent(),
                 Value<String> target = const Value.absent(),
                 Value<String?> containerType = const Value.absent(),
-                Value<double> counted = const Value.absent(),
-                Value<double> seenBalance = const Value.absent(),
+                Value<int> counted = const Value.absent(),
+                Value<int> seenBalance = const Value.absent(),
                 Value<String> reason = const Value.absent(),
                 Value<DateTime> correctedAt = const Value.absent(),
                 Value<int> rowid = const Value.absent(),
@@ -29216,8 +29233,8 @@ class $$BalanceCorrectionTableTableTableManager
                 Value<String?> visitId = const Value.absent(),
                 required String target,
                 Value<String?> containerType = const Value.absent(),
-                required double counted,
-                required double seenBalance,
+                required int counted,
+                required int seenBalance,
                 required String reason,
                 required DateTime correctedAt,
                 Value<int> rowid = const Value.absent(),

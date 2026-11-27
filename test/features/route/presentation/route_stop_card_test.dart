@@ -15,7 +15,7 @@ import 'package:app/features/visits/domain/models/visit_summary.dart';
 
 void main() {
   group('lighter content', () {
-    RouteStop stopWith({double debt = 0, List<String> products = const []}) =>
+    RouteStop stopWith({int debt = 0, List<String> products = const []}) =>
         RouteStop(
           id: 's-1',
           customer: Customer(

@@ -62,7 +62,7 @@ void main() {
   });
 
   test('total adds both parts', () {
-    expect(const PaymentSplit(cash: 600, transfer: 400.5).total, 1000.5);
+    expect(const PaymentSplit(cash: 600, transfer: 400).total, 1000);
   });
 
   test('payments carry the customer, visit and sale', () {

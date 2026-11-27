@@ -27,7 +27,7 @@ void main() {
 
   tearDown(() => db.close());
 
-  Future<void> pendingSale(String id, String customerId, double total) async {
+  Future<void> pendingSale(String id, String customerId, int total) async {
     await db
         .into(db.saleTable)
         .insert(
@@ -47,11 +47,7 @@ void main() {
     );
   }
 
-  Future<void> pendingPayment(
-    String id,
-    String customerId,
-    double amount,
-  ) async {
+  Future<void> pendingPayment(String id, String customerId, int amount) async {
     await db
         .into(db.paymentTable)
         .insert(
@@ -120,18 +116,18 @@ void main() {
     test('without pending changes stores the server value', () async {
       await account.post('ana', 9999);
 
-      await account.reconcile('ana', 250.75);
+      await account.reconcile('ana', 250);
 
-      expect(await account.balanceOf('ana'), 250.75);
+      expect(await account.balanceOf('ana'), 250);
     });
 
     test('adds the pending sales and subtracts the pending payments', () async {
       await pendingSale('s1', 'ana', 300);
       await pendingPayment('p1', 'ana', 100);
 
-      await account.reconcile('ana', 1500.5);
+      await account.reconcile('ana', 1500);
 
-      expect(await account.balanceOf('ana'), 1500.5 + 300 - 100);
+      expect(await account.balanceOf('ana'), 1500 + 300 - 100);
     });
 
     test('a sent sale is already in the server value', () async {

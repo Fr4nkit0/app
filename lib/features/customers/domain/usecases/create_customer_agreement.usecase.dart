@@ -21,7 +21,7 @@ class CreateCustomerAgreementUseCase {
   Future<String> execute({
     required String customerId,
     required String productId,
-    required double unitPrice,
+    required int unitPrice,
     required String validFrom,
     String? validTo,
     String? reason,

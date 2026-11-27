@@ -369,11 +369,11 @@ void main() {
     await service.pull();
 
     final balance = await db.select(db.customerBalanceTable).getSingle();
-    expect(balance.currentBalance, 250.75);
+    expect(balance.currentBalance, 251);
     final containers = await db.select(db.customerContainerBalanceTable).getSingle();
     expect(containers.quantity, 7);
     final stops = await DriftRouteRepository(db).watchDayStops().first;
-    expect(stops.firstWhere((s) => s.customer.name == 'Ana').customer.debtAmount, 250.75);
+    expect(stops.firstWhere((s) => s.customer.name == 'Ana').customer.debtAmount, 251);
   });
 
   test('a sale cancelled on the server and the balance and stock that '
@@ -443,7 +443,7 @@ void main() {
     )..where((t) => t.saleId.equals('srv-sale'))).getSingle();
     expect(sale.status, 'CANCELLED');
     final balance = await db.select(db.customerBalanceTable).getSingle();
-    expect(balance.currentBalance, 1300.50);
+    expect(balance.currentBalance, 1301);
     final stock = await (db.select(
       db.productTable,
     )..where((t) => t.serverId.equals(21))).getSingle();

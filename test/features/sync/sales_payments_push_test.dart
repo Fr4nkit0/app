@@ -136,7 +136,7 @@ void main() {
     price: 1200,
     agreementId: 31,
   );
-  const soda = Product(id: 'p-2', name: 'Soda 2L', unitLabel: '', price: 400.5);
+  const soda = Product(id: 'p-2', name: 'Soda 2L', unitLabel: '', price: 400);
 
   setUp(() async {
     db = AppDatabase(NativeDatabase.memory());
@@ -222,9 +222,9 @@ void main() {
     PaymentMethod method = PaymentMethod.credit,
     List<SaleItem> items = const [SaleItem(product: water, quantity: 2)],
     String? visitId,
-    double? cash,
-    double? transfer,
-    double debtAmount = 0,
+    int? cash,
+    int? transfer,
+    int debtAmount = 0,
   }) async {
     await registerSale.execute(
       debtAmount: debtAmount,
@@ -232,7 +232,7 @@ void main() {
         id: id,
         customer: customer,
         items: items,
-        total: items.fold(0.0, (sum, i) => sum + i.subtotal),
+        total: items.fold(0, (sum, i) => sum + i.subtotal),
         paymentMethod: method,
         date: soldAt,
         visitId: visitId,
@@ -244,7 +244,7 @@ void main() {
 
   Future<void> pay({
     String id = 'pay-1',
-    double amount = 500,
+    int amount = 500,
     PaymentType type = PaymentType.cash,
     String? visitId,
   }) => payments.recordPayment(
@@ -273,7 +273,7 @@ void main() {
       Map<String, dynamic>.from(r as Map),
   ];
 
-  Future<double> displayedBalance() =>
+  Future<int> displayedBalance() =>
       payments.watchCustomerBalance('c-1').first;
 
   test('sales travel after visits and before container movements and payments', () async {
@@ -322,7 +322,7 @@ void main() {
           'customer_id': 10,
           'visit_uuid': 'v-1',
           'date': '2026-10-19T12:30:00.000Z',
-          'total': 2800.5,
+          'total': 2800,
           'is_credit_sale': true,
           'notes': null,
           'details': [
@@ -330,17 +330,23 @@ void main() {
               'product_id': 21,
               'customer_agreement_id': 31,
               'quantity': 2,
-              'unit_price': 1200.0,
+              'unit_price': 1200,
             },
             {
               'product_id': 22,
               'customer_agreement_id': null,
               'quantity': 1,
-              'unit_price': 400.5,
+              'unit_price': 400,
             },
           ],
         },
       ]);
+      // Money travels as whole pesos.
+      final sale = sent('sales').single;
+      expect(sale['total'], isA<int>());
+      for (final detail in sale['details'] as List) {
+        expect((detail as Map)['unit_price'], isA<int>());
+      }
       expect(sent('payments'), isEmpty);
       final row = await db.select(db.saleTable).getSingle();
       expect(row.serverId, isNotNull);
@@ -359,7 +365,8 @@ void main() {
       final settled = sent('payments');
       expect(settled.map((p) => p['sale_uuid']), ['sale-1', 'sale-1']);
       expect(settled.map((p) => p['payment_method_id']), [5, 6]);
-      expect(settled.map((p) => p['amount']), [1000.0, 1400.0]);
+      expect(settled.map((p) => p['amount']), [1000, 1400]);
+      expect(settled.map((p) => p['amount']), everyElement(isA<int>()));
       expect(await displayedBalance(), 1000);
     },
   );

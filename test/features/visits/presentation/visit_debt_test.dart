@@ -31,7 +31,7 @@ final _stop = RouteStop(
 );
 
 void main() {
-  Future<void> pumpVisit(WidgetTester tester, Stream<double> balance) async {
+  Future<void> pumpVisit(WidgetTester tester, Stream<int> balance) async {
     tester.view.physicalSize = const Size(400, 900);
     tester.view.devicePixelRatio = 1;
     addTearDown(tester.view.reset);
@@ -75,7 +75,7 @@ void main() {
   testWidgets('while the account loads the stop debt is not shown', (
     tester,
   ) async {
-    await pumpVisit(tester, const Stream<double>.empty());
+    await pumpVisit(tester, const Stream<int>.empty());
 
     expect(find.byType(VisitDebtBanner), findsNothing);
   });

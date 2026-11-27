@@ -18,7 +18,9 @@ class CustomerAgreementTable extends Table with Timestamps {
     #productId,
     onDelete: KeyAction.cascade,
   )();
-  late final unitPrice = real()();
+
+  /// Whole pesos.
+  late final unitPrice = integer()();
   late final validFrom = text()();
   late final validTo = text().nullable()();
   late final reason = text().nullable()();

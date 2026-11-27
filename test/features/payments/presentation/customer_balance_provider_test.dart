@@ -20,7 +20,7 @@ void main() {
   });
 
   /// Listens while reading: Riverpod pauses a provider nobody listens to.
-  Future<double> debtOf(String customerId) {
+  Future<int> debtOf(String customerId) {
     final provider = customerBalanceProvider(customerId);
     container.listen(provider, (_, _) {});
     return container.read(provider.future);

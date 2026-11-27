@@ -24,7 +24,7 @@ void main() {
   Payment makePayment({
     String id = 'pay-1',
     String customerId = 'mock-customer-1',
-    double amount = 500.0,
+    int amount = 500,
     PaymentType type = PaymentType.cash,
     String? visitId,
     DateTime? createdAt,
@@ -45,7 +45,7 @@ void main() {
 
   group('recordPayment', () {
     test('inserts payment row with correct values', () async {
-      await sut.recordPayment(makePayment(id: 'pay-1', amount: 500.0));
+      await sut.recordPayment(makePayment(id: 'pay-1', amount: 500));
 
       final rows = await db.select(db.paymentTable).get();
       expect(rows.length, 1);
@@ -75,7 +75,7 @@ void main() {
     });
 
     test('creates ledger entry with direction -1 for PAYMENT', () async {
-      await sut.recordPayment(makePayment(amount: 300.0));
+      await sut.recordPayment(makePayment(amount: 300));
 
       final entries = await db.select(db.customerAccountEntryTable).get();
       expect(entries.length, 1);
@@ -87,7 +87,7 @@ void main() {
     });
 
     test('creates customer balance row on first payment', () async {
-      await sut.recordPayment(makePayment(amount: 300.0));
+      await sut.recordPayment(makePayment(amount: 300));
 
       final rows = await db.select(db.customerBalanceTable).get();
       expect(rows.length, 1);
@@ -98,8 +98,8 @@ void main() {
     test(
       'decreases balance on subsequent payments for same customer',
       () async {
-        await sut.recordPayment(makePayment(id: 'pay-1', amount: 200.0));
-        await sut.recordPayment(makePayment(id: 'pay-2', amount: 150.0));
+        await sut.recordPayment(makePayment(id: 'pay-1', amount: 200));
+        await sut.recordPayment(makePayment(id: 'pay-2', amount: 150));
 
         final rows = await db.select(db.customerBalanceTable).get();
         expect(rows.length, 1);
@@ -121,10 +121,10 @@ void main() {
 
     test('balance tracks independent customers separately', () async {
       await sut.recordPayment(
-        makePayment(id: 'p1', customerId: 'mock-customer-1', amount: 100.0),
+        makePayment(id: 'p1', customerId: 'mock-customer-1', amount: 100),
       );
       await sut.recordPayment(
-        makePayment(id: 'p2', customerId: 'mock-customer-2', amount: 250.0),
+        makePayment(id: 'p2', customerId: 'mock-customer-2', amount: 250),
       );
 
       final rows = await db.select(db.customerBalanceTable).get();
@@ -157,13 +157,13 @@ void main() {
               PaymentTableCompanion.insert(
                 paymentId: const drift.Value('pay-dupe'),
                 customerId: 'mock-customer-1',
-                amount: 100.0,
+                amount: 100,
                 paymentMethod: 'EFECTIVO',
               ),
             );
 
         await expectLater(
-          sut.recordPayment(makePayment(id: 'pay-dupe', amount: 999.0)),
+          sut.recordPayment(makePayment(id: 'pay-dupe', amount: 999)),
           throwsA(anything),
         );
 
@@ -191,7 +191,7 @@ void main() {
     });
 
     test('emits updated balance after a payment is recorded', () async {
-      final emissions = <double>[];
+      final emissions = <int>[];
       final sub = sut
           .watchCustomerBalance('mock-customer-1')
           .listen(emissions.add);
@@ -199,7 +199,7 @@ void main() {
 
       await Future.delayed(const Duration(milliseconds: 30));
 
-      await sut.recordPayment(makePayment(amount: 400.0));
+      await sut.recordPayment(makePayment(amount: 400));
 
       await Future.delayed(const Duration(milliseconds: 30));
 
@@ -208,8 +208,8 @@ void main() {
     });
 
     test('emits correct balance after multiple payments', () async {
-      await sut.recordPayment(makePayment(id: 'pay-1', amount: 100.0));
-      await sut.recordPayment(makePayment(id: 'pay-2', amount: 200.0));
+      await sut.recordPayment(makePayment(id: 'pay-1', amount: 100));
+      await sut.recordPayment(makePayment(id: 'pay-2', amount: 200));
 
       final balance = await sut.watchCustomerBalance('mock-customer-1').first;
       expect(balance, -300.0);
@@ -247,7 +247,7 @@ void main() {
       await sut.recordPayment(
         makePayment(
           id: 'p-map',
-          amount: 750.0,
+          amount: 750,
           type: PaymentType.transfer,
           visitId: 'visit-map',
         ),
@@ -274,8 +274,8 @@ void main() {
     });
 
     test('returns all ledger entries for a customer', () async {
-      await sut.recordPayment(makePayment(id: 'pay-1', amount: 100.0));
-      await sut.recordPayment(makePayment(id: 'pay-2', amount: 200.0));
+      await sut.recordPayment(makePayment(id: 'pay-1', amount: 100));
+      await sut.recordPayment(makePayment(id: 'pay-2', amount: 200));
 
       final entries = await sut.getCustomerLedger('mock-customer-1');
       expect(entries.length, 2);
@@ -288,10 +288,10 @@ void main() {
         final later = DateTime(2024, 1, 2);
 
         await sut.recordPayment(
-          makePayment(id: 'pay-old', amount: 100.0, createdAt: earlier),
+          makePayment(id: 'pay-old', amount: 100, createdAt: earlier),
         );
         await sut.recordPayment(
-          makePayment(id: 'pay-new', amount: 200.0, createdAt: later),
+          makePayment(id: 'pay-new', amount: 200, createdAt: later),
         );
 
         final entries = await sut.getCustomerLedger('mock-customer-1');
@@ -301,7 +301,7 @@ void main() {
     );
 
     test('ledger entry fields are mapped correctly', () async {
-      await sut.recordPayment(makePayment(amount: 750.0));
+      await sut.recordPayment(makePayment(amount: 750));
 
       final entries = await sut.getCustomerLedger('mock-customer-1');
       expect(entries.length, 1);

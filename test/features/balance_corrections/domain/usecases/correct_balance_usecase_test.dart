@@ -73,24 +73,24 @@ void main() {
       },
     );
 
-    test('accepts a negative debt (credit) and rounds it to cents', () async {
+    test('accepts a negative debt (credit) in whole pesos', () async {
       await useCase().execute(
         customerId: 'cust-1',
         target: BalanceTarget.debt,
-        counted: -200.456,
+        counted: -200,
         reason: 'Saldo a favor',
       );
 
       final row = await db.select(db.balanceCorrectionTable).getSingle();
-      expect(row.counted, -200.46);
+      expect(row.counted, -200);
       expect(row.seenBalance, 0);
-      expect(await account.balanceOf('cust-1'), -200.46);
+      expect(await account.balanceOf('cust-1'), -200);
     });
 
-    test('rounds the balance seen to cents', () async {
+    test('records the balance seen exactly', () async {
       await account.post('cust-1', 1000);
-      await account.post('cust-1', 0.1);
-      await account.post('cust-1', 0.2);
+      await account.post('cust-1', 1);
+      await account.post('cust-1', 2);
 
       await useCase().execute(
         customerId: 'cust-1',
@@ -100,7 +100,8 @@ void main() {
       );
 
       final row = await db.select(db.balanceCorrectionTable).getSingle();
-      expect(row.seenBalance, 1000.3);
+      expect(row.seenBalance, 1003);
+      expect(await account.balanceOf('cust-1'), 1000);
     });
 
     test('the next download keeps the pending difference (ADR 0003)', () async {
@@ -162,7 +163,7 @@ void main() {
       expect(jug.quantity, 2);
     });
 
-    for (final counted in [2.5, -1]) {
+    for (final counted in [-1]) {
       test('rejects $counted containers and records nothing', () async {
         await expectLater(
           useCase().execute(

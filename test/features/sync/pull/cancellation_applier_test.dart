@@ -43,7 +43,7 @@ void main() {
     price: 100,
   );
 
-  Future<double> balance() =>
+  Future<int> balance() =>
       DriftPaymentRepository(db).watchCustomerBalance('c-1').first;
 
   Future<int> stock() async => (await (db.select(

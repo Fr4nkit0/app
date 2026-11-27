@@ -8,11 +8,11 @@ class Sale {
   final String id;
   final Customer customer;
   final List<SaleItem> items;
-  final double total;
+  final int total;
   final PaymentMethod paymentMethod;
   final DateTime date;
-  final double? cashAmount;
-  final double? transferAmount;
+  final int? cashAmount;
+  final int? transferAmount;
   final String? visitId;
 
   /// A cancelled sale stays listed but no longer counts.

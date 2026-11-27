@@ -15,7 +15,7 @@ void main() {
         ProductTableCompanion.insert(
           productId: drift.Value(id),
           name: id,
-          price: 1.0,
+          price: 1,
         ),
       );
 

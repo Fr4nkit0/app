@@ -517,7 +517,7 @@ class ServerShadow {
   static CustomerAgreementTableCompanion _agreementFields(Json j) =>
       CustomerAgreementTableCompanion(
         unitPrice: j.containsKey('unit_price')
-            ? Value((j['unit_price'] as num).toDouble())
+            ? Value((j['unit_price'] as num).round())
             : const Value.absent(),
         validFrom: _value(j, 'valid_from'),
         validTo: _value(j, 'valid_to'),

@@ -21,7 +21,7 @@ class DebtChip extends StatelessWidget {
     this.prefixText = 'Debe ',
   });
 
-  final double amount;
+  final int amount;
   final EdgeInsetsGeometry? margin;
   final EdgeInsetsGeometry padding;
   final BorderRadiusGeometry? borderRadius;

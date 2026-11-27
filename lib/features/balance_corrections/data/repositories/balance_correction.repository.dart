@@ -13,7 +13,7 @@ import 'package:app/features/sync/domain/models/pending_change.dart';
 abstract interface class BalanceCorrectionRepository {
   /// The balance the device shows for [target] of [customerId]: the
   /// account, or the custody of [containerType].
-  Future<double> shownBalance(
+  Future<int> shownBalance(
     String customerId,
     BalanceTarget target, {
     String? containerType,
@@ -41,7 +41,7 @@ class DriftBalanceCorrectionRepository implements BalanceCorrectionRepository {
   final PendingChangeRepository _queue;
 
   @override
-  Future<double> shownBalance(
+  Future<int> shownBalance(
     String customerId,
     BalanceTarget target, {
     String? containerType,
@@ -50,7 +50,7 @@ class DriftBalanceCorrectionRepository implements BalanceCorrectionRepository {
     BalanceTarget.containers => (await _custody.quantityOf(
       customerId,
       containerType!,
-    )).toDouble(),
+    )),
   };
 
   @override
@@ -112,14 +112,14 @@ class DriftBalanceCorrectionRepository implements BalanceCorrectionRepository {
     String customerId,
     BalanceTarget target,
     String? containerType,
-    double delta,
+    int delta,
   ) async {
     if (delta == 0) return;
     switch (target) {
       case BalanceTarget.debt:
         await _account.post(customerId, delta);
       case BalanceTarget.containers:
-        await _custody.post(customerId, containerType!, delta.round());
+        await _custody.post(customerId, containerType!, delta);
     }
   }
 }

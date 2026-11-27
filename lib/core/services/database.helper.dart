@@ -61,32 +61,20 @@ part 'database.helper.g.dart';
 class AppDatabase extends _$AppDatabase {
   AppDatabase([QueryExecutor? executor]) : super(executor ?? _openConnection());
 
-  /// 18 is the development baseline. 19 adds `balance_corrections` with its
-  /// own upgrade step, so devices on 18 keep their unsent changes; anything
-  /// older is still rebuilt empty. 20 adds `route_stops.position`, 21 adds
-  /// `route_container_loads`, 22 drops the unique rule on `customers.phone`.
+  /// 23 stores every money column as whole pesos (INTEGER). Each release is
+  /// installed after syncing what is pending and uninstalling the previous
+  /// one, so no data is carried across versions.
   @override
-  int get schemaVersion => 22;
+  int get schemaVersion => 23;
 
   @override
   MigrationStrategy get migration => MigrationStrategy(
     onCreate: (m) async {
       await m.createAll();
     },
-    // Any older development schema is rebuilt empty; unsent local data is
-    // lost, the same as reinstalling the app.
+    // Any older schema is rebuilt empty; unsent local data is lost, the same
+    // as reinstalling the app.
     onUpgrade: (m, from, to) async {
-      if (from >= 18 && from <= 21) {
-        if (from == 18) await m.createTable(balanceCorrectionTable);
-        if (from <= 19) {
-          await m.addColumn(routeStopTable, routeStopTable.position);
-        }
-        if (from <= 20) await m.createTable(routeContainerLoadTable);
-        // Rebuilds the table without the unique phone rule, keeping its rows.
-        // Foreign keys are never enforced, so dependents are left untouched.
-        await m.alterTable(TableMigration(customerTable));
-        return;
-      }
       // Reverse declaration order drops dependents before what they reference.
       for (final entity in allSchemaEntities.toList().reversed) {
         await m.drop(entity);

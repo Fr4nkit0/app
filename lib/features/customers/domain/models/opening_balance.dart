@@ -9,11 +9,11 @@ class OpeningBalance {
   /// Nothing to carry over.
   static const none = OpeningBalance();
 
-  /// Money owed (positive: the customer owes).
-  final num debt;
+  /// Money owed in whole pesos (positive: the customer owes).
+  final int debt;
 
   /// Containers the customer holds, by catalog code.
-  final Map<String, num> containers;
+  final Map<String, int> containers;
 
   /// Whether there is nothing above zero to record.
   bool get isEmpty => debt == 0 && containers.values.every((c) => c == 0);

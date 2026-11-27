@@ -53,7 +53,7 @@ class PaymentApplier {
       if (customerId == null || method == null) continue;
 
       final paymentId = clientUuid ?? const Uuid().v4();
-      final amount = toDouble(p['amount']);
+      final amount = toPesos(p['amount']);
       final paidAt = DateTime.parse(p['paid_at'] as String).toLocal();
       final cancelled = p['status'] == RecordStatus.cancelled;
       // The server sends no cancellation date: its last update is it.

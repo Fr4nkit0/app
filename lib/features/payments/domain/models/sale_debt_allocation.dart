@@ -20,8 +20,8 @@ class SaleDebtAllocation {
   /// or when [received] does not add up to [saleTotal] plus [debtAmount].
   factory SaleDebtAllocation.of(
     PaymentSplit received, {
-    required double saleTotal,
-    required double debtAmount,
+    required int saleTotal,
+    required int debtAmount,
   }) {
     if (debtAmount < 0) {
       throw const ValidationFailure('La deuda a cobrar no puede ser negativa.');
@@ -29,7 +29,7 @@ class SaleDebtAllocation {
     if (received.cash < 0 || received.transfer < 0) {
       throw const ValidationFailure('Ingresá montos mayores o iguales a 0.');
     }
-    if ((received.total - (saleTotal + debtAmount)).abs() > tolerance) {
+    if (received.total != saleTotal + debtAmount) {
       throw const ValidationFailure(
         'Lo cobrado no coincide con la venta más la deuda.',
       );
@@ -47,10 +47,6 @@ class SaleDebtAllocation {
       ),
     );
   }
-
-  /// Largest difference between what was received and what it pays that
-  /// still counts as equal, like the server's sale total check.
-  static const tolerance = 0.005;
 
   /// Delay of the debt payments after the sale's, so they are listed after
   /// the sale payments of the same operation.

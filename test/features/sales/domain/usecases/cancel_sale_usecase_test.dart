@@ -85,10 +85,10 @@ void main() {
     String id = 'sale-1',
     PaymentMethod method = PaymentMethod.cash,
     DateTime? date,
-    double? cash,
-    double? transfer,
+    int? cash,
+    int? transfer,
     List<ContainerMovement>? containers,
-    double debtAmount = 0,
+    int debtAmount = 0,
   }) async {
     final sale = Sale(
       id: id,
@@ -126,7 +126,7 @@ void main() {
     ),
   );
 
-  Future<double> balance() => payments.watchCustomerBalance('c-1').first;
+  Future<int> balance() => payments.watchCustomerBalance('c-1').first;
 
   Future<int> stock() async => (await (db.select(
     db.productTable,

@@ -149,7 +149,8 @@ void main() {
     expect(agreement.serverId, 1200);
 
     final balance = await db.select(db.customerBalanceTable).getSingle();
-    expect(balance.currentBalance, 1500.5);
+    // Server decimals round to the nearest peso.
+    expect(balance.currentBalance, 1501);
     final containers = await db.select(db.customerContainerBalanceTable).getSingle();
     expect(containers.containerType, 'BIDON_20L');
     expect(containers.quantity, 3);
@@ -313,7 +314,7 @@ void main() {
   test('stores the server balance plus the sales and payments not yet sent', () async {
     await service.bootstrap();
     final queue = DriftPendingChangeRepository(db);
-    for (final (id, total) in [('sale-pending', 300.0), ('sale-sent', 50.0)]) {
+    for (final (id, total) in [('sale-pending', 300), ('sale-sent', 50)]) {
       await db.into(db.saleTable).insert(
             SaleTableCompanion.insert(
               saleId: Value(id),
@@ -351,7 +352,7 @@ void main() {
     final balance = await (db.select(db.customerBalanceTable)
           ..where((t) => t.customerId.equals('cust-uuid-11')))
         .getSingle();
-    expect(balance.currentBalance, 1500.5 + 300 - 100);
+    expect(balance.currentBalance, 1501 + 300 - 100);
   });
 
   test('stores the server custody plus the container movements not yet sent', () async {

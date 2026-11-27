@@ -27,28 +27,26 @@ void main() {
       final field = tester.widget<TextField>(find.byType(TextField));
       expect(find.text('Efectivo'), findsOneWidget);
       expect(field.decoration!.prefixText, '\$ ');
-      expect(
-        field.keyboardType,
-        const TextInputType.numberWithOptions(decimal: true),
-      );
+      expect(field.keyboardType, TextInputType.number);
 
-      await tester.enterText(find.byType(TextField), '125.5');
-      expect(changes, ['125.5']);
-      expect(controller.text, '125.5');
+      await tester.enterText(find.byType(TextField), '125');
+      expect(changes, ['125']);
+      expect(controller.text, '125');
     },
   );
 
   group('AmountField.parseAmount', () {
-    test('normalizes the decimal separator', () {
-      expect(AmountField.parseAmount('1500'), 1500);
-      expect(AmountField.parseAmount('1500,50'), 1500.5);
-      expect(AmountField.parseAmount('1500.50'), 1500.5);
+    test('parses whole pesos, dots being thousands separators', () {
+      final int? amount = AmountField.parseAmount(' 1500 ');
+      expect(amount, 1500);
+      expect(AmountField.parseAmount('15.000'), 15000);
+      expect(AmountField.parseAmount('340.000'), 340000);
     });
 
-    test('returns null for empty or invalid input', () {
+    test('returns null for empty, invalid or non-whole input', () {
       expect(AmountField.parseAmount(''), isNull);
       expect(AmountField.parseAmount('abc'), isNull);
-      expect(AmountField.parseAmount('1.500,50'), isNull);
+      expect(AmountField.parseAmount('1500,50'), isNull);
     });
   });
 
@@ -73,18 +71,23 @@ void main() {
       return changes;
     }
 
-    testWidgets('accepts a comma decimal separator without error', (
+    testWidgets('groups thousands while typing and drops a comma', (
       tester,
     ) async {
       final controller = TextEditingController();
       addTearDown(controller.dispose);
       final changes = await pump(tester, controller);
 
+      await tester.enterText(find.byType(TextField), '15000');
+      await tester.pump();
+      expect(controller.text, '15.000');
+      expect(AmountField.parseAmount(controller.text), 15000);
+
       await tester.enterText(find.byType(TextField), '1500,50');
       await tester.pump();
 
-      expect(changes, ['1500,50']);
-      expect(controller.text, '1500,50');
+      expect(changes, ['15.000', '150.050']);
+      expect(controller.text, '150.050');
       expect(find.text('Ingresá un monto válido'), findsNothing);
     });
 
@@ -95,13 +98,8 @@ void main() {
       addTearDown(controller.dispose);
       await pump(tester, controller);
 
-      // A trailing separator is still being typed: no error yet.
-      await tester.enterText(find.byType(TextField), '1,');
-      await tester.pump();
-      expect(find.text('Ingresá un monto válido'), findsNothing);
-
       // Text the formatter cannot stop (set programmatically) still errors.
-      controller.text = '1,2,3';
+      controller.text = '1,5';
       await tester.pump();
       expect(find.text('Ingresá un monto válido'), findsOneWidget);
     });

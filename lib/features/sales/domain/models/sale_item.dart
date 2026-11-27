@@ -6,5 +6,5 @@ class SaleItem {
 
   const SaleItem({required this.product, required this.quantity});
 
-  double get subtotal => product.price * quantity;
+  int get subtotal => product.price * quantity;
 }

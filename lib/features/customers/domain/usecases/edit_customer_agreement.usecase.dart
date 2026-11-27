@@ -29,7 +29,7 @@ class EditCustomerAgreementUseCase {
   /// disabled agreement.
   Future<String> execute({
     required String agreementId,
-    required double unitPrice,
+    required int unitPrice,
     required String validFrom,
     String? validTo,
     String? reason,

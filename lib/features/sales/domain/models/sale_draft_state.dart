@@ -16,11 +16,11 @@ class SaleDraftState {
   /// The cash part of a mixed payment, or what the customer hands over on a
   /// cash sale; null on a cash sale means its whole [total] (see
   /// [collectedAmount]).
-  final double? cashAmount;
+  final int? cashAmount;
 
   /// The transfer part of a mixed payment, or what the customer hands over
   /// on a transfer sale; null on a transfer sale means its whole [total].
-  final double? transferAmount;
+  final int? transferAmount;
   final Map<String, int> returnedContainers;
 
   /// Skeletons ([ContainerType.skeletonCode]) lent with this sale. No sale
@@ -51,16 +51,13 @@ class SaleDraftState {
     PaymentMethod.mixed,
   };
 
-  /// Largest difference between amounts that still counts as equal.
-  static const tolerance = 0.01;
-
   SaleDraftState copyWith({
     Customer? customer,
     String? visitId,
     List<SaleItem>? items,
     PaymentMethod? paymentMethod,
-    double? cashAmount,
-    double? transferAmount,
+    int? cashAmount,
+    int? transferAmount,
     Map<String, int>? returnedContainers,
     int? skeletonDelivered,
     int? skeletonReturned,
@@ -94,14 +91,14 @@ class SaleDraftState {
   /// customer alone is not worth a prompt.
   bool get needsDiscardConfirmation => items.isNotEmpty;
 
-  double get total => items.fold(0.0, (sum, item) => sum + item.subtotal);
+  int get total => items.fold(0, (sum, item) => sum + item.subtotal);
 
-  double get mixedTotal => (cashAmount ?? 0) + (transferAmount ?? 0);
+  int get mixedTotal => (cashAmount ?? 0) + (transferAmount ?? 0);
 
   /// What the customer hands over: a cash or transfer sale's amount (the
   /// whole [total] until the driver changes it), the sum of a mixed
   /// payment's parts; 0 for credit and route.
-  double get collectedAmount => switch (paymentMethod) {
+  int get collectedAmount => switch (paymentMethod) {
     PaymentMethod.cash => cashAmount ?? total,
     PaymentMethod.transfer => transferAmount ?? total,
     PaymentMethod.mixed => mixedTotal,
@@ -111,15 +108,15 @@ class SaleDraftState {
   /// What the customer hands over beyond the sale [total]: it pays previous
   /// debt and, past the whole debt, stays as credit in their favor (S2).
   /// 0 for credit and route and for a partial payment.
-  double get extraReceived {
+  int get extraReceived {
     if (!debtMethods.contains(paymentMethod)) return 0;
     final extra = collectedAmount - total;
-    return extra > tolerance ? extra : 0;
+    return extra > 0 ? extra : 0;
   }
 
   /// How [collectedAmount] splits between the sale, the previous debt and
   /// credit for an account at [balance] before this sale.
-  ReceivedBreakdown receivedBreakdown(double balance) => ReceivedBreakdown.of(
+  ReceivedBreakdown receivedBreakdown(int balance) => ReceivedBreakdown.of(
     received: collectedAmount,
     saleTotal: total,
     balance: balance,
@@ -128,7 +125,7 @@ class SaleDraftState {
   /// What the customer is left owing from this sale paid on the spot
   /// ([total] − [collectedAmount]); 0 for credit and route, which are not
   /// paid on the spot.
-  double get unpaidAmount {
+  int get unpaidAmount {
     if (!debtMethods.contains(paymentMethod)) return 0;
     final unpaid = total - collectedAmount;
     return unpaid > 0 ? unpaid : 0;
@@ -136,7 +133,7 @@ class SaleDraftState {
 
   /// Whether the customer pays part of the sale on the spot and owes the
   /// rest; a mixed payment with nothing typed yet is not partial.
-  bool get isPartialPayment => collectedAmount > 0 && unpaidAmount > tolerance;
+  bool get isPartialPayment => collectedAmount > 0 && unpaidAmount > 0;
 
   /// A sale paid on the spot needs something handed over; any amount above
   /// the [total] pays previous debt or stays as credit.
@@ -150,7 +147,7 @@ class SaleDraftState {
 
   /// What a mixed payment still lacks to cover the sale [total]; negative
   /// when it hands over more.
-  double get remaining =>
+  int get remaining =>
       paymentMethod == PaymentMethod.mixed ? (total - mixedTotal) : 0;
 
   bool get canProceedToStep3 => customer != null && items.isNotEmpty;

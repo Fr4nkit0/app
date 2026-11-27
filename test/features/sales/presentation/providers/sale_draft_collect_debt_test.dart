@@ -15,14 +15,14 @@ import 'package:app/features/sales/presentation/providers/register_sale_usecase_
 import 'package:app/features/sales/presentation/providers/sale_draft_provider.dart';
 
 class _RecordingRegisterSale implements RegisterSaleUseCase {
-  final calls = <({Sale sale, double debtAmount})>[];
+  final calls = <({Sale sale, int debtAmount})>[];
 
   @override
   Future<void> execute(
     Sale sale, {
     Payment? payment,
     List<ContainerMovement>? containerMovements,
-    double debtAmount = 0,
+    int debtAmount = 0,
   }) async {
     calls.add((sale: sale, debtAmount: debtAmount));
   }
@@ -62,8 +62,9 @@ void main() {
   SaleDraft notifier() => container.read(saleDraftProvider.notifier);
   SaleDraftState state() => container.read(saleDraftProvider);
 
-  ({double received, double sale, double debt, double credit, double after})
-  parts(ReceivedBreakdown b) => (
+  ({int received, int sale, int debt, int credit, int after}) parts(
+    ReceivedBreakdown b,
+  ) => (
     received: b.received,
     sale: b.sale,
     debt: b.debt,
@@ -166,7 +167,7 @@ void main() {
 
     test('0 or an invalid amount blocks confirm', () {
       notifier().setPaymentMethod(PaymentMethod.transfer);
-      for (final amount in [0.0, null]) {
+      for (final amount in [0, null]) {
         notifier().setCollectedAmount(amount);
         expect(state().canConfirm, isFalse, reason: '$amount');
       }

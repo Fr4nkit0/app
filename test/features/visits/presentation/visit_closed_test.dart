@@ -79,7 +79,7 @@ final _sale = Sale(
   visitId: 's-1',
 );
 
-Payment _payment({String? saleId, double amount = 2000}) => Payment(
+Payment _payment({String? saleId, int amount = 2000}) => Payment(
   id: saleId == null ? 'pay-debt' : 'pay-$saleId',
   customerId: 'c-1',
   amount: amount,

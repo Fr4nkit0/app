@@ -71,12 +71,12 @@ void main() {
   testWidgets('partial amount returns the typed amount', (tester) async {
     await _open(tester);
     await _select(tester, 'Efectivo');
-    await tester.enterText(find.byType(TextField), '400,50');
+    await tester.enterText(find.byType(TextField), '400');
     await tester.pump();
     await tester.tap(_register());
     await tester.pumpAndSettle();
 
-    expect(_result, const PaymentSplit(cash: 400.5));
+    expect(_result, const PaymentSplit(cash: 400));
   });
 
   testWidgets('mixed covering the debt enables Pagar deuda completa', (

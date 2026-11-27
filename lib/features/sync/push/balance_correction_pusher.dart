@@ -69,9 +69,6 @@ class BalanceCorrectionPusher implements EntityPusher, RejectionAware {
       }
 
       final visit = await resolveVisit(_db, correction.visitId);
-      num amount(double value) => target == BalanceTarget.containers
-          ? value.round()
-          : (value * 100).round() / 100;
       records.add(
         PushRecord(
           uuid: correctionId,
@@ -87,8 +84,8 @@ class BalanceCorrectionPusher implements EntityPusher, RejectionAware {
               ),
             'target': target.wireName,
             'container_type_id': ?typeId,
-            'counted': amount(correction.counted),
-            'seen_balance': amount(correction.seenBalance),
+            'counted': correction.counted,
+            'seen_balance': correction.seenBalance,
             'reason': correction.reason,
             'corrected_at': correction.correctedAt.toUtc().toIso8601String(),
           },

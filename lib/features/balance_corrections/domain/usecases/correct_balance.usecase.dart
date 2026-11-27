@@ -39,12 +39,12 @@ class CorrectBalanceUseCase {
   /// Records that [customerId]'s [target] really is [counted] (containers:
   /// of [containerType]), moves the shown balance there and queues the
   /// correction, in one unit of work. Throws [ValidationFailure] for a
-  /// reason outside 3..500 characters, a container count that is not a
-  /// whole number >= 0, or a container correction without its type.
+  /// reason outside 3..500 characters, a negative container count, or a
+  /// container correction without its type.
   Future<BalanceCorrection> execute({
     required String customerId,
     required BalanceTarget target,
-    required num counted,
+    required int counted,
     required String reason,
     String? containerType,
     String? visitId,
@@ -56,28 +56,18 @@ class CorrectBalanceUseCase {
     if (trimmed.length > maxReasonLength) {
       throw const ValidationFailure(reasonTooLong);
     }
-    final double value;
-    switch (target) {
-      case BalanceTarget.containers:
-        if (containerType == null || containerType.isEmpty) {
-          throw const ValidationFailure(missingContainerType);
-        }
-        if (counted < 0 || counted != counted.roundToDouble()) {
-          throw const ValidationFailure(invalidContainers);
-        }
-        value = counted.toDouble();
-      case BalanceTarget.debt:
-        value = _cents(counted);
+    if (target == BalanceTarget.containers) {
+      if (containerType == null || containerType.isEmpty) {
+        throw const ValidationFailure(missingContainerType);
+      }
+      if (counted < 0) throw const ValidationFailure(invalidContainers);
     }
 
     return _transaction(() async {
-      // Debt sums can carry float noise (1000.3000000000001).
-      final seen = _cents(
-        await _repo.shownBalance(
-          customerId,
-          target,
-          containerType: containerType,
-        ),
+      final seen = await _repo.shownBalance(
+        customerId,
+        target,
+        containerType: containerType,
       );
       final correction = BalanceCorrection(
         id: _newId(),
@@ -86,7 +76,7 @@ class CorrectBalanceUseCase {
         containerType: target == BalanceTarget.containers
             ? containerType
             : null,
-        counted: value,
+        counted: counted,
         seenBalance: seen,
         reason: trimmed,
         correctedAt: _now(),
@@ -96,6 +86,4 @@ class CorrectBalanceUseCase {
       return correction;
     });
   }
-
-  static double _cents(num value) => (value * 100).round() / 100;
 }

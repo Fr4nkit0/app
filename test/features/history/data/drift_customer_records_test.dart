@@ -77,7 +77,7 @@ Future<void> seedBootstrappedRecords(AppDatabase db) async {
   Future<void> sale(
     String id,
     String customerId,
-    double total,
+    int total,
     String method,
     DateTime date, {
     String status = RecordStatus.confirmed,

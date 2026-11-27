@@ -1,4 +1,5 @@
 import 'package:app/core/presentation/failure_message.dart';
+import 'package:app/core/utils/money_input.dart';
 import 'package:app/core/widgets/top_toast.dart';
 import 'package:app/features/customers/data/repositories/customer_agreement.repository.dart';
 import 'package:app/features/customers/domain/models/customer_agreement.dart';
@@ -52,17 +53,13 @@ class _NewAgreementSheetState extends ConsumerState<NewAgreementSheet> {
     final initial = widget.initial;
     if (initial == null) return;
     _productId = initial.productId;
-    _price.text = _priceText(initial.unitPrice);
+    _price.text = formatMoneyInput(initial.unitPrice);
     _reason.text = initial.reason ?? '';
     _validFrom = DateTime.parse(initial.validFrom);
     _validTo = initial.validTo == null
         ? null
         : DateTime.parse(initial.validTo!);
   }
-
-  static String _priceText(double price) => price == price.roundToDouble()
-      ? price.toInt().toString()
-      : price.toStringAsFixed(2);
 
   @override
   void dispose() {
@@ -153,8 +150,7 @@ class _NewAgreementSheetState extends ConsumerState<NewAgreementSheet> {
     );
   }
 
-  static double? _parsePrice(String text) =>
-      double.tryParse(text.trim().replaceAll(',', '.'));
+  static int? _parsePrice(String text) => parseMoneyInput(text);
 
   @override
   Widget build(BuildContext context) {
@@ -206,9 +202,8 @@ class _NewAgreementSheetState extends ConsumerState<NewAgreementSheet> {
               TextFormField(
                 key: const Key('agreement_price'),
                 controller: _price,
-                keyboardType: const TextInputType.numberWithOptions(
-                  decimal: true,
-                ),
+                keyboardType: TextInputType.number,
+                inputFormatters: const [MoneyInputFormatter()],
                 decoration: const InputDecoration(
                   labelText: 'Precio unitario',
                   prefixText: '\$ ',
@@ -217,12 +212,6 @@ class _NewAgreementSheetState extends ConsumerState<NewAgreementSheet> {
                   final value = _parsePrice(v ?? '');
                   if (value == null || value <= 0) {
                     return 'Ingresá un precio mayor a 0';
-                  }
-                  // The server keeps prices with two decimals and rejects more.
-                  if (!RegExp(
-                    r'^\d+([.,]\d{1,2})?$',
-                  ).hasMatch((v ?? '').trim())) {
-                    return 'Usá hasta 2 decimales';
                   }
                   return null;
                 },

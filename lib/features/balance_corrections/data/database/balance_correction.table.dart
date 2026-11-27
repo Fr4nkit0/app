@@ -24,11 +24,12 @@ class BalanceCorrectionTable extends Table with Timestamps {
   /// Catalog code (container_types.code); only for `containers`.
   late final containerType = text().nullable()();
 
-  /// The real balance the driver counted (debt: positive means owed).
-  late final counted = real()();
+  /// The real balance the driver counted: whole pesos for `debt` (positive
+  /// means owed), a container count for `containers`.
+  late final counted = integer()();
 
   /// The local balance shown when the driver corrected it.
-  late final seenBalance = real()();
+  late final seenBalance = integer()();
   late final reason = text()();
   late final correctedAt = dateTime()();
 

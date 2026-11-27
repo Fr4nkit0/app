@@ -26,7 +26,7 @@ final cancelPaymentUseCaseProvider = Provider<CancelPaymentUseCase>(
   ),
 );
 
-final customerBalanceProvider = StreamProvider.family<double, String>((
+final customerBalanceProvider = StreamProvider.family<int, String>((
   ref,
   customerId,
 ) {

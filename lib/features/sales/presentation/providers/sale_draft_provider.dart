@@ -155,7 +155,7 @@ class SaleDraft extends Notifier<SaleDraftState> {
   /// total the rest stays as their debt, above it the rest pays previous
   /// debt and then stays as credit (S2). Null (an empty or invalid amount)
   /// counts as 0, which cannot confirm.
-  void setCollectedAmount(double? amount) {
+  void setCollectedAmount(int? amount) {
     final collected = amount ?? 0;
     switch (state.paymentMethod) {
       case PaymentMethod.cash:
@@ -167,7 +167,7 @@ class SaleDraft extends Notifier<SaleDraftState> {
     }
   }
 
-  void setMixedAmounts({double? cash, double? transfer}) {
+  void setMixedAmounts({int? cash, int? transfer}) {
     state = state.copyWith(cashAmount: cash, transferAmount: transfer);
   }
 
