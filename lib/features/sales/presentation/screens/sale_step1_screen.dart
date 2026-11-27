@@ -12,6 +12,9 @@ import 'package:app/features/customers/domain/models/customer.dart';
 import 'package:app/features/customers/presentation/providers/customer_count_provider.dart';
 import 'package:app/features/customers/presentation/screens/create_customer_screens.dart';
 import 'package:app/features/customers/presentation/widgets/customer_list_tile.dart';
+import 'package:app/features/customers/presentation/providers/customer_agreements_provider.dart';
+import 'package:app/features/customers/presentation/widgets/customer_agreements_tab.dart';
+import 'package:app/features/customers/presentation/widgets/new_agreement_sheet.dart';
 import 'package:app/features/customers/presentation/widgets/new_customer_button.dart';
 import 'package:app/features/products/domain/models/product.dart';
 import 'package:app/features/sales/domain/models/sale_draft_state.dart';
@@ -393,6 +396,17 @@ class _SelectedMode extends ConsumerWidget {
     final tokens = Theme.of(context).extension<SalesTokens>()!;
     // Priced for this customer: agreement in force, else list price.
     final productsAsync = ref.watch(customerProductListProvider(customer.id));
+    // Agreements behind the prices, to change or delete them from the sale.
+    final agreements =
+        ref.watch(customerAgreementsProvider(customer.id)).value ?? const [];
+    // An agreement created, changed or deleted from here applies to the
+    // lines already loaded.
+    ref.listen(customerProductListProvider(customer.id), (_, next) {
+      final products = next.value;
+      if (products != null) {
+        ref.read(saleDraftProvider.notifier).repriceItems(products);
+      }
+    });
 
     final draft = ref.watch(saleDraftProvider);
     final isFromRouteStop = draft.visitId != null;
@@ -452,15 +466,38 @@ class _SelectedMode extends ConsumerWidget {
                     onApply: () => onApplyHabitual(customer, products),
                   ),
                 Padding(
-                  padding: const EdgeInsets.fromLTRB(20, 12, 20, 4),
-                  child: Text(
-                    'PRODUCTOS',
-                    style: TextStyle(
-                      fontSize: 13,
-                      fontWeight: FontWeight.w700,
-                      color: context.marilin.textMuted,
-                      letterSpacing: 0.8,
-                    ),
+                  padding: const EdgeInsets.fromLTRB(20, 4, 8, 0),
+                  child: Row(
+                    children: [
+                      Expanded(
+                        child: Text(
+                          'PRODUCTOS',
+                          style: TextStyle(
+                            fontSize: 13,
+                            fontWeight: FontWeight.w700,
+                            color: context.marilin.textMuted,
+                            letterSpacing: 0.8,
+                          ),
+                        ),
+                      ),
+                      // Agrees a price without leaving the sale.
+                      TextButton.icon(
+                        onPressed: () =>
+                            showNewAgreementSheet(context, customer.id),
+                        style: TextButton.styleFrom(
+                          foregroundColor: tokens.primary,
+                          minimumSize: const Size(48, 48),
+                        ),
+                        icon: const Icon(Icons.add, size: 18),
+                        label: const Text(
+                          'Nuevo acuerdo',
+                          style: TextStyle(
+                            fontWeight: FontWeight.w700,
+                            fontSize: 13,
+                          ),
+                        ),
+                      ),
+                    ],
                   ),
                 ),
                 ...products.map((p) {
@@ -470,9 +507,22 @@ class _SelectedMode extends ConsumerWidget {
                           .map((i) => i.quantity)
                           .firstOrNull ??
                       0;
+                  final agreement = agreements
+                      .where((a) => a.id == p.agreementUuid)
+                      .firstOrNull;
                   return ProductQuantityRow(
                     product: p,
                     quantity: qty,
+                    onEditAgreement: agreement == null
+                        ? null
+                        : () => showNewAgreementSheet(
+                            context,
+                            customer.id,
+                            initial: agreement,
+                          ),
+                    onDeleteAgreement: agreement == null
+                        ? null
+                        : () => deleteAgreement(context, ref, agreement),
                     onIncrement: () => ref
                         .read(saleDraftProvider.notifier)
                         .setQuantity(

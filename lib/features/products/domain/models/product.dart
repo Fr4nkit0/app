@@ -32,6 +32,9 @@ class Product {
   /// whose price is still 0 cannot be sold.
   bool get hasPrice => price > 0;
 
+  /// Whether [price] comes from a customer agreement, synced or not yet.
+  bool get hasAgreement => agreementId != null || agreementUuid != null;
+
   @override
   bool operator ==(Object other) =>
       identical(this, other) || other is Product && other.id == id;

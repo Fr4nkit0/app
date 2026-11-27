@@ -1,6 +1,7 @@
 import 'package:drift/drift.dart';
 
 import 'package:app/core/services/database.helper.dart';
+import 'package:app/core/services/table_changes.dart';
 import 'package:app/core/services/database_mixins.dart' show uuid;
 import 'package:app/features/customers/domain/models/customer.dart';
 import 'package:app/features/customers/domain/models/customer.address.dart';
@@ -55,22 +56,17 @@ class DriftRouteRepository implements RouteRepository {
 
     // The joined query alone would not re-emit when a visit or one of its
     // records changes, so any of these tables triggers a fresh read.
-    final changes = _db
-        .customSelect(
-          'SELECT 1',
-          readsFrom: {
-            _db.routeStopTable,
-            _db.routeTable,
-            _db.customerTable,
-            _account.watchedTable,
-            _db.visitTable,
-            _db.visitOutcomeTable,
-            _db.saleTable,
-            _db.paymentTable,
-            _db.containerMovementTable,
-          },
-        )
-        .watch();
+    final changes = watchTables(_db, [
+      _db.routeStopTable,
+      _db.routeTable,
+      _db.customerTable,
+      _account.watchedTable,
+      _db.visitTable,
+      _db.visitOutcomeTable,
+      _db.saleTable,
+      _db.paymentTable,
+      _db.containerMovementTable,
+    ]);
 
     return changes.asyncMap((_) async {
       final rows = await q.get();

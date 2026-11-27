@@ -1,6 +1,7 @@
 import 'package:app/features/products/data/repositories/product.repository.dart';
 import 'package:app/features/products/domain/models/product.dart';
 import 'package:app/core/services/database.helper.dart';
+import 'package:app/core/services/table_changes.dart';
 import 'package:drift/drift.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
@@ -34,13 +35,10 @@ class DriftProductRepository implements ProductRepository {
   @override
   Stream<List<Product>> watchAllProducts() {
     // Re-emits when either products or the container catalog change.
-    return db
-        .customSelect(
-          'SELECT 1',
-          readsFrom: {db.productTable, db.containerTypeTable},
-        )
-        .watch()
-        .asyncMap((_) => _loadProducts());
+    return watchTables(db, [
+      db.productTable,
+      db.containerTypeTable,
+    ]).asyncMap((_) => _loadProducts());
   }
 
   @override
@@ -48,14 +46,11 @@ class DriftProductRepository implements ProductRepository {
     final agreements = db.select(db.customerAgreementTable)
       ..where((t) => t.customerId.equals(customerId) & t.enabled.equals(true));
     // Re-emits when products, agreements or the container catalog change.
-    final changes = db.customSelect(
-      'SELECT 1',
-      readsFrom: {
-        db.productTable,
-        db.customerAgreementTable,
-        db.containerTypeTable,
-      },
-    ).watch();
+    final changes = watchTables(db, [
+      db.productTable,
+      db.customerAgreementTable,
+      db.containerTypeTable,
+    ]);
     return changes.asyncMap((_) async {
       final products = await _loadProducts();
       final today = _dateOnly(day ?? DateTime.now());
