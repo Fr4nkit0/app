@@ -17,6 +17,8 @@ class ProductQuantityRow extends StatelessWidget {
     required this.onIncrement,
     required this.onDecrement,
     this.onQuantitySubmitted,
+    this.onEditAgreement,
+    this.onDeleteAgreement,
   });
 
   final Product product;
@@ -27,6 +29,11 @@ class ProductQuantityRow extends StatelessWidget {
   /// Receives a validated quantity (0-999) typed in the numeric entry dialog.
   /// When null, tapping the quantity does nothing.
   final ValueChanged<int>? onQuantitySubmitted;
+
+  /// Change or delete the agreement that prices the product. Each action
+  /// shows only with its callback and on an agreement-priced product.
+  final VoidCallback? onEditAgreement;
+  final VoidCallback? onDeleteAgreement;
 
   @override
   Widget build(BuildContext context) {
@@ -107,9 +114,9 @@ class ProductQuantityRow extends StatelessWidget {
                         Text(
                           !product.hasPrice
                               ? 'Sin precio · no se puede vender'
-                              : product.agreementId == null
-                              ? '${formatMoney(product.price)} c/u'
-                              : '${formatMoney(product.price)} c/u · acuerdo',
+                              : product.hasAgreement
+                              ? '${formatMoney(product.price)} c/u · acuerdo'
+                              : '${formatMoney(product.price)} c/u',
                           style: TextStyle(
                             fontSize: 13,
                             fontWeight: FontWeight.w600,
@@ -135,6 +142,38 @@ class ProductQuantityRow extends StatelessWidget {
                   ),
                 ],
               ),
+              // Below the row too: beside the stepper there is no room for
+              // a finger-sized target.
+              if (product.hasAgreement &&
+                  (onEditAgreement != null || onDeleteAgreement != null))
+                Padding(
+                  padding: const EdgeInsets.only(left: 46, top: 4),
+                  // Wraps on a narrow phone instead of overflowing.
+                  child: Wrap(
+                    children: [
+                      if (onEditAgreement != null)
+                        TextButton.icon(
+                          onPressed: onEditAgreement,
+                          style: TextButton.styleFrom(
+                            foregroundColor: primary,
+                            minimumSize: const Size(48, 48),
+                          ),
+                          icon: const Icon(Icons.edit_outlined, size: 18),
+                          label: const Text('Editar acuerdo'),
+                        ),
+                      if (onDeleteAgreement != null)
+                        TextButton.icon(
+                          onPressed: onDeleteAgreement,
+                          style: TextButton.styleFrom(
+                            foregroundColor: cs.error,
+                            minimumSize: const Size(48, 48),
+                          ),
+                          icon: const Icon(Icons.delete_outline, size: 18),
+                          label: const Text('Eliminar acuerdo'),
+                        ),
+                    ],
+                  ),
+                ),
               // Below the row, not beside the stepper: in the narrow info
               // column it wrapped and re-centred the stepper under the
               // driver's finger.
