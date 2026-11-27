@@ -2,6 +2,7 @@ import 'package:drift/drift.dart';
 import 'package:uuid/uuid.dart';
 
 import 'package:app/core/services/database.helper.dart';
+import 'package:app/core/services/table_changes.dart';
 import 'package:app/features/inventory/data/repositories/custody.dart';
 import 'package:app/features/inventory/domain/models/container_movement.dart';
 import 'package:app/features/inventory/domain/models/container_type.dart';
@@ -229,12 +230,10 @@ class DriftInventoryRepository implements InventoryRepository {
   @override
   Stream<List<ContainerType>> watchContainerTypes() {
     // Re-emits when the catalog or the products that use it change.
-    final changes = _db
-        .customSelect(
-          'SELECT 1',
-          readsFrom: {_db.containerTypeTable, _db.productTable},
-        )
-        .watch();
+    final changes = watchTables(_db, [
+      _db.containerTypeTable,
+      _db.productTable,
+    ]);
     return changes.asyncMap((_) async {
       final rows =
           await (_db.select(_db.containerTypeTable)
@@ -270,18 +269,13 @@ class DriftInventoryRepository implements InventoryRepository {
   Stream<TruckSkeletons?> watchTruckSkeletons(DateTime today) {
     const skeleton = ContainerType.skeletonCode;
     final day = _dateOnly(today);
-    final changes = _db
-        .customSelect(
-          'SELECT 1',
-          readsFrom: {
-            _db.routeTable,
-            _db.routeStopTable,
-            _db.visitTable,
-            _db.routeContainerLoadTable,
-            _db.containerMovementTable,
-          },
-        )
-        .watch();
+    final changes = watchTables(_db, [
+      _db.routeTable,
+      _db.routeStopTable,
+      _db.visitTable,
+      _db.routeContainerLoadTable,
+      _db.containerMovementTable,
+    ]);
     return changes.asyncMap((_) async {
       final routeIds = [
         for (final r
