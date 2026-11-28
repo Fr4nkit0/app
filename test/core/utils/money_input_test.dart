@@ -95,6 +95,17 @@ void main() {
       expect(result.selection, const TextSelection.collapsed(offset: 1));
     });
 
+    test('replacing the whole amount with the same digits keeps them all', () {
+      // "17.000" fully selected, then "17000" pasted or typed over it.
+      const selectedAll = TextEditingValue(
+        text: '17.000',
+        selection: TextSelection(baseOffset: 0, extentOffset: 6),
+      );
+      final result = apply(selectedAll, _typed('17000'));
+      expect(result.text, '17.000');
+      expect(parseMoneyInput(result.text), 17000);
+    });
+
     test('drops leading zeros', () {
       expect(apply(_typed('0'), _typed('05')).text, '5');
       expect(apply(_typed(''), _typed('0')).text, '0');

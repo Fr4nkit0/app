@@ -58,8 +58,15 @@ class MoneyInputFormatter extends TextInputFormatter {
 
     // Backspace over a separator only removed the dot: delete the digit
     // before it instead, so the edit is not undone by regrouping.
+    // Only a real backspace counts: a collapsed cursor right after the dot.
+    // Replacing a selection with the same digits is not one.
+    final oldSelection = oldValue.selection;
     final removedOnlySeparator =
         newValue.text.length == oldValue.text.length - 1 &&
+        oldSelection.isValid &&
+        oldSelection.isCollapsed &&
+        oldSelection.extentOffset == cursor + 1 &&
+        oldValue.text[cursor] == '.' &&
         digits == _digitsOnly(oldValue.text) &&
         digitsBeforeCursor > 0;
     if (removedOnlySeparator) {
