@@ -6,6 +6,7 @@ import 'package:app/features/inventory/domain/models/container_type.dart';
 import 'package:app/features/products/domain/models/product.dart';
 import 'package:app/features/sales/domain/models/sale_item.dart';
 import 'package:app/features/sales/presentation/providers/sale_draft_provider.dart';
+import '../../../../support/customer_balances.dart';
 
 void main() {
   const siphon = Product(
@@ -23,7 +24,11 @@ void main() {
   );
 
   late ProviderContainer container;
-  setUp(() => container = ProviderContainer());
+  setUp(
+    () => container = ProviderContainer(
+      overrides: [unloadedCustomerBalances],
+    ),
+  );
   tearDown(() => container.dispose());
 
   SaleDraft notifier() => container.read(saleDraftProvider.notifier);

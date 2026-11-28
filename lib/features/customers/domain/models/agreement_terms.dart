@@ -17,7 +17,7 @@ class AgreementTerms {
   /// The longest reason the server stores.
   static const maxReasonLength = 500;
 
-  final double unitPrice;
+  final int unitPrice;
   final String validFrom;
   final String? validTo;
   final String? reason;
@@ -33,17 +33,12 @@ class AgreementTerms {
     );
   }
 
-  /// Throws [ValidationFailure] for a price that is not positive or has more
-  /// than 2 decimals, an end before the start, or a reason over
+  /// Throws [ValidationFailure] for a price that is not positive, an end
+  /// before the start, or a reason over
   /// [maxReasonLength]. Call it on [normalized] terms.
   void validate() {
     if (unitPrice <= 0) {
       throw const ValidationFailure('El precio debe ser mayor a 0.');
-    }
-    // The server keeps two decimals and rejects more, which would strand the
-    // agreement in the queue while it already prices sales here.
-    if ((unitPrice * 100).roundToDouble() / 100 != unitPrice) {
-      throw const ValidationFailure('El precio admite hasta 2 decimales.');
     }
     final end = validTo;
     if (end != null && end.compareTo(validFrom) < 0) {

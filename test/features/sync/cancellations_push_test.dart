@@ -235,7 +235,7 @@ void main() {
       Map<String, dynamic>.from(r as Map),
   ];
 
-  Future<double> balance() => payments.watchCustomerBalance('c-1').first;
+  Future<int> balance() => payments.watchCustomerBalance('c-1').first;
 
   Future<int> stock() async =>
       (await db.select(db.productTable).getSingle()).stock;

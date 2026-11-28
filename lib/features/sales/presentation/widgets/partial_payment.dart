@@ -3,19 +3,41 @@ import 'package:flutter/material.dart';
 import 'package:app/core/theme/marilin_tokens.dart';
 import 'package:app/core/theme/sales_tokens.dart';
 import 'package:app/core/utils/money_formatter.dart';
+import 'package:app/core/utils/money_input.dart';
 import 'package:app/features/payments/presentation/widgets/amount_field.dart';
 
-/// [amount] as the driver would type it: no decimals when whole.
-String editableAmount(double amount) => amount == amount.roundToDouble()
-    ? amount.toStringAsFixed(0)
-    : amount.toStringAsFixed(2);
+/// [amount] as the driver would type it: thousands grouped with dots.
+String editableAmount(int amount) => formatMoneyInput(amount);
 
-/// "Queda debiendo $X": what the customer is left owing from a sale paid
-/// in part on the spot.
+/// What the customer is left owing from a sale paid in part on the spot:
+/// "Queda debiendo $X" or, when they already owed [previousDebt], that it
+/// adds to it and the resulting debt (S11).
+String unpaidNoteText(int unpaid, {int previousDebt = 0}) => previousDebt > 0
+    ? 'Suma ${formatMoney(unpaid)} a su deuda de '
+          '${formatMoney(previousDebt)}. '
+          'Deuda total: ${formatMoney(previousDebt + unpaid)}'
+    : 'Queda debiendo ${formatMoney(unpaid)}';
+
+/// The question before saving a sale that leaves [unpaid] owed, added to
+/// the [previousDebt] when there is one (S11).
+String partialPaymentQuestion(int unpaid, {int previousDebt = 0}) =>
+    previousDebt > 0
+    ? '${unpaidNoteText(unpaid, previousDebt: previousDebt)}. ¿Confirmás?'
+    : 'El cliente queda debiendo ${formatMoney(unpaid)}. ¿Confirmás?';
+
+/// [unpaidNoteText]: what the customer is left owing from a sale paid in
+/// part on the spot.
 class UnpaidAmountNote extends StatelessWidget {
-  const UnpaidAmountNote({super.key, required this.unpaid});
+  const UnpaidAmountNote({
+    super.key,
+    required this.unpaid,
+    this.previousDebt = 0,
+  });
 
-  final double unpaid;
+  final int unpaid;
+
+  /// What the customer owed before this sale; 0 when nothing.
+  final int previousDebt;
 
   @override
   Widget build(BuildContext context) {
@@ -29,7 +51,7 @@ class UnpaidAmountNote extends StatelessWidget {
           const SizedBox(width: 6),
           Expanded(
             child: Text(
-              'Queda debiendo ${formatMoney(unpaid)}',
+              unpaidNoteText(unpaid, previousDebt: previousDebt),
               style: TextStyle(
                 fontWeight: FontWeight.w700,
                 fontSize: 13,
@@ -51,7 +73,7 @@ class OwedDebtNote extends StatelessWidget {
   const OwedDebtNote({super.key, required this.owed});
 
   /// The customer's previous debt; above 0.
-  final double owed;
+  final int owed;
 
   @override
   Widget build(BuildContext context) {
@@ -81,9 +103,10 @@ class OwedDebtNote extends StatelessWidget {
 }
 
 /// "Monto recibido": what the customer hands over on a cash or transfer
-/// sale, starting at [initialAmount] (the sale total). Below it shows why
-/// the amount cannot be received ([errorText]) or, when [unpaid] is above
-/// 0, what the customer is left owing. When the customer owes [owedDebt],
+/// sale, starting at [initialAmount] (what is due of the sale). Below it
+/// shows why the amount cannot be received ([errorText]) or, when [unpaid]
+/// is above 0, what the customer is left owing, added to the [owedDebt]
+/// when there is one (S11). When the customer owes [owedDebt],
 /// it shows that debt and a «Cobrar toda la deuda» shortcut that fills
 /// [payoffAmount] (the sale plus the whole debt).
 ///
@@ -100,22 +123,22 @@ class CollectedAmountField extends StatefulWidget {
     this.payoffAmount = 0,
   });
 
-  final double initialAmount;
+  final int initialAmount;
 
   /// The customer's previous debt; no debt line or shortcut while it is 0.
-  final double owedDebt;
+  final int owedDebt;
 
   /// What «Cobrar toda la deuda» fills: the sale plus [owedDebt].
-  final double payoffAmount;
+  final int payoffAmount;
 
   /// What the customer is left owing; nothing is shown while it is 0.
-  final double unpaid;
+  final int unpaid;
 
   /// Why the typed amount cannot be received; null when it can.
   final String? errorText;
 
   /// The typed amount; null when it is not a valid number.
-  final ValueChanged<double?> onChanged;
+  final ValueChanged<int?> onChanged;
 
   @override
   State<CollectedAmountField> createState() => _CollectedAmountFieldState();
@@ -126,15 +149,8 @@ class _CollectedAmountFieldState extends State<CollectedAmountField> {
     text: editableAmount(widget.initialAmount),
   );
 
-  void _onChanged(String text) {
-    // A trailing separator is a number still being typed: "60." is 60.
-    final inProgress = text.endsWith(',') || text.endsWith('.');
-    widget.onChanged(
-      AmountField.parseAmount(
-        inProgress ? text.substring(0, text.length - 1) : text,
-      ),
-    );
-  }
+  void _onChanged(String text) =>
+      widget.onChanged(AmountField.parseAmount(text));
 
   void _collectAllDebt() {
     _controller.text = editableAmount(widget.payoffAmount);
@@ -181,7 +197,10 @@ class _CollectedAmountFieldState extends State<CollectedAmountField> {
             ),
           )
         else if (widget.unpaid > 0)
-          UnpaidAmountNote(unpaid: widget.unpaid),
+          UnpaidAmountNote(
+            unpaid: widget.unpaid,
+            previousDebt: widget.owedDebt,
+          ),
         if (widget.owedDebt > 0) ...[
           OwedDebtNote(owed: widget.owedDebt),
           ActionChip(
@@ -195,14 +214,19 @@ class _CollectedAmountFieldState extends State<CollectedAmountField> {
   }
 }
 
-/// Asks before saving a sale that leaves the customer owing [unpaid].
+/// Asks before saving a sale that leaves the customer owing [unpaid], on
+/// top of their [previousDebt] when they had one ([partialPaymentQuestion]).
 /// Returns true when the driver confirms it.
-Future<bool> confirmPartialPayment(BuildContext context, double unpaid) async {
+Future<bool> confirmPartialPayment(
+  BuildContext context,
+  int unpaid, {
+  int previousDebt = 0,
+}) async {
   final confirmed = await showDialog<bool>(
     context: context,
     builder: (dialogContext) => AlertDialog(
       content: Text(
-        'El cliente queda debiendo ${formatMoney(unpaid)}. ¿Confirmás?',
+        partialPaymentQuestion(unpaid, previousDebt: previousDebt),
       ),
       actions: [
         TextButton(
@@ -225,10 +249,10 @@ Future<bool> confirmPartialPayment(BuildContext context, double unpaid) async {
 /// Returns true when the driver keeps the credit on purpose.
 Future<bool> confirmLeavingCredit(
   BuildContext context, {
-  required double received,
-  required double covered,
+  required int received,
+  required int covered,
   required bool hasDebt,
-  required double credit,
+  required int credit,
 }) async {
   final target = hasDebt
       ? 'la venta más la deuda suman ${formatMoney(covered)}'

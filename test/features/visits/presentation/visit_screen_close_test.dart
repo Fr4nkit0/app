@@ -104,7 +104,7 @@ Future<_FakeCompleteVisit> _pumpVisit(
         clockProvider.overrideWithValue(() => _now),
         completeVisitUseCaseProvider.overrideWithValue(fake),
         routeStopByIdProvider('s-1').overrideWithValue(_stop),
-        customerBalanceProvider('c-1').overrideWith((_) => Stream.value(0.0)),
+        customerBalanceProvider('c-1').overrideWith((_) => Stream.value(0)),
         stopSalesProvider('s-1').overrideWith((_) => Stream.value(sales)),
         visitPaymentsProvider('s-1').overrideWith((_) => Stream.value([])),
         visitMovementsProvider('s-1').overrideWith((_) async => []),

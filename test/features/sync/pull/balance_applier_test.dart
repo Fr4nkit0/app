@@ -60,7 +60,7 @@ void main() {
 
     expect(
       (await db.select(db.customerBalanceTable).getSingle()).currentBalance,
-      1500.5,
+      1501,
     );
     final custody = await db
         .select(db.customerContainerBalanceTable)

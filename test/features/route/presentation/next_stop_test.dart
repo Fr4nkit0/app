@@ -33,7 +33,7 @@ RouteStop _stop(
   String name = 'Kiosco Norte',
   StopStatus status = StopStatus.pending,
   String? phone,
-  double debt = 0,
+  int debt = 0,
   List<CustomerAddress> addresses = const [],
   int hour = 9,
 }) => RouteStop(
@@ -136,7 +136,7 @@ void main() {
         for (final s in stops) ...[
           customerBalanceProvider(
             s.customer.id,
-          ).overrideWith((_) => Stream.value(0.0)),
+          ).overrideWith((_) => Stream.value(0)),
           stopSalesProvider(s.id).overrideWith((_) => Stream.value([])),
           visitPaymentsProvider(s.id).overrideWith((_) => Stream.value([])),
           visitMovementsProvider(s.id).overrideWith((_) async => []),

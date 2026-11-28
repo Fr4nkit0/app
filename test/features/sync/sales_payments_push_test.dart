@@ -136,7 +136,7 @@ void main() {
     price: 1200,
     agreementId: 31,
   );
-  const soda = Product(id: 'p-2', name: 'Soda 2L', unitLabel: '', price: 400.5);
+  const soda = Product(id: 'p-2', name: 'Soda 2L', unitLabel: '', price: 400);
 
   setUp(() async {
     db = AppDatabase(NativeDatabase.memory());
@@ -222,9 +222,10 @@ void main() {
     PaymentMethod method = PaymentMethod.credit,
     List<SaleItem> items = const [SaleItem(product: water, quantity: 2)],
     String? visitId,
-    double? cash,
-    double? transfer,
-    double debtAmount = 0,
+    int? cash,
+    int? transfer,
+    int debtAmount = 0,
+    int creditApplied = 0,
   }) async {
     await registerSale.execute(
       debtAmount: debtAmount,
@@ -232,19 +233,26 @@ void main() {
         id: id,
         customer: customer,
         items: items,
-        total: items.fold(0.0, (sum, i) => sum + i.subtotal),
+        total: items.fold(0, (sum, i) => sum + i.subtotal),
         paymentMethod: method,
         date: soldAt,
         visitId: visitId,
         cashAmount: cash,
         transferAmount: transfer,
+        creditApplied: creditApplied,
       ),
     );
   }
 
+  /// The downloaded account of customer c-1 at [balance] instead.
+  Future<void> startAt(int balance) =>
+      (db.update(db.customerBalanceTable)
+            ..where((t) => t.customerId.equals('c-1')))
+          .write(CustomerBalanceTableCompanion(currentBalance: drift.Value(balance)));
+
   Future<void> pay({
     String id = 'pay-1',
-    double amount = 500,
+    int amount = 500,
     PaymentType type = PaymentType.cash,
     String? visitId,
   }) => payments.recordPayment(
@@ -273,7 +281,7 @@ void main() {
       Map<String, dynamic>.from(r as Map),
   ];
 
-  Future<double> displayedBalance() =>
+  Future<int> displayedBalance() =>
       payments.watchCustomerBalance('c-1').first;
 
   test('sales travel after visits and before container movements and payments', () async {
@@ -322,25 +330,32 @@ void main() {
           'customer_id': 10,
           'visit_uuid': 'v-1',
           'date': '2026-10-19T12:30:00.000Z',
-          'total': 2800.5,
+          'total': 2800,
           'is_credit_sale': true,
+          'credit_applied': 0,
           'notes': null,
           'details': [
             {
               'product_id': 21,
               'customer_agreement_id': 31,
               'quantity': 2,
-              'unit_price': 1200.0,
+              'unit_price': 1200,
             },
             {
               'product_id': 22,
               'customer_agreement_id': null,
               'quantity': 1,
-              'unit_price': 400.5,
+              'unit_price': 400,
             },
           ],
         },
       ]);
+      // Money travels as whole pesos.
+      final sale = sent('sales').single;
+      expect(sale['total'], isA<int>());
+      for (final detail in sale['details'] as List) {
+        expect((detail as Map)['unit_price'], isA<int>());
+      }
       expect(sent('payments'), isEmpty);
       final row = await db.select(db.saleTable).getSingle();
       expect(row.serverId, isNotNull);
@@ -359,14 +374,16 @@ void main() {
       final settled = sent('payments');
       expect(settled.map((p) => p['sale_uuid']), ['sale-1', 'sale-1']);
       expect(settled.map((p) => p['payment_method_id']), [5, 6]);
-      expect(settled.map((p) => p['amount']), [1000.0, 1400.0]);
+      expect(settled.map((p) => p['amount']), [1000, 1400]);
+      expect(settled.map((p) => p['amount']), everyElement(isA<int>()));
       expect(await displayedBalance(), 1000);
     },
   );
 
   test(
-    'S5: a partial sale travels with its whole total, is_credit_sale false '
-    'and no new field; its payments carry what was collected',
+    'S5: a partial sale travels with its whole total, is_credit_sale true '
+    '(S1 of rental-and-credit-balance) and credit_applied 0; its payments '
+    'carry what was collected',
     () async {
       await sell(id: 'sale-cash', method: PaymentMethod.cash, cash: 2000);
       await sell(
@@ -380,16 +397,18 @@ void main() {
 
       final sales = sent('sales');
       expect(sales.map((s) => (s['uuid'], s['total'], s['is_credit_sale'])), [
-        ('sale-cash', 2400.0, false),
-        ('sale-mixed', 2400.0, false),
+        ('sale-cash', 2400.0, true),
+        ('sale-mixed', 2400.0, true),
       ]);
       for (final s in sales) {
+        expect(s['credit_applied'], 0);
         expect(s.keys.toSet(), {
           'uuid',
           'customer_id',
           'date',
           'total',
           'is_credit_sale',
+          'credit_applied',
           'notes',
           'details',
         });
@@ -409,6 +428,68 @@ void main() {
       expect(await displayedBalance(), 1800);
     },
   );
+
+  group('S1/S2 (rental-and-credit-balance): credit_applied and '
+      'is_credit_sale = linked collected + credit applied < total', () {
+    Future<Json> pushedSale() async {
+      await engine.push();
+      return sent('sales').single;
+    }
+
+    test('fiado without credit: true, credit_applied 0', () async {
+      await sell(method: PaymentMethod.credit);
+
+      final sale = await pushedSale();
+      expect((sale['is_credit_sale'], sale['credit_applied']), (true, 0));
+      expect(sale['credit_applied'], isA<int>());
+    });
+
+    test('paid in full: false', () async {
+      await sell(method: PaymentMethod.cash);
+
+      final sale = await pushedSale();
+      expect((sale['is_credit_sale'], sale['credit_applied']), (false, 0));
+    });
+
+    test('S9: 500 applied and the rest collected: false, credit_applied '
+        '500, one payment of the rest', () async {
+      await startAt(-500);
+      await sell(method: PaymentMethod.cash, creditApplied: 500);
+
+      final sale = await pushedSale();
+      expect((sale['total'], sale['is_credit_sale']), (2400, false));
+      expect(sale['credit_applied'], 500);
+      expect(sent('payments').map((p) => (p['sale_uuid'], p['amount'])), [
+        ('sale-1', 1900.0),
+      ]);
+      expect(await displayedBalance(), 0);
+    });
+
+    test('credit covering the whole total: false, no payments', () async {
+      await startAt(-5000);
+      await sell(method: PaymentMethod.cash, creditApplied: 2400);
+
+      final sale = await pushedSale();
+      expect((sale['is_credit_sale'], sale['credit_applied']), (false, 2400));
+      expect(sent('payments'), isEmpty);
+      expect(await displayedBalance(), -2600);
+    });
+
+    test('partial cash: true', () async {
+      await sell(method: PaymentMethod.cash, cash: 2000);
+
+      final sale = await pushedSale();
+      expect(sale['is_credit_sale'], true);
+    });
+
+    test('fiado with some credit applied: true', () async {
+      await startAt(-500);
+      await sell(method: PaymentMethod.credit, creditApplied: 500);
+
+      final sale = await pushedSale();
+      expect((sale['is_credit_sale'], sale['credit_applied']), (true, 500));
+    });
+  });
 
   test(
     'S9: a sale paid together with the previous debt pushes both payments '

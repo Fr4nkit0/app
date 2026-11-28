@@ -175,8 +175,8 @@ void main() {
   group('rejects', () {
     void expectRejected(
       PaymentSplit received, {
-      double saleTotal = 13000,
-      double debtAmount = 7200,
+      int saleTotal = 13000,
+      int debtAmount = 7200,
     }) => expect(
       () => SaleDebtAllocation.of(
         received,

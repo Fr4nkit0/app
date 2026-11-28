@@ -66,7 +66,7 @@ class AgreementApplier implements PullApplier {
   /// stored flag as it is (enabled for a new row).
   static CustomerAgreementTableCompanion fieldsOf(Json a) =>
       CustomerAgreementTableCompanion(
-        unitPrice: Value(toDouble(a['unit_price'])),
+        unitPrice: Value(toPesos(a['unit_price'])),
         validFrom: Value(_date(a['valid_from'] as String)),
         validTo: Value(
           a['valid_to'] == null ? null : _date(a['valid_to'] as String),

@@ -31,7 +31,7 @@ void main() {
           ProductTableCompanion.insert(
             productId: const drift.Value('prod-1'),
             name: 'Bidón 20L',
-            price: 800.0,
+            price: 800,
             stock: const drift.Value(25),
             description: const drift.Value('Bidón'),
           ),
@@ -56,7 +56,7 @@ void main() {
           ProductTableCompanion.insert(
             productId: const drift.Value('prod-1'),
             name: 'Bidón 20L',
-            price: 800.0,
+            price: 800,
           ),
         );
 
@@ -78,14 +78,14 @@ void main() {
             ProductTableCompanion.insert(
               productId: const drift.Value('prod-1'),
               name: 'Bidón 20L',
-              price: 800.0,
+              price: 800,
             ),
           );
     }
 
     Future<void> agreement(
       String id,
-      double price, {
+      int price, {
       int? serverId,
       String validFrom = '2026-10-01',
       bool enabled = true,
@@ -104,7 +104,7 @@ void main() {
 
     test('a disabled agreement does not price the product', () async {
       await seed();
-      await agreement('a-off', 650.0, serverId: 3, enabled: false);
+      await agreement('a-off', 650, serverId: 3, enabled: false);
 
       final products = await sut
           .watchProductsFor('cust-1', day: DateTime(2026, 10, 20))
@@ -117,15 +117,15 @@ void main() {
     test('a disabled agreement does not win the tie-break, even with the '
         'latest start or no server id', () async {
       await seed();
-      await agreement('a-on', 700.0, serverId: 9);
+      await agreement('a-on', 700, serverId: 9);
       await agreement(
         'a-off-later',
-        600.0,
+        600,
         serverId: 12,
         validFrom: '2026-10-15',
         enabled: false,
       );
-      await agreement('a-off-local', 500.0, enabled: false);
+      await agreement('a-off-local', 500, enabled: false);
 
       final products = await sut
           .watchProductsFor('cust-1', day: DateTime(2026, 10, 20))
@@ -137,8 +137,8 @@ void main() {
 
     test('the latest start wins among enabled agreements', () async {
       await seed();
-      await agreement('a-old', 700.0, serverId: 9);
-      await agreement('a-new', 750.0, serverId: 4, validFrom: '2026-10-15');
+      await agreement('a-old', 700, serverId: 9);
+      await agreement('a-new', 750, serverId: 4, validFrom: '2026-10-15');
 
       final products = await sut
           .watchProductsFor('cust-1', day: DateTime(2026, 10, 20))
@@ -150,8 +150,8 @@ void main() {
 
     test('the one with the highest server id wins, like the server', () async {
       await seed();
-      await agreement('a-low', 650.0, serverId: 3);
-      await agreement('a-high', 700.0, serverId: 9);
+      await agreement('a-low', 650, serverId: 3);
+      await agreement('a-high', 700, serverId: 9);
 
       final products = await sut
           .watchProductsFor('cust-1', day: DateTime(2026, 10, 20))
@@ -163,8 +163,8 @@ void main() {
 
     test('one not yet synced wins, because the server will give it the highest id', () async {
       await seed();
-      await agreement('a-synced', 700.0, serverId: 9);
-      await agreement('a-local', 600.0);
+      await agreement('a-synced', 700, serverId: 9);
+      await agreement('a-local', 600);
 
       final products = await sut
           .watchProductsFor('cust-1', day: DateTime(2026, 10, 20))
@@ -181,7 +181,7 @@ void main() {
               ProductTableCompanion.insert(
                 productId: drift.Value(id),
                 name: name,
-                price: 800.0,
+                price: 800,
                 containerTypeId: drift.Value(containerTypeId),
               ),
             );

@@ -19,7 +19,7 @@ class _FailingAfterWriteRepository extends DriftCustomerAgreementRepository {
   Future<String> create({
     required String customerId,
     required String productId,
-    required double unitPrice,
+    required int unitPrice,
     required String validFrom,
     String? validTo,
     String? reason,
@@ -69,7 +69,7 @@ void main() {
 
   Future<String> create(
     CreateCustomerAgreementUseCase sut, {
-    double price = 1200,
+    int price = 1200,
     String validFrom = '2026-10-22',
     String? validTo,
     String? reason,
@@ -121,11 +121,6 @@ void main() {
           'a price of 0',
           (s) => create(s, price: 0),
           'El precio debe ser mayor a 0.',
-        ),
-        (
-          'a price with 3 decimals',
-          (s) => create(s, price: 12.345),
-          'El precio admite hasta 2 decimales.',
         ),
         (
           'an end before the start',

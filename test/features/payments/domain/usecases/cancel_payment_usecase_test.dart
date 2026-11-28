@@ -35,7 +35,7 @@ void main() {
     ),
   );
 
-  Future<double> balance() => payments.watchCustomerBalance('c-1').first;
+  Future<int> balance() => payments.watchCustomerBalance('c-1').first;
 
   Future<PaymentTableData> row([String id = 'pay-1']) => (db.select(
     db.paymentTable,

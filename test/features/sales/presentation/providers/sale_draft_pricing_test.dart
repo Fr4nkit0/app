@@ -47,9 +47,9 @@ void main() {
           );
     }
     for (final (id, name, price, serverId) in [
-      ('p-1', 'Agua 20L', 1500.0, 21),
-      ('p-2', 'Soda 2L', 400.0, 22),
-      ('p-3', 'Sifón 1L', 900.0, 23),
+      ('p-1', 'Agua 20L', 1500, 21),
+      ('p-2', 'Soda 2L', 400, 22),
+      ('p-3', 'Sifón 1L', 900, 23),
     ]) {
       await db.into(db.productTable).insert(
             ProductTableCompanion.insert(
@@ -64,7 +64,7 @@ void main() {
       int serverId,
       String customerId,
       String productId,
-      double price,
+      int price,
       String from, [
       String? to,
     ]) => db.into(db.customerAgreementTable).insert(

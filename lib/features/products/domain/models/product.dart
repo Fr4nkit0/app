@@ -2,7 +2,7 @@ class Product {
   final String id;
   final String name;
   final String unitLabel;
-  final double price;
+  final int price;
   final int? available;
 
   /// Code of the container type the product is delivered in; null when it

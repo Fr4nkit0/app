@@ -51,7 +51,7 @@ class SaleApplier {
       final cancelled = s['status'] == 'cancelled';
 
       final saleId = clientUuid ?? const Uuid().v4();
-      final total = toDouble(s['total']);
+      final total = toPesos(s['total']);
       final isCredit = s['is_credit_sale'] == true;
       final date = DateTime.parse(s['date'] as String).toLocal();
       await _db
@@ -73,6 +73,10 @@ class SaleApplier {
               status: Value(
                 cancelled ? RecordStatus.cancelled : RecordStatus.confirmed,
               ),
+              // Absent on a server that does not know it yet: no credit.
+              creditApplied: Value(
+                s['credit_applied'] == null ? 0 : toPesos(s['credit_applied']),
+              ),
             ),
           );
       context.ids.recordSale(serverId, saleId);
@@ -81,7 +85,7 @@ class SaleApplier {
         final productId = await context.ids.product(d['product_id'] as int?);
         if (productId == null) continue;
         final quantity = toDouble(d['quantity']).round();
-        final unitPrice = toDouble(d['unit_price']);
+        final unitPrice = toPesos(d['unit_price']);
         await _db
             .into(_db.saleItemTable)
             .insert(
@@ -147,9 +151,9 @@ class SaleApplier {
                         : t.status.equals(RecordStatus.confirmed)),
               ))
               .get();
-      double paidBy(PaymentType type) => payments
+      int paidBy(PaymentType type) => payments
           .where((p) => PaymentType.fromDb(p.paymentMethod) == type)
-          .fold(0.0, (sum, p) => sum + p.amount);
+          .fold(0, (sum, p) => sum + p.amount);
       final cash = paidBy(PaymentType.cash);
       final transfer = paidBy(PaymentType.transfer);
       final method = payments.isEmpty

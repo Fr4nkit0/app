@@ -23,7 +23,7 @@ void main() {
 
   Future<void> pumpSheet(
     WidgetTester tester, {
-    double debt = 1500,
+    int debt = 1500,
     Map<String, int> custody = const {'B20': 3},
     BalanceTarget initialTarget = BalanceTarget.debt,
     String? initialContainerType,
@@ -171,13 +171,30 @@ void main() {
   testWidgets('the reason is emitted trimmed', (tester) async {
     await pumpSheet(tester);
 
-    await tester.enterText(count, '1200,50');
+    await tester.enterText(count, '1200');
     await tester.enterText(reason, '   Se anotó mal un cobro   ');
     await tester.pump();
     await tapConfirm(tester);
 
     expect(emitted.single.reason, 'Se anotó mal un cobro');
-    expect(emitted.single.counted, 1200.5);
+    expect(emitted.single.counted, 1200);
+  });
+
+  testWidgets('debt: the amount is grouped by thousands while typing', (
+    tester,
+  ) async {
+    await pumpSheet(tester);
+
+    await tester.enterText(count, '15000');
+    await tester.enterText(reason, 'Conté de nuevo');
+    await tester.pump();
+
+    final field = tester.widget<TextField>(
+      find.descendant(of: count, matching: find.byType(TextField)).first,
+    );
+    expect(field.controller!.text, '15.000');
+    await tapConfirm(tester);
+    expect(emitted.single.counted, 15000);
   });
 
   testWidgets('containers: decimals are not accepted', (tester) async {

@@ -29,14 +29,14 @@ import '../../../../support/container_types.dart';
 import '../../../../support/real_fonts.dart';
 
 class _RecordingRegisterSale implements RegisterSaleUseCase {
-  final calls = <({Sale sale, double debtAmount})>[];
+  final calls = <({Sale sale, int debtAmount})>[];
 
   @override
   Future<void> execute(
     Sale sale, {
     Payment? payment,
     List<ContainerMovement>? containerMovements,
-    double debtAmount = 0,
+    int debtAmount = 0,
   }) async {
     calls.add((sale: sale, debtAmount: debtAmount));
   }
@@ -112,7 +112,7 @@ void main() {
   Future<void> pumpScreen(
     WidgetTester tester, {
     required PaymentMethod method,
-    required double balance,
+    required int balance,
   }) async {
     useCase = _RecordingRegisterSale();
     // A fresh tree for every pump, also within one test.
@@ -188,7 +188,7 @@ void main() {
     testWidgets('no debt line or shortcut without debt or with credit', (
       tester,
     ) async {
-      for (final balance in [0.0, -200.0]) {
+      for (final balance in [0, -200]) {
         for (final method in [
           PaymentMethod.cash,
           PaymentMethod.transfer,
@@ -229,7 +229,7 @@ void main() {
         await tester.tap(collectAllChip);
         await tester.pump();
 
-        expect(textOf(tester, receivedField), '36500', reason: method.name);
+        expect(textOf(tester, receivedField), '36.500', reason: method.name);
         expect(find.text('Recibido \$36.500'), findsOneWidget);
         expect(find.text('Venta \$6.500 · Deuda \$30.000'), findsOneWidget);
         expect(find.text('Queda al día'), findsOneWidget);
@@ -326,8 +326,12 @@ void main() {
       await tapConfirm(tester);
 
       expect(find.text(creditTitle), findsNothing);
+      // S11 (rental-and-credit-balance): it adds to the previous debt.
       expect(
-        find.text('El cliente queda debiendo \$500. ¿Confirmás?'),
+        find.text(
+          'Suma \$500 a su deuda de \$30.000. Deuda total: \$30.500. '
+          '¿Confirmás?',
+        ),
         findsOneWidget,
       );
     });
@@ -383,7 +387,7 @@ void main() {
       return container;
     }
 
-    Future<double> balance() =>
+    Future<int> balance() =>
         DriftPaymentRepository(db).watchCustomerBalance('c-1').first;
 
     Future<void> unmount(WidgetTester tester) async {
@@ -410,7 +414,7 @@ void main() {
 
       expect(find.text(creditTitle), findsNothing);
       expect(find.byType(SaleStep3Screen), findsOneWidget);
-      expect(textOf(tester, receivedField), '40000');
+      expect(textOf(tester, receivedField), '40.000');
       expect(container.read(saleDraftProvider).collectedAmount, 40000);
       await tester.runAsync(() async {
         expect(await db.select(db.saleTable).get(), isEmpty);

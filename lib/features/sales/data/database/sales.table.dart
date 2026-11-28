@@ -12,14 +12,19 @@ class SaleTable extends Table with Timestamps {
     #customerId,
     onDelete: KeyAction.restrict,
   )();
-  late final totalAmount = real()();
+
+  /// Money columns hold whole pesos.
+  late final totalAmount = integer()();
   late final paymentMethod = text()(); // 'cash' | 'transfer' | 'credit'
   late final saleDate = dateTime().withDefault(currentDateAndTime)();
   late final quantity = integer()();
-  late final shipping_amount = real()();
+  late final shipping_amount = integer()();
   late final visitId = text().nullable()();
-  late final cashAmount = real().nullable()();
-  late final transferAmount = real().nullable()();
+  late final cashAmount = integer().nullable()();
+  late final transferAmount = integer().nullable()();
+
+  /// The customer's credit in favor the sale consumed (0..total).
+  late final creditApplied = integer().withDefault(const Constant(0))();
   late final status = text().withDefault(
     const Constant('CONFIRMED'),
   )(); // RecordStatus.confirmed, as a literal the generated code can copy

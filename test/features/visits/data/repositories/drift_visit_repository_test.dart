@@ -73,7 +73,7 @@ void main() {
     int outcomeId = 1,
     DateTime? arrivedAt,
     String? observations,
-    double amountCollected = 0,
+    int amountCollected = 0,
   }) {
     return Visit(
       visitId: visitId ?? const Uuid().v4(),

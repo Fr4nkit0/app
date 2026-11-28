@@ -8,7 +8,9 @@ class ProductTable extends Table with Timestamps {
   late final productId = text().clientDefault(() => uuid.v4())();
   late final name = text()();
   late final description = text().nullable()();
-  late final price = real()();
+
+  /// Whole pesos.
+  late final price = integer()();
   late final stock = integer().withDefault(const Constant(0))();
 
   /// Server id of the product's container type (catalog `container_types`);

@@ -72,7 +72,7 @@ void main() {
         );
   }
 
-  Future<void> insertBalance(String customerId, double balance) async {
+  Future<void> insertBalance(String customerId, int balance) async {
     await db
         .into(db.customerBalanceTable)
         .insertOnConflictUpdate(
@@ -149,7 +149,7 @@ void main() {
       'debtAmount hydrated from CustomerBalanceTable (positive balance)',
       () async {
         await insertRoute('route-today', todayStr);
-        await insertBalance('mock-customer-1', 1200.0);
+        await insertBalance('mock-customer-1', 1200);
         final now = DateTime.now();
         await insertStop(
           stopId: 'stop-t1',
@@ -166,7 +166,7 @@ void main() {
 
     test('debtAmount is 0 when balance is negative (credit)', () async {
       await insertRoute('route-today', todayStr);
-      await insertBalance('mock-customer-1', -500.0);
+      await insertBalance('mock-customer-1', -500);
       final now = DateTime.now();
       await insertStop(
         stopId: 'stop-t1',
@@ -995,22 +995,21 @@ void main() {
           );
     }
 
-    Future<void> sale(String id, String stopId, double total, String method) =>
-        db
-            .into(db.saleTable)
-            .insert(
-              SaleTableCompanion.insert(
-                saleId: drift.Value(id),
-                customerId: 'mock-customer-1',
-                totalAmount: total,
-                paymentMethod: method,
-                quantity: 0,
-                shipping_amount: 0,
-                visitId: drift.Value(stopId),
-              ),
-            );
+    Future<void> sale(String id, String stopId, int total, String method) => db
+        .into(db.saleTable)
+        .insert(
+          SaleTableCompanion.insert(
+            saleId: drift.Value(id),
+            customerId: 'mock-customer-1',
+            totalAmount: total,
+            paymentMethod: method,
+            quantity: 0,
+            shipping_amount: 0,
+            visitId: drift.Value(stopId),
+          ),
+        );
 
-    Future<void> payment(String stopId, double amount, {String? saleId}) => db
+    Future<void> payment(String stopId, int amount, {String? saleId}) => db
         .into(db.paymentTable)
         .insert(
           PaymentTableCompanion.insert(

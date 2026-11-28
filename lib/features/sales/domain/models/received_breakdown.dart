@@ -17,13 +17,13 @@ class ReceivedBreakdown {
   /// Splits [received] for a sale of [saleTotal] booked on an account at
   /// [balance] before the sale (negative: the customer has credit).
   factory ReceivedBreakdown.of({
-    required double received,
-    required double saleTotal,
-    required double balance,
+    required int received,
+    required int saleTotal,
+    required int balance,
   }) {
     final sale = received < saleTotal ? received : saleTotal;
     final extra = received - sale;
-    final owed = balance > 0 ? balance : 0.0;
+    final owed = balance > 0 ? balance : 0;
     final debt = extra < owed ? extra : owed;
     return ReceivedBreakdown._(
       received: received,
@@ -35,24 +35,24 @@ class ReceivedBreakdown {
   }
 
   /// What the customer handed over.
-  final double received;
+  final int received;
 
   /// The part that pays the sale; below its total on a partial payment.
-  final double sale;
+  final int sale;
 
   /// The part that pays previous debt.
-  final double debt;
+  final int debt;
 
   /// The part beyond the sale and the whole previous debt: credit in the
   /// customer's favor.
-  final double credit;
+  final int credit;
 
   /// The account once the sale and the money are booked; negative when the
   /// customer is left with credit.
-  final double balanceAfter;
+  final int balanceAfter;
 
   /// What is received beyond the sale: previous debt plus [credit].
-  double get beyondSale => debt + credit;
+  int get beyondSale => debt + credit;
 
   @override
   bool operator ==(Object other) =>

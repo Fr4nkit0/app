@@ -12,10 +12,10 @@ class PaymentSplit {
   /// Delay of a transfer after the cash of the same split, so cash is listed first.
   static const transferAfterCash = Duration(milliseconds: 10);
 
-  final double cash;
-  final double transfer;
+  final int cash;
+  final int transfer;
 
-  double get total => cash + transfer;
+  int get total => cash + transfer;
 
   /// The payments of this split: cash first, then transfer; a part of 0
   /// produces no payment. [idFor] receives the payment's position in the
@@ -30,19 +30,18 @@ class PaymentSplit {
     String Function(PaymentType type)? transactionUuidFor,
   }) {
     final payments = <Payment>[];
-    void add(PaymentType type, double amount, DateTime createdAt) =>
-        payments.add(
-          Payment(
-            id: idFor(payments.length),
-            customerId: customerId,
-            amount: amount,
-            type: type,
-            createdAt: createdAt,
-            visitId: visitId,
-            saleId: saleId,
-            transactionUuid: transactionUuidFor?.call(type),
-          ),
-        );
+    void add(PaymentType type, int amount, DateTime createdAt) => payments.add(
+      Payment(
+        id: idFor(payments.length),
+        customerId: customerId,
+        amount: amount,
+        type: type,
+        createdAt: createdAt,
+        visitId: visitId,
+        saleId: saleId,
+        transactionUuid: transactionUuidFor?.call(type),
+      ),
+    );
 
     if (cash > 0) add(PaymentType.cash, cash, at);
     if (transfer > 0) {

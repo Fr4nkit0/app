@@ -2,6 +2,7 @@ import 'package:drift/drift.dart';
 
 import '../../../core/services/database.helper.dart';
 import '../../payments/data/repositories/customer_account.dart';
+import '../../sales/data/database/record_status.dart';
 import '../domain/models/pending_change.dart';
 import 'entity_pusher.dart';
 import 'references.dart';
@@ -88,7 +89,8 @@ class SalePusher implements EntityPusher, RejectionAware {
               ),
             'date': sale.saleDate.toUtc().toIso8601String(),
             'total': sale.totalAmount,
-            'is_credit_sale': sale.paymentMethod == 'credit',
+            'is_credit_sale': await _leavesDebt(sale),
+            'credit_applied': sale.creditApplied,
             'notes': null,
             'details': [
               for (final l in lines)
@@ -104,6 +106,22 @@ class SalePusher implements EntityPusher, RejectionAware {
       );
     }
     return PushPlan(records: records, rejections: rejections);
+  }
+
+  /// Whether [sale] leaves part of its total owed: its confirmed linked
+  /// payments plus the credit it applied do not reach the total (S1).
+  Future<bool> _leavesDebt(SaleTableData sale) async {
+    final amount = _db.paymentTable.amount.sum();
+    final paid =
+        await (_db.selectOnly(_db.paymentTable)
+              ..addColumns([amount])
+              ..where(
+                _db.paymentTable.saleId.equals(sale.saleId) &
+                    _db.paymentTable.status.equals(RecordStatus.confirmed),
+              ))
+            .map((row) => row.read(amount) ?? 0)
+            .getSingle();
+    return paid + sale.creditApplied < sale.totalAmount;
   }
 
   /// The line's agreement by server id when it has one (the line's own or

@@ -15,7 +15,7 @@ typedef BalanceCorrectionConfirm =
     FutureOr<void> Function(
       BalanceTarget target,
       String? containerType,
-      num counted,
+      int counted,
       String reason,
     );
 
@@ -42,7 +42,7 @@ class BalanceCorrectionSheet extends StatefulWidget {
   static const maxReasonLength = 500;
 
   /// The customer account the device shows (positive: the customer owes).
-  final double debt;
+  final int debt;
 
   /// The catalog container types.
   final List<ContainerType> containerTypes;
@@ -73,7 +73,7 @@ class _TargetOption {
   final BalanceTarget target;
   final String? code;
   final String label;
-  final num current;
+  final int current;
 }
 
 class _BalanceCorrectionSheetState extends State<BalanceCorrectionSheet> {
@@ -124,12 +124,12 @@ class _BalanceCorrectionSheetState extends State<BalanceCorrectionSheet> {
   bool _isSelected(_TargetOption option) =>
       option.target == _target && option.code == _containerType;
 
-  num get _current => _target == BalanceTarget.debt
+  int get _current => _target == BalanceTarget.debt
       ? widget.debt
       : widget.custody[_containerType] ?? 0;
 
   /// The counted balance typed so far; null while it does not parse.
-  num? get _counted {
+  int? get _counted {
     final text = _countController.text.trim();
     switch (_target) {
       case BalanceTarget.containers:
@@ -149,9 +149,8 @@ class _BalanceCorrectionSheetState extends State<BalanceCorrectionSheet> {
       _reason.length >= BalanceCorrectionSheet.minReasonLength &&
       _reason.length <= BalanceCorrectionSheet.maxReasonLength;
 
-  String _format(num value) => _target == BalanceTarget.debt
-      ? formatAccountBalance(value.toDouble())
-      : '$value';
+  String _format(int value) =>
+      _target == BalanceTarget.debt ? formatAccountBalance(value) : '$value';
 
   void _select(_TargetOption option) {
     if (_isSelected(option)) return;
@@ -219,7 +218,7 @@ class _BalanceCorrectionSheetState extends State<BalanceCorrectionSheet> {
               _TargetTile(
                 label: option.label,
                 value: option.target == BalanceTarget.debt
-                    ? formatAccountBalance(option.current.toDouble())
+                    ? formatAccountBalance(option.current)
                     : '${option.current}',
                 selected: _isSelected(option),
                 onTap: _saving ? null : () => _select(option),

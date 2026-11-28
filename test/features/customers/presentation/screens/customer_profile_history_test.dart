@@ -226,7 +226,7 @@ void main() {
             .insert(
               PaymentTableCompanion.insert(
                 customerId: 'cust-1',
-                amount: 100.0 + i,
+                amount: 100 + i,
                 paymentMethod: 'TRANSFERENCIA',
               ),
             );
@@ -314,7 +314,7 @@ void main() {
     Future<int> stock() async =>
         (await db.select(db.productTable).getSingle()).stock;
 
-    Future<double> balance() async =>
+    Future<int> balance() async =>
         (await db.select(db.customerBalanceTable).getSingle()).currentBalance;
 
     Future<List<PendingEntity>> queued() async => [

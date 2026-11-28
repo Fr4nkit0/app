@@ -8,7 +8,7 @@ class Visit {
   final int? outcomeId;
   final DateTime arrivedAt;
   final String? observations;
-  final double amountCollected;
+  final int amountCollected;
 
   const Visit({
     required this.visitId,

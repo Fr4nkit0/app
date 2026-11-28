@@ -84,7 +84,7 @@ class _VisitScreenState extends ConsumerState<VisitScreen> {
     // The debt comes only from the customer account: 0 until it loads and
     // for a customer without one.
     final balance =
-        ref.watch(customerBalanceProvider(stop.customer.id)).value ?? 0.0;
+        ref.watch(customerBalanceProvider(stop.customer.id)).value ?? 0;
     // The stop carries only part of the customer; the edit needs all of it,
     // so the edit button waits until it loads.
     final editableCustomer = ref

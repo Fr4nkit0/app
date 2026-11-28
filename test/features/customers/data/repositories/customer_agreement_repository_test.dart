@@ -40,7 +40,7 @@ void main() {
   tearDown(() => db.close());
 
   Future<String> create({
-    double price = 1200,
+    int price = 1200,
     String validFrom = '2026-10-22',
     String? validTo,
     String? reason,
@@ -111,7 +111,7 @@ void main() {
 
     Future<void> insertSynced(
       String id, {
-      double price = 1000,
+      int price = 1000,
       String from = '2026-10-01',
       String? to,
       int serverId = 7,

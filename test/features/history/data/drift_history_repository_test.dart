@@ -32,7 +32,7 @@ void main() {
     await db.close();
   });
 
-  Future<void> insertSale(String id, double total) => db
+  Future<void> insertSale(String id, int total) => db
       .into(db.saleTable)
       .insert(
         SaleTableCompanion.insert(
@@ -45,7 +45,7 @@ void main() {
         ),
       );
 
-  Future<void> insertPayment(String id, double amount) => db
+  Future<void> insertPayment(String id, int amount) => db
       .into(db.paymentTable)
       .insert(
         PaymentTableCompanion.insert(
@@ -474,7 +474,7 @@ void main() {
   group('paging', () {
     Future<void> queueSales(int count) async {
       for (var i = 1; i <= count; i++) {
-        await insertSale('sale-$i', 100.0 * i);
+        await insertSale('sale-$i', 100 * i);
         await queue.enqueue(
           entity: PendingEntity.sale,
           entityId: 'sale-$i',
@@ -541,7 +541,7 @@ void main() {
 
     test('a type filter pages among the records of that type', () async {
       await queueSales(3);
-      for (final (id, amount) in [('pay-1', 10.0), ('pay-2', 20.0)]) {
+      for (final (id, amount) in [('pay-1', 10), ('pay-2', 20)]) {
         await insertPayment(id, amount);
         await queue.enqueue(
           entity: PendingEntity.payment,

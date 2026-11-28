@@ -59,7 +59,7 @@ void main() {
 
   Future<void> insert(
     String id,
-    double price,
+    int price,
     String from, {
     String? to,
     int? serverId,
@@ -149,7 +149,9 @@ void main() {
     await unmount(tester);
   });
 
-  testWidgets('the form refuses more than two decimals', (tester) async {
+  testWidgets('the price field takes whole pesos grouped by thousands', (
+    tester,
+  ) async {
     await pumpTab(tester);
 
     await tester.tap(find.text('Nuevo acuerdo'));
@@ -158,15 +160,17 @@ void main() {
     await tester.pumpAndSettle();
     await tester.tap(find.text('Agua 20L').last);
     await tester.pumpAndSettle();
-    await tester.enterText(
-      find.byKey(const Key('agreement_price')),
-      '1200,555',
-    );
-    await tester.tap(find.text('Guardar'));
-    await tester.pumpAndSettle();
+    await tester.enterText(find.byKey(const Key('agreement_price')), '1200,5');
+    await tester.pump();
 
-    expect(find.text('Usá hasta 2 decimales'), findsOneWidget);
-    expect(await db.select(db.customerAgreementTable).get(), isEmpty);
+    final price = tester.widget<TextField>(
+      find.descendant(
+        of: find.byKey(const Key('agreement_price')),
+        matching: find.byType(TextField),
+      ),
+    );
+    expect(price.keyboardType, TextInputType.number);
+    expect(price.controller!.text, '12.005');
     await unmount(tester);
   });
 
@@ -204,7 +208,7 @@ void main() {
         matching: find.byType(EditableText),
       ),
     );
-    expect(price.controller.text, '1200');
+    expect(price.controller.text, '1.200');
     final reason = tester.widget<EditableText>(
       find.descendant(
         of: find.byKey(const Key('agreement_reason')),

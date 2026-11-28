@@ -1,8 +1,8 @@
 import 'package:flutter/material.dart';
-import 'package:flutter/services.dart';
 import 'package:app/core/theme/marilin_tokens.dart';
+import 'package:app/core/utils/money_input.dart';
 
-/// Decimal amount input with a `$` prefix, shared by every payment form.
+/// Whole-peso amount input, grouped by thousands while typing with a `$` prefix, shared by every payment form.
 class AmountField extends StatelessWidget {
   const AmountField({
     super.key,
@@ -17,15 +17,9 @@ class AmountField extends StatelessWidget {
   final ValueChanged<String>? onChanged;
   final Color focusColor;
 
-  static final _validAmount = RegExp(r'^\d+([.,]\d{1,2})?$');
-
-  /// Parses an amount typed with either `,` or `.` as the decimal separator.
-  /// Returns null for empty or invalid input.
-  static double? parseAmount(String text) {
-    final trimmed = text.trim();
-    if (!_validAmount.hasMatch(trimmed)) return null;
-    return double.tryParse(trimmed.replaceAll(',', '.'));
-  }
+  /// Parses an amount in whole pesos; dots are thousands separators
+  /// ("15.000" -> 15000). Returns null for empty or invalid input.
+  static int? parseAmount(String text) => parseMoneyInput(text);
 
   @override
   Widget build(BuildContext context) {
@@ -36,17 +30,12 @@ class AmountField extends StatelessWidget {
   }
 
   Widget _buildField(BuildContext context, String text) {
-    // A trailing separator is a number still being typed, not a mistake.
-    final inProgress = text.endsWith(',') || text.endsWith('.');
-    final isInvalid =
-        text.isNotEmpty && !inProgress && parseAmount(text) == null;
+    final isInvalid = text.isNotEmpty && parseAmount(text) == null;
     return TextField(
       controller: controller,
       onChanged: onChanged,
-      keyboardType: const TextInputType.numberWithOptions(decimal: true),
-      inputFormatters: [
-        FilteringTextInputFormatter.allow(RegExp(r'^\d*[.,]?\d{0,2}')),
-      ],
+      keyboardType: TextInputType.number,
+      inputFormatters: const [MoneyInputFormatter()],
       decoration: InputDecoration(
         labelText: label,
         errorText: isInvalid ? 'Ingresá un monto válido' : null,

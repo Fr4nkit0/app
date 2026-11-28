@@ -25,7 +25,7 @@ class ProductApplier implements PullApplier {
         description: Value(p['description'] as String?),
         price: p['price'] == null
             ? const Value.absent()
-            : Value(toDouble(p['price'])),
+            : Value(toPesos(p['price'])),
         containerTypeId: Value(p['container_type_id'] as int?),
         enabled: enabledOf(p),
         serverId: Value(serverId),
@@ -70,7 +70,7 @@ class ProductApplier implements PullApplier {
               ProductTableCompanion.insert(
                 name: p['name'] as String,
                 description: Value(p['description'] as String?),
-                price: p['price'] == null ? 0 : toDouble(p['price']),
+                price: p['price'] == null ? 0 : toPesos(p['price']),
                 stock: Value(stock),
                 containerTypeId: Value(p['container_type_id'] as int?),
                 serverId: Value(serverId),
@@ -86,7 +86,7 @@ class ProductApplier implements PullApplier {
             description: Value(p['description'] as String?),
             price: p['price'] == null
                 ? const Value.absent()
-                : Value(toDouble(p['price'])),
+                : Value(toPesos(p['price'])),
             stock: context.unsent.hasSales
                 ? const Value.absent()
                 : Value(stock),

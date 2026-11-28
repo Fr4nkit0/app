@@ -33,7 +33,7 @@ class FakeBalanceCorrectionRepository implements BalanceCorrectionRepository {
       recorded.add(correction);
 
   @override
-  Future<double> shownBalance(
+  Future<int> shownBalance(
     String customerId,
     BalanceTarget target, {
     String? containerType,
@@ -207,7 +207,7 @@ void main() {
         'of the new customer', () async {
       final notifier = onPreferences()
         ..showOpeningBalance()
-        ..updateOpeningDebt('1500,50')
+        ..updateOpeningDebt('1.500')
         ..updateOpeningContainers('B20', '2')
         ..updateOpeningContainers('SODA', '0');
 
@@ -222,7 +222,7 @@ void main() {
             (c.customerId, c.target, c.containerType, c.counted, c.seenBalance),
         ],
         [
-          (id, BalanceTarget.debt, null, 1500.5, 0.0),
+          (id, BalanceTarget.debt, null, 1500, 0),
           (id, BalanceTarget.containers, 'B20', 2.0, 0.0),
         ],
       );

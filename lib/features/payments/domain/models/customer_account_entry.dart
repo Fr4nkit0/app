@@ -19,7 +19,7 @@ class CustomerAccountEntry {
   final String? paymentId;
   final String? saleId;
   final String entryType; // 'SALE' | 'PAYMENT' | 'ADJUSTMENT' | 'CREDIT_NOTE'
-  final double amount;
+  final int amount;
   final int direction; // -1 credit/payment, +1 debit/sale
   final String? description;
   final DateTime createdAt;

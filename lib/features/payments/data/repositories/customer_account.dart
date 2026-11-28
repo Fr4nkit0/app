@@ -23,11 +23,7 @@ class CustomerAccount {
   )..where((t) => t.customerId.equals(customerId))).go();
 
   /// Moves the account of [customerId] by [delta] (positive: owes more).
-  Future<void> post(
-    String customerId,
-    double delta, {
-    String? lastEntryId,
-  }) async {
+  Future<void> post(String customerId, int delta, {String? lastEntryId}) async {
     final existing = await (_db.select(
       _db.customerBalanceTable,
     )..where((t) => t.customerId.equals(customerId))).getSingleOrNull();
@@ -57,23 +53,23 @@ class CustomerAccount {
   }
 
   /// The balance of [customerId]; 0 while they have no account.
-  Stream<double> watchBalance(String customerId) {
+  Stream<int> watchBalance(String customerId) {
     return (_db.select(_db.customerBalanceTable)
           ..where((t) => t.customerId.equals(customerId)))
         .watchSingleOrNull()
-        .map((row) => row?.currentBalance ?? 0.0);
+        .map((row) => row?.currentBalance ?? 0);
   }
 
   /// The balance of [customerId]; 0 while they have no account.
-  Future<double> balanceOf(String customerId) async =>
+  Future<int> balanceOf(String customerId) async =>
       (await (_db.select(
             _db.customerBalanceTable,
           )..where((t) => t.customerId.equals(customerId))).getSingleOrNull())
           ?.currentBalance ??
-      0.0;
+      0;
 
   /// Balances keyed by customer, for the [customerIds] that have an account.
-  Future<Map<String, double>> balancesOf(Iterable<String> customerIds) async {
+  Future<Map<String, int>> balancesOf(Iterable<String> customerIds) async {
     final rows = await (_db.select(
       _db.customerBalanceTable,
     )..where((t) => t.customerId.isIn(customerIds))).get();
@@ -94,14 +90,14 @@ class CustomerAccount {
 
   /// The balance of a row from a query joined with [balanceJoin]; 0 when
   /// the customer has no account.
-  double balanceIn(TypedResult row) =>
-      row.readTableOrNull(_db.customerBalanceTable)?.currentBalance ?? 0.0;
+  int balanceIn(TypedResult row) =>
+      row.readTableOrNull(_db.customerBalanceTable)?.currentBalance ?? 0;
 
   /// Stores the balance the server computed for [customerId], plus the
   /// sales and minus the payments the server has not received yet.
   Future<void> reconcile(
     String customerId,
-    double serverBalance, {
+    int serverBalance, {
     int? serverId,
     Value<bool> enabled = const Value.absent(),
   }) async {
@@ -121,18 +117,18 @@ class CustomerAccount {
   /// Pending sales minus pending payments of [customerId], minus the sales
   /// and plus the payments whose cancellation is pending, plus the
   /// difference of the pending debt corrections.
-  Future<double> pendingDelta(String customerId) async {
+  Future<int> pendingDelta(String customerId) async {
     String pendingIds(int entity) =>
         '(SELECT entity_id FROM pending_changes '
         'WHERE entity = ?$entity AND status = ?6)';
     String sales(int entity) =>
-        '(SELECT COALESCE(SUM(s.total_amount), 0.0) FROM sales s '
+        '(SELECT COALESCE(SUM(s.total_amount), 0) FROM sales s '
         'WHERE s.customer_id = ?1 AND s.sale_id IN ${pendingIds(entity)})';
     String payments(int entity) =>
-        '(SELECT COALESCE(SUM(p.amount), 0.0) FROM payments p '
+        '(SELECT COALESCE(SUM(p.amount), 0) FROM payments p '
         'WHERE p.customer_id = ?1 AND p.payment_id IN ${pendingIds(entity)})';
     const corrections =
-        '(SELECT COALESCE(SUM(b.counted - b.seen_balance), 0.0) '
+        '(SELECT COALESCE(SUM(b.counted - b.seen_balance), 0) '
         "FROM balance_corrections b WHERE b.customer_id = ?1 AND b.target = 'debt' "
         'AND b.correction_id IN (SELECT entity_id FROM pending_changes '
         'WHERE entity = ?7 AND status = ?6))';
@@ -157,6 +153,6 @@ class CustomerAccount {
           },
         )
         .getSingle();
-    return row.read<double>('delta');
+    return row.read<int>('delta');
   }
 }

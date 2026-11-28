@@ -106,7 +106,7 @@ void main() {
   Future<String> createAgreement({
     String? validTo,
     String? reason,
-    double price = 1200,
+    int price = 1200,
   }) {
     return agreements.create(
       customerId: 'c-1',
@@ -190,7 +190,7 @@ void main() {
         'uuid': id,
         'customer_id': 10,
         'product_id': 21,
-        'unit_price': 1200.0,
+        'unit_price': 1200,
         'valid_from': '2026-10-22',
         'valid_to': '2026-12-31',
         'reason': 'Mayorista',
@@ -198,6 +198,11 @@ void main() {
         'modified_at': '2026-10-22T09:00:00.000Z',
       },
     ]);
+    // Money travels as whole pesos.
+    expect(
+      (body['customer_agreements'] as List).single['unit_price'],
+      isA<int>(),
+    );
   });
 
   test('an agreement of an unsent customer references it by uuid', () async {

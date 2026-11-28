@@ -14,7 +14,9 @@ class PaymentTable extends Table with Timestamps {
     #customerId,
     onDelete: KeyAction.restrict,
   )();
-  late final amount = real()();
+
+  /// Whole pesos.
+  late final amount = integer()();
   late final paymentMethod =
       text()(); // 'EFECTIVO' | 'TRANSFERENCIA' | 'TARJETA' | 'CREDIT'
   late final visitId = text().nullable().references(
@@ -61,7 +63,8 @@ class CustomerAccountEntryTable extends Table with Timestamps {
   late final createdBy = text().nullable()();
   late final entryType =
       text()(); // 'SALE' | 'PAYMENT' | 'ADJUSTMENT' | 'CREDIT_NOTE'
-  late final amount = real()();
+  /// Whole pesos.
+  late final amount = integer()();
   late final direction =
       integer()(); // -1 for credit/payment, +1 for debit/sale
   late final description = text().nullable()();
@@ -79,7 +82,9 @@ class CustomerBalanceTable extends Table with Timestamps {
     #customerId,
     onDelete: KeyAction.restrict,
   )();
-  late final currentBalance = real().withDefault(const Constant(0.0))();
+
+  /// Whole pesos.
+  late final currentBalance = integer().withDefault(const Constant(0))();
   late final lastEntryId = text().nullable().references(
     CustomerAccountEntryTable,
     #customerAccountEntryId,

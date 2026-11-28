@@ -20,7 +20,7 @@ class CustomerAgreement {
   final String id;
   final String productId;
   final String productName;
-  final double unitPrice;
+  final int unitPrice;
 
   /// Calendar days as `YYYY-MM-DD`.
   final String validFrom;

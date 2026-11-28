@@ -47,7 +47,7 @@ class Payment {
 
   final String id;
   final String customerId;
-  final double amount;
+  final int amount;
   final PaymentType type;
   final DateTime createdAt;
   final String? visitId;

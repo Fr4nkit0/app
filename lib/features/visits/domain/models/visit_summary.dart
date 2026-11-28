@@ -29,13 +29,13 @@ class VisitSummary {
   /// Why the visit ended without a sale; null for a sale visit.
   final VisitOutcome? outcome;
 
-  final double salesTotal;
+  final int salesTotal;
 
   /// Payment methods of the sales, in sale order, without repeats.
   final List<PaymentMethod> saleMethods;
 
   /// Payments not tied to a sale, such as a debt payment.
-  final double collected;
+  final int collected;
 
   /// Containers returned, of every type.
   final int returned;

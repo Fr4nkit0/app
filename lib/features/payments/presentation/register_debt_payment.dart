@@ -14,7 +14,7 @@ Future<void> registerDebtPayment(
   BuildContext context,
   WidgetRef ref, {
   required Customer customer,
-  required double debt,
+  required int debt,
   String? visitId,
 }) async {
   final split = await showModalBottomSheet<PaymentSplit>(

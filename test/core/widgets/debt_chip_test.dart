@@ -43,7 +43,7 @@ void main() {
         const MaterialApp(
           home: Scaffold(
             body: DebtChip(
-              amount: 2500.50,
+              amount: 2500,
               margin: EdgeInsets.all(8),
               padding: EdgeInsets.symmetric(horizontal: 14, vertical: 6),
               borderRadius: BorderRadius.all(Radius.circular(8)),
@@ -59,7 +59,7 @@ void main() {
         ),
       );
 
-      expect(find.text('PRE-DEBT: \$2.500,50'), findsOneWidget);
+      expect(find.text('PRE-DEBT: \$2.500'), findsOneWidget);
 
       final container = tester.widget<Container>(find.byType(Container));
       expect(container.margin, equals(const EdgeInsets.all(8)));

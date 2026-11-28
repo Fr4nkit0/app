@@ -61,7 +61,7 @@ class DriftCustomerAgreementRepository implements CustomerAgreementRepository {
   Future<String> create({
     required String customerId,
     required String productId,
-    required double unitPrice,
+    required int unitPrice,
     required String validFrom,
     String? validTo,
     String? reason,

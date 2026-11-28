@@ -19,8 +19,10 @@ class SaleItemTable extends Table with Timestamps {
     onDelete: KeyAction.restrict,
   )();
   late final quantity = integer()();
-  late final unitPrice = real()();
-  late final subtotal = real()();
+
+  /// Whole pesos.
+  late final unitPrice = integer()();
+  late final subtotal = integer()();
 
   /// Server id of the customer agreement that set [unitPrice]; null for
   /// the list price.

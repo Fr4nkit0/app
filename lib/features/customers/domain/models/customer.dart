@@ -11,7 +11,7 @@ class Customer {
   final String? phone;
   final List<CustomerAddress> addresses;
   final List<CustomerPreference> preferences;
-  final double debtAmount;
+  final int debtAmount;
   final List<String> productLabels;
 
   Customer({
@@ -21,7 +21,7 @@ class Customer {
     this.phone,
     required this.addresses,
     required this.preferences,
-    this.debtAmount = 0.0,
+    this.debtAmount = 0,
     this.productLabels = const [],
   });
 }

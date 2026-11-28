@@ -22,14 +22,14 @@ import '../../../../support/container_types.dart';
 import '../../../../support/real_fonts.dart';
 
 class _RecordingRegisterSale implements RegisterSaleUseCase {
-  final calls = <({Sale sale, double debtAmount})>[];
+  final calls = <({Sale sale, int debtAmount})>[];
 
   @override
   Future<void> execute(
     Sale sale, {
     Payment? payment,
     List<ContainerMovement>? containerMovements,
-    double debtAmount = 0,
+    int debtAmount = 0,
   }) async {
     calls.add((sale: sale, debtAmount: debtAmount));
   }
@@ -78,7 +78,7 @@ void main() {
   Future<void> pumpScreen(
     WidgetTester tester, {
     required PaymentMethod method,
-    required double balance,
+    required int balance,
   }) async {
     useCase = _RecordingRegisterSale();
     // A fresh tree for every pump, also within one test.
@@ -149,7 +149,7 @@ void main() {
 
         expect(find.text('Cobrar también la deuda'), findsNothing);
         expect(find.widgetWithText(TextField, 'Deuda a cobrar'), findsNothing);
-        expect(textOf(tester, receivedField), '6500', reason: method.name);
+        expect(textOf(tester, receivedField), '6.500', reason: method.name);
         expect(find.text('Debe \$32.500 de antes'), findsOneWidget);
         expect(find.textContaining('Recibido'), findsNothing);
         expect(confirmEnabled(tester), isTrue, reason: method.name);
@@ -225,7 +225,11 @@ void main() {
 
       await receive(tester, '6000');
 
-      expect(find.text('Queda debiendo \$500'), findsOneWidget);
+      // S11 (rental-and-credit-balance): it adds to the previous debt.
+      expect(
+        find.text('Suma \$500 a su deuda de \$32.500. Deuda total: \$33.000'),
+        findsOneWidget,
+      );
       expect(find.textContaining('Recibido'), findsNothing);
     });
 

@@ -39,12 +39,12 @@ class BalanceCorrection {
   /// Catalog code of the corrected container type; only for
   /// [BalanceTarget.containers].
   final String? containerType;
-  final double counted;
-  final double seenBalance;
+  final int counted;
+  final int seenBalance;
   final String reason;
   final DateTime correctedAt;
   final String? visitId;
 
   /// What the correction moves the balance by.
-  double get difference => counted - seenBalance;
+  int get difference => counted - seenBalance;
 }

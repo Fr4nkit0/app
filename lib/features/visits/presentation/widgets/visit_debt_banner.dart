@@ -9,7 +9,7 @@ class VisitDebtBanner extends StatelessWidget {
     required this.onTap,
   });
 
-  final double debtAmount;
+  final int debtAmount;
   final VoidCallback? onTap;
 
   @override

@@ -159,7 +159,7 @@ void main() {
 
   Future<BalanceCorrection> correct(
     BalanceTarget target,
-    num counted, {
+    int counted, {
     String? containerType,
     String? visitId,
     String id = 'corr-1',
@@ -184,7 +184,7 @@ void main() {
       Map<String, dynamic>.from(r as Map),
   ];
 
-  Future<double> balance() => payments.watchCustomerBalance('c-1').first;
+  Future<int> balance() => payments.watchCustomerBalance('c-1').first;
 
   Future<int> custody([String code = 'BIDON_20L']) =>
       Custody(db).quantityOf('c-1', code);
@@ -208,8 +208,8 @@ void main() {
 
   test('a debt correction travels with the counted and the seen balance; '
       'accepted, it keeps its server id and the balance', () async {
-    await correct(BalanceTarget.debt, 800.5, reason: '  Pagó y no se cargó ');
-    expect(await balance(), 800.5);
+    await correct(BalanceTarget.debt, 800, reason: '  Pagó y no se cargó ');
+    expect(await balance(), 800);
 
     await engine.push();
 
@@ -218,17 +218,17 @@ void main() {
       'uuid': 'corr-1',
       'customer_id': 10,
       'target': 'debt',
-      'counted': 800.5,
-      'seen_balance': 1000.0,
+      'counted': 800,
+      'seen_balance': 1000,
       'reason': 'Pagó y no se cargó',
       'corrected_at': now.toUtc().toIso8601String(),
     });
     expect(body['corrected_at'], endsWith('Z'));
-    expect(body['counted'], isA<double>());
-    expect(body['seen_balance'], isA<double>());
+    expect(body['counted'], isA<int>());
+    expect(body['seen_balance'], isA<int>());
     expect((await queued('corr-1')).status, 'sent');
     expect((await row('corr-1')).serverId, 901);
-    expect(await balance(), 800.5);
+    expect(await balance(), 800);
   });
 
   test('a container correction carries the type id and whole counts', () async {

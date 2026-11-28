@@ -5,8 +5,9 @@ import 'package:app/features/customers/domain/models/customer.dart';
 import 'package:app/features/products/domain/models/product.dart';
 import 'package:app/features/sales/domain/models/sale_item.dart';
 import 'package:app/features/sales/presentation/providers/sale_draft_provider.dart';
+import '../../../../support/customer_balances.dart';
 
-Product _product(double price, {String? agreementUuid}) => Product(
+Product _product(int price, {String? agreementUuid}) => Product(
   id: 'p-1',
   name: 'Bidón 20L',
   unitLabel: 'bidón',
@@ -19,7 +20,7 @@ void main() {
   SaleDraft draft() => container.read(saleDraftProvider.notifier);
 
   setUp(() {
-    container = ProviderContainer();
+    container = ProviderContainer(overrides: [unloadedCustomerBalances]);
     addTearDown(container.dispose);
     draft().selectCustomer(
       Customer(

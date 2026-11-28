@@ -54,7 +54,7 @@ void main() {
 
   Future<void> insert(
     String id, {
-    double price = 1000,
+    int price = 1000,
     String from = '2026-10-01',
     String? to,
     String? reason,
@@ -76,7 +76,7 @@ void main() {
 
   Future<String> edit({
     String id = 'a-1',
-    double price = 1000,
+    int price = 1000,
     String from = '2026-10-01',
     String? to,
     String? reason,
@@ -214,11 +214,6 @@ void main() {
             'a price of 0',
             () => edit(price: 0),
             'El precio debe ser mayor a 0.',
-          ),
-          (
-            'a price with 3 decimals',
-            () => edit(price: 12.345),
-            'El precio admite hasta 2 decimales.',
           ),
           (
             'an end before the start',

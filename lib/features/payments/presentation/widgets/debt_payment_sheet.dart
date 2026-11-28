@@ -10,7 +10,7 @@ import 'package:app/features/sales/presentation/widgets/payment_method_icon.dart
 ///
 /// Opened by `registerDebtPayment` with [showModalBottomSheet].
 class DebtPaymentSheet extends StatefulWidget {
-  final double totalDebt;
+  final int totalDebt;
 
   const DebtPaymentSheet({super.key, required this.totalDebt});
 
@@ -29,12 +29,12 @@ class _DebtPaymentSheetState extends State<DebtPaymentSheet> {
     final transfer = AmountField.parseAmount(_transferController.text) ?? 0;
     switch (_selectedMethod) {
       case PaymentMethod.cash:
-        return cash > 0 && cash <= widget.totalDebt + 0.01;
+        return cash > 0 && cash <= widget.totalDebt;
       case PaymentMethod.transfer:
-        return transfer > 0 && transfer <= widget.totalDebt + 0.01;
+        return transfer > 0 && transfer <= widget.totalDebt;
       case PaymentMethod.mixed:
         return (cash > 0 || transfer > 0) &&
-            (cash + transfer) <= widget.totalDebt + 0.01;
+            (cash + transfer) <= widget.totalDebt;
       default:
         return false;
     }
@@ -46,13 +46,13 @@ class _DebtPaymentSheetState extends State<DebtPaymentSheet> {
       case PaymentMethod.transfer:
         return true;
       case PaymentMethod.mixed:
-        return _remaining.abs() <= 0.01;
+        return _remaining == 0;
       default:
         return false;
     }
   }
 
-  double get _remaining {
+  int get _remaining {
     final cash = AmountField.parseAmount(_cashController.text) ?? 0;
     final transfer = AmountField.parseAmount(_transferController.text) ?? 0;
     switch (_selectedMethod) {
@@ -81,8 +81,8 @@ class _DebtPaymentSheetState extends State<DebtPaymentSheet> {
   }
 
   Widget _buildRemainingIndicator() {
-    final isCovered = _remaining.abs() <= 0.01;
-    final isOverpaid = _remaining < -0.01;
+    final isCovered = _remaining == 0;
+    final isOverpaid = _remaining < 0;
     final primary = MarilinColors.brandBlue;
 
     if (isOverpaid) {

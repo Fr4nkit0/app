@@ -142,7 +142,7 @@ class DriftRouteRepository implements RouteRepository {
         final isCover = coverRow?.isCover ?? false;
 
         final currentBalance = _account.balanceIn(row);
-        final debtAmount = currentBalance > 0 ? currentBalance : 0.0;
+        final debtAmount = currentBalance > 0 ? currentBalance : 0;
 
         stops.add(
           RouteStop(
@@ -306,7 +306,7 @@ class DriftRouteRepository implements RouteRepository {
           outcome: outcomes[stopId],
           salesTotal: sales
               .where((s) => s.visitId == stopId)
-              .fold(0.0, (sum, s) => sum + s.totalAmount),
+              .fold(0, (sum, s) => sum + s.totalAmount),
           saleMethods: {
             for (final s in sales)
               if (s.visitId == stopId)
@@ -317,7 +317,7 @@ class DriftRouteRepository implements RouteRepository {
           }.toList(),
           collected: payments
               .where((p) => p.visitId == stopId)
-              .fold(0.0, (sum, p) => sum + p.amount),
+              .fold(0, (sum, p) => sum + p.amount),
           returned: movements
               .where((m) => m.visitId == stopId)
               .fold(0, (sum, m) => sum + m.returnedQuantity),

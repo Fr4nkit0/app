@@ -45,7 +45,7 @@ class CustomerRecord {
   final DateTime date;
 
   /// Total of a sale or amount of a payment.
-  final double? amount;
+  final int? amount;
 
   /// A cancelled sale or payment, or a movement of a cancelled sale.
   final bool isCancelled;

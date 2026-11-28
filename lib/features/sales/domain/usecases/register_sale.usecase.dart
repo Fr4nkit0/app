@@ -28,10 +28,6 @@ class RegisterSaleUseCase {
   final InventoryRepository _inventoryRepo;
   final TransactionRunner _transaction;
 
-  /// The server rejects a sale whose total differs from its items by more
-  /// than this; such a sale would stay stuck in the outbox.
-  static const totalTolerance = 0.005;
-
   /// Records [sale], its settling payments and [containerMovements] (linked
   /// to the sale) in one unit of work. Throws [ValidationFailure] for a sale
   /// without items or whose total does not match its items.
@@ -55,17 +51,27 @@ class RegisterSaleUseCase {
   /// negative [debtAmount], debt with a credit or route sale, a mixed split
   /// that does not cover the sale plus the debt, or a partial cash or
   /// transfer sale.
+  ///
+  /// [Sale.creditApplied] is the customer's credit in favor the sale
+  /// consumes first, whatever its method (S2): every rule above measures the
+  /// money against [Sale.amountDue] instead of the total, and a sale whose
+  /// credit covers the whole total is saved with no payment. The sale is
+  /// still booked for its whole total and the payments for what was
+  /// collected, so the account consumes the credit by itself. Throws
+  /// [ValidationFailure] for a negative credit applied, one above the total
+  /// or one above the customer's credit before the sale.
   Future<void> execute(
     Sale sale, {
     Payment? payment,
     List<ContainerMovement>? containerMovements,
-    double debtAmount = 0,
+    int debtAmount = 0,
   }) async {
     if (sale.items.isEmpty) {
       throw const ValidationFailure('La venta no tiene productos.');
     }
-    final itemsTotal = sale.items.fold<double>(0, (sum, i) => sum + i.subtotal);
-    if ((sale.total - itemsTotal).abs() > totalTolerance) {
+    final itemsTotal = sale.items.fold<int>(0, (sum, i) => sum + i.subtotal);
+    // The server rejects such a sale; it would stay stuck in the outbox.
+    if (sale.total != itemsTotal) {
       throw const ValidationFailure(
         'El total de la venta no coincide con sus productos.',
       );
@@ -73,6 +79,7 @@ class RegisterSaleUseCase {
     if (debtAmount < 0) {
       throw const ValidationFailure('La deuda a cobrar no puede ser negativa.');
     }
+    await _checkCreditApplied(sale);
     if (debtAmount == 0) _checkCollected(sale);
     final (saved, operationPayments) = debtAmount == 0
         ? (sale, settlingPayments(sale))
@@ -95,23 +102,48 @@ class RegisterSaleUseCase {
     });
   }
 
-  /// Largest amount a sale paid on the spot may collect above its total,
-  /// like the draft's.
-  static const collectedTolerance = 0.01;
+  /// The credit applied goes from 0 to the sale total and never beyond the
+  /// customer's credit before the sale (their balance below 0). Throws
+  /// [ValidationFailure] otherwise.
+  Future<void> _checkCreditApplied(Sale sale) async {
+    final applied = sale.creditApplied;
+    if (applied == 0) return;
+    if (applied < 0) {
+      throw const ValidationFailure(
+        'El saldo a favor aplicado no puede ser negativo.',
+      );
+    }
+    if (applied > sale.total) {
+      throw const ValidationFailure(
+        'El saldo a favor aplicado supera el total de la venta.',
+      );
+    }
+    final balance = await _paymentRepo
+        .watchCustomerBalance(sale.customer.id)
+        .first;
+    final credit = balance < 0 ? -balance : 0;
+    if (applied > credit) {
+      throw const ValidationFailure(
+        'El cliente no tiene saldo a favor suficiente.',
+      );
+    }
+  }
 
   /// Without previous debt, a sale paid on the spot collects more than 0 and
-  /// at most its total; what it leaves unpaid stays on the customer's
-  /// account (a partial payment). Throws [ValidationFailure] otherwise.
+  /// at most its [Sale.amountDue]; what it leaves unpaid stays on the
+  /// customer's account (a partial payment). A sale whose credit applied
+  /// covers its total collects nothing. Throws [ValidationFailure]
+  /// otherwise.
   static void _checkCollected(Sale sale) {
     if (!_paidOnTheSpot(sale.paymentMethod)) return;
     final collected = sale.settlement;
     if (collected.cash < 0 || collected.transfer < 0) {
       throw const ValidationFailure('Ingresá montos mayores o iguales a 0.');
     }
-    if (collected.total <= 0) {
+    if (collected.total <= 0 && sale.amountDue > 0) {
       throw const ValidationFailure('Ingresá un monto cobrado mayor a \$0.');
     }
-    if (collected.total > sale.total + collectedTolerance) {
+    if (collected.total > sale.amountDue) {
       throw const ValidationFailure(
         'Lo cobrado no puede superar el total de la venta.',
       );
@@ -127,17 +159,17 @@ class RegisterSaleUseCase {
   /// sale and of [debtAmount] of previous debt. Previous debt is only
   /// collected with a sale paid in full: a partial cash or transfer sale
   /// throws [ValidationFailure].
-  static (Sale, List<Payment>) _withDebt(Sale sale, double debtAmount) {
+  static (Sale, List<Payment>) _withDebt(Sale sale, int debtAmount) {
     final isPartial =
         (sale.paymentMethod == PaymentMethod.cash ||
             sale.paymentMethod == PaymentMethod.transfer) &&
-        sale.settlement.total < sale.total - totalTolerance;
+        sale.settlement.total < sale.amountDue;
     if (isPartial) {
       throw const ValidationFailure(
         'Para cobrar deuda anterior, cobrá la venta completa.',
       );
     }
-    final operationTotal = sale.total + debtAmount;
+    final operationTotal = sale.amountDue + debtAmount;
     final received = switch (sale.paymentMethod) {
       PaymentMethod.cash => PaymentSplit(cash: operationTotal),
       PaymentMethod.transfer => PaymentSplit(transfer: operationTotal),
@@ -149,7 +181,7 @@ class RegisterSaleUseCase {
     };
     final allocation = SaleDebtAllocation.of(
       received,
-      saleTotal: sale.total,
+      saleTotal: sale.amountDue,
       debtAmount: debtAmount,
     );
     final payments = allocation.toPayments(
@@ -176,6 +208,7 @@ class RegisterSaleUseCase {
             cashAmount: allocation.sale.cash,
             transferAmount: allocation.sale.transfer,
             visitId: sale.visitId,
+            creditApplied: sale.creditApplied,
             isCancelled: sale.isCancelled,
           )
         : sale;

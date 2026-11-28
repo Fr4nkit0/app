@@ -61,7 +61,7 @@ void main() {
   });
   tearDown(() => db.close());
 
-  Sale sale(PaymentMethod method, {double? cash, double? transfer}) => Sale(
+  Sale sale(PaymentMethod method, {int? cash, int? transfer}) => Sale(
     id: 'sale-1',
     customer: customer,
     items: const [SaleItem(product: jug, quantity: 1)],
@@ -73,14 +73,14 @@ void main() {
     visitId: 'v-1',
   );
 
-  Future<double> balance() => paymentRepo.watchCustomerBalance('c-1').first;
+  Future<int> balance() => paymentRepo.watchCustomerBalance('c-1').first;
 
   Future<List<Map<String, dynamic>>> queued(String entity) async => [
     for (final c in await db.select(db.pendingChangeTable).get())
       if (c.entity == entity) jsonDecode(c.payload!) as Map<String, dynamic>,
   ];
 
-  Future<void> owe(double amount) async {
+  Future<void> owe(int amount) async {
     await db
         .into(db.customerBalanceTable)
         .insert(
@@ -91,7 +91,7 @@ void main() {
         );
   }
 
-  Future<void> expectNothingWritten({double balanceBefore = 0}) async {
+  Future<void> expectNothingWritten({int balanceBefore = 0}) async {
     expect(await db.select(db.saleTable).get(), isEmpty);
     expect(await db.select(db.paymentTable).get(), isEmpty);
     expect(await db.select(db.pendingChangeTable).get(), isEmpty);
@@ -250,7 +250,7 @@ void main() {
 
         final payments = await paymentRepo.getSalePayments(local.id);
         expect(
-          payments.fold<double>(0, (sum, p) => sum + p.amount),
+          payments.fold<int>(0, (sum, p) => sum + p.amount),
           6500,
           reason: s.paymentMethod.name,
         );

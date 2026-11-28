@@ -30,7 +30,7 @@ void main() {
     id: 'prod-test-1',
     name: 'Bidón 20L',
     unitLabel: 'Bidón',
-    price: 6500.0,
+    price: 6500,
   );
 
   final testCustomer = Customer(
@@ -61,7 +61,7 @@ void main() {
     String id = 'sale-test-1',
     List<SaleItem>? items,
     String? visitId,
-    double total = 13000.0,
+    int total = 13000,
   }) {
     return Sale(
       id: id,
@@ -94,7 +94,7 @@ void main() {
                   id: 'prod-$id',
                   name: 'Bidón 20L',
                   unitLabel: 'Bidón',
-                  price: 6500.0,
+                  price: 6500,
                   available: available,
                 ),
                 quantity: 2,
@@ -134,12 +134,12 @@ void main() {
               id: 'prod-test-2',
               name: 'Sifón 1.5L',
               unitLabel: 'Sifón',
-              price: 1500.0,
+              price: 1500,
             ),
             quantity: 3,
           ),
         ],
-        total: 11000.0,
+        total: 11000,
       );
       await sut.execute(sale);
 
@@ -172,7 +172,7 @@ void main() {
             id: 'sale-credit',
             customer: testCustomer,
             items: const [SaleItem(product: testProduct, quantity: 2)],
-            total: 13000.0,
+            total: 13000,
             paymentMethod: PaymentMethod.credit,
             date: DateTime.now(),
           ),
@@ -195,7 +195,7 @@ void main() {
             id: 'sale-mixed',
             customer: testCustomer,
             items: const [SaleItem(product: testProduct, quantity: 2)],
-            total: 13000.0,
+            total: 13000,
             paymentMethod: PaymentMethod.mixed,
             date: date,
             cashAmount: 8000,
@@ -225,7 +225,7 @@ void main() {
         id: 'sale-same',
         customer: testCustomer,
         items: const [SaleItem(product: testProduct, quantity: 2)],
-        total: 13000.0,
+        total: 13000,
         paymentMethod: PaymentMethod.mixed,
         date: DateTime(2026),
         cashAmount: 8000,
@@ -245,7 +245,7 @@ void main() {
           id: 'sale-$method',
           customer: testCustomer,
           items: const [SaleItem(product: testProduct, quantity: 2)],
-          total: 13000.0,
+          total: 13000,
           paymentMethod: method,
           date: DateTime(2026),
         );
@@ -271,7 +271,7 @@ void main() {
   });
 
   group('execute — also paying previous debt (S7, S9, S10)', () {
-    Future<void> owe(double amount) async {
+    Future<void> owe(int amount) async {
       await db
           .into(db.customerTable)
           .insert(
@@ -293,13 +293,13 @@ void main() {
     Sale saleBy(
       PaymentMethod method, {
       String id = 'sale-debt',
-      double? cash,
-      double? transfer,
+      int? cash,
+      int? transfer,
     }) => Sale(
       id: id,
       customer: testCustomer,
       items: const [SaleItem(product: testProduct, quantity: 2)],
-      total: 13000.0,
+      total: 13000,
       paymentMethod: method,
       date: DateTime(2026, 11, 16, 9, 30),
       cashAmount: cash,
@@ -510,10 +510,10 @@ void main() {
     test('rejects a negative debt, a debt on a credit sale and a mixed '
         'split that does not cover the sale plus the debt', () async {
       for (final (sale, debt) in [
-        (saleBy(PaymentMethod.cash), -1.0),
-        (saleBy(PaymentMethod.credit), 7200.0),
-        (saleBy(PaymentMethod.route), 7200.0),
-        (saleBy(PaymentMethod.mixed, cash: 5000, transfer: 8000), 7200.0),
+        (saleBy(PaymentMethod.cash), -1),
+        (saleBy(PaymentMethod.credit), 7200),
+        (saleBy(PaymentMethod.route), 7200),
+        (saleBy(PaymentMethod.mixed, cash: 5000, transfer: 8000), 7200),
       ]) {
         await expectLater(
           sut.execute(sale, debtAmount: debt),
@@ -534,7 +534,7 @@ void main() {
     test('throws a ValidationFailure and writes nothing when the total '
         'differs from quantity x unit price', () async {
       await expectLater(
-        sut.execute(makeSale(total: 13000.01)),
+        sut.execute(makeSale(total: 13001)),
         throwsA(isA<ValidationFailure>()),
       );
 
@@ -544,8 +544,8 @@ void main() {
       expect(await db.select(db.paymentTable).get(), isEmpty);
     });
 
-    test('accepts a difference within the server tolerance of 0.005', () async {
-      await expectLater(sut.execute(makeSale(total: 13000.004)), completes);
+    test('accepts a total equal to its items', () async {
+      await expectLater(sut.execute(makeSale(total: 13000)), completes);
     });
   });
 

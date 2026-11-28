@@ -7,7 +7,7 @@ import 'package:app/core/theme/sales_tokens.dart';
 import '../../../../support/real_fonts.dart';
 
 // Helper to create a test Product
-Product _makeProduct({String name = 'Agua 20L', double price = 1500}) {
+Product _makeProduct({String name = 'Agua 20L', int price = 1500}) {
   return Product(id: 'p1', name: name, unitLabel: 'bidón', price: price);
 }
 

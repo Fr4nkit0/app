@@ -36,7 +36,7 @@ void main() {
 
       final row = await product('prod-1');
       expect(row.name, 'Water 20L (new)');
-      expect(row.price, 999.5);
+      expect(row.price, 1000);
       expect(row.stock, 7);
     });
 

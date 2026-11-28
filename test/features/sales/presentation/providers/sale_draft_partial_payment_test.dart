@@ -12,16 +12,17 @@ import 'package:app/features/sales/domain/models/sale_item.dart';
 import 'package:app/features/sales/domain/usecases/register_sale.usecase.dart';
 import 'package:app/features/sales/presentation/providers/register_sale_usecase_provider.dart';
 import 'package:app/features/sales/presentation/providers/sale_draft_provider.dart';
+import '../../../../support/customer_balances.dart';
 
 class _RecordingRegisterSale implements RegisterSaleUseCase {
-  final calls = <({Sale sale, double debtAmount})>[];
+  final calls = <({Sale sale, int debtAmount})>[];
 
   @override
   Future<void> execute(
     Sale sale, {
     Payment? payment,
     List<ContainerMovement>? containerMovements,
-    double debtAmount = 0,
+    int debtAmount = 0,
   }) async {
     calls.add((sale: sale, debtAmount: debtAmount));
   }
@@ -48,7 +49,10 @@ void main() {
   setUp(() {
     useCase = _RecordingRegisterSale();
     container = ProviderContainer(
-      overrides: [registerSaleUseCaseProvider.overrideWithValue(useCase)],
+      overrides: [
+        registerSaleUseCaseProvider.overrideWithValue(useCase),
+        unloadedCustomerBalances,
+      ],
     );
     container.read(saleDraftProvider.notifier)
       ..selectCustomer(customer)
@@ -91,7 +95,7 @@ void main() {
           ..setPaymentMethod(method)
           ..setCollectedAmount(7000);
         expect(state().canConfirm, isTrue, reason: method.name);
-        for (final amount in [0.0, null]) {
+        for (final amount in [0, null]) {
           notifier().setCollectedAmount(amount);
           expect(state().isValidPayment, isFalse, reason: '$method $amount');
           expect(state().canConfirm, isFalse, reason: '$method $amount');
