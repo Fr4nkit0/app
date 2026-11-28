@@ -2,6 +2,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:app/features/inventory/domain/custody.dart';
 import 'package:uuid/uuid.dart';
 import 'package:app/features/customers/domain/models/customer.dart';
+import 'package:app/features/payments/presentation/providers/payment_repository_provider.dart';
 import 'package:app/features/products/domain/models/product.dart';
 import 'package:app/features/sales/domain/models/payment_method.dart';
 import 'package:app/features/sales/domain/models/sale.dart';
@@ -10,21 +11,51 @@ import 'package:app/features/sales/domain/models/sale_item.dart';
 import 'package:app/features/sales/presentation/providers/register_sale_usecase_provider.dart';
 
 class SaleDraft extends Notifier<SaleDraftState> {
+  /// Keeps [SaleDraftState.customerBalance] on the selected customer's
+  /// account; null while no customer is followed.
+  ProviderSubscription<AsyncValue<int>>? _balance;
+
   @override
   SaleDraftState build() => const SaleDraftState();
 
   /// The lines go when the customer changes, since they were priced with
-  /// the previous customer's agreements.
+  /// the previous customer's agreements. The draft follows the customer's
+  /// account from then on, so the credit in their favor is applied (S2);
+  /// their snapshot balance stands in until the account loads.
   void selectCustomer(Customer customer, {String? visitId}) {
-    if (state.customer case final previous? when previous.id != customer.id) {
-      clearCustomer();
-    }
-    state = state.copyWith(customer: customer, visitId: visitId);
+    final previous = state.customer;
+    if (previous != null && previous.id != customer.id) clearCustomer();
+    final same = previous?.id == customer.id;
+    state = state.copyWith(
+      customer: customer,
+      visitId: visitId,
+      customerBalance: same ? null : customer.debtAmount,
+    );
+    if (!same || _balance == null) _followBalance(customer.id);
+  }
+
+  void _followBalance(String customerId) {
+    _stopFollowingBalance();
+    _balance = ref.listen<AsyncValue<int>>(
+      customerBalanceProvider(customerId),
+      (_, next) {
+        final balance = next.value;
+        if (balance == null || state.customer?.id != customerId) return;
+        state = state.copyWith(customerBalance: balance);
+      },
+      fireImmediately: true,
+    );
+  }
+
+  void _stopFollowingBalance() {
+    _balance?.close();
+    _balance = null;
   }
 
   /// Lines were priced for the previous customer's agreements, so they go
-  /// with it.
+  /// with it, and so does its balance.
   void clearCustomer() {
+    _stopFollowingBalance();
     state = state.copyWith(
       clearCustomer: true,
       clearRouteStopId: true,
@@ -32,6 +63,7 @@ class SaleDraft extends Notifier<SaleDraftState> {
       returnedContainers: const {},
       skeletonDelivered: 0,
       skeletonReturned: 0,
+      customerBalance: 0,
     );
   }
 
@@ -63,7 +95,7 @@ class SaleDraft extends Notifier<SaleDraftState> {
 
     // Custody rule: by default the customer returns as many containers of
     // each type as the sale delivers. A cash or transfer amount starts
-    // again at the new total.
+    // again at the new amount due.
     final singleMethod =
         state.paymentMethod == PaymentMethod.cash ||
         state.paymentMethod == PaymentMethod.transfer;
@@ -99,7 +131,7 @@ class SaleDraft extends Notifier<SaleDraftState> {
     }
     if (!repriced) return;
     final removed = items.length != state.items.length;
-    // A cash or transfer amount starts again at the new total.
+    // A cash or transfer amount starts again at the new amount due.
     final singleMethod =
         state.paymentMethod == PaymentMethod.cash ||
         state.paymentMethod == PaymentMethod.transfer;
@@ -152,7 +184,7 @@ class SaleDraft extends Notifier<SaleDraftState> {
   }
 
   /// What the customer hands over on a cash or transfer sale: below the
-  /// total the rest stays as their debt, above it the rest pays previous
+  /// amount due the rest stays as their debt, above it the rest pays previous
   /// debt and then stays as credit (S2). Null (an empty or invalid amount)
   /// counts as 0, which cannot confirm.
   void setCollectedAmount(int? amount) {
@@ -196,6 +228,7 @@ class SaleDraft extends Notifier<SaleDraftState> {
           ? draft.transferAmount
           : null,
       visitId: draft.visitId,
+      creditApplied: draft.creditApplied,
     );
 
     final movements = draft.toContainerMovements(
@@ -215,6 +248,7 @@ class SaleDraft extends Notifier<SaleDraftState> {
     // The customer balance moves with the sale and its settling payments
     // (see CustomerAccount); nothing to update here.
 
+    _stopFollowingBalance();
     state = const SaleDraftState();
   }
 
@@ -222,6 +256,7 @@ class SaleDraft extends Notifier<SaleDraftState> {
   /// a microtask after it is disposed, maybe with the whole app torn down.
   void reset() {
     if (!ref.mounted) return;
+    _stopFollowingBalance();
     state = const SaleDraftState();
   }
 }

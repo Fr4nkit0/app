@@ -326,8 +326,12 @@ void main() {
       await tapConfirm(tester);
 
       expect(find.text(creditTitle), findsNothing);
+      // S11 (rental-and-credit-balance): it adds to the previous debt.
       expect(
-        find.text('El cliente queda debiendo \$500. ¿Confirmás?'),
+        find.text(
+          'Suma \$500 a su deuda de \$30.000. Deuda total: \$30.500. '
+          '¿Confirmás?',
+        ),
         findsOneWidget,
       );
     });

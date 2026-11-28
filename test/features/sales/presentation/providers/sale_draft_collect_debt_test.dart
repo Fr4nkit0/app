@@ -13,6 +13,7 @@ import 'package:app/features/sales/domain/models/sale_item.dart';
 import 'package:app/features/sales/domain/usecases/register_sale.usecase.dart';
 import 'package:app/features/sales/presentation/providers/register_sale_usecase_provider.dart';
 import 'package:app/features/sales/presentation/providers/sale_draft_provider.dart';
+import '../../../../support/customer_balances.dart';
 
 class _RecordingRegisterSale implements RegisterSaleUseCase {
   final calls = <({Sale sale, int debtAmount})>[];
@@ -51,7 +52,10 @@ void main() {
   setUp(() {
     useCase = _RecordingRegisterSale();
     container = ProviderContainer(
-      overrides: [registerSaleUseCaseProvider.overrideWithValue(useCase)],
+      overrides: [
+        registerSaleUseCaseProvider.overrideWithValue(useCase),
+        unloadedCustomerBalances,
+      ],
     );
     container.read(saleDraftProvider.notifier)
       ..selectCustomer(customer)

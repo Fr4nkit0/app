@@ -96,6 +96,7 @@ class DriftSaleRepository implements SaleRepository {
       cashAmount: saleRow.cashAmount,
       transferAmount: saleRow.transferAmount,
       visitId: saleRow.visitId,
+      creditApplied: saleRow.creditApplied,
       isCancelled: saleRow.status == RecordStatus.cancelled,
     );
   }
@@ -116,6 +117,7 @@ class DriftSaleRepository implements SaleRepository {
             visitId: Value(sale.visitId),
             cashAmount: Value(sale.cashAmount),
             transferAmount: Value(sale.transferAmount),
+            creditApplied: Value(sale.creditApplied),
           ),
         );
 

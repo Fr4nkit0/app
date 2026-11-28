@@ -9,12 +9,35 @@ import 'package:app/features/payments/presentation/widgets/amount_field.dart';
 /// [amount] as the driver would type it: thousands grouped with dots.
 String editableAmount(int amount) => formatMoneyInput(amount);
 
-/// "Queda debiendo $X": what the customer is left owing from a sale paid
-/// in part on the spot.
+/// What the customer is left owing from a sale paid in part on the spot:
+/// "Queda debiendo $X" or, when they already owed [previousDebt], that it
+/// adds to it and the resulting debt (S11).
+String unpaidNoteText(int unpaid, {int previousDebt = 0}) => previousDebt > 0
+    ? 'Suma ${formatMoney(unpaid)} a su deuda de '
+          '${formatMoney(previousDebt)}. '
+          'Deuda total: ${formatMoney(previousDebt + unpaid)}'
+    : 'Queda debiendo ${formatMoney(unpaid)}';
+
+/// The question before saving a sale that leaves [unpaid] owed, added to
+/// the [previousDebt] when there is one (S11).
+String partialPaymentQuestion(int unpaid, {int previousDebt = 0}) =>
+    previousDebt > 0
+    ? '${unpaidNoteText(unpaid, previousDebt: previousDebt)}. ¿Confirmás?'
+    : 'El cliente queda debiendo ${formatMoney(unpaid)}. ¿Confirmás?';
+
+/// [unpaidNoteText]: what the customer is left owing from a sale paid in
+/// part on the spot.
 class UnpaidAmountNote extends StatelessWidget {
-  const UnpaidAmountNote({super.key, required this.unpaid});
+  const UnpaidAmountNote({
+    super.key,
+    required this.unpaid,
+    this.previousDebt = 0,
+  });
 
   final int unpaid;
+
+  /// What the customer owed before this sale; 0 when nothing.
+  final int previousDebt;
 
   @override
   Widget build(BuildContext context) {
@@ -28,7 +51,7 @@ class UnpaidAmountNote extends StatelessWidget {
           const SizedBox(width: 6),
           Expanded(
             child: Text(
-              'Queda debiendo ${formatMoney(unpaid)}',
+              unpaidNoteText(unpaid, previousDebt: previousDebt),
               style: TextStyle(
                 fontWeight: FontWeight.w700,
                 fontSize: 13,
@@ -80,9 +103,10 @@ class OwedDebtNote extends StatelessWidget {
 }
 
 /// "Monto recibido": what the customer hands over on a cash or transfer
-/// sale, starting at [initialAmount] (the sale total). Below it shows why
-/// the amount cannot be received ([errorText]) or, when [unpaid] is above
-/// 0, what the customer is left owing. When the customer owes [owedDebt],
+/// sale, starting at [initialAmount] (what is due of the sale). Below it
+/// shows why the amount cannot be received ([errorText]) or, when [unpaid]
+/// is above 0, what the customer is left owing, added to the [owedDebt]
+/// when there is one (S11). When the customer owes [owedDebt],
 /// it shows that debt and a «Cobrar toda la deuda» shortcut that fills
 /// [payoffAmount] (the sale plus the whole debt).
 ///
@@ -173,7 +197,10 @@ class _CollectedAmountFieldState extends State<CollectedAmountField> {
             ),
           )
         else if (widget.unpaid > 0)
-          UnpaidAmountNote(unpaid: widget.unpaid),
+          UnpaidAmountNote(
+            unpaid: widget.unpaid,
+            previousDebt: widget.owedDebt,
+          ),
         if (widget.owedDebt > 0) ...[
           OwedDebtNote(owed: widget.owedDebt),
           ActionChip(
@@ -187,14 +214,19 @@ class _CollectedAmountFieldState extends State<CollectedAmountField> {
   }
 }
 
-/// Asks before saving a sale that leaves the customer owing [unpaid].
+/// Asks before saving a sale that leaves the customer owing [unpaid], on
+/// top of their [previousDebt] when they had one ([partialPaymentQuestion]).
 /// Returns true when the driver confirms it.
-Future<bool> confirmPartialPayment(BuildContext context, int unpaid) async {
+Future<bool> confirmPartialPayment(
+  BuildContext context,
+  int unpaid, {
+  int previousDebt = 0,
+}) async {
   final confirmed = await showDialog<bool>(
     context: context,
     builder: (dialogContext) => AlertDialog(
       content: Text(
-        'El cliente queda debiendo ${formatMoney(unpaid)}. ¿Confirmás?',
+        partialPaymentQuestion(unpaid, previousDebt: previousDebt),
       ),
       actions: [
         TextButton(

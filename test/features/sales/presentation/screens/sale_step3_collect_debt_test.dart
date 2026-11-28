@@ -225,7 +225,11 @@ void main() {
 
       await receive(tester, '6000');
 
-      expect(find.text('Queda debiendo \$500'), findsOneWidget);
+      // S11 (rental-and-credit-balance): it adds to the previous debt.
+      expect(
+        find.text('Suma \$500 a su deuda de \$32.500. Deuda total: \$33.000'),
+        findsOneWidget,
+      );
       expect(find.textContaining('Recibido'), findsNothing);
     });
 

@@ -73,6 +73,10 @@ class SaleApplier {
               status: Value(
                 cancelled ? RecordStatus.cancelled : RecordStatus.confirmed,
               ),
+              // Absent on a server that does not know it yet: no credit.
+              creditApplied: Value(
+                s['credit_applied'] == null ? 0 : toPesos(s['credit_applied']),
+              ),
             ),
           );
       context.ids.recordSale(serverId, saleId);

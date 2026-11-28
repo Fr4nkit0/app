@@ -61,11 +61,12 @@ part 'database.helper.g.dart';
 class AppDatabase extends _$AppDatabase {
   AppDatabase([QueryExecutor? executor]) : super(executor ?? _openConnection());
 
-  /// 23 stores every money column as whole pesos (INTEGER). Each release is
+  /// 23 stores every money column as whole pesos (INTEGER); 24 adds
+  /// `sales.credit_applied`. Each release is
   /// installed after syncing what is pending and uninstalling the previous
   /// one, so no data is carried across versions.
   @override
-  int get schemaVersion => 23;
+  int get schemaVersion => 24;
 
   @override
   MigrationStrategy get migration => MigrationStrategy(

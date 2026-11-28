@@ -22,6 +22,9 @@ class SaleTable extends Table with Timestamps {
   late final visitId = text().nullable()();
   late final cashAmount = integer().nullable()();
   late final transferAmount = integer().nullable()();
+
+  /// The customer's credit in favor the sale consumed (0..total).
+  late final creditApplied = integer().withDefault(const Constant(0))();
   late final status = text().withDefault(
     const Constant('CONFIRMED'),
   )(); // RecordStatus.confirmed, as a literal the generated code can copy

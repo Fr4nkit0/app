@@ -5,6 +5,7 @@ import 'package:app/features/customers/domain/models/customer.dart';
 import 'package:app/features/products/domain/models/product.dart';
 import 'package:app/features/sales/domain/models/sale_item.dart';
 import 'package:app/features/sales/presentation/providers/sale_draft_provider.dart';
+import '../../../../support/customer_balances.dart';
 
 Customer _customer(String id) =>
     Customer(id: id, name: id, addresses: const [], preferences: const []);
@@ -21,7 +22,11 @@ void main() {
   );
 
   late ProviderContainer container;
-  setUp(() => container = ProviderContainer());
+  setUp(
+    () => container = ProviderContainer(
+      overrides: [unloadedCustomerBalances],
+    ),
+  );
   tearDown(() => container.dispose());
 
   SaleDraft notifier() => container.read(saleDraftProvider.notifier);

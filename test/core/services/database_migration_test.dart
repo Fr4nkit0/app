@@ -64,6 +64,7 @@ const _moneyColumns = {
     'shipping_amount',
     'cash_amount',
     'transfer_amount',
+    'credit_applied',
   ],
   'sale_items': ['unit_price', 'subtotal'],
   'payments': ['amount'],
@@ -106,11 +107,11 @@ void main() {
 
   tearDown(() => dir.deleteSync(recursive: true));
 
-  test('the schema version is 23', () {
+  test('the schema version is 24', () {
     final db = AppDatabase(NativeDatabase.memory());
     addTearDown(db.close);
 
-    expect(db.schemaVersion, 23);
+    expect(db.schemaVersion, 24);
   });
 
   test('a fresh install creates every table with the current columns and '
@@ -118,7 +119,7 @@ void main() {
     final db = AppDatabase(NativeDatabase(file));
     addTearDown(db.close);
 
-    expect(await _userVersion(db), 23);
+    expect(await _userVersion(db), 24);
     await _expectCurrentSchema(db);
     expect(
       await _columns(db, 'route_stops'),
@@ -173,11 +174,31 @@ void main() {
     final db = AppDatabase(NativeDatabase(file));
     addTearDown(db.close);
 
-    expect(await _userVersion(db), 23);
+    expect(await _userVersion(db), 24);
     expect(await db.select(db.customerTable).get(), isEmpty);
     expect(await db.select(db.productTable).get(), isEmpty);
     expect(await db.select(db.paymentTable).get(), isEmpty);
     expect(await db.select(db.pendingChangeTable).get(), isEmpty);
+    await _expectCurrentSchema(db);
+  });
+
+  test('a version 23 database without sales.credit_applied is rebuilt '
+      'empty with it', () async {
+    final v23 = AppDatabase(NativeDatabase(file));
+    await v23.customStatement('ALTER TABLE sales DROP COLUMN credit_applied');
+    expect(await _columns(v23, 'sales'), isNot(contains('credit_applied')));
+    await v23.customStatement(
+      "INSERT INTO customers (customer_id, name) VALUES ('c-1', 'Ana')",
+    );
+    await v23.customStatement('PRAGMA user_version = 23');
+    await v23.close();
+
+    final db = AppDatabase(NativeDatabase(file));
+    addTearDown(db.close);
+
+    expect(await _userVersion(db), 24);
+    expect(await db.select(db.customerTable).get(), isEmpty);
+    expect(await _columns(db, 'sales'), contains('credit_applied'));
     await _expectCurrentSchema(db);
   });
 
@@ -192,7 +213,7 @@ void main() {
     expect(await db.select(db.routeTable).get(), isEmpty);
     expect(await db.select(db.routeStopTable).get(), isEmpty);
     await _expectCurrentSchema(db);
-    expect(await _userVersion(db), 23);
+    expect(await _userVersion(db), 24);
   });
 
   test('reopening a rebuilt database keeps the data written after the '
@@ -210,6 +231,6 @@ void main() {
 
     final customers = await second.select(second.customerTable).get();
     expect(customers.map((c) => c.customerId), ['c-2']);
-    expect(await _userVersion(second), 23);
+    expect(await _userVersion(second), 24);
   });
 }

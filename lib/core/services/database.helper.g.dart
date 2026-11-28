@@ -6450,6 +6450,18 @@ class $SaleTableTable extends SaleTable
     type: DriftSqlType.int,
     requiredDuringInsert: false,
   );
+  static const VerificationMeta _creditAppliedMeta = const VerificationMeta(
+    'creditApplied',
+  );
+  @override
+  late final GeneratedColumn<int> creditApplied = GeneratedColumn<int>(
+    'credit_applied',
+    aliasedName,
+    false,
+    type: DriftSqlType.int,
+    requiredDuringInsert: false,
+    defaultValue: const Constant(0),
+  );
   static const VerificationMeta _statusMeta = const VerificationMeta('status');
   @override
   late final GeneratedColumn<String> status = GeneratedColumn<String>(
@@ -6498,6 +6510,7 @@ class $SaleTableTable extends SaleTable
     visitId,
     cashAmount,
     transferAmount,
+    creditApplied,
     status,
     cancelledAt,
     cancellationReason,
@@ -6623,6 +6636,15 @@ class $SaleTableTable extends SaleTable
         ),
       );
     }
+    if (data.containsKey('credit_applied')) {
+      context.handle(
+        _creditAppliedMeta,
+        creditApplied.isAcceptableOrUnknown(
+          data['credit_applied']!,
+          _creditAppliedMeta,
+        ),
+      );
+    }
     if (data.containsKey('status')) {
       context.handle(
         _statusMeta,
@@ -6712,6 +6734,10 @@ class $SaleTableTable extends SaleTable
         DriftSqlType.int,
         data['${effectivePrefix}transfer_amount'],
       ),
+      creditApplied: attachedDatabase.typeMapping.read(
+        DriftSqlType.int,
+        data['${effectivePrefix}credit_applied'],
+      )!,
       status: attachedDatabase.typeMapping.read(
         DriftSqlType.string,
         data['${effectivePrefix}status'],
@@ -6750,6 +6776,9 @@ class SaleTableData extends DataClass implements Insertable<SaleTableData> {
   final String? visitId;
   final int? cashAmount;
   final int? transferAmount;
+
+  /// The customer's credit in favor the sale consumed (0..total).
+  final int creditApplied;
   final String status;
   final DateTime? cancelledAt;
   final String? cancellationReason;
@@ -6768,6 +6797,7 @@ class SaleTableData extends DataClass implements Insertable<SaleTableData> {
     this.visitId,
     this.cashAmount,
     this.transferAmount,
+    required this.creditApplied,
     required this.status,
     this.cancelledAt,
     this.cancellationReason,
@@ -6797,6 +6827,7 @@ class SaleTableData extends DataClass implements Insertable<SaleTableData> {
     if (!nullToAbsent || transferAmount != null) {
       map['transfer_amount'] = Variable<int>(transferAmount);
     }
+    map['credit_applied'] = Variable<int>(creditApplied);
     map['status'] = Variable<String>(status);
     if (!nullToAbsent || cancelledAt != null) {
       map['cancelled_at'] = Variable<DateTime>(cancelledAt);
@@ -6831,6 +6862,7 @@ class SaleTableData extends DataClass implements Insertable<SaleTableData> {
       transferAmount: transferAmount == null && nullToAbsent
           ? const Value.absent()
           : Value(transferAmount),
+      creditApplied: Value(creditApplied),
       status: Value(status),
       cancelledAt: cancelledAt == null && nullToAbsent
           ? const Value.absent()
@@ -6861,6 +6893,7 @@ class SaleTableData extends DataClass implements Insertable<SaleTableData> {
       visitId: serializer.fromJson<String?>(json['visitId']),
       cashAmount: serializer.fromJson<int?>(json['cashAmount']),
       transferAmount: serializer.fromJson<int?>(json['transferAmount']),
+      creditApplied: serializer.fromJson<int>(json['creditApplied']),
       status: serializer.fromJson<String>(json['status']),
       cancelledAt: serializer.fromJson<DateTime?>(json['cancelledAt']),
       cancellationReason: serializer.fromJson<String?>(
@@ -6886,6 +6919,7 @@ class SaleTableData extends DataClass implements Insertable<SaleTableData> {
       'visitId': serializer.toJson<String?>(visitId),
       'cashAmount': serializer.toJson<int?>(cashAmount),
       'transferAmount': serializer.toJson<int?>(transferAmount),
+      'creditApplied': serializer.toJson<int>(creditApplied),
       'status': serializer.toJson<String>(status),
       'cancelledAt': serializer.toJson<DateTime?>(cancelledAt),
       'cancellationReason': serializer.toJson<String?>(cancellationReason),
@@ -6907,6 +6941,7 @@ class SaleTableData extends DataClass implements Insertable<SaleTableData> {
     Value<String?> visitId = const Value.absent(),
     Value<int?> cashAmount = const Value.absent(),
     Value<int?> transferAmount = const Value.absent(),
+    int? creditApplied,
     String? status,
     Value<DateTime?> cancelledAt = const Value.absent(),
     Value<String?> cancellationReason = const Value.absent(),
@@ -6927,6 +6962,7 @@ class SaleTableData extends DataClass implements Insertable<SaleTableData> {
     transferAmount: transferAmount.present
         ? transferAmount.value
         : this.transferAmount,
+    creditApplied: creditApplied ?? this.creditApplied,
     status: status ?? this.status,
     cancelledAt: cancelledAt.present ? cancelledAt.value : this.cancelledAt,
     cancellationReason: cancellationReason.present
@@ -6963,6 +6999,9 @@ class SaleTableData extends DataClass implements Insertable<SaleTableData> {
       transferAmount: data.transferAmount.present
           ? data.transferAmount.value
           : this.transferAmount,
+      creditApplied: data.creditApplied.present
+          ? data.creditApplied.value
+          : this.creditApplied,
       status: data.status.present ? data.status.value : this.status,
       cancelledAt: data.cancelledAt.present
           ? data.cancelledAt.value
@@ -6990,6 +7029,7 @@ class SaleTableData extends DataClass implements Insertable<SaleTableData> {
           ..write('visitId: $visitId, ')
           ..write('cashAmount: $cashAmount, ')
           ..write('transferAmount: $transferAmount, ')
+          ..write('creditApplied: $creditApplied, ')
           ..write('status: $status, ')
           ..write('cancelledAt: $cancelledAt, ')
           ..write('cancellationReason: $cancellationReason')
@@ -7013,6 +7053,7 @@ class SaleTableData extends DataClass implements Insertable<SaleTableData> {
     visitId,
     cashAmount,
     transferAmount,
+    creditApplied,
     status,
     cancelledAt,
     cancellationReason,
@@ -7035,6 +7076,7 @@ class SaleTableData extends DataClass implements Insertable<SaleTableData> {
           other.visitId == this.visitId &&
           other.cashAmount == this.cashAmount &&
           other.transferAmount == this.transferAmount &&
+          other.creditApplied == this.creditApplied &&
           other.status == this.status &&
           other.cancelledAt == this.cancelledAt &&
           other.cancellationReason == this.cancellationReason);
@@ -7055,6 +7097,7 @@ class SaleTableCompanion extends UpdateCompanion<SaleTableData> {
   final Value<String?> visitId;
   final Value<int?> cashAmount;
   final Value<int?> transferAmount;
+  final Value<int> creditApplied;
   final Value<String> status;
   final Value<DateTime?> cancelledAt;
   final Value<String?> cancellationReason;
@@ -7074,6 +7117,7 @@ class SaleTableCompanion extends UpdateCompanion<SaleTableData> {
     this.visitId = const Value.absent(),
     this.cashAmount = const Value.absent(),
     this.transferAmount = const Value.absent(),
+    this.creditApplied = const Value.absent(),
     this.status = const Value.absent(),
     this.cancelledAt = const Value.absent(),
     this.cancellationReason = const Value.absent(),
@@ -7094,6 +7138,7 @@ class SaleTableCompanion extends UpdateCompanion<SaleTableData> {
     this.visitId = const Value.absent(),
     this.cashAmount = const Value.absent(),
     this.transferAmount = const Value.absent(),
+    this.creditApplied = const Value.absent(),
     this.status = const Value.absent(),
     this.cancelledAt = const Value.absent(),
     this.cancellationReason = const Value.absent(),
@@ -7118,6 +7163,7 @@ class SaleTableCompanion extends UpdateCompanion<SaleTableData> {
     Expression<String>? visitId,
     Expression<int>? cashAmount,
     Expression<int>? transferAmount,
+    Expression<int>? creditApplied,
     Expression<String>? status,
     Expression<DateTime>? cancelledAt,
     Expression<String>? cancellationReason,
@@ -7138,6 +7184,7 @@ class SaleTableCompanion extends UpdateCompanion<SaleTableData> {
       if (visitId != null) 'visit_id': visitId,
       if (cashAmount != null) 'cash_amount': cashAmount,
       if (transferAmount != null) 'transfer_amount': transferAmount,
+      if (creditApplied != null) 'credit_applied': creditApplied,
       if (status != null) 'status': status,
       if (cancelledAt != null) 'cancelled_at': cancelledAt,
       if (cancellationReason != null) 'cancellation_reason': cancellationReason,
@@ -7160,6 +7207,7 @@ class SaleTableCompanion extends UpdateCompanion<SaleTableData> {
     Value<String?>? visitId,
     Value<int?>? cashAmount,
     Value<int?>? transferAmount,
+    Value<int>? creditApplied,
     Value<String>? status,
     Value<DateTime?>? cancelledAt,
     Value<String?>? cancellationReason,
@@ -7180,6 +7228,7 @@ class SaleTableCompanion extends UpdateCompanion<SaleTableData> {
       visitId: visitId ?? this.visitId,
       cashAmount: cashAmount ?? this.cashAmount,
       transferAmount: transferAmount ?? this.transferAmount,
+      creditApplied: creditApplied ?? this.creditApplied,
       status: status ?? this.status,
       cancelledAt: cancelledAt ?? this.cancelledAt,
       cancellationReason: cancellationReason ?? this.cancellationReason,
@@ -7232,6 +7281,9 @@ class SaleTableCompanion extends UpdateCompanion<SaleTableData> {
     if (transferAmount.present) {
       map['transfer_amount'] = Variable<int>(transferAmount.value);
     }
+    if (creditApplied.present) {
+      map['credit_applied'] = Variable<int>(creditApplied.value);
+    }
     if (status.present) {
       map['status'] = Variable<String>(status.value);
     }
@@ -7264,6 +7316,7 @@ class SaleTableCompanion extends UpdateCompanion<SaleTableData> {
           ..write('visitId: $visitId, ')
           ..write('cashAmount: $cashAmount, ')
           ..write('transferAmount: $transferAmount, ')
+          ..write('creditApplied: $creditApplied, ')
           ..write('status: $status, ')
           ..write('cancelledAt: $cancelledAt, ')
           ..write('cancellationReason: $cancellationReason, ')
@@ -22124,6 +22177,7 @@ typedef $$SaleTableTableCreateCompanionBuilder =
       Value<String?> visitId,
       Value<int?> cashAmount,
       Value<int?> transferAmount,
+      Value<int> creditApplied,
       Value<String> status,
       Value<DateTime?> cancelledAt,
       Value<String?> cancellationReason,
@@ -22145,6 +22199,7 @@ typedef $$SaleTableTableUpdateCompanionBuilder =
       Value<String?> visitId,
       Value<int?> cashAmount,
       Value<int?> transferAmount,
+      Value<int> creditApplied,
       Value<String> status,
       Value<DateTime?> cancelledAt,
       Value<String?> cancellationReason,
@@ -22322,6 +22377,11 @@ class $$SaleTableTableFilterComposer
 
   ColumnFilters<int> get transferAmount => $composableBuilder(
     column: $table.transferAmount,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<int> get creditApplied => $composableBuilder(
+    column: $table.creditApplied,
     builder: (column) => ColumnFilters(column),
   );
 
@@ -22515,6 +22575,11 @@ class $$SaleTableTableOrderingComposer
     builder: (column) => ColumnOrderings(column),
   );
 
+  ColumnOrderings<int> get creditApplied => $composableBuilder(
+    column: $table.creditApplied,
+    builder: (column) => ColumnOrderings(column),
+  );
+
   ColumnOrderings<String> get status => $composableBuilder(
     column: $table.status,
     builder: (column) => ColumnOrderings(column),
@@ -22611,6 +22676,11 @@ class $$SaleTableTableAnnotationComposer
 
   GeneratedColumn<int> get transferAmount => $composableBuilder(
     column: $table.transferAmount,
+    builder: (column) => column,
+  );
+
+  GeneratedColumn<int> get creditApplied => $composableBuilder(
+    column: $table.creditApplied,
     builder: (column) => column,
   );
 
@@ -22775,6 +22845,7 @@ class $$SaleTableTableTableManager
                 Value<String?> visitId = const Value.absent(),
                 Value<int?> cashAmount = const Value.absent(),
                 Value<int?> transferAmount = const Value.absent(),
+                Value<int> creditApplied = const Value.absent(),
                 Value<String> status = const Value.absent(),
                 Value<DateTime?> cancelledAt = const Value.absent(),
                 Value<String?> cancellationReason = const Value.absent(),
@@ -22794,6 +22865,7 @@ class $$SaleTableTableTableManager
                 visitId: visitId,
                 cashAmount: cashAmount,
                 transferAmount: transferAmount,
+                creditApplied: creditApplied,
                 status: status,
                 cancelledAt: cancelledAt,
                 cancellationReason: cancellationReason,
@@ -22815,6 +22887,7 @@ class $$SaleTableTableTableManager
                 Value<String?> visitId = const Value.absent(),
                 Value<int?> cashAmount = const Value.absent(),
                 Value<int?> transferAmount = const Value.absent(),
+                Value<int> creditApplied = const Value.absent(),
                 Value<String> status = const Value.absent(),
                 Value<DateTime?> cancelledAt = const Value.absent(),
                 Value<String?> cancellationReason = const Value.absent(),
@@ -22834,6 +22907,7 @@ class $$SaleTableTableTableManager
                 visitId: visitId,
                 cashAmount: cashAmount,
                 transferAmount: transferAmount,
+                creditApplied: creditApplied,
                 status: status,
                 cancelledAt: cancelledAt,
                 cancellationReason: cancellationReason,
